@@ -1,0 +1,6 @@
+# All intermediate objects.
+.build
+
+# All binaries.
+joosc
+test
