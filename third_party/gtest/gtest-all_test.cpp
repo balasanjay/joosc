@@ -1850,8 +1850,13 @@ void AssertHelper::operator=(const Message& message) const {
                       );  // NOLINT
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-field-initializers"
+
 // Mutex for linked pointers.
 GTEST_API_ GTEST_DEFINE_STATIC_MUTEX_(g_linked_ptr_mutex);
+
+#pragma clang diagnostic pop
 
 // Application pathname gotten in InitGoogleTest.
 std::string g_executable_path;
