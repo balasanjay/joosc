@@ -30,6 +30,7 @@ TEST(DiskFileTest, Simple) {
   ASSERT_TRUE(DiskFile::LoadFile("./testdata/testfile.txt", &df));
   EXPECT_EQ(11, df->length());
   ValidateFile(*df, 0, "test file\n");
+  delete (DiskFile*)df;
 }
 
 } // namespace base

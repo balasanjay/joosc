@@ -16,7 +16,7 @@ TARGETS := ${patsubst %_main.cpp,%,${MAIN_SOURCES}}
 
 # DEFAULT_BUILD_TARGETS should specify which targets to build if make is run
 # with no arguments.
-DEFAULT_BUILD_TARGETS := joosc
+DEFAULT_BUILD_TARGETS := joosc test
 
 # CXX is the C++ compiler.
 CXX := clang++

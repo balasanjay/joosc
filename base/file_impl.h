@@ -25,6 +25,7 @@ public:
   static bool LoadFile(std::string filename, File** out);
 
 protected:
+  FRIEND_TEST(DiskFileTest, Simple);
   DiskFile(u8* buf, int len);
 };
 
