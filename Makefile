@@ -16,14 +16,14 @@ TARGETS := ${patsubst %_main.cpp,%,${MAIN_SOURCES}}
 
 # DEFAULT_BUILD_TARGETS should specify which targets to build if make is run
 # with no arguments.
-DEFAULT_BUILD_TARGETS := ${TARGETS}
+DEFAULT_BUILD_TARGETS := joosc
 
 # CXX is the C++ compiler.
 CXX := clang++
 
 # CXXFLAGS are the flags passed to the C++ compiler.
-CXXFLAGS := -Wall -Wextra -std=c++0x -MMD -MP -g -pedantic -I . -include std.h
-LDFLAGS = -pthread
+CXXFLAGS := -Wall -Wextra -std=c++0x -MMD -MP -g -pedantic -I ./ -include std.h
+LDFLAGS := -lpthread
 
 # BUILD_CACHE_KEY should contain all variables that are used when building your
 # source files.  This ensures that changing a variable like CXXFLAGS will
@@ -33,7 +33,7 @@ BUILD_CACHE_KEY := ${CXX} ${CXXFLAGS} ${LDFLAGS}
 
 # Compute some other helpful variables.
 BUILD_ROOT := .build
-BUILD_DIR := ${BUILD_ROOT}/${shell echo "${BUILD_CACHE_KEY}" | md5sum | head -c 32}
+BUILD_DIR := ${BUILD_ROOT}/${shell cat Makefile | md5sum | head -c 32}
 TO_BUILD_DIR = ${patsubst %,${BUILD_DIR}/%,${1}}
 
 CORE_SOURCES := ${filter-out ${MAIN_SOURCES},${FULL_SOURCES}}
@@ -79,4 +79,10 @@ FULL_DEPENDS := ${call TO_BUILD_DIR,${FULL_SOURCES:.cpp=.d}}
 # Note how we're using the TO_BUILD_DIR macro; this is important, as the deps
 # need to be inside the build directory.  Don't forget to comment out the
 # default behaviour if you customize this.
-${TARGETS}: %: ${call TO_BUILD_DIR,%_main.o} ${CORE_OBJECTS}
+
+# Remove gtest from most targets, so we don't need to wait for it.
+TEST_OBJECTS := ${filter %_test.o,${CORE_OBJECTS}}
+NON_TEST_OBJECTS := ${filter-out ${TEST_OBJECTS},${CORE_OBJECTS}}
+
+${TARGETS}: %: ${call TO_BUILD_DIR,%_main.o} ${NON_TEST_OBJECTS}
+test: ${call TO_BUILD_DIR,test_main.o} ${CORE_OBJECTS}
