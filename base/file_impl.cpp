@@ -15,13 +15,9 @@ u8* StringCopy(std::string s) {
   return buf;
 }
 
-StringFile::StringFile(std::string s):
-    File(StringCopy(s), s.length()) {
-}
+StringFile::StringFile(std::string s) : File(StringCopy(s), s.length()) {}
 
-StringFile::~StringFile() {
-  delete[] buf_;
-}
+StringFile::~StringFile() { delete[] buf_; }
 
 bool DiskFile::LoadFile(std::string filename, File** out) {
   assert(out != nullptr);
@@ -45,12 +41,8 @@ bool DiskFile::LoadFile(std::string filename, File** out) {
   return true;
 }
 
+DiskFile::DiskFile(u8* buf, int len) : File(buf, len) {}
 
-DiskFile::DiskFile(u8* buf, int len): File(buf, len) {}
+DiskFile::~DiskFile() { munmap((void*)buf_, len_); }
 
-DiskFile::~DiskFile() {
-  munmap((void*)buf_, len_);
-}
-
-} // namespace base
-
+}  // namespace base

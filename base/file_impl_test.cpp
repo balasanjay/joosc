@@ -20,9 +20,7 @@ TEST(StringFileTest, Simple) {
 
 TEST(StringFileTest, TestReadOutsideBounds) {
   StringFile sf("foo");
-  ASSERT_THROW({
-    sf[10];
-  }, std::string);
+  ASSERT_THROW({ sf[10]; }, std::string);
 }
 
 TEST(DiskFileTest, Simple) {
@@ -33,5 +31,4 @@ TEST(DiskFileTest, Simple) {
   delete (DiskFile*)df;
 }
 
-} // namespace base
-
+}  // namespace base
