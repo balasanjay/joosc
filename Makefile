@@ -62,7 +62,7 @@ ${TARGETS}:
 
 # Clang-format source files.
 format: ${FULL_SOURCES} ${FULL_HEADERS}
-	clang-format -style=Google -i $^;
+	clang-format -style=Google -i ${filter-out third_party/%,$^};
 
 # Read source-level deps.
 FULL_DEPENDS := ${call TO_BUILD_DIR,${FULL_SOURCES:.cpp=.d}}
