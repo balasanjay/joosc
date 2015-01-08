@@ -40,7 +40,6 @@ struct LexState {
 
   // Returns true iff the file has a prefix s, starting at the current cursor.
   bool HasPrefix(string s) {
-    // TODO: this is probably riddled with off-by-ones.
     if (size_t(file->Size() - end) < s.size()) {
       return false;
     }
@@ -71,13 +70,22 @@ struct LexState {
 
   void Run() {
     while (stateFn != nullptr) {
+      StateFn prevStateFn = stateFn;
+      int prevBegin = begin;
+      int prevEnd = end;
+
       stateFn(this);
+
+      if (stateFn == prevStateFn && begin == prevBegin && end == prevEnd) {
+        throw "made no forward progress";
+      }
     }
   }
 
   File* file;
   int fileid;
 
+  // This is the range of the lexeme currently being constructed.
   int begin = 0;
   int end = 0;
 
@@ -91,12 +99,12 @@ bool IsWhitespace(u8 c) {
   return c == ' ' || c == '\n' || c == '\r' || c == '\t';
 }
 
-void start(LexState* state);
-void whitespace(LexState* state);
-void blockcomment(LexState* state);
-void linecomment(LexState* state);
+void Start(LexState* state);
+void Whitespace(LexState* state);
+void BlockComment(LexState* state);
+void LineComment(LexState* state);
 
-void start(LexState* state) {
+void Start(LexState* state) {
   if (state->IsAtEnd()) {
     if (state->begin != state->end) {
       throw "unclosed token at eof";
@@ -106,13 +114,13 @@ void start(LexState* state) {
   }
 
   if (state->HasPrefix("//")) {
-    state->SetNextState(&linecomment);
+    state->SetNextState(&LineComment);
     return;
   } else if (state->HasPrefix("/*")) {
-    state->SetNextState(&blockcomment);
+    state->SetNextState(&BlockComment);
     return;
   } else if (IsWhitespace(state->Peek())) {
-    state->SetNextState(&whitespace);
+    state->SetNextState(&Whitespace);
     return;
   }
 
@@ -120,34 +128,22 @@ void start(LexState* state) {
   state->SetNextState(nullptr);
 }
 
-void whitespace(LexState* state) {
-  while (true) {
-    if (state->IsAtEnd()) {
-      break;
-    }
-
-    if (!IsWhitespace(state->Peek())) {
-      break;
-    }
-
+void Whitespace(LexState* state) {
+  while (!state->IsAtEnd() && IsWhitespace(state->Peek())) {
     state->Advance();
   }
 
   state->EmitToken(WHITESPACE);
-  state->SetNextState(&start);
+  state->SetNextState(&Start);
 }
 
-void linecomment(LexState* state) {
+void LineComment(LexState* state) {
   state->Advance(2);  // Advance past the "//".
 
-  while (true) {
-    if (state->IsAtEnd()) {
-      break;
-    }
-
+  while (!state->IsAtEnd()) {
     // TODO: handle windows newlines?
     u8 next = state->Peek();
-    state->Advance(1);
+    state->Advance();
 
     if (next == '\n') {
       break;
@@ -155,10 +151,10 @@ void linecomment(LexState* state) {
   }
 
   state->EmitToken(LINE_COMMENT);
-  state->SetNextState(&start);
+  state->SetNextState(&Start);
 }
 
-void blockcomment(LexState* state) {
+void BlockComment(LexState* state) {
   state->Advance(2);  // Advance past the "/*".
 
   bool prevStar = false;
@@ -177,13 +173,14 @@ void blockcomment(LexState* state) {
     if (prevStar && next == '/') {
       break;
     }
-    prevStar = next == '*';
+    prevStar = (next == '*');
   }
 
   state->EmitToken(BLOCK_COMMENT);
-  state->SetNextState(&start);
+  state->SetNextState(&Start);
 }
-}
+
+}  // namespace internal
 
 void LexJoosFile(base::File* file, int fileid, vector<Token>* tokens_out,
                  vector<Error>* errors_out) {
@@ -197,7 +194,7 @@ void LexJoosFile(base::File* file, int fileid, vector<Token>* tokens_out,
   }
 
   internal::LexState state(file, fileid, tokens_out, errors_out);
-  state.SetNextState(&internal::start);
+  state.SetNextState(&internal::Start);
   state.Run();
 }
 
