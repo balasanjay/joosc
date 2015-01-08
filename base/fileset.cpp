@@ -24,7 +24,8 @@ bool FileSet::Builder::Build(FileSet** fs) const {
     files.push_back(new StringFile(stringspec.first, stringspec.second));
   }
 
-  // Handle the DiskFiles, being careful to not leak memory when failing to read a file.
+  // Handle the DiskFiles, being careful to not leak memory when failing to read
+  // a file.
   bool success = true;
   for (auto path : diskspecs) {
     File* file = nullptr;
@@ -66,4 +67,4 @@ bool FileSet::Builder::Build(FileSet** fs) const {
   return true;
 }
 
-} // namespace base
+}  // namespace base

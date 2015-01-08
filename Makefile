@@ -7,6 +7,8 @@
 
 # FULL_SOURCES should include all source files.
 FULL_SOURCES := ${shell find . -name "*.cpp" | sed "s|^\./||"}
+# FULL_HEADERS should include all header files.
+FULL_HEADERS := ${shell find . -name "*.h" | sed "s|^\./||"}
 
 # MAIN_SOURCES should be the subset of FULL_SOURCES that have main functions.
 MAIN_SOURCES := ${filter %_main.cpp,${FULL_SOURCES}}
@@ -59,8 +61,8 @@ ${TARGETS}:
 	${CXX} -o $@ $^ ${LDFLAGS};
 
 # Clang-format source files.
-format: ${FULL_SOURCES}
-	clang-format -style=Google -i ${FULL_SOURCES};
+format: ${FULL_SOURCES} ${FULL_HEADERS}
+	clang-format -style=Google -i $^;
 
 # Read source-level deps.
 FULL_DEPENDS := ${call TO_BUILD_DIR,${FULL_SOURCES:.cpp=.d}}

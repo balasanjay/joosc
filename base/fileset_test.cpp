@@ -12,12 +12,10 @@ TEST(FileSetTest, EmptyBuilder) {
 
 TEST(FileSetTest, StringEntry) {
   FileSet *fs = nullptr;
-  ASSERT_TRUE(FileSet::Builder()
-      .AddStringFile("a.txt", "a")
-      .Build(&fs));
+  ASSERT_TRUE(FileSet::Builder().AddStringFile("a.txt", "a").Build(&fs));
   EXPECT_EQ(1, fs->Size());
 
-  File* file = fs->Get(0);
+  File *file = fs->Get(0);
   EXPECT_EQ(1, file->Size());
   EXPECT_EQ('a', file->At(0));
   EXPECT_EQ("", file->Dirname());

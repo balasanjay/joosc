@@ -14,25 +14,23 @@ string Dirname(string path);
 string Basename(string path);
 
 class File {
-public:
+ public:
   u8 At(int index) const;
 
-  const string& Dirname() {
-    return dirname_;
-  }
+  const string& Dirname() { return dirname_; }
 
-  const string& Basename() {
-    return basename_;
-  }
+  const string& Basename() { return basename_; }
 
-  int Size() const {
-    return len_;
-  }
+  int Size() const { return len_; }
 
-protected:
+ protected:
   friend class FileSet;
 
-  File(const string& path, u8* buf, int len): dirname_(base::Dirname(path)), basename_(base::Basename(path)), buf_(buf), len_(len) {
+  File(const string& path, u8* buf, int len)
+      : dirname_(base::Dirname(path)),
+        basename_(base::Basename(path)),
+        buf_(buf),
+        len_(len) {
     assert(buf != nullptr && len >= 0);
   }
   virtual ~File() {}
@@ -44,8 +42,6 @@ protected:
   const int len_;
 };
 
-
-
-} // namespace base
+}  // namespace base
 
 #endif

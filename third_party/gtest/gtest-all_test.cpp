@@ -451,7 +451,8 @@ class GTEST_API_ SingleFailureChecker {
 // part of Google Test's implementation; otherwise it's undefined.
 #if !GTEST_IMPLEMENTATION_
 // A user is trying to include this from his code - just say no.
-#error "gtest-internal-inl.h is part of Google Test's internal " \
+#error \
+    "gtest-internal-inl.h is part of Google Test's internal " \
        "implementation."
 #error "It must not be included except by Google Test itself."
 #endif  // GTEST_IMPLEMENTATION_

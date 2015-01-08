@@ -23,12 +23,11 @@ string Basename(string path) {
 u8 File::At(int index) const {
   if (index >= len_) {
     std::stringstream ss;
-    ss << "File::operator[] index " << index
-       << " out of range [" << 0 << ", " << len_
-       << std::endl;
+    ss << "File::operator[] index " << index << " out of range [" << 0 << ", "
+       << len_ << std::endl;
     throw ss.str();
   }
   return buf_[index];
 }
 
-} // namespace base
+}  // namespace base

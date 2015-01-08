@@ -23,4 +23,4 @@ TEST(PathTest, TrailingSlash) {
   EXPECT_EQ("", Basename("foo/bar/"));
 }
 
-} // namespace base
+}  // namespace base

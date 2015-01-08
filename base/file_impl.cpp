@@ -15,7 +15,8 @@ u8* StringCopy(string s) {
   return buf;
 }
 
-StringFile::StringFile(string path, string content) : File(path, StringCopy(content), content.length()) {}
+StringFile::StringFile(string path, string content)
+    : File(path, StringCopy(content), content.length()) {}
 
 StringFile::~StringFile() { delete[] buf_; }
 
