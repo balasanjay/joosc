@@ -41,9 +41,9 @@ TEST(FileSetTest, DiskEntry) {
 TEST(FileSetTest, MultiEntry) {
   FileSet *fs = nullptr;
   ASSERT_TRUE(FileSet::Builder()
-      .AddStringFile("base/testdata/b.txt", "b")
-      .AddDiskFile("base/testdata/a.txt")
-      .Build(&fs));
+                  .AddStringFile("base/testdata/b.txt", "b")
+                  .AddDiskFile("base/testdata/a.txt")
+                  .Build(&fs));
   EXPECT_EQ(2, fs->Size());
 
   File *file0 = fs->Get(0);
