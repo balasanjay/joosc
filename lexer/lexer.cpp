@@ -5,12 +5,7 @@ using base::File;
 namespace lexer {
 
 string tokenTypeToString[NUM_TOKEN_TYPES] = {
-  "LINE_COMMENT",
-  "BLOCK_COMMENT",
-  "WHITESPACE",
-  "IF",
-  "WHILE"
-};
+    "LINE_COMMENT", "BLOCK_COMMENT", "WHITESPACE", "IF", "WHILE"};
 
 string TokenTypeToString(TokenType t) {
   if (t >= NUM_TOKEN_TYPES || t < 0) {
@@ -23,17 +18,13 @@ string TokenTypeToString(TokenType t) {
 namespace internal {
 
 struct LexState {
-  LexState(
-      File* file, int fileid,
-      vector<Token>* tokens, vector<Error>* errors) :
-    file(file), fileid(fileid), tokens(tokens), errors(errors) {}
+  LexState(File* file, int fileid, vector<Token>* tokens, vector<Error>* errors)
+      : file(file), fileid(fileid), tokens(tokens), errors(errors) {}
 
   typedef void (*StateFn)(LexState*);
 
   // Returns true if the cursor is at EOF.
-  bool IsAtEnd() {
-    return end >= file->Size();
-  }
+  bool IsAtEnd() { return end >= file->Size(); }
 
   // Advance the cursor by n characters.
   void Advance(int n = 1) {
@@ -45,9 +36,7 @@ struct LexState {
   }
 
   // Get the character at the cursor.
-  u8 Peek() {
-    return file->At(end);
-  }
+  u8 Peek() { return file->At(end); }
 
   // Returns true iff the file has a prefix s, starting at the current cursor.
   bool HasPrefix(string s) {
@@ -76,13 +65,9 @@ struct LexState {
     begin = end;
   }
 
-  void EmitError(Error err) {
-    errors->push_back(err);
-  }
+  void EmitError(Error err) { errors->push_back(err); }
 
-  void SetNextState(StateFn fn) {
-    stateFn = fn;
-  }
+  void SetNextState(StateFn fn) { stateFn = fn; }
 
   void Run() {
     while (stateFn != nullptr) {
@@ -103,11 +88,7 @@ struct LexState {
 };
 
 bool IsWhitespace(u8 c) {
-  return
-    c == ' ' ||
-    c == '\n' ||
-    c == '\r' ||
-    c == '\t';
+  return c == ' ' || c == '\n' || c == '\r' || c == '\t';
 }
 
 void start(LexState* state);
@@ -157,7 +138,7 @@ void whitespace(LexState* state) {
 }
 
 void linecomment(LexState* state) {
-  state->Advance(2); // Advance past the "//".
+  state->Advance(2);  // Advance past the "//".
 
   while (true) {
     if (state->IsAtEnd()) {
@@ -178,7 +159,7 @@ void linecomment(LexState* state) {
 }
 
 void blockcomment(LexState* state) {
-  state->Advance(2); // Advance past the "/*".
+  state->Advance(2);  // Advance past the "/*".
 
   bool prevStar = false;
 
@@ -202,18 +183,15 @@ void blockcomment(LexState* state) {
   state->EmitToken(BLOCK_COMMENT);
   state->SetNextState(&start);
 }
-
 }
 
-void LexJoosFile(base::File* file, int fileid, vector<Token>* tokens_out, vector<Error>* errors_out) {
+void LexJoosFile(base::File* file, int fileid, vector<Token>* tokens_out,
+                 vector<Error>* errors_out) {
   // Remove anything with non-ANSI characters.
   for (int i = 0; i < file->Size(); i++) {
     if (file->At(i) > 127) {
       // TODO: more specific error.
-      errors_out->push_back(Error(
-        NON_ANSI_CHAR,
-        PosRange(fileid, i, i + 1)
-      ));
+      errors_out->push_back(Error(NON_ANSI_CHAR, PosRange(fileid, i, i + 1)));
       return;
     }
   }
@@ -223,7 +201,8 @@ void LexJoosFile(base::File* file, int fileid, vector<Token>* tokens_out, vector
   state.Run();
 }
 
-void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out, vector<Error>* errors_out) {
+void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
+                  vector<Error>* errors_out) {
   tokens_out->clear();
   tokens_out->resize(fs->Size());
 
@@ -232,6 +211,4 @@ void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out, vector<E
   }
 }
 
-
-
-} // namespace lexer
+}  // namespace lexer

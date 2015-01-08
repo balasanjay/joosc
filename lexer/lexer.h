@@ -14,7 +14,8 @@ struct Pos {
 };
 
 struct PosRange {
-  PosRange(int fileid, int begin, int end) : begin(fileid, begin), end(fileid, end) {}
+  PosRange(int fileid, int begin, int end)
+      : begin(fileid, begin), end(fileid, end) {}
 
   Pos begin;
   Pos end;
@@ -26,8 +27,7 @@ enum TokenType {
   WHITESPACE,
   IF,
   WHILE,
-
-  NUM_TOKEN_TYPES, // Not a valid token type.
+  NUM_TOKEN_TYPES,  // Not a valid token type.
 };
 
 string TokenTypeToString(TokenType t);
@@ -41,8 +41,7 @@ struct Token {
 
 enum ErrorType {
   NON_ANSI_CHAR,
-
-  NUM_ERROR_TYPES, // Not a valid error type.
+  NUM_ERROR_TYPES,  // Not a valid error type.
 };
 
 struct Error {
@@ -54,9 +53,9 @@ struct Error {
 
 class UnterminatedStringLiteralError : public Error {};
 
-void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out, vector<Error>* errors_out);
+void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
+                  vector<Error>* errors_out);
 
-
-} // namespace lexer
+}  // namespace lexer
 
 #endif
