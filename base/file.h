@@ -13,15 +13,18 @@ string Dirname(string path);
 // TODO: comment me.
 string Basename(string path);
 
+// TODO: comment me.
 class File {
  public:
+  // TODO: comment me.
+  int Size() const { return len_; }
+  // TODO: comment me.
   u8 At(int index) const;
 
-  const string& Dirname() { return dirname_; }
-
-  const string& Basename() { return basename_; }
-
-  int Size() const { return len_; }
+  // TODO: comment me.
+  const string& Dirname() const { return dirname_; }
+  // TODO: comment me.
+  const string& Basename() const { return basename_; }
 
  protected:
   friend class FileSet;
