@@ -24,7 +24,7 @@ TEST(StringFileTest, TestReadOutsideBounds) {
 
 TEST(DiskFileTest, Simple) {
   File* df = nullptr;
-  ASSERT_TRUE(DiskFile::LoadFile("./testdata/testfile.txt", &df));
+  ASSERT_TRUE(DiskFile::LoadFile("base/testdata/testfile.txt", &df));
   EXPECT_EQ(11, df->Size());
   ValidateFile(*df, 0, "test file\n");
   delete (DiskFile*)df;
