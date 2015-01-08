@@ -3,30 +3,28 @@
 
 #include "base/file.h"
 #include "third_party/gtest/gtest.h"
-#include <string>
-#include <sys/mman.h>
 
 namespace base {
 
 class StringFileTest;
 
-class StringFile: public File {
+class StringFile final: public File {
 public:
-  StringFile(std::string s);
+  StringFile(string path, string content);
   ~StringFile() override;
 
 protected:
   FRIEND_TEST(StringFileTest, Simple);
 };
 
-class DiskFile: public File {
+class DiskFile final: public File {
 public:
   ~DiskFile() override;
-  static bool LoadFile(std::string filename, File** out);
+  static bool LoadFile(string path, File** out);
 
 protected:
   FRIEND_TEST(DiskFileTest, Simple);
-  DiskFile(u8* buf, int len);
+  DiskFile(string path, u8* buf, int len) : File(path, buf, len) {}
 };
 
 } // namespace base
