@@ -8,39 +8,43 @@
 
 namespace base {
 
+// TODO: comment me.
+string Dirname(string path);
+// TODO: comment me.
+string Basename(string path);
+
+// TODO: comment me.
 class File {
-public:
-  u8 operator[](int index) const {
-    if (index >= len_) {
-      std::stringstream ss;
-      ss << "File::operator[] index " << index
-         << " out of range [" << 0 << ", " << len_
-         << std::endl;
-      throw ss.str();
-    }
-    return buf_[index];
-  }
+ public:
+  // TODO: comment me.
+  int Size() const { return len_; }
+  // TODO: comment me.
+  u8 At(int index) const;
 
-  int length() const {
-    return len_;
-  }
+  // TODO: comment me.
+  const string& Dirname() const { return dirname_; }
+  // TODO: comment me.
+  const string& Basename() const { return basename_; }
 
-protected:
+ protected:
   friend class FileSet;
 
-  File(u8* buf, int len): buf_(buf), len_(len) {
+  File(const string& path, u8* buf, int len)
+      : dirname_(base::Dirname(path)),
+        basename_(base::Basename(path)),
+        buf_(buf),
+        len_(len) {
     assert(buf != nullptr && len >= 0);
   }
   virtual ~File() {}
+
+  const string dirname_;
+  const string basename_;
 
   const u8* buf_;
   const int len_;
 };
 
-class FileSet {
-
-};
-
-} // namespace base
+}  // namespace base
 
 #endif
