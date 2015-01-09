@@ -205,6 +205,52 @@ TEST_F(LexerTest, AssignStringTest) {
   ASSERT_EQ(8u, tokens[0].size());
 }
 
+TEST_F(LexerTest, SimpleChar) {
+  LexString("'a'");
+  ASSERT_TRUE(errors.empty());
+  ASSERT_EQ(1u, tokens.size());
+  ASSERT_EQ(1u, tokens[0].size());
+  EXPECT_EQ(Token(CHAR, PosRange(0, 0, 3)), tokens[0][0]);
+}
+
+TEST_F(LexerTest, MultipleChars) {
+  ASSERT_ANY_THROW({
+    LexString("'ab'");
+  });
+}
+
+TEST_F(LexerTest, EscapedChars) {
+  LexString("'\\b''\\t''\\n''\\f''\\r''\\\'''\\\\'");
+  ASSERT_TRUE(errors.empty());
+  ASSERT_EQ(1u, tokens.size());
+  ASSERT_EQ(7u, tokens[0].size());
+  for (auto token : tokens[0]) {
+    EXPECT_EQ(CHAR, token.type);
+  }
+}
+
+TEST_F(LexerTest, EscapedOctalChars) {
+  LexString("'\\0''\\1''\\123''\\001'");
+  ASSERT_TRUE(errors.empty());
+  ASSERT_EQ(1u, tokens.size());
+  ASSERT_EQ(4u, tokens[0].size());
+  for (auto token : tokens[0]) {
+    EXPECT_EQ(CHAR, token.type);
+  }
+}
+
+TEST_F(LexerTest, BadEscapedChar) {
+  ASSERT_ANY_THROW({
+    LexString("'\\a'");
+  });
+  ASSERT_ANY_THROW({
+    LexString("'\\456'");
+  });
+  ASSERT_ANY_THROW({
+    LexString("'\\0a'");
+  });
+}
+
 // TODO: unclosed block comment test.
 
 }  // namespace base

@@ -103,7 +103,6 @@ bool IsAlpha(u8 c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'); }
 
 bool IsAlphaNumeric(u8 c) { return IsAlpha(c) || IsNumeric(c); }
 
-// This is half-baked, don't use it.
 bool IsStringEscapable(u8 c) {
   return c == 'b' | c == 't' | c == 'n' |
          c == 'f' | c == 'r' | c == '\'' |
@@ -116,6 +115,7 @@ void Whitespace(LexState* state);
 void BlockComment(LexState* state);
 void LineComment(LexState* state);
 void Identifier(LexState* state);
+void Char(LexState* state);
 void String(LexState* state);
 
 void Start(LexState* state) {
@@ -133,6 +133,9 @@ void Start(LexState* state) {
     return;
   } else if (state->HasPrefix("/*")) {
     state->SetNextState(&BlockComment);
+    return;
+  } else if (state->Peek() == '\'') {
+    state->SetNextState(&Char);
     return;
   } else if (state->Peek() == '"') {
     state->SetNextState(&String);
@@ -240,10 +243,47 @@ void Identifier(LexState* state) {
   state->SetNextState(&Start);
 }
 
+void AdvanceEscapedChar(LexState* state) {
+  state->Advance(); // Advance past backslash.
+  u8 first = state->Peek();
+  if (!IsStringEscapable(first)) {
+    throw "Invalid string escape.";
+  }
+  state->Advance();
+
+  // Octal escape (up to 377 allowed, this only weeds out 400+).
+  int numAcceptable = 1;
+  if ('0' <= first && first <= '3') {
+    numAcceptable = 2;
+  }
+  while (numAcceptable-- > 0) {
+    if (!IsNumeric(state->Peek())) {
+      break;
+    }
+    state->Advance();
+  }
+}
+
+void Char(LexState* state) {
+  state->Advance(); // Advance past apostrophe.
+
+  // Advance past normal or escape char.
+  if (state->Peek() == '\\') {
+    AdvanceEscapedChar(state);
+  } else {
+    state->Advance();
+  }
+  // Require another apostrophe.
+  if (state->Peek() != '\'') {
+    throw "Unclosed character literal. Expected ' at __.";
+  }
+  state->Advance();
+  state->EmitToken(CHAR);
+  state->SetNextState(&Start);
+}
+
 void String(LexState* state) {
   state->Advance(); // Advance past the quotation mark.
-
-  bool escapeNext = false;
 
   while (true) {
     if (state->IsAtEnd()) {
@@ -255,12 +295,10 @@ void String(LexState* state) {
 
     if (next == '\n') {
       throw "Unclosed string at line end.";
-    } else if (escapeNext) {
-      escapeNext = false;
     } else if (next == '"') {
       break;
     } else if (next == '\\') {
-      escapeNext = true;
+      AdvanceEscapedChar(state);
     }
   }
 
