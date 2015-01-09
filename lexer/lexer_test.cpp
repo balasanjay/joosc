@@ -111,6 +111,12 @@ TEST_F(LexerTest, LineCommentAtEof) {
   EXPECT_EQ(PosRange(0, 0, 10), tokens[0][0].pos);
 }
 
+TEST_F(LexerTest, UnclosedBlockComment) {
+  ASSERT_ANY_THROW({
+    LexString("hello /* there \n\n end");
+  });
+}
+
 TEST_F(LexerTest, SimpleInteger) {
   LexString("123");
   ASSERT_TRUE(errors.empty());
@@ -230,10 +236,10 @@ TEST_F(LexerTest, EscapedChars) {
 }
 
 TEST_F(LexerTest, EscapedOctalChars) {
-  LexString("'\\0''\\1''\\123''\\001'");
+  LexString("'\\0''\\1''\\123''\\001''\\377'");
   ASSERT_TRUE(errors.empty());
   ASSERT_EQ(1u, tokens.size());
-  ASSERT_EQ(4u, tokens[0].size());
+  ASSERT_EQ(5u, tokens[0].size());
   for (auto token : tokens[0]) {
     EXPECT_EQ(CHAR, token.type);
   }
@@ -244,13 +250,17 @@ TEST_F(LexerTest, BadEscapedChar) {
     LexString("'\\a'");
   });
   ASSERT_ANY_THROW({
+    LexString("'\\0a'");
+  });
+  ASSERT_ANY_THROW({
     LexString("'\\456'");
   });
   ASSERT_ANY_THROW({
-    LexString("'\\0a'");
+    LexString("'\\378'");
+  });
+  ASSERT_ANY_THROW({
+    LexString("'\\399'");
   });
 }
-
-// TODO: unclosed block comment test.
 
 }  // namespace base

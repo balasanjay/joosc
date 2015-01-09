@@ -248,16 +248,24 @@ void AdvanceEscapedChar(LexState* state) {
   u8 first = state->Peek();
   if (!IsStringEscapable(first)) {
     throw "Invalid string escape.";
+  } else if (!IsNumeric(first)) {
+    state->Advance();
+    return;
   }
-  state->Advance();
 
-  // Octal escape (up to 377 allowed, this only weeds out 400+).
-  int numAcceptable = 1;
-  if ('0' <= first && first <= '3') {
-    numAcceptable = 2;
-  }
-  while (numAcceptable-- > 0) {
-    if (!IsNumeric(state->Peek())) {
+  const int maxOctalEscape = 377;
+  const int maxOctalDigits = 3;
+  int currentOctalEscape = 0;
+
+  // Include up to maxOctalDigits digits.
+  for (int i = 0; i < maxOctalDigits; ++i) {
+    u8 next = state->Peek();
+    if (!IsNumeric(next)) {
+      break;
+    }
+    currentOctalEscape = currentOctalEscape * 10 + (next - '0');
+    if (currentOctalEscape > maxOctalEscape) {
+      // Don't include next digit if it would make the value larger than maxOctalEscape.
       break;
     }
     state->Advance();
