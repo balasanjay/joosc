@@ -119,10 +119,11 @@ void LineComment(LexState* state);
 void Identifier(LexState* state);
 
 void Start(LexState* state) {
+  // Should have no characters in current range when in start state.
+  if (state->begin != state->end) {
+    throw "Unclosed token at eof";
+  }
   if (state->IsAtEnd()) {
-    if (state->begin != state->end) {
-      throw "unclosed token at eof";
-    }
     state->SetNextState(nullptr);
     return;
   }
