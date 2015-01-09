@@ -1,18 +1,16 @@
 #include "lexer/lexer.h"
+#include "lexer/lexer_internal.h"
 
 using base::File;
 
 namespace lexer {
-
-string tokenTypeToString[NUM_TOKEN_TYPES] = {
-    "LINE_COMMENT", "BLOCK_COMMENT", "WHITESPACE", "IF", "WHILE", "INTEGER", "IDENTIFIER", "STRING"};
 
 string TokenTypeToString(TokenType t) {
   if (t >= NUM_TOKEN_TYPES || t < 0) {
     throw "invalid token type";
   }
 
-  return tokenTypeToString[t];
+  return internal::kTokenTypeToString[t];
 }
 
 namespace internal {
@@ -99,17 +97,11 @@ bool IsWhitespace(u8 c) {
   return c == ' ' || c == '\n' || c == '\r' || c == '\t';
 }
 
-bool IsNumeric(u8 c) {
-  return '0' <= c && c <= '9';
-}
+bool IsNumeric(u8 c) { return '0' <= c && c <= '9'; }
 
-bool IsAlpha(u8 c) {
-  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
-}
+bool IsAlpha(u8 c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'); }
 
-bool IsAlphaNumeric(u8 c) {
-  return IsAlpha(c) || IsNumeric(c);
-}
+bool IsAlphaNumeric(u8 c) { return IsAlpha(c) || IsNumeric(c); }
 
 // This is half-baked, don't use it.
 bool IsStringEscapable(u8 c) {
@@ -154,15 +146,27 @@ void Start(LexState* state) {
   } else if (IsAlpha(state->Peek())) {
     state->SetNextState(&Identifier);
     return;
-  } else {
-    throw "Found unknown prefix.";
   }
+
+  // This should be run after checking for comment tokens.
+  for (int i = 0; i < kNumSymbolLiterals; ++i) {
+    const string& symbolString = kSymbolLiterals[i].first;
+
+    if (state->HasPrefix(symbolString)) {
+      state->Advance(symbolString.size());
+      state->EmitToken(kSymbolLiterals[i].second);
+      return;
+    }
+  }
+
+  throw "Found unknown prefix.";
 }
 
 void Integer(LexState* state) {
   while (!state->IsAtEnd() && IsNumeric(state->Peek())) {
     // Reject multi-digit number that starts with 0.
-    if (state->begin + 1 == state->end && state->file->At(state->begin) == '0') {
+    if (state->begin + 1 == state->end &&
+        state->file->At(state->begin) == '0') {
       throw "Multi-digit integer starting with 0";
     }
     state->Advance();
