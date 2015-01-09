@@ -158,8 +158,8 @@ void Start(LexState* state) {
     const string& symbolString = symbolLiterals[i].first;
 
     if (state->HasPrefix(symbolString)) {
-      state->EmitToken(symbolLiterals[i].second);
       state->Advance(symbolString.size());
+      state->EmitToken(symbolLiterals[i].second);
       return;
     }
   }
