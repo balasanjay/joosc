@@ -19,9 +19,6 @@ class Error {
 public:
   virtual ~Error() {}
 
-  void PrintTo(std::ostream* out) const {
-    PrintTo(out, OutputOptions::kSimpleOutput);
-  }
   virtual void PrintTo(std::ostream* out, const OutputOptions& opt) const = 0;
 
 protected:
@@ -30,6 +27,8 @@ protected:
   string Red(const OutputOptions& opt) const;
   string ResetFmt(const OutputOptions& opt) const;
 };
+
+std::ostream& operator<<(std::ostream& out, const Error& e);
 
 } // namespace base
 

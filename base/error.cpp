@@ -22,4 +22,9 @@ string Error::ResetFmt(const OutputOptions& opt) const {
   return IfColor(opt, "0m");
 }
 
+std::ostream& operator<<(std::ostream& out, const Error& e) {
+  e.PrintTo(&out, OutputOptions::kSimpleOutput);
+  return out;
+}
+
 } // namespace base

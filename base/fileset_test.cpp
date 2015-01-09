@@ -47,10 +47,12 @@ TEST_F(FileSetTest, DiskEntry) {
 }
 
 TEST_F(FileSetTest, NonExistentDiskEntry) {
-  ASSERT_TRUE(FileSet::Builder().AddDiskFile("notafolder/notafile.txt").Build(&fs, &errors));
+  ASSERT_FALSE(FileSet::Builder().AddDiskFile("notafolder/notafile.txt").Build(&fs, &errors));
   EXPECT_EQ(nullptr, fs);
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("asdas", ::testing::PrintToString(errors.Get(0)));
+  EXPECT_EQ(
+      "DiskFileError{errval_:2,path_:notafolder/notafile.txt,}",
+      testing::PrintToString(*errors.Get(0)));
 }
 
 TEST_F(FileSetTest, MultiEntry) {
