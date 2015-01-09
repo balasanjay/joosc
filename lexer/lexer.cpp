@@ -104,8 +104,7 @@ bool IsAlpha(u8 c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'); }
 bool IsAlphaNumeric(u8 c) { return IsAlpha(c) || IsNumeric(c); }
 
 bool IsStringEscapable(u8 c) {
-  return c == 'b' | c == 't' | c == 'n' |
-         c == 'f' | c == 'r' | c == '\'' |
+  return c == 'b' | c == 't' | c == 'n' | c == 'f' | c == 'r' | c == '\'' |
          c == '"' | c == '\\' | IsNumeric(c);
 }
 
@@ -244,7 +243,7 @@ void Identifier(LexState* state) {
 }
 
 void AdvanceEscapedChar(LexState* state) {
-  state->Advance(); // Advance past backslash.
+  state->Advance();  // Advance past backslash.
   u8 first = state->Peek();
   if (!IsStringEscapable(first)) {
     throw "Invalid string escape.";
@@ -265,7 +264,8 @@ void AdvanceEscapedChar(LexState* state) {
     }
     currentOctalEscape = currentOctalEscape * 10 + (next - '0');
     if (currentOctalEscape > maxOctalEscape) {
-      // Don't include next digit if it would make the value larger than maxOctalEscape.
+      // Don't include next digit if it would make the value larger than
+      // maxOctalEscape.
       break;
     }
     state->Advance();
@@ -273,7 +273,7 @@ void AdvanceEscapedChar(LexState* state) {
 }
 
 void Char(LexState* state) {
-  state->Advance(); // Advance past apostrophe.
+  state->Advance();  // Advance past apostrophe.
 
   // Advance past normal or escape char.
   if (state->Peek() == '\\') {
@@ -291,7 +291,7 @@ void Char(LexState* state) {
 }
 
 void String(LexState* state) {
-  state->Advance(); // Advance past the quotation mark.
+  state->Advance();  // Advance past the quotation mark.
 
   while (true) {
     if (state->IsAtEnd()) {

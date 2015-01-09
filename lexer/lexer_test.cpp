@@ -18,10 +18,7 @@ class LexerTest : public ::testing::Test {
   }
 
   void LexString(string s) {
-    ASSERT_TRUE(
-        FileSet::Builder()
-        .AddStringFile("foo.joos", s)
-        .Build(&fs));
+    ASSERT_TRUE(FileSet::Builder().AddStringFile("foo.joos", s).Build(&fs));
     LexJoosFiles(fs, &tokens, &errors);
   }
 
@@ -89,7 +86,6 @@ TEST_F(LexerTest, Symbols) {
   EXPECT_EQ(DOT, tokens[0][25].type);
 }
 
-
 TEST_F(LexerTest, Comment) {
   LexString("// foo bar\n/*baz*/");
 
@@ -112,9 +108,7 @@ TEST_F(LexerTest, LineCommentAtEof) {
 }
 
 TEST_F(LexerTest, UnclosedBlockComment) {
-  ASSERT_ANY_THROW({
-    LexString("hello /* there \n\n end");
-  });
+  ASSERT_ANY_THROW({ LexString("hello /* there \n\n end"); });
 }
 
 TEST_F(LexerTest, SimpleInteger) {
@@ -126,9 +120,7 @@ TEST_F(LexerTest, SimpleInteger) {
 }
 
 TEST_F(LexerTest, LeadingZeroInteger) {
-  ASSERT_ANY_THROW({
-    LexString("023");
-  });
+  ASSERT_ANY_THROW({ LexString("023"); });
 }
 
 TEST_F(LexerTest, OnlyZero) {
@@ -178,21 +170,15 @@ TEST_F(LexerTest, OnlyString) {
 }
 
 TEST_F(LexerTest, UnendedString) {
-  ASSERT_ANY_THROW({
-    LexString("\"goober");
-  });
+  ASSERT_ANY_THROW({ LexString("\"goober"); });
 }
 
 TEST_F(LexerTest, UnendedEscapedQuoteString) {
-  ASSERT_ANY_THROW({
-    LexString("\"goober\\\"");
-  });
+  ASSERT_ANY_THROW({ LexString("\"goober\\\""); });
 }
 
 TEST_F(LexerTest, StringOverNewline) {
-  ASSERT_ANY_THROW({
-    LexString("\"foo\nbar\"");
-  });
+  ASSERT_ANY_THROW({ LexString("\"foo\nbar\""); });
 }
 
 TEST_F(LexerTest, StringEscapedQuote) {
@@ -220,9 +206,7 @@ TEST_F(LexerTest, SimpleChar) {
 }
 
 TEST_F(LexerTest, MultipleChars) {
-  ASSERT_ANY_THROW({
-    LexString("'ab'");
-  });
+  ASSERT_ANY_THROW({ LexString("'ab'"); });
 }
 
 TEST_F(LexerTest, EscapedChars) {
@@ -246,21 +230,11 @@ TEST_F(LexerTest, EscapedOctalChars) {
 }
 
 TEST_F(LexerTest, BadEscapedChar) {
-  ASSERT_ANY_THROW({
-    LexString("'\\a'");
-  });
-  ASSERT_ANY_THROW({
-    LexString("'\\0a'");
-  });
-  ASSERT_ANY_THROW({
-    LexString("'\\456'");
-  });
-  ASSERT_ANY_THROW({
-    LexString("'\\378'");
-  });
-  ASSERT_ANY_THROW({
-    LexString("'\\399'");
-  });
+  ASSERT_ANY_THROW({ LexString("'\\a'"); });
+  ASSERT_ANY_THROW({ LexString("'\\0a'"); });
+  ASSERT_ANY_THROW({ LexString("'\\456'"); });
+  ASSERT_ANY_THROW({ LexString("'\\378'"); });
+  ASSERT_ANY_THROW({ LexString("'\\399'"); });
 }
 
 }  // namespace base
