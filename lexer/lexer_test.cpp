@@ -23,6 +23,36 @@ TEST_F(LexerTest, EmptyFile) {
   EXPECT_EQ(0u, tokens[0].size());
 }
 
+TEST_F(LexerTest, Operators) {
+  FileSet* fs = nullptr;
+  ASSERT_TRUE(FileSet::Builder()
+    .AddStringFile("foo.joos", "<<=>=>===!=!&&&|||+-*/%")
+    .Build(&fs));
+  unique_ptr<FileSet> deleter(fs);
+
+  LexJoosFiles(fs, &tokens, &errors);
+
+  EXPECT_EQ(17u, tokens[0].size());
+
+  EXPECT_EQ(LT, tokens[0][0].type);
+  EXPECT_EQ(LE, tokens[0][1].type);
+  EXPECT_EQ(GE, tokens[0][2].type);
+  EXPECT_EQ(GT, tokens[0][3].type);
+  EXPECT_EQ(EQ, tokens[0][4].type);
+  EXPECT_EQ(ASSG, tokens[0][5].type);
+  EXPECT_EQ(NEQ, tokens[0][6].type);
+  EXPECT_EQ(NOT, tokens[0][7].type);
+  EXPECT_EQ(AND, tokens[0][8].type);
+  EXPECT_EQ(BAND, tokens[0][9].type);
+  EXPECT_EQ(OR, tokens[0][10].type);
+  EXPECT_EQ(BOR, tokens[0][11].type);
+  EXPECT_EQ(ADD, tokens[0][12].type);
+  EXPECT_EQ(SUB, tokens[0][13].type);
+  EXPECT_EQ(MUL, tokens[0][14].type);
+  EXPECT_EQ(DIV, tokens[0][15].type);
+  EXPECT_EQ(MOD, tokens[0][16].type);
+}
+
 TEST_F(LexerTest, Whitespace) {
   FileSet* fs = nullptr;
   ASSERT_TRUE(FileSet::Builder()

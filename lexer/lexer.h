@@ -55,6 +55,7 @@ enum TokenType {
   BAND,
   BOR,
   NOT,
+  ASSG,
   LPAREN,
   RPAREN,
   LBRACE,
