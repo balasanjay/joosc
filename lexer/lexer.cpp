@@ -5,7 +5,7 @@ using base::File;
 namespace lexer {
 
 string tokenTypeToString[NUM_TOKEN_TYPES] = {
-    "LINE_COMMENT", "BLOCK_COMMENT", "WHITESPACE", "IF", "WHILE"};
+    "LINE_COMMENT", "BLOCK_COMMENT", "WHITESPACE", "IF", "WHILE", "INTEGER", "IDENTIFIER"};
 
 const int NUM_SYMBOL_LITERALS = 26;
 pair<string, TokenType> symbolLiterals[NUM_SYMBOL_LITERALS] = {
@@ -129,10 +129,24 @@ bool IsWhitespace(u8 c) {
   return c == ' ' || c == '\n' || c == '\r' || c == '\t';
 }
 
+bool IsNumeral(u8 c) {
+  return c >= '0' && c <= '9';
+}
+
+bool IsLetter(u8 c) {
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
+bool IsAlphaNumeric(u8 c) {
+  return IsLetter(c) || IsNumeral(c);
+}
+
 void Start(LexState* state);
+void Integer(LexState* state);
 void Whitespace(LexState* state);
 void BlockComment(LexState* state);
 void LineComment(LexState* state);
+void Identifier(LexState* state);
 
 void Start(LexState* state) {
   if (state->IsAtEnd()) {
@@ -152,6 +166,12 @@ void Start(LexState* state) {
   } else if (IsWhitespace(state->Peek())) {
     state->SetNextState(&Whitespace);
     return;
+  } else if (IsNumeral(state->Peek())) {
+    state->SetNextState(&Integer);
+    return;
+  } else if (IsLetter(state->Peek())) {
+    state->SetNextState(&Identifier);
+    return;
   }
 
   // This should be run after checking for comment tokens.
@@ -167,6 +187,19 @@ void Start(LexState* state) {
 
   // TODO: do the rest and emit unknown prefix error.
   state->SetNextState(nullptr);
+}
+
+void Integer(LexState* state) {
+  while (!state->IsAtEnd() && IsNumeral(state->Peek())) {
+    // Reject multi-digit number that starts with 0.
+    if (state->begin + 1 == state->end && state->file->At(state->begin) == '0') {
+      throw "Multi-digit integer starting with 0";
+    }
+    state->Advance();
+  }
+
+  state->EmitToken(INTEGER);
+  state->SetNextState(&Start);
 }
 
 void Whitespace(LexState* state) {
@@ -218,6 +251,19 @@ void BlockComment(LexState* state) {
   }
 
   state->EmitToken(BLOCK_COMMENT);
+  state->SetNextState(&Start);
+}
+
+void Identifier(LexState* state) {
+  if (state->IsAtEnd() || !IsLetter(state->Peek())) {
+    state->SetNextState(&Start);
+    return;
+  }
+  while (!state->IsAtEnd() && IsAlphaNumeric(state->Peek())) {
+    state->Advance();
+  }
+
+  state->EmitToken(IDENTIFIER);
   state->SetNextState(&Start);
 }
 
