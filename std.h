@@ -2,6 +2,7 @@
 #define STD_H
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -20,5 +21,6 @@ using std::make_pair;
 using std::pair;
 using std::string;
 using std::vector;
+using std::unique_ptr;
 
 #endif
