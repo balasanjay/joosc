@@ -43,6 +43,7 @@ enum TokenType {
   WHILE,
   INTEGER,
   IDENTIFIER,
+  STRING,
   NUM_TOKEN_TYPES,  // Not a valid token type.
 };
 

@@ -5,7 +5,7 @@ using base::File;
 namespace lexer {
 
 string tokenTypeToString[NUM_TOKEN_TYPES] = {
-    "LINE_COMMENT", "BLOCK_COMMENT", "WHITESPACE", "IF", "WHILE", "INTEGER", "IDENTIFIER"};
+    "LINE_COMMENT", "BLOCK_COMMENT", "WHITESPACE", "IF", "WHILE", "INTEGER", "IDENTIFIER", "STRING"};
 
 string TokenTypeToString(TokenType t) {
   if (t >= NUM_TOKEN_TYPES || t < 0) {
@@ -111,12 +111,20 @@ bool IsAlphaNumeric(u8 c) {
   return IsAlpha(c) || IsNumeric(c);
 }
 
+// This is half-baked, don't use it.
+bool IsStringEscapable(u8 c) {
+  return c == 'b' | c == 't' | c == 'n' |
+         c == 'f' | c == 'r' | c == '\'' |
+         c == '"' | c == '\\' | IsNumeric(c);
+}
+
 void Start(LexState* state);
 void Integer(LexState* state);
 void Whitespace(LexState* state);
 void BlockComment(LexState* state);
 void LineComment(LexState* state);
 void Identifier(LexState* state);
+void String(LexState* state);
 
 void Start(LexState* state) {
   // Should have no characters in current range when in start state.
@@ -134,6 +142,9 @@ void Start(LexState* state) {
   } else if (state->HasPrefix("/*")) {
     state->SetNextState(&BlockComment);
     return;
+  } else if (state->Peek() == '"') {
+    state->SetNextState(&String);
+    return;
   } else if (IsWhitespace(state->Peek())) {
     state->SetNextState(&Whitespace);
     return;
@@ -143,10 +154,9 @@ void Start(LexState* state) {
   } else if (IsAlpha(state->Peek())) {
     state->SetNextState(&Identifier);
     return;
+  } else {
+    throw "Found unknown prefix.";
   }
-
-  // TODO: do the rest and emit unknown prefix error.
-  state->SetNextState(nullptr);
 }
 
 void Integer(LexState* state) {
@@ -223,6 +233,34 @@ void Identifier(LexState* state) {
   }
 
   state->EmitToken(IDENTIFIER);
+  state->SetNextState(&Start);
+}
+
+void String(LexState* state) {
+  state->Advance(); // Advance past the quotation mark.
+
+  bool escapeNext = false;
+
+  while (true) {
+    if (state->IsAtEnd()) {
+      throw "Unclosed string at end of file.";
+    }
+
+    u8 next = state->Peek();
+    state->Advance();
+
+    if (next == '\n') {
+      throw "Unclosed string at line end.";
+    } else if (escapeNext) {
+      escapeNext = false;
+    } else if (next == '"') {
+      break;
+    } else if (next == '\\') {
+      escapeNext = true;
+    }
+  }
+
+  state->EmitToken(STRING);
   state->SetNextState(&Start);
 }
 

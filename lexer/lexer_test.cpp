@@ -18,26 +18,26 @@ protected:
     }
   }
 
+  void LexString(string s) {
+    ASSERT_TRUE(
+        FileSet::Builder()
+        .AddStringFile("foo.joos", s)
+        .Build(&fs));
+    LexJoosFiles(fs, &tokens, &errors);
+  }
+
   vector<vector<Token>> tokens;
   vector<Error> errors;
   FileSet* fs;
 };
 
 TEST_F(LexerTest, EmptyFile) {
-  ASSERT_TRUE(FileSet::Builder()
-    .AddStringFile("foo.joos", "")
-    .Build(&fs));
-
-  LexJoosFiles(fs, &tokens, &errors);
+  LexString("");
   EXPECT_EQ(0u, tokens[0].size());
 }
 
 TEST_F(LexerTest, Whitespace) {
-  ASSERT_TRUE(FileSet::Builder()
-    .AddStringFile("foo.joos", " \n    \r   \t")
-    .Build(&fs));
-
-  LexJoosFiles(fs, &tokens, &errors);
+  LexString(" \n    \r   \t");
 
   EXPECT_EQ(1u, tokens[0].size());
 
@@ -46,11 +46,7 @@ TEST_F(LexerTest, Whitespace) {
 }
 
 TEST_F(LexerTest, Comment) {
-  ASSERT_TRUE(FileSet::Builder()
-    .AddStringFile("foo.joos", "// foo bar\n/*baz*/")
-    .Build(&fs));
-
-  LexJoosFiles(fs, &tokens, &errors);
+  LexString("// foo bar\n/*baz*/");
 
   EXPECT_EQ(2u, tokens[0].size());
 
@@ -62,11 +58,7 @@ TEST_F(LexerTest, Comment) {
 }
 
 TEST_F(LexerTest, LineCommentAtEof) {
-  ASSERT_TRUE(FileSet::Builder()
-    .AddStringFile("foo.joos", "// foo bar")
-    .Build(&fs));
-
-  LexJoosFiles(fs, &tokens, &errors);
+  LexString("// foo bar");
 
   EXPECT_EQ(1u, tokens[0].size());
 
@@ -75,12 +67,7 @@ TEST_F(LexerTest, LineCommentAtEof) {
 }
 
 TEST_F(LexerTest, SimpleInteger) {
-  ASSERT_TRUE(
-      FileSet::Builder()
-      .AddStringFile("foo.joos", "123")
-      .Build(&fs));
-
-  LexJoosFiles(fs, &tokens, &errors);
+  LexString("123");
   ASSERT_TRUE(errors.empty());
   ASSERT_EQ(1, tokens.size());
   ASSERT_EQ(1, tokens[0].size());
@@ -88,23 +75,13 @@ TEST_F(LexerTest, SimpleInteger) {
 }
 
 TEST_F(LexerTest, LeadingZeroInteger) {
-  ASSERT_TRUE(
-      FileSet::Builder()
-      .AddStringFile("foo.joos", "023")
-      .Build(&fs));
-
   ASSERT_ANY_THROW({
-    LexJoosFiles(fs, &tokens, &errors);
+    LexString("023");
   });
 }
 
 TEST_F(LexerTest, OnlyZero) {
-  ASSERT_TRUE(
-      FileSet::Builder()
-      .AddStringFile("foo.joos", "0")
-      .Build(&fs));
-
-  LexJoosFiles(fs, &tokens, &errors);
+  LexString("0");
   ASSERT_TRUE(errors.empty());
   ASSERT_EQ(1, tokens.size());
   ASSERT_EQ(1, tokens[0].size());
@@ -112,12 +89,7 @@ TEST_F(LexerTest, OnlyZero) {
 }
 
 TEST_F(LexerTest, SimpleIdentifier) {
-  ASSERT_TRUE(
-      FileSet::Builder()
-      .AddStringFile("foo.joos", "foo")
-      .Build(&fs));
-
-  LexJoosFiles(fs, &tokens, &errors);
+  LexString("foo");
   ASSERT_TRUE(errors.empty());
   ASSERT_EQ(1, tokens.size());
   ASSERT_EQ(1, tokens[0].size());
@@ -125,12 +97,7 @@ TEST_F(LexerTest, SimpleIdentifier) {
 }
 
 TEST_F(LexerTest, NumberBeforeIdentifier) {
-  ASSERT_TRUE(
-      FileSet::Builder()
-      .AddStringFile("foo.joos", "3m")
-      .Build(&fs));
-
-  LexJoosFiles(fs, &tokens, &errors);
+  LexString("3m");
   ASSERT_TRUE(errors.empty());
   ASSERT_EQ(1, tokens.size());
   ASSERT_EQ(2, tokens[0].size());
@@ -140,12 +107,7 @@ TEST_F(LexerTest, NumberBeforeIdentifier) {
 }
 
 TEST_F(LexerTest, CommentBetweenIdentifiers) {
-  ASSERT_TRUE(
-      FileSet::Builder()
-      .AddStringFile("foo.joos", "abc/*foobar*/def")
-      .Build(&fs));
-
-  LexJoosFiles(fs, &tokens, &errors);
+  LexString("abc/*foobar*/def");
   ASSERT_TRUE(errors.empty());
   ASSERT_EQ(1, tokens.size());
   ASSERT_EQ(3, tokens[0].size());
@@ -153,6 +115,54 @@ TEST_F(LexerTest, CommentBetweenIdentifiers) {
   EXPECT_EQ(Token(IDENTIFIER, PosRange(0, 0, 3)), tokens[0][0]);
   EXPECT_EQ(Token(BLOCK_COMMENT, PosRange(0, 3, 13)), tokens[0][1]);
   EXPECT_EQ(Token(IDENTIFIER, PosRange(0, 13, 16)), tokens[0][2]);
+}
+
+TEST_F(LexerTest, OnlyString) {
+  LexString("\"goober\"");
+  ASSERT_TRUE(errors.empty());
+  ASSERT_EQ(1, tokens.size());
+  ASSERT_EQ(1, tokens[0].size());
+
+  EXPECT_EQ(Token(STRING, PosRange(0, 0, 8)), tokens[0][0]);
+}
+
+TEST_F(LexerTest, UnendedString) {
+  ASSERT_ANY_THROW({
+    LexString("\"goober");
+  });
+}
+
+TEST_F(LexerTest, UnendedEscapedQuoteString) {
+  ASSERT_ANY_THROW({
+    LexString("\"goober\\\"");
+  });
+}
+
+TEST_F(LexerTest, StringOverNewline) {
+  ASSERT_ANY_THROW({
+    LexString("\"foo\nbar\"");
+  });
+}
+
+TEST_F(LexerTest, StringEscapedQuote) {
+  LexString("\"foo\\\"bar\"");
+  ASSERT_TRUE(errors.empty());
+  ASSERT_EQ(1, tokens.size());
+  ASSERT_EQ(1, tokens[0].size());
+
+  EXPECT_EQ(Token(STRING, PosRange(0, 0, 10)), tokens[0][0]);
+}
+
+TEST_F(LexerTest, AssignStringTest) {
+  ASSERT_TRUE(
+      FileSet::Builder()
+      .AddStringFile("foo.joos", "string foo = \"foo\";")
+      .Build(&fs));
+
+  LexJoosFiles(fs, &tokens, &errors);
+  ASSERT_TRUE(errors.empty());
+  ASSERT_EQ(1, tokens.size());
+  ASSERT_EQ(8, tokens[0].size());
 }
 
 // TODO: unclosed block comment test.
