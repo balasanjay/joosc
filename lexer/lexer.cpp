@@ -154,6 +154,7 @@ void Start(LexState* state) {
     return;
   }
 
+  // This should be run after checking for comment tokens.
   for (int i = 0; i < NUM_SYMBOL_LITERALS; ++i) {
     const string& symbolString = symbolLiterals[i].first;
 
