@@ -121,7 +121,7 @@ void Identifier(LexState* state);
 void Start(LexState* state) {
   // Should have no characters in current range when in start state.
   if (state->begin != state->end) {
-    throw "Unclosed token at eof";
+    throw "Partial lexeme when in start state.";
   }
   if (state->IsAtEnd()) {
     state->SetNextState(nullptr);
