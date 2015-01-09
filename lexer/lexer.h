@@ -12,9 +12,7 @@ struct Pos {
   bool operator==(const Pos& other) const {
     return fileid == other.fileid && offset == other.offset;
   }
-  bool operator!=(const Pos& other) const {
-    return !(*this == other);
-  }
+  bool operator!=(const Pos& other) const { return !(*this == other); }
 
   int fileid;
   int offset;
@@ -27,9 +25,7 @@ struct PosRange {
   bool operator==(const PosRange& other) const {
     return begin == other.begin && end == other.end;
   }
-  bool operator!=(const PosRange& other) const {
-    return !(*this == other);
-  }
+  bool operator!=(const PosRange& other) const { return !(*this == other); }
 
   Pos begin;
   Pos end;
@@ -39,6 +35,32 @@ enum TokenType {
   LINE_COMMENT,
   BLOCK_COMMENT,
   WHITESPACE,
+  LE,
+  GE,
+  EQ,
+  NEQ,
+  AND,
+  OR,
+  ADD,
+  SUB,
+  MUL,
+  DIV,
+  MOD,
+  LT,
+  GT,
+  BAND,
+  BOR,
+  NOT,
+  ASSG,
+  LPAREN,
+  RPAREN,
+  LBRACE,
+  RBRACE,
+  LBRACK,
+  RBRACK,
+  SEMI,
+  COMMA,
+  DOT,
   IF,
   WHILE,
   INTEGER,
@@ -54,9 +76,7 @@ struct Token {
   bool operator==(const Token& other) const {
     return type == other.type && pos == other.pos;
   }
-  bool operator!=(const Token& other) const {
-    return !(*this == other);
-  }
+  bool operator!=(const Token& other) const { return !(*this == other); }
 
   TokenType type;
   PosRange pos;
