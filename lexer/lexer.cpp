@@ -7,8 +7,8 @@ namespace lexer {
 string tokenTypeToString[NUM_TOKEN_TYPES] = {
     "LINE_COMMENT", "BLOCK_COMMENT", "WHITESPACE", "IF", "WHILE"};
 
-const int NUM_OPERATOR_LITERALS = 16;
-pair<string, TokenType> operatorLiterals[NUM_OPERATOR_LITERALS] = {
+const int NUM_SYMBOL_LITERALS = 16;
+pair<string, TokenType> symbolLiterals[NUM_SYMBOL_LITERALS] = {
   make_pair("<=", LE),
   make_pair(">=", GE),
   make_pair("==", EQ),
@@ -133,12 +133,12 @@ void Start(LexState* state) {
     return;
   }
 
-  for (int i = 0; i < NUM_OPERATOR_LITERALS; ++i) {
-    const string& operatorLiteral = operatorLiterals[i].first;
+  for (int i = 0; i < NUM_SYMBOL_LITERALS; ++i) {
+    const string& symbolString = symbolLiterals[i].first;
 
-    if (state->HasPrefix(operatorLiteral)) {
-      state->EmitToken(operatorLiterals[i].second);
-      state->Advance(operatorLiteral.size());
+    if (state->HasPrefix(symbolString)) {
+      state->EmitToken(symbolLiterals[i].second);
+      state->Advance(symbolString.size());
       return;
     }
   }
