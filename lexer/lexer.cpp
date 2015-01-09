@@ -5,7 +5,7 @@ using base::File;
 namespace lexer {
 
 string tokenTypeToString[NUM_TOKEN_TYPES] = {
-    "LINE_COMMENT", "BLOCK_COMMENT", "WHITESPACE", "IF", "WHILE"};
+    "LINE_COMMENT", "BLOCK_COMMENT", "WHITESPACE", "IF", "WHILE", "INTEGER"};
 
 string TokenTypeToString(TokenType t) {
   if (t >= NUM_TOKEN_TYPES || t < 0) {
@@ -99,7 +99,12 @@ bool IsWhitespace(u8 c) {
   return c == ' ' || c == '\n' || c == '\r' || c == '\t';
 }
 
+bool IsNumeral(u8 c) {
+  return c >= '0' && c <= '9';
+}
+
 void Start(LexState* state);
+void Integer(LexState* state);
 void Whitespace(LexState* state);
 void BlockComment(LexState* state);
 void LineComment(LexState* state);
@@ -122,10 +127,26 @@ void Start(LexState* state) {
   } else if (IsWhitespace(state->Peek())) {
     state->SetNextState(&Whitespace);
     return;
+  } else if (IsNumeral(state->Peek())) {
+    state->SetNextState(&Integer);
+    return;
   }
 
   // TODO: do the rest and emit unknown prefix error.
   state->SetNextState(nullptr);
+}
+
+void Integer(LexState* state) {
+  while (!state->IsAtEnd() && IsNumeral(state->Peek())) {
+    // Reject multi-digit number that starts with 0.
+    if (state->begin + 1 == state->end && state->file->At(state->begin) == '0') {
+      throw "Multi-digit integer starting with 0";
+    }
+    state->Advance();
+  }
+
+  state->EmitToken(INTEGER);
+  state->SetNextState(&Start);
 }
 
 void Whitespace(LexState* state) {
