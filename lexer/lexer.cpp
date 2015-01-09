@@ -7,7 +7,7 @@ namespace lexer {
 string tokenTypeToString[NUM_TOKEN_TYPES] = {
     "LINE_COMMENT", "BLOCK_COMMENT", "WHITESPACE", "IF", "WHILE"};
 
-const int NUM_SYMBOL_LITERALS = 16;
+const int NUM_SYMBOL_LITERALS = 25;
 pair<string, TokenType> symbolLiterals[NUM_SYMBOL_LITERALS] = {
   make_pair("<=", LE),
   make_pair(">=", GE),
@@ -24,7 +24,16 @@ pair<string, TokenType> symbolLiterals[NUM_SYMBOL_LITERALS] = {
   make_pair(">", GT),
   make_pair("&", BAND),
   make_pair("|", BOR),
-  make_pair("!", NOT)
+  make_pair("!", NOT),
+  make_pair("(", LPAREN),
+  make_pair(")", RPAREN),
+  make_pair("{", LBRACE),
+  make_pair("}", RBRACE),
+  make_pair("[", LBRACK),
+  make_pair("]", RBRACK),
+  make_pair(";", SEMI),
+  make_pair(",", COMMA),
+  make_pair(".", DOT)
 };
 
 string TokenTypeToString(TokenType t) {
