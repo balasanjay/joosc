@@ -7,6 +7,26 @@ namespace lexer {
 string tokenTypeToString[NUM_TOKEN_TYPES] = {
     "LINE_COMMENT", "BLOCK_COMMENT", "WHITESPACE", "IF", "WHILE"};
 
+const int NUM_OPERATOR_LITERALS = 16;
+pair<string, TokenType> operatorLiterals[NUM_OPERATOR_LITERALS] = {
+  make_pair("<=", LE),
+  make_pair(">=", GE),
+  make_pair("==", EQ),
+  make_pair("!=", NEQ),
+  make_pair("&&", AND),
+  make_pair("||", OR),
+  make_pair("+", ADD),
+  make_pair("-", SUB),
+  make_pair("*", MUL),
+  make_pair("/", DIV),
+  make_pair("%", MOD),
+  make_pair("<", LT),
+  make_pair(">", GT),
+  make_pair("&", BAND),
+  make_pair("|", BOR),
+  make_pair("!", NOT)
+};
+
 string TokenTypeToString(TokenType t) {
   if (t >= NUM_TOKEN_TYPES || t < 0) {
     throw "invalid token type";
@@ -111,6 +131,16 @@ void Start(LexState* state) {
     }
     state->SetNextState(nullptr);
     return;
+  }
+
+  for (int i = 0; i < NUM_OPERATOR_LITERALS; ++i) {
+    const string& operatorLiteral = operatorLiterals[i].first;
+
+    if (state->HasPrefix(operatorLiteral)) {
+      state->EmitToken(operatorLiterals[i].second);
+      state->Advance(operatorLiteral.size());
+      return;
+    }
   }
 
   if (state->HasPrefix("//")) {

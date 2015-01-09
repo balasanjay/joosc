@@ -16,6 +16,7 @@ typedef int16_t i16;
 typedef int32_t i32;
 typedef int64_t i64;
 
+using std::make_pair;
 using std::pair;
 using std::string;
 using std::vector;
