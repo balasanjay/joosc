@@ -2,6 +2,7 @@
 #define STD_H
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -19,5 +20,6 @@ typedef int64_t i64;
 using std::pair;
 using std::string;
 using std::vector;
+using std::unique_ptr;
 
 #endif
