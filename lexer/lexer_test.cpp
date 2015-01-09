@@ -7,10 +7,8 @@ using base::FileSet;
 namespace lexer {
 
 class LexerTest : public ::testing::Test {
-protected:
-  void SetUp() {
-    fs = nullptr;
-  }
+ protected:
+  void SetUp() { fs = nullptr; }
 
   void TearDown() {
     if (fs != nullptr) {
@@ -25,26 +23,26 @@ protected:
 };
 
 TEST_F(LexerTest, EmptyFile) {
-  ASSERT_TRUE(FileSet::Builder()
-    .AddStringFile("foo.joos", "")
-    .Build(&fs));
+  ASSERT_TRUE(FileSet::Builder().AddStringFile("foo.joos", "").Build(&fs));
 
   LexJoosFiles(fs, &tokens, &errors);
   EXPECT_EQ(0u, tokens[0].size());
 }
 
+// Tests that the SymbolLiterals are sorted by length, so that we do maximal
+// munch correctly.
 TEST_F(LexerTest, SymbolLiterals) {
   for (int i = 1; i < lexer::internal::kNumSymbolLiterals; ++i) {
     EXPECT_LE(lexer::internal::kSymbolLiterals[i].first.size(),
-        lexer::internal::kSymbolLiterals[i-1].first.size());
+              lexer::internal::kSymbolLiterals[i - 1].first.size());
   }
 }
 
 TEST_F(LexerTest, Symbols) {
   FileSet* fs = nullptr;
   ASSERT_TRUE(FileSet::Builder()
-    .AddStringFile("foo.joos", "<<=>>====!=!&&&|||+-*/%(){}[];,.")
-    .Build(&fs));
+                  .AddStringFile("foo.joos", "<<=>>====!=!&&&|||+-*/%(){}[];,.")
+                  .Build(&fs));
   unique_ptr<FileSet> deleter(fs);
 
   LexJoosFiles(fs, &tokens, &errors);
@@ -80,9 +78,9 @@ TEST_F(LexerTest, Symbols) {
 }
 
 TEST_F(LexerTest, Whitespace) {
-  ASSERT_TRUE(FileSet::Builder()
-    .AddStringFile("foo.joos", " \n    \r   \t")
-    .Build(&fs));
+  ASSERT_TRUE(
+      FileSet::Builder().AddStringFile("foo.joos", " \n    \r   \t").Build(
+          &fs));
 
   LexJoosFiles(fs, &tokens, &errors);
 
@@ -93,9 +91,9 @@ TEST_F(LexerTest, Whitespace) {
 }
 
 TEST_F(LexerTest, Comment) {
-  ASSERT_TRUE(FileSet::Builder()
-    .AddStringFile("foo.joos", "// foo bar\n/*baz*/")
-    .Build(&fs));
+  ASSERT_TRUE(
+      FileSet::Builder().AddStringFile("foo.joos", "// foo bar\n/*baz*/").Build(
+          &fs));
 
   LexJoosFiles(fs, &tokens, &errors);
 
@@ -109,9 +107,8 @@ TEST_F(LexerTest, Comment) {
 }
 
 TEST_F(LexerTest, LineCommentAtEof) {
-  ASSERT_TRUE(FileSet::Builder()
-    .AddStringFile("foo.joos", "// foo bar")
-    .Build(&fs));
+  ASSERT_TRUE(
+      FileSet::Builder().AddStringFile("foo.joos", "// foo bar").Build(&fs));
 
   LexJoosFiles(fs, &tokens, &errors);
 
@@ -122,10 +119,7 @@ TEST_F(LexerTest, LineCommentAtEof) {
 }
 
 TEST_F(LexerTest, SimpleInteger) {
-  ASSERT_TRUE(
-      FileSet::Builder()
-      .AddStringFile("foo.joos", "123")
-      .Build(&fs));
+  ASSERT_TRUE(FileSet::Builder().AddStringFile("foo.joos", "123").Build(&fs));
 
   LexJoosFiles(fs, &tokens, &errors);
   ASSERT_TRUE(errors.empty());
@@ -135,21 +129,13 @@ TEST_F(LexerTest, SimpleInteger) {
 }
 
 TEST_F(LexerTest, LeadingZeroInteger) {
-  ASSERT_TRUE(
-      FileSet::Builder()
-      .AddStringFile("foo.joos", "023")
-      .Build(&fs));
+  ASSERT_TRUE(FileSet::Builder().AddStringFile("foo.joos", "023").Build(&fs));
 
-  ASSERT_ANY_THROW({
-    LexJoosFiles(fs, &tokens, &errors);
-  });
+  ASSERT_ANY_THROW({ LexJoosFiles(fs, &tokens, &errors); });
 }
 
 TEST_F(LexerTest, OnlyZero) {
-  ASSERT_TRUE(
-      FileSet::Builder()
-      .AddStringFile("foo.joos", "0")
-      .Build(&fs));
+  ASSERT_TRUE(FileSet::Builder().AddStringFile("foo.joos", "0").Build(&fs));
 
   LexJoosFiles(fs, &tokens, &errors);
   ASSERT_TRUE(errors.empty());
@@ -159,10 +145,7 @@ TEST_F(LexerTest, OnlyZero) {
 }
 
 TEST_F(LexerTest, SimpleIdentifier) {
-  ASSERT_TRUE(
-      FileSet::Builder()
-      .AddStringFile("foo.joos", "foo")
-      .Build(&fs));
+  ASSERT_TRUE(FileSet::Builder().AddStringFile("foo.joos", "foo").Build(&fs));
 
   LexJoosFiles(fs, &tokens, &errors);
   ASSERT_TRUE(errors.empty());
@@ -172,10 +155,7 @@ TEST_F(LexerTest, SimpleIdentifier) {
 }
 
 TEST_F(LexerTest, NumberBeforeIdentifier) {
-  ASSERT_TRUE(
-      FileSet::Builder()
-      .AddStringFile("foo.joos", "3m")
-      .Build(&fs));
+  ASSERT_TRUE(FileSet::Builder().AddStringFile("foo.joos", "3m").Build(&fs));
 
   LexJoosFiles(fs, &tokens, &errors);
   ASSERT_TRUE(errors.empty());
@@ -188,9 +168,8 @@ TEST_F(LexerTest, NumberBeforeIdentifier) {
 
 TEST_F(LexerTest, CommentBetweenIdentifiers) {
   ASSERT_TRUE(
-      FileSet::Builder()
-      .AddStringFile("foo.joos", "abc/*foobar*/def")
-      .Build(&fs));
+      FileSet::Builder().AddStringFile("foo.joos", "abc/*foobar*/def").Build(
+          &fs));
 
   LexJoosFiles(fs, &tokens, &errors);
   ASSERT_TRUE(errors.empty());
@@ -205,4 +184,3 @@ TEST_F(LexerTest, CommentBetweenIdentifiers) {
 // TODO: unclosed block comment test.
 
 }  // namespace base
-

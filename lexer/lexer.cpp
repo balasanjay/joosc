@@ -97,17 +97,11 @@ bool IsWhitespace(u8 c) {
   return c == ' ' || c == '\n' || c == '\r' || c == '\t';
 }
 
-bool IsNumeral(u8 c) {
-  return c >= '0' && c <= '9';
-}
+bool IsNumeral(u8 c) { return c >= '0' && c <= '9'; }
 
-bool IsLetter(u8 c) {
-  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
-}
+bool IsLetter(u8 c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); }
 
-bool IsAlphaNumeric(u8 c) {
-  return IsLetter(c) || IsNumeral(c);
-}
+bool IsAlphaNumeric(u8 c) { return IsLetter(c) || IsNumeral(c); }
 
 void Start(LexState* state);
 void Integer(LexState* state);
@@ -160,7 +154,8 @@ void Start(LexState* state) {
 void Integer(LexState* state) {
   while (!state->IsAtEnd() && IsNumeral(state->Peek())) {
     // Reject multi-digit number that starts with 0.
-    if (state->begin + 1 == state->end && state->file->At(state->begin) == '0') {
+    if (state->begin + 1 == state->end &&
+        state->file->At(state->begin) == '0') {
       throw "Multi-digit integer starting with 0";
     }
     state->Advance();
