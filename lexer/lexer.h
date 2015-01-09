@@ -51,6 +51,13 @@ string TokenTypeToString(TokenType t);
 struct Token {
   Token(TokenType type, PosRange pos) : type(type), pos(pos) {}
 
+  bool operator==(const Token& other) const {
+    return type == other.type && pos == other.pos;
+  }
+  bool operator!=(const Token& other) const {
+    return !(*this == other);
+  }
+
   TokenType type;
   PosRange pos;
 };
