@@ -2,6 +2,7 @@
 #include "lexer/lexer_internal.h"
 #include "third_party/gtest/gtest.h"
 
+using base::ErrorList;
 using base::FileSet;
 
 namespace lexer {
@@ -11,22 +12,20 @@ class LexerTest : public ::testing::Test {
   void SetUp() { fs = nullptr; }
 
   void TearDown() {
-    if (fs != nullptr) {
-      delete fs;
-      fs = nullptr;
-    }
+    delete fs;
+    fs = nullptr;
   }
 
   void LexString(string s) {
     ASSERT_TRUE(
         FileSet::Builder()
         .AddStringFile("foo.joos", s)
-        .Build(&fs));
+        .Build(&fs, &errors));
     LexJoosFiles(fs, &tokens, &errors);
   }
 
   vector<vector<Token>> tokens;
-  vector<Error> errors;
+  ErrorList errors;
   FileSet* fs;
 };
 
@@ -53,11 +52,7 @@ TEST_F(LexerTest, SymbolLiterals) {
 }
 
 TEST_F(LexerTest, Symbols) {
-  ASSERT_TRUE(FileSet::Builder()
-                  .AddStringFile("foo.joos", "<<=>>====!=!&&&|||+-*/%(){}[];,.")
-                  .Build(&fs));
-
-  LexJoosFiles(fs, &tokens, &errors);
+  LexString("<<=>>====!=!&&&|||+-*/%(){}[];,.");
 
   EXPECT_EQ(26u, tokens[0].size());
 
@@ -113,7 +108,7 @@ TEST_F(LexerTest, LineCommentAtEof) {
 
 TEST_F(LexerTest, SimpleInteger) {
   LexString("123");
-  ASSERT_TRUE(errors.empty());
+  ASSERT_FALSE(errors.IsFatal());
   ASSERT_EQ(1u, tokens.size());
   ASSERT_EQ(1u, tokens[0].size());
   EXPECT_EQ(Token(INTEGER, PosRange(0, 0, 3)), tokens[0][0]);
@@ -127,7 +122,7 @@ TEST_F(LexerTest, LeadingZeroInteger) {
 
 TEST_F(LexerTest, OnlyZero) {
   LexString("0");
-  ASSERT_TRUE(errors.empty());
+  ASSERT_FALSE(errors.IsFatal());
   ASSERT_EQ(1u, tokens.size());
   ASSERT_EQ(1u, tokens[0].size());
   EXPECT_EQ(Token(INTEGER, PosRange(0, 0, 1)), tokens[0][0]);
@@ -135,7 +130,7 @@ TEST_F(LexerTest, OnlyZero) {
 
 TEST_F(LexerTest, SimpleIdentifier) {
   LexString("foo");
-  ASSERT_TRUE(errors.empty());
+  ASSERT_FALSE(errors.IsFatal());
   ASSERT_EQ(1u, tokens.size());
   ASSERT_EQ(1u, tokens[0].size());
   EXPECT_EQ(Token(IDENTIFIER, PosRange(0, 0, 3)), tokens[0][0]);
@@ -143,7 +138,7 @@ TEST_F(LexerTest, SimpleIdentifier) {
 
 TEST_F(LexerTest, NumberBeforeIdentifier) {
   LexString("3m");
-  ASSERT_TRUE(errors.empty());
+  ASSERT_FALSE(errors.IsFatal());
   ASSERT_EQ(1u, tokens.size());
   ASSERT_EQ(2u, tokens[0].size());
 
@@ -153,7 +148,7 @@ TEST_F(LexerTest, NumberBeforeIdentifier) {
 
 TEST_F(LexerTest, CommentBetweenIdentifiers) {
   LexString("abc/*foobar*/def");
-  ASSERT_TRUE(errors.empty());
+  ASSERT_FALSE(errors.IsFatal());
   ASSERT_EQ(1u, tokens.size());
   ASSERT_EQ(3u, tokens[0].size());
 
@@ -164,7 +159,7 @@ TEST_F(LexerTest, CommentBetweenIdentifiers) {
 
 TEST_F(LexerTest, OnlyString) {
   LexString("\"goober\"");
-  ASSERT_TRUE(errors.empty());
+  ASSERT_FALSE(errors.IsFatal());
   ASSERT_EQ(1u, tokens.size());
   ASSERT_EQ(1u, tokens[0].size());
 
@@ -191,7 +186,7 @@ TEST_F(LexerTest, StringOverNewline) {
 
 TEST_F(LexerTest, StringEscapedQuote) {
   LexString("\"foo\\\"bar\"");
-  ASSERT_TRUE(errors.empty());
+  ASSERT_FALSE(errors.IsFatal());
   ASSERT_EQ(1u, tokens.size());
   ASSERT_EQ(1u, tokens[0].size());
 
@@ -200,7 +195,7 @@ TEST_F(LexerTest, StringEscapedQuote) {
 
 TEST_F(LexerTest, AssignStringTest) {
   LexString("string foo = \"foo\";");
-  ASSERT_TRUE(errors.empty());
+  ASSERT_FALSE(errors.IsFatal());
   ASSERT_EQ(1u, tokens.size());
   ASSERT_EQ(8u, tokens[0].size());
 }

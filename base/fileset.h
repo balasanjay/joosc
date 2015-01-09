@@ -1,6 +1,7 @@
 #ifndef BASE_FILESET_H
 #define BASE_FILESET_H
 
+#include "base/errorlist.h"
 #include "base/file.h"
 
 namespace base {
@@ -18,7 +19,7 @@ class FileSet final {
       return *this;
     }
 
-    bool Build(FileSet** fs) const;
+    bool Build(FileSet** fs, ErrorList* errors) const;
 
    private:
     vector<string> diskfiles_;

@@ -16,7 +16,7 @@ string TokenTypeToString(TokenType t) {
 namespace internal {
 
 struct LexState {
-  LexState(File* file, int fileid, vector<Token>* tokens, vector<Error>* errors)
+  LexState(File* file, int fileid, vector<Token>* tokens, base::ErrorList* errors)
       : file(file), fileid(fileid), tokens(tokens), errors(errors) {}
 
   typedef void (*StateFn)(LexState*);
@@ -62,8 +62,6 @@ struct LexState {
     begin = end;
   }
 
-  void EmitError(Error err) { errors->push_back(err); }
-
   void SetNextState(StateFn fn) { stateFn = fn; }
 
   void Run() {
@@ -88,7 +86,7 @@ struct LexState {
   int end = 0;
 
   vector<Token>* tokens;
-  vector<Error>* errors;
+  base::ErrorList* errors;
 
   StateFn stateFn;
 };
@@ -271,12 +269,12 @@ void String(LexState* state) {
 }  // namespace internal
 
 void LexJoosFile(base::File* file, int fileid, vector<Token>* tokens_out,
-                 vector<Error>* errors_out) {
+                 base::ErrorList* errors_out) {
   // Remove anything with non-ANSI characters.
   for (int i = 0; i < file->Size(); i++) {
     if (file->At(i) > 127) {
       // TODO: more specific error.
-      errors_out->push_back(Error(NON_ANSI_CHAR, PosRange(fileid, i, i + 1)));
+      // errors_out->push_back(Error(NON_ANSI_CHAR, PosRange(fileid, i, i + 1)));
       return;
     }
   }
@@ -287,7 +285,7 @@ void LexJoosFile(base::File* file, int fileid, vector<Token>* tokens_out,
 }
 
 void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
-                  vector<Error>* errors_out) {
+                  base::ErrorList* errors_out) {
   tokens_out->clear();
   tokens_out->resize(fs->Size());
 

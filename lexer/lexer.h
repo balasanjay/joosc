@@ -1,6 +1,7 @@
 #ifndef LEXER_LEXER_H
 #define LEXER_LEXER_H
 
+#include "base/errorlist.h"
 #include "base/file.h"
 #include "base/fileset.h"
 
@@ -83,22 +84,8 @@ struct Token {
   PosRange pos;
 };
 
-enum ErrorType {
-  NON_ANSI_CHAR,
-  NUM_ERROR_TYPES,  // Not a valid error type.
-};
-
-struct Error {
-  Error(ErrorType type, PosRange pos) : type(type), pos(pos) {}
-
-  ErrorType type;
-  PosRange pos;
-};
-
-class UnterminatedStringLiteralError : public Error {};
-
 void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
-                  vector<Error>* errors_out);
+                  base::ErrorList* errors_out);
 
 }  // namespace lexer
 

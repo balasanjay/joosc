@@ -1,13 +1,38 @@
+#include "base/error.h"
+#include "base/errorlist.h"
 #include "base/file_impl.h"
-#include <cstring>
+#include "base/macros.h"
 #include <cerrno>
-#include <iostream>
+#include <cstring>
 #include <fcntl.h>
-#include <unistd.h>
-#include <sys/stat.h>
+#include <iostream>
 #include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 namespace base {
+
+namespace internal {
+
+class DiskFileError : public base::Error {
+public:
+  DiskFileError(int errval, const string& path) : errval_(errval), path_(path) {}
+
+  void PrintTo(std::ostream* out, const base::OutputOptions& opt) const override {
+    if (opt.simple) {
+      *out << "DiskFileError{"
+            << FIELD_PRINT(errval_)
+            << FIELD_PRINT(path_) << "}";
+      return;
+    }
+
+    *out << path_ << " " << Red(opt) << "error: " << ResetFmt(opt) << string(strerror(errval_));
+  }
+
+private:
+  int errval_;
+  string path_;
+};
 
 u8* StringCopy(string s) {
   u8* buf = new u8[s.length()];
@@ -15,30 +40,42 @@ u8* StringCopy(string s) {
   return buf;
 }
 
+} // namespace internal
+
 StringFile::StringFile(string path, string content)
-    : File(path, StringCopy(content), content.length()) {}
+    : File(path, internal::StringCopy(content), content.length()) {}
 
 StringFile::~StringFile() { delete[] buf_; }
 
-bool DiskFile::LoadFile(string path, File** out) {
-  assert(out != nullptr);
+bool DiskFile::LoadFile(string path, File** file_out, ErrorList* error_out) {
+  assert(file_out != nullptr);
+  assert(error_out != nullptr);
+
+  RESET_ERRNO;
   int fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
+    error_out->Add(new internal::DiskFileError(errno, path));
     return false;
   }
+
+  RESET_ERRNO;
   struct stat filestat;
   if (fstat(fd, &filestat) == -1) {
+    error_out->Add(new internal::DiskFileError(errno, path));
     close(fd);
     return false;
   }
 
+  RESET_ERRNO;
   void* addr = mmap(nullptr, filestat.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
   if (addr == MAP_FAILED) {
+    error_out->Add(new internal::DiskFileError(errno, path));
     close(fd);
     return false;
   }
   close(fd);
-  *out = new DiskFile(path, (u8*)addr, filestat.st_size);
+
+  *file_out = new DiskFile(path, (u8*)addr, filestat.st_size);
   return true;
 }
 

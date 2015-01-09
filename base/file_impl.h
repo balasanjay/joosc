@@ -1,6 +1,7 @@
 #ifndef BASE_FILE_IMPL_H
 #define BASE_FILE_IMPL_H
 
+#include "base/errorlist.h"
 #include "base/file.h"
 #include "third_party/gtest/gtest.h"
 
@@ -20,7 +21,7 @@ class StringFile final : public File {
 class DiskFile final : public File {
  public:
   ~DiskFile() override;
-  static bool LoadFile(string path, File** out);
+  static bool LoadFile(string path, File** file_out, ErrorList* error_out);
 
  protected:
   FRIEND_TEST(DiskFileTest, Simple);
