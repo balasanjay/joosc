@@ -8,7 +8,7 @@ namespace internal {
 
 const string kTokenTypeToString[NUM_TOKEN_TYPES] = {
     "LINE_COMMENT", "BLOCK_COMMENT", "WHITESPACE", "IF",
-    "WHILE",        "INTEGER",       "IDENTIFIER"};
+    "WHILE",        "INTEGER",       "IDENTIFIER", "STRING"};
 
 const int kNumSymbolLiterals = 26;
 const pair<string, TokenType> kSymbolLiterals[kNumSymbolLiterals] = {

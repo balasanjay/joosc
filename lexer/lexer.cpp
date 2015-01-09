@@ -103,12 +103,20 @@ bool IsAlpha(u8 c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'); }
 
 bool IsAlphaNumeric(u8 c) { return IsAlpha(c) || IsNumeric(c); }
 
+// This is half-baked, don't use it.
+bool IsStringEscapable(u8 c) {
+  return c == 'b' | c == 't' | c == 'n' |
+         c == 'f' | c == 'r' | c == '\'' |
+         c == '"' | c == '\\' | IsNumeric(c);
+}
+
 void Start(LexState* state);
 void Integer(LexState* state);
 void Whitespace(LexState* state);
 void BlockComment(LexState* state);
 void LineComment(LexState* state);
 void Identifier(LexState* state);
+void String(LexState* state);
 
 void Start(LexState* state) {
   // Should have no characters in current range when in start state.
@@ -125,6 +133,9 @@ void Start(LexState* state) {
     return;
   } else if (state->HasPrefix("/*")) {
     state->SetNextState(&BlockComment);
+    return;
+  } else if (state->Peek() == '"') {
+    state->SetNextState(&String);
     return;
   } else if (IsWhitespace(state->Peek())) {
     state->SetNextState(&Whitespace);
@@ -148,8 +159,7 @@ void Start(LexState* state) {
     }
   }
 
-  // TODO: do the rest and emit unknown prefix error.
-  state->SetNextState(nullptr);
+  throw "Found unknown prefix.";
 }
 
 void Integer(LexState* state) {
@@ -227,6 +237,34 @@ void Identifier(LexState* state) {
   }
 
   state->EmitToken(IDENTIFIER);
+  state->SetNextState(&Start);
+}
+
+void String(LexState* state) {
+  state->Advance(); // Advance past the quotation mark.
+
+  bool escapeNext = false;
+
+  while (true) {
+    if (state->IsAtEnd()) {
+      throw "Unclosed string at end of file.";
+    }
+
+    u8 next = state->Peek();
+    state->Advance();
+
+    if (next == '\n') {
+      throw "Unclosed string at line end.";
+    } else if (escapeNext) {
+      escapeNext = false;
+    } else if (next == '"') {
+      break;
+    } else if (next == '\\') {
+      escapeNext = true;
+    }
+  }
+
+  state->EmitToken(STRING);
   state->SetNextState(&Start);
 }
 
