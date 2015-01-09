@@ -23,21 +23,21 @@ TEST_F(LexerTest, EmptyFile) {
   EXPECT_EQ(0u, tokens[0].size());
 }
 
-TEST_F(LexerTest, Operators) {
+TEST_F(LexerTest, Symbols) {
   FileSet* fs = nullptr;
   ASSERT_TRUE(FileSet::Builder()
-    .AddStringFile("foo.joos", "<<=>=>===!=!&&&|||+-*/%")
+    .AddStringFile("foo.joos", "<<=>>====!=!&&&|||+-*/%(){}[];,.")
     .Build(&fs));
   unique_ptr<FileSet> deleter(fs);
 
   LexJoosFiles(fs, &tokens, &errors);
 
-  EXPECT_EQ(17u, tokens[0].size());
+  EXPECT_EQ(26u, tokens[0].size());
 
   EXPECT_EQ(LT, tokens[0][0].type);
   EXPECT_EQ(LE, tokens[0][1].type);
-  EXPECT_EQ(GE, tokens[0][2].type);
-  EXPECT_EQ(GT, tokens[0][3].type);
+  EXPECT_EQ(GT, tokens[0][2].type);
+  EXPECT_EQ(GE, tokens[0][3].type);
   EXPECT_EQ(EQ, tokens[0][4].type);
   EXPECT_EQ(ASSG, tokens[0][5].type);
   EXPECT_EQ(NEQ, tokens[0][6].type);
@@ -51,6 +51,15 @@ TEST_F(LexerTest, Operators) {
   EXPECT_EQ(MUL, tokens[0][14].type);
   EXPECT_EQ(DIV, tokens[0][15].type);
   EXPECT_EQ(MOD, tokens[0][16].type);
+  EXPECT_EQ(LPAREN, tokens[0][17].type);
+  EXPECT_EQ(RPAREN, tokens[0][18].type);
+  EXPECT_EQ(LBRACE, tokens[0][19].type);
+  EXPECT_EQ(RBRACE, tokens[0][20].type);
+  EXPECT_EQ(LBRACK, tokens[0][21].type);
+  EXPECT_EQ(RBRACK, tokens[0][22].type);
+  EXPECT_EQ(SEMI, tokens[0][23].type);
+  EXPECT_EQ(COMMA, tokens[0][24].type);
+  EXPECT_EQ(DOT, tokens[0][25].type);
 }
 
 TEST_F(LexerTest, Whitespace) {
