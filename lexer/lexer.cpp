@@ -5,7 +5,7 @@ using base::File;
 namespace lexer {
 
 string tokenTypeToString[NUM_TOKEN_TYPES] = {
-    "LINE_COMMENT", "BLOCK_COMMENT", "WHITESPACE", "IF", "WHILE", "INTEGER"};
+    "LINE_COMMENT", "BLOCK_COMMENT", "WHITESPACE", "IF", "WHILE", "INTEGER", "IDENTIFIER"};
 
 string TokenTypeToString(TokenType t) {
   if (t >= NUM_TOKEN_TYPES || t < 0) {
@@ -103,11 +103,20 @@ bool IsNumeral(u8 c) {
   return c >= '0' && c <= '9';
 }
 
+bool IsLetter(u8 c) {
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
+bool IsAlphaNumeric(u8 c) {
+  return IsLetter(c) || IsNumeral(c);
+}
+
 void Start(LexState* state);
 void Integer(LexState* state);
 void Whitespace(LexState* state);
 void BlockComment(LexState* state);
 void LineComment(LexState* state);
+void Identifier(LexState* state);
 
 void Start(LexState* state) {
   if (state->IsAtEnd()) {
@@ -129,6 +138,9 @@ void Start(LexState* state) {
     return;
   } else if (IsNumeral(state->Peek())) {
     state->SetNextState(&Integer);
+    return;
+  } else if (IsLetter(state->Peek())) {
+    state->SetNextState(&Identifier);
     return;
   }
 
@@ -198,6 +210,19 @@ void BlockComment(LexState* state) {
   }
 
   state->EmitToken(BLOCK_COMMENT);
+  state->SetNextState(&Start);
+}
+
+void Identifier(LexState* state) {
+  if (state->IsAtEnd() || !IsLetter(state->Peek())) {
+    state->SetNextState(&Start);
+    return;
+  }
+  while (!state->IsAtEnd() && IsAlphaNumeric(state->Peek())) {
+    state->Advance();
+  }
+
+  state->EmitToken(IDENTIFIER);
   state->SetNextState(&Start);
 }
 

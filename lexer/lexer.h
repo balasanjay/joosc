@@ -42,6 +42,7 @@ enum TokenType {
   IF,
   WHILE,
   INTEGER,
+  IDENTIFIER,
   NUM_TOKEN_TYPES,  // Not a valid token type.
 };
 
