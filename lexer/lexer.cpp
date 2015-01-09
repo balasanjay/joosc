@@ -103,12 +103,12 @@ bool IsNumeric(u8 c) {
   return '0' <= c && c <= '9';
 }
 
-bool IsLetter(u8 c) {
+bool IsAlpha(u8 c) {
   return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
 }
 
 bool IsAlphaNumeric(u8 c) {
-  return IsLetter(c) || IsNumeric(c);
+  return IsAlpha(c) || IsNumeric(c);
 }
 
 void Start(LexState* state);
@@ -139,7 +139,7 @@ void Start(LexState* state) {
   } else if (IsNumeric(state->Peek())) {
     state->SetNextState(&Integer);
     return;
-  } else if (IsLetter(state->Peek())) {
+  } else if (IsAlpha(state->Peek())) {
     state->SetNextState(&Identifier);
     return;
   }
@@ -214,9 +214,8 @@ void BlockComment(LexState* state) {
 }
 
 void Identifier(LexState* state) {
-  if (state->IsAtEnd() || !IsLetter(state->Peek())) {
-    state->SetNextState(&Start);
-    return;
+  if (state->IsAtEnd() || !IsAlpha(state->Peek())) {
+    throw "Tried to lex identifier that starts with non-alpha character";
   }
   while (!state->IsAtEnd() && IsAlphaNumeric(state->Peek())) {
     state->Advance();
