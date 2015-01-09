@@ -5,7 +5,7 @@ using base::File;
 namespace lexer {
 
 string tokenTypeToString[NUM_TOKEN_TYPES] = {
-    "LINE_COMMENT", "BLOCK_COMMENT", "WHITESPACE", "IF", "WHILE"};
+    "LINE_COMMENT", "BLOCK_COMMENT", "WHITESPACE", "IF", "WHILE", "INTEGER", "IDENTIFIER"};
 
 string TokenTypeToString(TokenType t) {
   if (t >= NUM_TOKEN_TYPES || t < 0) {
@@ -99,16 +99,31 @@ bool IsWhitespace(u8 c) {
   return c == ' ' || c == '\n' || c == '\r' || c == '\t';
 }
 
+bool IsNumeric(u8 c) {
+  return '0' <= c && c <= '9';
+}
+
+bool IsAlpha(u8 c) {
+  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
+}
+
+bool IsAlphaNumeric(u8 c) {
+  return IsAlpha(c) || IsNumeric(c);
+}
+
 void Start(LexState* state);
+void Integer(LexState* state);
 void Whitespace(LexState* state);
 void BlockComment(LexState* state);
 void LineComment(LexState* state);
+void Identifier(LexState* state);
 
 void Start(LexState* state) {
+  // Should have no characters in current range when in start state.
+  if (state->begin != state->end) {
+    throw "Unclosed token at eof";
+  }
   if (state->IsAtEnd()) {
-    if (state->begin != state->end) {
-      throw "unclosed token at eof";
-    }
     state->SetNextState(nullptr);
     return;
   }
@@ -122,10 +137,29 @@ void Start(LexState* state) {
   } else if (IsWhitespace(state->Peek())) {
     state->SetNextState(&Whitespace);
     return;
+  } else if (IsNumeric(state->Peek())) {
+    state->SetNextState(&Integer);
+    return;
+  } else if (IsAlpha(state->Peek())) {
+    state->SetNextState(&Identifier);
+    return;
   }
 
   // TODO: do the rest and emit unknown prefix error.
   state->SetNextState(nullptr);
+}
+
+void Integer(LexState* state) {
+  while (!state->IsAtEnd() && IsNumeric(state->Peek())) {
+    // Reject multi-digit number that starts with 0.
+    if (state->begin + 1 == state->end && state->file->At(state->begin) == '0') {
+      throw "Multi-digit integer starting with 0";
+    }
+    state->Advance();
+  }
+
+  state->EmitToken(INTEGER);
+  state->SetNextState(&Start);
 }
 
 void Whitespace(LexState* state) {
@@ -177,6 +211,18 @@ void BlockComment(LexState* state) {
   }
 
   state->EmitToken(BLOCK_COMMENT);
+  state->SetNextState(&Start);
+}
+
+void Identifier(LexState* state) {
+  if (state->IsAtEnd() || !IsAlpha(state->Peek())) {
+    throw "Tried to lex identifier that starts with non-alpha character";
+  }
+  while (!state->IsAtEnd() && IsAlphaNumeric(state->Peek())) {
+    state->Advance();
+  }
+
+  state->EmitToken(IDENTIFIER);
   state->SetNextState(&Start);
 }
 

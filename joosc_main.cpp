@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
 
   LexJoosFiles(fs, &tokens, &errors);
 
-  if (errors.size() > 0) {
+  if (!errors.empty()) {
     cerr << "error" << endl;
     return ERROR;
   }
