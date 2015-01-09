@@ -51,8 +51,8 @@ TEST_F(FileSetTest, NonExistentDiskEntry) {
   EXPECT_EQ(nullptr, fs);
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ(
-      "DiskFileError{errval_:2,path_:notafolder/notafile.txt,}",
-      testing::PrintToString(*errors.Get(0)));
+      "DiskFileError{errval_:2,path_:notafolder/notafile.txt,}\n",
+      testing::PrintToString(errors));
 }
 
 TEST_F(FileSetTest, MultiEntry) {

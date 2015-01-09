@@ -25,10 +25,6 @@ class ErrorList {
       return errors_.size();
     }
 
-    void PrintTo(std::ostream* out) const {
-      PrintTo(out, OutputOptions::kSimpleOutput);
-    }
-
     void PrintTo(std::ostream* out, const OutputOptions& opt) const {
       for (auto error : errors_) {
         error->PrintTo(out, opt);
@@ -37,12 +33,15 @@ class ErrorList {
     }
 
     bool IsFatal() const {
+      // TODO: handle non-fatal errors.
       return !errors_.empty();
     }
 
   private:
     vector<Error*> errors_;
 };
+
+std::ostream& operator<<(std::ostream& out, const ErrorList& e);
 
 } // namespace base
 
