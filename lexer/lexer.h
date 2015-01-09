@@ -9,6 +9,13 @@ namespace lexer {
 struct Pos {
   Pos(int fileid, int offset) : fileid(fileid), offset(offset) {}
 
+  bool operator==(const Pos& other) const {
+    return fileid == other.fileid && offset == other.offset;
+  }
+  bool operator!=(const Pos& other) const {
+    return !(*this == other);
+  }
+
   int fileid;
   int offset;
 };
@@ -16,6 +23,13 @@ struct Pos {
 struct PosRange {
   PosRange(int fileid, int begin, int end)
       : begin(fileid, begin), end(fileid, end) {}
+
+  bool operator==(const PosRange& other) const {
+    return begin == other.begin && end == other.end;
+  }
+  bool operator!=(const PosRange& other) const {
+    return !(*this == other);
+  }
 
   Pos begin;
   Pos end;
