@@ -97,11 +97,11 @@ bool IsWhitespace(u8 c) {
   return c == ' ' || c == '\n' || c == '\r' || c == '\t';
 }
 
-bool IsNumeral(u8 c) { return c >= '0' && c <= '9'; }
+bool IsNumeric(u8 c) { return '0' <= c && c <= '9'; }
 
-bool IsLetter(u8 c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); }
+bool IsAlpha(u8 c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'); }
 
-bool IsAlphaNumeric(u8 c) { return IsLetter(c) || IsNumeral(c); }
+bool IsAlphaNumeric(u8 c) { return IsAlpha(c) || IsNumeric(c); }
 
 void Start(LexState* state);
 void Integer(LexState* state);
@@ -111,10 +111,11 @@ void LineComment(LexState* state);
 void Identifier(LexState* state);
 
 void Start(LexState* state) {
+  // Should have no characters in current range when in start state.
+  if (state->begin != state->end) {
+    throw "Partial lexeme when in start state.";
+  }
   if (state->IsAtEnd()) {
-    if (state->begin != state->end) {
-      throw "unclosed token at eof";
-    }
     state->SetNextState(nullptr);
     return;
   }
@@ -128,10 +129,10 @@ void Start(LexState* state) {
   } else if (IsWhitespace(state->Peek())) {
     state->SetNextState(&Whitespace);
     return;
-  } else if (IsNumeral(state->Peek())) {
+  } else if (IsNumeric(state->Peek())) {
     state->SetNextState(&Integer);
     return;
-  } else if (IsLetter(state->Peek())) {
+  } else if (IsAlpha(state->Peek())) {
     state->SetNextState(&Identifier);
     return;
   }
@@ -152,7 +153,7 @@ void Start(LexState* state) {
 }
 
 void Integer(LexState* state) {
-  while (!state->IsAtEnd() && IsNumeral(state->Peek())) {
+  while (!state->IsAtEnd() && IsNumeric(state->Peek())) {
     // Reject multi-digit number that starts with 0.
     if (state->begin + 1 == state->end &&
         state->file->At(state->begin) == '0') {
@@ -218,9 +219,8 @@ void BlockComment(LexState* state) {
 }
 
 void Identifier(LexState* state) {
-  if (state->IsAtEnd() || !IsLetter(state->Peek())) {
-    state->SetNextState(&Start);
-    return;
+  if (state->IsAtEnd() || !IsAlpha(state->Peek())) {
+    throw "Tried to lex identifier that starts with non-alpha character";
   }
   while (!state->IsAtEnd() && IsAlphaNumeric(state->Peek())) {
     state->Advance();
