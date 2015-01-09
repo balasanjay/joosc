@@ -1,4 +1,5 @@
 #include "lexer/lexer.h"
+#include "lexer/lexer_internal.h"
 #include "third_party/gtest/gtest.h"
 
 using base::FileSet;
@@ -30,6 +31,13 @@ TEST_F(LexerTest, EmptyFile) {
 
   LexJoosFiles(fs, &tokens, &errors);
   EXPECT_EQ(0u, tokens[0].size());
+}
+
+TEST_F(LexerTest, SymbolLiterals) {
+  for (int i = 1; i < lexer::internal::kNumSymbolLiterals; ++i) {
+    EXPECT_LE(lexer::internal::kSymbolLiterals[i].first.size(),
+        lexer::internal::kSymbolLiterals[i-1].first.size());
+  }
 }
 
 TEST_F(LexerTest, Symbols) {
@@ -121,8 +129,8 @@ TEST_F(LexerTest, SimpleInteger) {
 
   LexJoosFiles(fs, &tokens, &errors);
   ASSERT_TRUE(errors.empty());
-  ASSERT_EQ(1, tokens.size());
-  ASSERT_EQ(1, tokens[0].size());
+  ASSERT_EQ(1u, tokens.size());
+  ASSERT_EQ(1u, tokens[0].size());
   EXPECT_EQ(Token(INTEGER, PosRange(0, 0, 3)), tokens[0][0]);
 }
 
@@ -145,8 +153,8 @@ TEST_F(LexerTest, OnlyZero) {
 
   LexJoosFiles(fs, &tokens, &errors);
   ASSERT_TRUE(errors.empty());
-  ASSERT_EQ(1, tokens.size());
-  ASSERT_EQ(1, tokens[0].size());
+  ASSERT_EQ(1u, tokens.size());
+  ASSERT_EQ(1u, tokens[0].size());
   EXPECT_EQ(Token(INTEGER, PosRange(0, 0, 1)), tokens[0][0]);
 }
 
@@ -158,8 +166,8 @@ TEST_F(LexerTest, SimpleIdentifier) {
 
   LexJoosFiles(fs, &tokens, &errors);
   ASSERT_TRUE(errors.empty());
-  ASSERT_EQ(1, tokens.size());
-  ASSERT_EQ(1, tokens[0].size());
+  ASSERT_EQ(1u, tokens.size());
+  ASSERT_EQ(1u, tokens[0].size());
   EXPECT_EQ(Token(IDENTIFIER, PosRange(0, 0, 3)), tokens[0][0]);
 }
 
@@ -171,8 +179,8 @@ TEST_F(LexerTest, NumberBeforeIdentifier) {
 
   LexJoosFiles(fs, &tokens, &errors);
   ASSERT_TRUE(errors.empty());
-  ASSERT_EQ(1, tokens.size());
-  ASSERT_EQ(2, tokens[0].size());
+  ASSERT_EQ(1u, tokens.size());
+  ASSERT_EQ(2u, tokens[0].size());
 
   EXPECT_EQ(Token(INTEGER, PosRange(0, 0, 1)), tokens[0][0]);
   EXPECT_EQ(Token(IDENTIFIER, PosRange(0, 1, 2)), tokens[0][1]);
@@ -186,8 +194,8 @@ TEST_F(LexerTest, CommentBetweenIdentifiers) {
 
   LexJoosFiles(fs, &tokens, &errors);
   ASSERT_TRUE(errors.empty());
-  ASSERT_EQ(1, tokens.size());
-  ASSERT_EQ(3, tokens[0].size());
+  ASSERT_EQ(1u, tokens.size());
+  ASSERT_EQ(3u, tokens[0].size());
 
   EXPECT_EQ(Token(IDENTIFIER, PosRange(0, 0, 3)), tokens[0][0]);
   EXPECT_EQ(Token(BLOCK_COMMENT, PosRange(0, 3, 13)), tokens[0][1]);

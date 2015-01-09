@@ -1,48 +1,16 @@
 #include "lexer/lexer.h"
+#include "lexer/lexer_internal.h"
 
 using base::File;
 
 namespace lexer {
-
-string tokenTypeToString[NUM_TOKEN_TYPES] = {
-    "LINE_COMMENT", "BLOCK_COMMENT", "WHITESPACE", "IF", "WHILE", "INTEGER", "IDENTIFIER"};
-
-const int NUM_SYMBOL_LITERALS = 26;
-pair<string, TokenType> symbolLiterals[NUM_SYMBOL_LITERALS] = {
-  make_pair("<=", LE),
-  make_pair(">=", GE),
-  make_pair("==", EQ),
-  make_pair("!=", NEQ),
-  make_pair("&&", AND),
-  make_pair("||", OR),
-  make_pair("+", ADD),
-  make_pair("-", SUB),
-  make_pair("*", MUL),
-  make_pair("/", DIV),
-  make_pair("%", MOD),
-  make_pair("<", LT),
-  make_pair(">", GT),
-  make_pair("&", BAND),
-  make_pair("|", BOR),
-  make_pair("!", NOT),
-  make_pair("=", ASSG),
-  make_pair("(", LPAREN),
-  make_pair(")", RPAREN),
-  make_pair("{", LBRACE),
-  make_pair("}", RBRACE),
-  make_pair("[", LBRACK),
-  make_pair("]", RBRACK),
-  make_pair(";", SEMI),
-  make_pair(",", COMMA),
-  make_pair(".", DOT)
-};
 
 string TokenTypeToString(TokenType t) {
   if (t >= NUM_TOKEN_TYPES || t < 0) {
     throw "invalid token type";
   }
 
-  return tokenTypeToString[t];
+  return internal::kTokenTypeToString[t];
 }
 
 namespace internal {
@@ -175,12 +143,12 @@ void Start(LexState* state) {
   }
 
   // This should be run after checking for comment tokens.
-  for (int i = 0; i < NUM_SYMBOL_LITERALS; ++i) {
-    const string& symbolString = symbolLiterals[i].first;
+  for (int i = 0; i < kNumSymbolLiterals; ++i) {
+    const string& symbolString = kSymbolLiterals[i].first;
 
     if (state->HasPrefix(symbolString)) {
       state->Advance(symbolString.size());
-      state->EmitToken(symbolLiterals[i].second);
+      state->EmitToken(kSymbolLiterals[i].second);
       return;
     }
   }
