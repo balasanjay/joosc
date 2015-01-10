@@ -98,6 +98,7 @@ bool IsWhitespace(u8 c) {
 }
 
 bool IsNumeric(u8 c) { return '0' <= c && c <= '9'; }
+bool IsOctal(u8 c) { return '0' <= c && c <= '7'; }
 
 bool IsAlpha(u8 c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'); }
 
@@ -242,14 +243,19 @@ void Identifier(LexState* state) {
   state->SetNextState(&Start);
 }
 
-void AdvanceEscapedChar(LexState* state) {
+/**
+ * Advances lexer past escaped character.
+ * Returns true if well-formed escaped character found at
+ *   cursor, false otherwise.
+ */
+bool AdvanceEscapedChar(LexState* state) {
   state->Advance();  // Advance past backslash.
   u8 first = state->Peek();
   if (!IsStringEscapable(first)) {
-    throw "Invalid string escape.";
+    return false;
   } else if (!IsNumeric(first)) {
     state->Advance();
-    return;
+    return true;
   }
 
   const int maxOctalEscape = 377;
@@ -259,7 +265,7 @@ void AdvanceEscapedChar(LexState* state) {
   // Include up to maxOctalDigits digits.
   for (int i = 0; i < maxOctalDigits; ++i) {
     u8 next = state->Peek();
-    if (!IsNumeric(next)) {
+    if (!IsOctal(next)) {
       break;
     }
     currentOctalEscape = currentOctalEscape * 10 + (next - '0');
@@ -270,6 +276,7 @@ void AdvanceEscapedChar(LexState* state) {
     }
     state->Advance();
   }
+  return true;
 }
 
 void Char(LexState* state) {
@@ -277,7 +284,9 @@ void Char(LexState* state) {
 
   // Advance past normal or escape char.
   if (state->Peek() == '\\') {
-    AdvanceEscapedChar(state);
+    if (!AdvanceEscapedChar(state)) {
+      throw "Invalid escaped character in character literal.";
+    }
   } else {
     state->Advance();
   }
@@ -306,7 +315,9 @@ void String(LexState* state) {
     } else if (next == '"') {
       break;
     } else if (next == '\\') {
-      AdvanceEscapedChar(state);
+      if (!AdvanceEscapedChar(state)) {
+        throw "Invalid escaped character in string literal.";
+      }
     }
   }
 

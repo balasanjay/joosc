@@ -234,7 +234,7 @@ TEST_F(LexerTest, BadEscapedChar) {
   ASSERT_ANY_THROW({ LexString("'\\0a'"); });
   ASSERT_ANY_THROW({ LexString("'\\456'"); });
   ASSERT_ANY_THROW({ LexString("'\\378'"); });
-  ASSERT_ANY_THROW({ LexString("'\\399'"); });
+  ASSERT_ANY_THROW({ LexString("'\\391'"); });
 }
 
 }  // namespace base
