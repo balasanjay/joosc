@@ -106,7 +106,7 @@ bool IsAlphaNumeric(u8 c) { return IsAlpha(c) || IsNumeric(c); }
 
 bool IsStringEscapable(u8 c) {
   return c == 'b' | c == 't' | c == 'n' | c == 'f' | c == 'r' | c == '\'' |
-         c == '"' | c == '\\' | IsNumeric(c);
+         c == '"' | c == '\\' | IsOctal(c);
 }
 
 void Start(LexState* state);
@@ -253,7 +253,7 @@ bool AdvanceEscapedChar(LexState* state) {
   u8 first = state->Peek();
   if (!IsStringEscapable(first)) {
     return false;
-  } else if (!IsNumeric(first)) {
+  } else if (!IsOctal(first)) {
     state->Advance();
     return true;
   }
