@@ -243,11 +243,9 @@ void Identifier(LexState* state) {
   state->SetNextState(&Start);
 }
 
-/**
- * Advances lexer past escaped character.
- * Returns true if well-formed escaped character found at
- *   cursor, false otherwise.
- */
+// Advances lexer past escaped character.
+// Returns true if well-formed escaped character found at cursor, false
+// otherwise.
 bool AdvanceEscapedChar(LexState* state) {
   state->Advance();  // Advance past backslash.
   u8 first = state->Peek();
