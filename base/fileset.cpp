@@ -7,7 +7,7 @@ using std::sort;
 
 namespace base {
 
-bool FileSet::Builder::Build(FileSet** fs) const {
+bool FileSet::Builder::Build(FileSet** fs, ErrorList* errors) const {
   // TODO: for assignment 2+, we should report *which* file fails to load,
   // rather than just returning false.
 
@@ -26,19 +26,15 @@ bool FileSet::Builder::Build(FileSet** fs) const {
 
   // Handle the DiskFiles, being careful to not leak memory when failing to read
   // a file.
-  bool success = true;
   for (auto path : diskspecs) {
     File* file = nullptr;
-    success = DiskFile::LoadFile(path, &file);
-    if (!success) {
-      break;
+    if (DiskFile::LoadFile(path, &file, errors)) {
+      files.push_back(file);
     }
-
-    files.push_back(file);
   }
 
   // Cleanup, if we had a failure.
-  if (!success) {
+  if (errors->IsFatal()) {
     for (auto file : files) {
       delete file;
     }

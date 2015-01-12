@@ -1,7 +1,11 @@
 #include "lexer/lexer.h"
+#include "lexer/lexer_error.h"
 #include "lexer/lexer_internal.h"
 
+using base::Error;
+using base::ErrorList;
 using base::File;
+using base::FileSet;
 
 namespace lexer {
 
@@ -16,8 +20,8 @@ string TokenTypeToString(TokenType t) {
 namespace internal {
 
 struct LexState {
-  LexState(File* file, int fileid, vector<Token>* tokens, vector<Error>* errors)
-      : file(file), fileid(fileid), tokens(tokens), errors(errors) {}
+  LexState(FileSet* fs, File* file, int fileid, vector<Token>* tokens, base::ErrorList* errors)
+      : fs(fs), file(file), fileid(fileid), tokens(tokens), errors(errors) {}
 
   typedef void (*StateFn)(LexState*);
 
@@ -62,7 +66,10 @@ struct LexState {
     begin = end;
   }
 
-  void EmitError(Error err) { errors->push_back(err); }
+  void EmitFatal(Error* err) {
+    errors->Add(err);
+    SetNextState(nullptr);
+  }
 
   void SetNextState(StateFn fn) { stateFn = fn; }
 
@@ -80,6 +87,7 @@ struct LexState {
     }
   }
 
+  FileSet* fs;
   File* file;
   int fileid;
 
@@ -88,7 +96,7 @@ struct LexState {
   int end = 0;
 
   vector<Token>* tokens;
-  vector<Error>* errors;
+  base::ErrorList* errors;
 
   StateFn stateFn;
 };
@@ -170,7 +178,9 @@ void Integer(LexState* state) {
     // Reject multi-digit number that starts with 0.
     if (state->begin + 1 == state->end &&
         state->file->At(state->begin) == '0') {
-      throw "Multi-digit integer starting with 0";
+
+      state->EmitFatal(new LeadingZeroInIntLitError(state->fs, Pos(state->fileid, state->begin)));
+      return;
     }
     state->Advance();
   }
@@ -212,9 +222,7 @@ void BlockComment(LexState* state) {
 
   while (true) {
     if (state->IsAtEnd()) {
-      // TODO: emit unclosed block comment error.
-      throw "unimplemented";
-      state->SetNextState(nullptr);
+      state->EmitFatal(new UnclosedBlockCommentError(state->fs, PosRange(state->fileid, state->begin, state->begin + 2)));
       return;
     }
 
@@ -302,20 +310,24 @@ void String(LexState* state) {
 
   while (true) {
     if (state->IsAtEnd()) {
-      throw "Unclosed string at end of file.";
+      state->EmitFatal(new UnclosedStringLitError(state->fs, Pos(state->fileid, state->begin)));
+      return;
     }
 
     u8 next = state->Peek();
-    state->Advance();
-
     if (next == '\n') {
-      throw "Unclosed string at line end.";
+      state->EmitFatal(new UnclosedStringLitError(state->fs, Pos(state->fileid, state->begin)));
+      return;
     } else if (next == '"') {
+      state->Advance();
       break;
     } else if (next == '\\') {
       if (!AdvanceEscapedChar(state)) {
         throw "Invalid escaped character in string literal.";
       }
+    } else {
+      // For any other character, just make it part of the string.
+      state->Advance();
     }
   }
 
@@ -325,30 +337,43 @@ void String(LexState* state) {
 
 }  // namespace internal
 
-void LexJoosFile(base::File* file, int fileid, vector<Token>* tokens_out,
-                 vector<Error>* errors_out) {
+void LexJoosFile(base::FileSet* fs, base::File* file, int fileid, vector<Token>* tokens_out,
+                 base::ErrorList* errors_out) {
   // Remove anything with non-ANSI characters.
   for (int i = 0; i < file->Size(); i++) {
-    if (file->At(i) > 127) {
-      // TODO: more specific error.
-      errors_out->push_back(Error(NON_ANSI_CHAR, PosRange(fileid, i, i + 1)));
+    u8 c = file->At(i);
+    if (c > 127) {
+      errors_out->Add(new NonAnsiCharError(fs, Pos(fileid, i)));
       return;
     }
   }
 
-  internal::LexState state(file, fileid, tokens_out, errors_out);
+  internal::LexState state(fs, file, fileid, tokens_out, errors_out);
   state.SetNextState(&internal::Start);
   state.Run();
 }
 
 void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
-                  vector<Error>* errors_out) {
+                  base::ErrorList* errors_out) {
   tokens_out->clear();
   tokens_out->resize(fs->Size());
 
   for (int i = 0; i < fs->Size(); i++) {
-    LexJoosFile(fs->Get(i), i, &(*tokens_out)[i], errors_out);
+    LexJoosFile(fs, fs->Get(i), i, &(*tokens_out)[i], errors_out);
   }
+}
+
+std::ostream& operator<<(std::ostream& out, const Pos& p) {
+  return out << p.fileid << ":" << p.offset;
+}
+
+std::ostream& operator<<(std::ostream& out, const PosRange& p) {
+  // Handle single-element ranges specially.
+  if (p.begin.offset + 1 == p.end.offset) {
+    return out << p.begin;
+  }
+
+  return out << p.begin << "-" << p.end;
 }
 
 }  // namespace lexer

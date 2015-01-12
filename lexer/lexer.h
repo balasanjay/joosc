@@ -1,6 +1,7 @@
 #ifndef LEXER_LEXER_H
 #define LEXER_LEXER_H
 
+#include "base/errorlist.h"
 #include "base/file.h"
 #include "base/fileset.h"
 
@@ -18,9 +19,14 @@ struct Pos {
   int offset;
 };
 
+std::ostream& operator<<(std::ostream& out, const Pos& p);
+
 struct PosRange {
   PosRange(int fileid, int begin, int end)
       : begin(fileid, begin), end(fileid, end) {}
+
+  PosRange(const Pos& pos) : begin(pos), end(pos.fileid, pos.offset + 1) {}
+
 
   bool operator==(const PosRange& other) const {
     return begin == other.begin && end == other.end;
@@ -30,6 +36,8 @@ struct PosRange {
   Pos begin;
   Pos end;
 };
+
+std::ostream& operator<<(std::ostream& out, const PosRange& p);
 
 enum TokenType {
   LINE_COMMENT,
@@ -84,22 +92,8 @@ struct Token {
   PosRange pos;
 };
 
-enum ErrorType {
-  NON_ANSI_CHAR,
-  NUM_ERROR_TYPES,  // Not a valid error type.
-};
-
-struct Error {
-  Error(ErrorType type, PosRange pos) : type(type), pos(pos) {}
-
-  ErrorType type;
-  PosRange pos;
-};
-
-class UnterminatedStringLiteralError : public Error {};
-
 void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
-                  vector<Error>* errors_out);
+                  base::ErrorList* errors_out);
 
 }  // namespace lexer
 
