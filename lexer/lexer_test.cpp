@@ -18,10 +18,7 @@ class LexerTest : public ::testing::Test {
   }
 
   void LexString(string s) {
-    ASSERT_TRUE(
-        FileSet::Builder()
-        .AddStringFile("foo.joos", s)
-        .Build(&fs));
+    ASSERT_TRUE(FileSet::Builder().AddStringFile("foo.joos", s).Build(&fs));
     LexJoosFiles(fs, &tokens, &errors);
   }
 
@@ -89,7 +86,6 @@ TEST_F(LexerTest, Symbols) {
   EXPECT_EQ(DOT, tokens[0][25].type);
 }
 
-
 TEST_F(LexerTest, Comment) {
   LexString("// foo bar\n/*baz*/");
 
@@ -111,6 +107,10 @@ TEST_F(LexerTest, LineCommentAtEof) {
   EXPECT_EQ(PosRange(0, 0, 10), tokens[0][0].pos);
 }
 
+TEST_F(LexerTest, UnclosedBlockComment) {
+  ASSERT_ANY_THROW({ LexString("hello /* there \n\n end"); });
+}
+
 TEST_F(LexerTest, SimpleInteger) {
   LexString("123");
   ASSERT_TRUE(errors.empty());
@@ -120,9 +120,7 @@ TEST_F(LexerTest, SimpleInteger) {
 }
 
 TEST_F(LexerTest, LeadingZeroInteger) {
-  ASSERT_ANY_THROW({
-    LexString("023");
-  });
+  ASSERT_ANY_THROW({ LexString("023"); });
 }
 
 TEST_F(LexerTest, OnlyZero) {
@@ -172,21 +170,15 @@ TEST_F(LexerTest, OnlyString) {
 }
 
 TEST_F(LexerTest, UnendedString) {
-  ASSERT_ANY_THROW({
-    LexString("\"goober");
-  });
+  ASSERT_ANY_THROW({ LexString("\"goober"); });
 }
 
 TEST_F(LexerTest, UnendedEscapedQuoteString) {
-  ASSERT_ANY_THROW({
-    LexString("\"goober\\\"");
-  });
+  ASSERT_ANY_THROW({ LexString("\"goober\\\""); });
 }
 
 TEST_F(LexerTest, StringOverNewline) {
-  ASSERT_ANY_THROW({
-    LexString("\"foo\nbar\"");
-  });
+  ASSERT_ANY_THROW({ LexString("\"foo\nbar\""); });
 }
 
 TEST_F(LexerTest, StringEscapedQuote) {
@@ -205,6 +197,44 @@ TEST_F(LexerTest, AssignStringTest) {
   ASSERT_EQ(8u, tokens[0].size());
 }
 
-// TODO: unclosed block comment test.
+TEST_F(LexerTest, SimpleChar) {
+  LexString("'a'");
+  ASSERT_TRUE(errors.empty());
+  ASSERT_EQ(1u, tokens.size());
+  ASSERT_EQ(1u, tokens[0].size());
+  EXPECT_EQ(Token(CHAR, PosRange(0, 0, 3)), tokens[0][0]);
+}
+
+TEST_F(LexerTest, MultipleChars) {
+  ASSERT_ANY_THROW({ LexString("'ab'"); });
+}
+
+TEST_F(LexerTest, EscapedChars) {
+  LexString("'\\b''\\t''\\n''\\f''\\r''\\\'''\\\\'");
+  ASSERT_TRUE(errors.empty());
+  ASSERT_EQ(1u, tokens.size());
+  ASSERT_EQ(7u, tokens[0].size());
+  for (auto token : tokens[0]) {
+    EXPECT_EQ(CHAR, token.type);
+  }
+}
+
+TEST_F(LexerTest, EscapedOctalChars) {
+  LexString("'\\0''\\1''\\123''\\001''\\377'");
+  ASSERT_TRUE(errors.empty());
+  ASSERT_EQ(1u, tokens.size());
+  ASSERT_EQ(5u, tokens[0].size());
+  for (auto token : tokens[0]) {
+    EXPECT_EQ(CHAR, token.type);
+  }
+}
+
+TEST_F(LexerTest, BadEscapedChar) {
+  ASSERT_ANY_THROW({ LexString("'\\a'"); });
+  ASSERT_ANY_THROW({ LexString("'\\0a'"); });
+  ASSERT_ANY_THROW({ LexString("'\\456'"); });
+  ASSERT_ANY_THROW({ LexString("'\\378'"); });
+  ASSERT_ANY_THROW({ LexString("'\\391'"); });
+}
 
 }  // namespace base
