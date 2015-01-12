@@ -19,9 +19,14 @@ struct Pos {
   int offset;
 };
 
+std::ostream& operator<<(std::ostream& out, const Pos& p);
+
 struct PosRange {
   PosRange(int fileid, int begin, int end)
       : begin(fileid, begin), end(fileid, end) {}
+
+  PosRange(const Pos& pos) : begin(pos), end(pos.fileid, pos.offset + 1) {}
+
 
   bool operator==(const PosRange& other) const {
     return begin == other.begin && end == other.end;
@@ -31,6 +36,8 @@ struct PosRange {
   Pos begin;
   Pos end;
 };
+
+std::ostream& operator<<(std::ostream& out, const PosRange& p);
 
 enum TokenType {
   LINE_COMMENT,

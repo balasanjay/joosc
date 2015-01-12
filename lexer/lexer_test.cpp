@@ -115,9 +115,10 @@ TEST_F(LexerTest, SimpleInteger) {
 }
 
 TEST_F(LexerTest, LeadingZeroInteger) {
-  ASSERT_ANY_THROW({
-    LexString("023");
-  });
+  LexString("023");
+
+  EXPECT_EQ(1, errors.Size());
+  EXPECT_EQ("LeadingZeroInIntLitError(0:0)", testing::PrintToString(*errors.Get(0)));
 }
 
 TEST_F(LexerTest, OnlyZero) {
@@ -167,21 +168,21 @@ TEST_F(LexerTest, OnlyString) {
 }
 
 TEST_F(LexerTest, UnendedString) {
-  ASSERT_ANY_THROW({
-    LexString("\"goober");
-  });
+  LexString("\"goober");
+  EXPECT_EQ(1, errors.Size());
+  EXPECT_EQ("UnclosedStringLitError(0:0)", testing::PrintToString(*errors.Get(0)));
 }
 
 TEST_F(LexerTest, UnendedEscapedQuoteString) {
-  ASSERT_ANY_THROW({
-    LexString("\"goober\\\"");
-  });
+  LexString("foo\"goober\\\"");
+  EXPECT_EQ(1, errors.Size());
+  EXPECT_EQ("UnclosedStringLitError(0:3)", testing::PrintToString(*errors.Get(0)));
 }
 
 TEST_F(LexerTest, StringOverNewline) {
-  ASSERT_ANY_THROW({
-    LexString("\"foo\nbar\"");
-  });
+  LexString("baz\"foo\nbar\"");
+  EXPECT_EQ(1, errors.Size());
+  EXPECT_EQ("UnclosedStringLitError(0:3)", testing::PrintToString(*errors.Get(0)));
 }
 
 TEST_F(LexerTest, StringEscapedQuote) {

@@ -17,7 +17,7 @@ class ErrorList {
       errors_.push_back(err);
     }
 
-    Error* Get(int i) {
+    const Error* Get(int i) {
       return errors_.at(i);
     }
 
