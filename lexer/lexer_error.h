@@ -1,6 +1,9 @@
 #ifndef LEXER_ERROR_H
 #define LEXER_ERROR_H
 
+#include "base/file.h"
+#include "base/fileset.h"
+#include "lexer/lexer.h"
 #include "base/error.h"
 #include "base/macros.h"
 
@@ -63,11 +66,27 @@ class UnclosedBlockCommentError : public SimplePosRangeError {
 
 class UnclosedStringLitError : public SimplePosRangeError {
   public:
-    UnclosedStringLitError(base::FileSet* fs, Pos pos) : SimplePosRangeError(fs, pos) {}
+    UnclosedStringLitError(base::FileSet* fs, Pos pos) : SimplePosRangeError(fs, PosRange(pos)) {}
 
   protected:
     string SimpleError() const override { return "UnclosedStringLitError"; }
     string Error() const override { return "Unclosed string literal."; }
+};
+
+class InvalidCharacterEscapeError : public SimplePosRangeError {
+public:
+  InvalidCharacterEscapeError(base::FileSet* fs, PosRange posrange) : SimplePosRangeError(fs, posrange) {}
+protected:
+  string SimpleError() const override { return "InvalidCharacterEscapeError"; }
+  string Error() const override { return "Invalid character escape."; }
+};
+
+class InvalidCharacterLitError : public SimplePosRangeError {
+public:
+  InvalidCharacterLitError(base::FileSet* fs, PosRange posrange) : SimplePosRangeError(fs, posrange) {}
+protected:
+  string SimpleError() const override { return "InvalidCharacterLitError"; }
+  string Error() const override { return "Invalid character found in string literal."; }
 };
 
 

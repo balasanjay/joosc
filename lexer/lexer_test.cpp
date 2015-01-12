@@ -175,6 +175,12 @@ TEST_F(LexerTest, UnendedString) {
   EXPECT_EQ("UnclosedStringLitError(0:0)", testing::PrintToString(*errors.Get(0)));
 }
 
+TEST_F(LexerTest, UnendedStringAtEOF) {
+  LexString("\"");
+  EXPECT_EQ(1, errors.Size());
+  EXPECT_EQ("UnclosedStringLitError(0:0)", testing::PrintToString(*errors.Get(0)));
+}
+
 TEST_F(LexerTest, UnendedEscapedQuoteString) {
   LexString("foo\"goober\\\"");
   EXPECT_EQ(1, errors.Size());
@@ -185,6 +191,26 @@ TEST_F(LexerTest, StringOverNewline) {
   LexString("baz\"foo\nbar\"");
   EXPECT_EQ(1, errors.Size());
   EXPECT_EQ("UnclosedStringLitError(0:3)", testing::PrintToString(*errors.Get(0)));
+}
+
+TEST_F(LexerTest, StringWithEscapedOctal) {
+  LexString("\"Hello Mr. \\333. How are you doing this fine \\013?\"");
+  ASSERT_FALSE(errors.IsFatal());
+  ASSERT_EQ(1u, tokens.size());
+  EXPECT_EQ(Token(STRING, PosRange(0, 0, 51)), tokens[0][0]);
+}
+
+TEST_F(LexerTest, StringWithOutOfRangeOctalWorks) {
+  // Lexes a '\40' and then a 0. Works in java.
+  LexString("\"What the heck is a \\400?\"");
+  ASSERT_FALSE(errors.IsFatal());
+  ASSERT_EQ(1u, tokens.size());
+  EXPECT_EQ(Token(STRING, PosRange(0, 0, 26)), tokens[0][0]);
+}
+
+TEST_F(LexerTest, StringWithBadEscape) {
+  LexString("\"Lol: \\91\"");
+  EXPECT_EQ("InvalidCharacterEscapeError(0:6)", testing::PrintToString(*errors.Get(0)));
 }
 
 TEST_F(LexerTest, StringEscapedQuote) {
@@ -212,7 +238,9 @@ TEST_F(LexerTest, SimpleChar) {
 }
 
 TEST_F(LexerTest, MultipleChars) {
-  ASSERT_ANY_THROW({ LexString("'ab'"); });
+  LexString("'ab'");
+  ASSERT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidCharacterLitError(0:0-0:2)", testing::PrintToString(*errors.Get(0)));
 }
 
 TEST_F(LexerTest, EscapedChars) {
@@ -236,11 +264,52 @@ TEST_F(LexerTest, EscapedOctalChars) {
 }
 
 TEST_F(LexerTest, BadEscapedChar) {
-  ASSERT_ANY_THROW({ LexString("'\\a'"); });
-  ASSERT_ANY_THROW({ LexString("'\\0a'"); });
-  ASSERT_ANY_THROW({ LexString("'\\456'"); });
-  ASSERT_ANY_THROW({ LexString("'\\378'"); });
-  ASSERT_ANY_THROW({ LexString("'\\391'"); });
+  LexString("'\\a'");
+  ASSERT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidCharacterEscapeError(0:0-0:2)", testing::PrintToString(*errors.Get(0)));
 }
+
+TEST_F(LexerTest, BadTooHighEscapedChar) {
+  LexString("'\\456'");
+  ASSERT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidCharacterLitError(0:0-0:4)", testing::PrintToString(*errors.Get(0)));
+}
+
+TEST_F(LexerTest, BadBarelyTooHighEscapedChar) {
+  LexString("'\\378'");
+  ASSERT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidCharacterLitError(0:0-0:4)", testing::PrintToString(*errors.Get(0)));
+}
+
+TEST_F(LexerTest, MultipleCharsWithEscape) {
+  LexString("'\\0a'");
+  ASSERT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidCharacterLitError(0:0-0:3)", testing::PrintToString(*errors.Get(0)));
+}
+
+TEST_F(LexerTest, EmptyChar) {
+  LexString("''");
+  ASSERT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidCharacterLitError(0:0)", testing::PrintToString(*errors.Get(0)));
+}
+
+TEST_F(LexerTest, ThreeApostropheChar) {
+  LexString("'''");
+  ASSERT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidCharacterLitError(0:0)", testing::PrintToString(*errors.Get(0)));
+}
+
+TEST_F(LexerTest, UnclosedCharAtEOF) {
+  LexString("'");
+  ASSERT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidCharacterLitError(0:0)", testing::PrintToString(*errors.Get(0)));
+}
+
+TEST_F(LexerTest, UnclosedChar) {
+  LexString("'foobar");
+  ASSERT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidCharacterLitError(0:0-0:2)", testing::PrintToString(*errors.Get(0)));
+}
+
 
 }  // namespace base
