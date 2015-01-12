@@ -315,17 +315,19 @@ void String(LexState* state) {
     }
 
     u8 next = state->Peek();
-    state->Advance();
-
     if (next == '\n') {
       state->EmitFatal(new UnclosedStringLitError(state->fs, Pos(state->fileid, state->begin)));
       return;
     } else if (next == '"') {
+      state->Advance();
       break;
     } else if (next == '\\') {
       if (!AdvanceEscapedChar(state)) {
         throw "Invalid escaped character in string literal.";
       }
+    } else {
+      // For any other character, just make it part of the string.
+      state->Advance();
     }
   }
 

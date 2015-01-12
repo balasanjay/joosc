@@ -17,7 +17,7 @@ class LexerTest : public ::testing::Test {
   }
 
   void LexString(string s) {
-    ASSERT_TRUE(FileSet::Builder().AddStringFile("foo.joos", s).Build(&fs));
+    ASSERT_TRUE(FileSet::Builder().AddStringFile("foo.joos", s).Build(&fs, &errors));
     LexJoosFiles(fs, &tokens, &errors);
   }
 
@@ -103,7 +103,9 @@ TEST_F(LexerTest, LineCommentAtEof) {
 }
 
 TEST_F(LexerTest, UnclosedBlockComment) {
-  ASSERT_ANY_THROW({ LexString("hello /* there \n\n end"); });
+  LexString("hello /* there \n\n end");
+  EXPECT_EQ(1, errors.Size());
+  EXPECT_EQ("UnclosedBlockCommentError(0:6-0:8)", testing::PrintToString(*errors.Get(0)));
 }
 
 TEST_F(LexerTest, SimpleInteger) {
@@ -203,7 +205,7 @@ TEST_F(LexerTest, AssignStringTest) {
 
 TEST_F(LexerTest, SimpleChar) {
   LexString("'a'");
-  ASSERT_TRUE(errors.empty());
+  ASSERT_FALSE(errors.IsFatal());
   ASSERT_EQ(1u, tokens.size());
   ASSERT_EQ(1u, tokens[0].size());
   EXPECT_EQ(Token(CHAR, PosRange(0, 0, 3)), tokens[0][0]);
@@ -215,7 +217,7 @@ TEST_F(LexerTest, MultipleChars) {
 
 TEST_F(LexerTest, EscapedChars) {
   LexString("'\\b''\\t''\\n''\\f''\\r''\\\'''\\\\'");
-  ASSERT_TRUE(errors.empty());
+  ASSERT_FALSE(errors.IsFatal());
   ASSERT_EQ(1u, tokens.size());
   ASSERT_EQ(7u, tokens[0].size());
   for (auto token : tokens[0]) {
@@ -225,7 +227,7 @@ TEST_F(LexerTest, EscapedChars) {
 
 TEST_F(LexerTest, EscapedOctalChars) {
   LexString("'\\0''\\1''\\123''\\001''\\377'");
-  ASSERT_TRUE(errors.empty());
+  ASSERT_FALSE(errors.IsFatal());
   ASSERT_EQ(1u, tokens.size());
   ASSERT_EQ(5u, tokens[0].size());
   for (auto token : tokens[0]) {
