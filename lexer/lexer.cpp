@@ -106,16 +106,15 @@ bool IsWhitespace(u8 c) {
 }
 
 bool IsNumeric(u8 c) { return '0' <= c && c <= '9'; }
+bool IsOctal(u8 c) { return '0' <= c && c <= '7'; }
 
 bool IsAlpha(u8 c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'); }
 
 bool IsAlphaNumeric(u8 c) { return IsAlpha(c) || IsNumeric(c); }
 
-// This is half-baked, don't use it.
 bool IsStringEscapable(u8 c) {
-  return c == 'b' | c == 't' | c == 'n' |
-         c == 'f' | c == 'r' | c == '\'' |
-         c == '"' | c == '\\' | IsNumeric(c);
+  return c == 'b' | c == 't' | c == 'n' | c == 'f' | c == 'r' | c == '\'' |
+         c == '"' | c == '\\' | IsOctal(c);
 }
 
 void Start(LexState* state);
@@ -124,6 +123,7 @@ void Whitespace(LexState* state);
 void BlockComment(LexState* state);
 void LineComment(LexState* state);
 void Identifier(LexState* state);
+void Char(LexState* state);
 void String(LexState* state);
 
 void Start(LexState* state) {
@@ -141,6 +141,9 @@ void Start(LexState* state) {
     return;
   } else if (state->HasPrefix("/*")) {
     state->SetNextState(&BlockComment);
+    return;
+  } else if (state->Peek() == '\'') {
+    state->SetNextState(&Char);
     return;
   } else if (state->Peek() == '"') {
     state->SetNextState(&String);
@@ -248,10 +251,62 @@ void Identifier(LexState* state) {
   state->SetNextState(&Start);
 }
 
-void String(LexState* state) {
-  state->Advance(); // Advance past the quotation mark.
+// Advances lexer past escaped character.
+// Returns true if well-formed escaped character found at cursor, false
+// otherwise.
+bool AdvanceEscapedChar(LexState* state) {
+  state->Advance();  // Advance past backslash.
+  u8 first = state->Peek();
+  if (!IsStringEscapable(first)) {
+    return false;
+  } else if (!IsOctal(first)) {
+    state->Advance();
+    return true;
+  }
 
-  bool escapeNext = false;
+  const int maxOctalEscape = 377;
+  const int maxOctalDigits = 3;
+  int currentOctalEscape = 0;
+
+  // Include up to maxOctalDigits digits.
+  for (int i = 0; i < maxOctalDigits; ++i) {
+    u8 next = state->Peek();
+    if (!IsOctal(next)) {
+      break;
+    }
+    currentOctalEscape = currentOctalEscape * 10 + (next - '0');
+    if (currentOctalEscape > maxOctalEscape) {
+      // Don't include next digit if it would make the value larger than
+      // maxOctalEscape.
+      break;
+    }
+    state->Advance();
+  }
+  return true;
+}
+
+void Char(LexState* state) {
+  state->Advance();  // Advance past apostrophe.
+
+  // Advance past normal or escape char.
+  if (state->Peek() == '\\') {
+    if (!AdvanceEscapedChar(state)) {
+      throw "Invalid escaped character in character literal.";
+    }
+  } else {
+    state->Advance();
+  }
+  // Require another apostrophe.
+  if (state->Peek() != '\'') {
+    throw "Unclosed character literal. Expected ' at __.";
+  }
+  state->Advance();
+  state->EmitToken(CHAR);
+  state->SetNextState(&Start);
+}
+
+void String(LexState* state) {
+  state->Advance();  // Advance past the quotation mark.
 
   while (true) {
     if (state->IsAtEnd()) {
@@ -265,12 +320,12 @@ void String(LexState* state) {
     if (next == '\n') {
       state->EmitFatal(new UnclosedStringLitError(state->fs, Pos(state->fileid, state->begin)));
       return;
-    } else if (escapeNext) {
-      escapeNext = false;
     } else if (next == '"') {
       break;
     } else if (next == '\\') {
-      escapeNext = true;
+      if (!AdvanceEscapedChar(state)) {
+        throw "Invalid escaped character in string literal.";
+      }
     }
   }
 
