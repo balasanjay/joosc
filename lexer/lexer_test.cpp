@@ -4,6 +4,7 @@
 
 using base::ErrorList;
 using base::FileSet;
+using base::PosRange;
 
 namespace lexer {
 
@@ -105,7 +106,7 @@ TEST_F(LexerTest, LineCommentAtEof) {
 TEST_F(LexerTest, UnclosedBlockComment) {
   LexString("hello /* there \n\n end");
   EXPECT_EQ(1, errors.Size());
-  EXPECT_EQ("UnclosedBlockCommentError(0:6-0:8)", testing::PrintToString(*errors.Get(0)));
+  EXPECT_EQ("UnclosedBlockCommentError(0:6-8)", testing::PrintToString(*errors.Get(0)));
 }
 
 TEST_F(LexerTest, SimpleInteger) {

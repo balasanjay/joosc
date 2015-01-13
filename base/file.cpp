@@ -24,12 +24,12 @@ string Basename(string path) {
 
 namespace {
 
-vector<int> FindAllNewlines(const u8* buf, int len) {
-  // TODO: handle windows-style newlines?
+vector<int> FindLineStarts(const u8* buf, int len) {
   vector<int> newlines;
-
   newlines.push_back(0);
+
   for (int i = 0; i < len; ++i) {
+    // TODO: handle windows-style newlines?
     if (buf[i] == '\n') {
       newlines.push_back(i+1);
     }
@@ -44,40 +44,50 @@ File::File(const string& path, u8* buf, int len)
     basename_(base::Basename(path)),
     buf_(buf),
     len_(len),
-    newlines_(FindAllNewlines(buf_, len_)) {
+    linestarts_(FindLineStarts(buf_, len_)) {
     assert(buf != nullptr && len >= 0);
   }
 
 
 u8 File::At(int index) const {
-  if (index >= len_) {
+  AssertInRange(index);
+
+  return buf_[index];
+}
+
+void File::IndexToLineCol(int index, int* line_out, int* col_out) const {
+  AssertInRange(index);
+
+  // Binary search the newline vector, to find the largest newline that is <=
+  // offset. std::upper_bound returns the first element > offset, which is
+  // one-off from what we want.
+  auto iter = std::upper_bound(linestarts_.begin(), linestarts_.end(), index);
+  --iter;
+
+  *line_out = iter - linestarts_.begin();
+  *col_out = index - *iter;
+}
+
+inline void File::AssertInRange(int index) const {
+  if (index < 0 || index >= len_) {
     std::stringstream ss;
     ss << "File::operator[] index " << index << " out of range [" << 0 << ", "
        << len_ << std::endl;
     throw ss.str();
   }
-  return buf_[index];
 }
 
-void File::OffsetToLineCol(int offset, int* line_out, int* col_out) const {
-  int fakeline = -1;
-  int fakecol = -1;
+std::ostream& operator<<(std::ostream& out, const Pos& p) {
+  return out << p.fileid << ":" << p.index;
+}
 
-  if (line_out == nullptr) {
-    line_out = &fakeline;
+std::ostream& operator<<(std::ostream& out, const PosRange& p) {
+  // Handle single-element ranges specially.
+  if (p.begin + 1 == p.end) {
+    return out << p.fileid << ":" << p.begin;
   }
-  if (col_out == nullptr) {
-    col_out = &fakecol;
-  }
 
-  // Binary search the newline vector, to find the largest newline that is <=
-  // offset. std::upper_bound returns the first element > offset, which is
-  // one-off from what we want.
-  auto iter = std::upper_bound(newlines_.begin(), newlines_.end(), offset);
-  --iter;
-
-  *line_out = iter - newlines_.begin();
-  *col_out = offset - *iter;
+  return out << p.fileid << ":" << p.begin << "-" << p.end;
 }
 
 }  // namespace base

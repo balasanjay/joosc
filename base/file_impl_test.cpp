@@ -30,38 +30,43 @@ TEST(StringFileTest, LineMap) {
 
   // Query before any newlines.
   {
-    sf.OffsetToLineCol(0, &line, &col);
+    sf.IndexToLineCol(0, &line, &col);
     EXPECT_EQ(0, line);
     EXPECT_EQ(0, col);
   }
 
   // Query first newline.
   {
-    sf.OffsetToLineCol(3, &line, &col);
+    sf.IndexToLineCol(3, &line, &col);
     EXPECT_EQ(0, line);
     EXPECT_EQ(3, col);
   }
 
   // Query first character in second line.
   {
-    sf.OffsetToLineCol(4, &line, &col);
+    sf.IndexToLineCol(4, &line, &col);
     EXPECT_EQ(1, line);
     EXPECT_EQ(0, col);
   }
 
   // Query newline in second line.
   {
-    sf.OffsetToLineCol(7, &line, &col);
+    sf.IndexToLineCol(7, &line, &col);
     EXPECT_EQ(1, line);
     EXPECT_EQ(3, col);
   }
 
   // Query value after all newlines.
   {
-    sf.OffsetToLineCol(14, &line, &col);
+    sf.IndexToLineCol(14, &line, &col);
     EXPECT_EQ(4, line);
     EXPECT_EQ(1, col);
   }
+}
+
+TEST(StringFileTest, LineMapEmptyFile) {
+  // Just testing that creating an empty-file doesn't crash.
+  StringFile sf("foo.txt", "");
 }
 
 TEST(DiskFileTest, Simple) {
