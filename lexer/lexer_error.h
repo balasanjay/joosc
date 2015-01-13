@@ -86,7 +86,7 @@ public:
   InvalidCharacterLitError(base::FileSet* fs, PosRange posrange) : SimplePosRangeError(fs, posrange) {}
 protected:
   string SimpleError() const override { return "InvalidCharacterLitError"; }
-  string Error() const override { return "Invalid character found in string literal."; }
+  string Error() const override { return "Invalid character literal."; }
 };
 
 
