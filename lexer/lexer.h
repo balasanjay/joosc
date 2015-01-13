@@ -25,7 +25,7 @@ struct PosRange {
   PosRange(int fileid, int begin, int end)
       : begin(fileid, begin), end(fileid, end) {}
 
-  explicit PosRange(const Pos& pos) : begin(pos), end(pos.fileid, pos.offset + 1) {}
+  PosRange(const Pos& pos) : begin(pos), end(pos.fileid, pos.offset + 1) {}
 
 
   bool operator==(const PosRange& other) const {
