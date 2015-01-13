@@ -22,6 +22,48 @@ TEST(StringFileTest, TestReadOutsideBounds) {
   ASSERT_THROW({ sf.At(10); }, string);
 }
 
+TEST(StringFileTest, LineMap) {
+  StringFile sf("foo.txt", "abc\ncde\nfgh\n\nijk");
+
+  int line = -1;
+  int col = -1;
+
+  // Query before any newlines.
+  {
+    sf.OffsetToLineCol(0, &line, &col);
+    EXPECT_EQ(0, line);
+    EXPECT_EQ(0, col);
+  }
+
+  // Query first newline.
+  {
+    sf.OffsetToLineCol(3, &line, &col);
+    EXPECT_EQ(0, line);
+    EXPECT_EQ(3, col);
+  }
+
+  // Query first character in second line.
+  {
+    sf.OffsetToLineCol(4, &line, &col);
+    EXPECT_EQ(1, line);
+    EXPECT_EQ(0, col);
+  }
+
+  // Query newline in second line.
+  {
+    sf.OffsetToLineCol(7, &line, &col);
+    EXPECT_EQ(1, line);
+    EXPECT_EQ(3, col);
+  }
+
+  // Query value after all newlines.
+  {
+    sf.OffsetToLineCol(14, &line, &col);
+    EXPECT_EQ(4, line);
+    EXPECT_EQ(1, col);
+  }
+}
+
 TEST(DiskFileTest, Simple) {
   File* df = nullptr;
   ErrorList errors;

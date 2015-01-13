@@ -21,6 +21,8 @@ class File {
   // TODO: comment me.
   u8 At(int index) const;
 
+  void OffsetToLineCol(int offset, int* line_out, int* col_out) const;
+
   // TODO: comment me.
   const string& Dirname() const { return dirname_; }
   // TODO: comment me.
@@ -29,13 +31,8 @@ class File {
  protected:
   friend class FileSet;
 
-  File(const string& path, u8* buf, int len)
-      : dirname_(base::Dirname(path)),
-        basename_(base::Basename(path)),
-        buf_(buf),
-        len_(len) {
-    assert(buf != nullptr && len >= 0);
-  }
+  File(const string& path, u8* buf, int len);
+
   virtual ~File() {}
 
   const string dirname_;
@@ -43,6 +40,8 @@ class File {
 
   const u8* buf_;
   const int len_;
+
+  const vector<int> newlines_; // Stored as indices into buf_.
 };
 
 }  // namespace base

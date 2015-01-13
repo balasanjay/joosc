@@ -243,4 +243,10 @@ TEST_F(LexerTest, BadEscapedChar) {
   ASSERT_ANY_THROW({ LexString("'\\391'"); });
 }
 
+TEST_F(LexerTest, UnexpectedChar) {
+  LexString("\\");
+  EXPECT_EQ(1, errors.Size());
+  EXPECT_EQ("UnexpectedCharError(0:0)", testing::PrintToString(*errors.Get(0)));
+}
+
 }  // namespace base

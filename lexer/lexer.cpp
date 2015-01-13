@@ -170,7 +170,7 @@ void Start(LexState* state) {
     }
   }
 
-  throw "Found unknown prefix.";
+  state->EmitFatal(new UnexpectedCharError(state->fs, Pos(state->fileid, state->begin)));
 }
 
 void Integer(LexState* state) {
