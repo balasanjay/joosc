@@ -305,6 +305,12 @@ TEST_F(LexerTest, UnclosedCharAtEOF) {
   EXPECT_EQ("InvalidCharacterLitError(0:0)", testing::PrintToString(*errors.Get(0)));
 }
 
+TEST_F(LexerTest, UnclosedChar2AtEOF) {
+  LexString("'a");
+  ASSERT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidCharacterLitError(0:0-0:2)", testing::PrintToString(*errors.Get(0)));
+}
+
 TEST_F(LexerTest, UnclosedChar) {
   LexString("'foobar");
   ASSERT_TRUE(errors.IsFatal());

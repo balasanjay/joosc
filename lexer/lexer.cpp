@@ -308,7 +308,10 @@ void Char(LexState* state) {
   }
 
   // Require another apostrophe.
-  if (state->Peek() != '\'') {
+  if (state->IsAtEnd()) {
+    state->EmitFatal(new InvalidCharacterLitError(state->fs, PosRange(state->fileid, state->begin, state->end)));
+    return;
+  } else if (state->Peek() != '\'') {
     state->EmitFatal(new InvalidCharacterLitError(state->fs, PosRange(state->fileid, state->begin, state->end)));
     return;
   }
