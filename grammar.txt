@@ -253,8 +253,6 @@ CompilationUnit:
   [package QualifiedIdentifier   ;  ] {ImportDeclaration} 
 [ TypeDeclaration ]
 
-# TODO: clarify whether 0 type declarations in a file is ok.
-
 ImportDeclaration: 
   import Identifier {   .   Identifier } [   .     *   ] ;  
 
@@ -281,8 +279,7 @@ InterfaceBody:
   { {InterfaceBodyDeclaration} }
 
 ClassBodyDeclaration:
-  ; 
-  [static] Block
+  ;
   ModifiersOpt MemberDecl
 
 MemberDecl:
