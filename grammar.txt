@@ -166,7 +166,6 @@ BlockStatements:
 
 BlockStatement : 
   LocalVariableDeclarationStatement
-  ClassOrInterfaceDeclaration
   [Identifier :] Statement
 
 LocalVariableDeclarationStatement:
@@ -221,15 +220,10 @@ ModifiersOpt:
 Modifier: 
   public 
   protected 
-  private 
   static 
   abstract 
   final 
   native 
-  synchronized 
-  transient 
-  volatile
-  strictfp
 
 VariableDeclarators: 
   VariableDeclarator { ,   VariableDeclarator }
@@ -257,7 +251,9 @@ VariableDeclaratorId:
 
 CompilationUnit: 
   [package QualifiedIdentifier   ;  ] {ImportDeclaration} 
-{TypeDeclaration}
+[ TypeDeclaration ]
+
+# TODO: clarify whether 0 type declarations in a file is ok.
 
 ImportDeclaration: 
   import Identifier {   .   Identifier } [   .     *   ] ;  
@@ -293,7 +289,6 @@ MemberDecl:
   MethodOrFieldDecl
   void Identifier MethodDeclaratorRest
   Identifier ConstructorDeclaratorRest
-  ClassOrInterfaceDeclaration
 
 MethodOrFieldDecl:
   Type Identifier MethodOrFieldRest
@@ -309,7 +304,6 @@ InterfaceBodyDeclaration:
 InterfaceMemberDecl:
   InterfaceMethodOrFieldDecl
   void Identifier VoidInterfaceMethodDeclaratorRest
-  ClassOrInterfaceDeclaration
 
 InterfaceMethodOrFieldDecl:
   Type Identifier InterfaceMethodOrFieldRest
