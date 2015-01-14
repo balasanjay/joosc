@@ -150,6 +150,14 @@ TEST_F(LexerTest, NumberBeforeIdentifier) {
   EXPECT_EQ(Token(IDENTIFIER, PosRange(0, 1, 2)), tokens[0][1]);
 }
 
+TEST_F(LexerTest, DISABLED_UnderscoreIdentifier) {
+  LexString("MAX_VALUE");
+  ASSERT_FALSE(errors.IsFatal());
+  ASSERT_EQ(1u, tokens.size());
+  ASSERT_EQ(1u, tokens[0].size());
+  EXPECT_EQ(Token(IDENTIFIER, PosRange(0, 0, 9)), tokens[0][0]);
+}
+
 TEST_F(LexerTest, CommentBetweenIdentifiers) {
   LexString("abc/*foobar*/def");
   ASSERT_FALSE(errors.IsFatal());
