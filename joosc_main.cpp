@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
     return ERROR;
   }
 
-  LexPostProcess(&tokens, &errors);
+  LexPostProcess(fs, &tokens, &errors);
   if (errors.IsFatal()) {
     errors.PrintTo(&cerr, base::OutputOptions::kUserOutput);
     return ERROR;

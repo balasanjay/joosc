@@ -63,7 +63,7 @@ struct Token {
 void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
                   base::ErrorList* errors_out);
 
-void LexPostProcess(vector<vector<Token>>* tokens_out, base::ErrorList* errors_out);
+void LexPostProcess(base::FileSet* fs, vector<vector<Token>>* tokens_out, base::ErrorList* errors_out);
 
 }  // namespace lexer
 

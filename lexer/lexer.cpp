@@ -382,12 +382,42 @@ void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
   }
 }
 
-void LexPostProcess(vector<vector<Token>>* tokens_out, base::ErrorList* errors_out) {
+bool TokenStringMatches(FileSet* fs, const Token& tok, string s) {
+  if ((int)s.length() != tok.pos.end - tok.pos.begin) {
+    return false;
+  }
+  File* f = fs->Get(tok.pos.fileid);
+  for (u64 i = 0; i < s.length(); ++i) {
+    if (s[i] != f->At(tok.pos.begin + i)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void ConvertIdentifierToKeyword(FileSet* fs, Token& tok) {
+  if (TokenStringMatches(fs, tok, "if")) {
+    tok.type = IF;
+  } else if (TokenStringMatches(fs, tok, "while")) {
+    tok.type = WHILE;
+  }
+}
+
+void LexPostProcess(FileSet* fs, vector<vector<Token>>* tokens_out, base::ErrorList* errors_out) {
   for (auto file_tokens_it = tokens_out->begin(); file_tokens_it != tokens_out->end(); file_tokens_it++) {
     auto token_it = file_tokens_it->begin();
     while (token_it != file_tokens_it->end()) {
-      if (token_it->type == WHITESPACE) {
-        file_tokens_it->erase(token_it);
+      switch (token_it->type) {
+        case WHITESPACE:
+          file_tokens_it->erase(token_it);
+          break;
+        case IDENTIFIER:
+          ConvertIdentifierToKeyword(fs, *token_it);
+          token_it++;
+          break;
+        default:
+          token_it++;
+          break;
       }
     }
   }

@@ -334,14 +334,19 @@ TEST_F(LexerTest, UnclosedChar) {
 
 
 
-TEST(LexerPostProcessTest, RemoveWhitespace) {
-  vector<vector<Token>> tokens;
-  ErrorList errors;
-  tokens.push_back(vector<Token>());
-  tokens[0].push_back(Token(WHITESPACE, PosRange(0, 0, 0)));
-  LexPostProcess(&tokens, &errors);
+TEST_F(LexerTest, PostProcessRemoveWhitespace) {
+  LexString(" ");
+  LexPostProcess(fs, &tokens, &errors);
   ASSERT_FALSE(errors.IsFatal());
   EXPECT_TRUE(tokens[0].empty());
+}
+
+TEST_F(LexerTest, PostProcessConvertIfWhile) {
+  LexString("if while");
+  LexPostProcess(fs, &tokens, &errors);
+  ASSERT_FALSE(errors.IsFatal());
+  EXPECT_EQ(IF, tokens[0][0].type);
+  EXPECT_EQ(WHILE, tokens[0][1].type);
 }
 
 }  // namespace base
