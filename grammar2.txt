@@ -2,11 +2,10 @@ CompilationUnit:
   [PackageDeclaration] [ImportDeclarations] [TypeDeclaration]
 
 PackageDeclaration:
-  package PackageName ;
+  package QualifiedName ;
 
-PackageName:
-  Identifier
-  PackageName . Identifier
+QualifiedName:
+  Identifier {"." Identifier}
 
 ImportDeclarations:
   ImportDeclaration
@@ -17,18 +16,10 @@ ImportDeclaration:
   TypeImportOnDemandDeclaration
 
 SingleTypeImportDeclaration:
-  import TypeName ;
-
-TypeName:
-  Identifier
-  PackageOrTypeName . Identifier
-
-PackageOrTypeName:
-  Identifier
-  PackageOrTypeName . Identifier
+  import QualifiedName ";"
 
 TypeImportOnDemandDeclaration:
-  import PackageOrTypeName . * ;
+  import QualifiedName ".*;"
 
 TypeDeclaration:
   ClassDeclaration
@@ -47,16 +38,16 @@ Modifier:
   native
 
 Super:
-  extends TypeName
+  extends QualifiedName
 
 Interfaces:
-  implements TypeName {, TypeName}
+  implements QualifiedName {, QualifiedName}
 
 InterfaceDeclaration:
   {Modifier} interface Identifier [ExtendsInterfaces] InterfaceBody
 
 ExtendsInterfaces:
-  extends TypeName {, TypeName}
+  extends QualifiedName {, QualifiedName}
 
 ClassBody:
   "{" {ClassBodyDeclaration} "}"
@@ -145,7 +136,7 @@ Assignment:
     LeftHandSide "=" AssignmentExpression
 
 LeftHandSide:
-  ExpressionName
+  QualifiedName
   FieldAccess
   ArrayAccess
 
@@ -164,4 +155,103 @@ PrimaryNoNewArray:
   FieldAccess
   MethodInvocation
   ArrayAccess
+
+ClassInstanceCreationExpression:
+  new QualifiedName "(" [ArgumentList] ")"
+
+ArgumentList:
+  Expression {, Expression}
+
+MethodInvocation:
+  QualifiedName "(" [ArgumentList] ")"
+  Primary "." Identifier "(" [ArgumentList] ")"
+
+ArrayCreationExpression:
+  "new" QualifiedName "[" [Expression] "]
+  "new" PrimitiveType "[" [Expression] "]
+
+PrimitiveType:
+  IntegralType
+  boolean
+
+IntegralType:
+  byte
+  short
+  int
+  char
+
+ArrayAccess:
+  QualifiedName [ Expression ]
+  PrimaryNoNewArray [ Expression ]
+
+AssignmentExpression:
+  ConditionalExpression
+  Assignment
+
+ConditionalExpression:
+  ConditionalOrExpression
+
+ConditionalOrExpression:
+  ConditionalAndExpression
+  ConditionalOrExpression "||" ConditionalAndExpression
+
+ConditionalAndExpression:
+  InclusiveOrExpression
+  ConditionalAndExpression && InclusiveOrExpression
+
+AndExpression:
+  EqualityExpression
+  AndExpression & EqualityExpression
+
+ExclusiveOrExpression:
+  AndExpression
+  ExclusiveOrExpression ^ AndExpression
+
+InclusiveOrExpression:
+  ExclusiveOrExpression
+  InclusiveOrExpression | ExclusiveOrExpression
+
+EqualityExpression:
+  RelationalExpression
+  EqualityExpression == RelationalExpression
+  EqualityExpression != RelationalExpression
+
+RelationalExpression:
+  AdditiveExpression
+  RelationalExpression < AdditiveExpression
+  RelationalExpression > AdditiveExpression
+  RelationalExpression <= AdditiveExpression
+  RelationalExpression >= AdditiveExpression
+  RelationalExpression instanceof ReferenceType
+
+AdditiveExpression:
+  MultiplicativeExpression
+  AdditiveExpression + MultiplicativeExpression
+  AdditiveExpression - MultiplicativeExpression
+
+MultiplicativeExpression:
+  UnaryExpression
+  MultiplicativeExpression * UnaryExpression
+  MultiplicativeExpression / UnaryExpression
+  MultiplicativeExpression % UnaryExpression
+
+UnaryExpression:
+  - UnaryExpression
+  UnaryExpressionNotPlusMinus
+
+UnaryExpressionNotPlusMinus:
+  PostfixExpression
+  ~ UnaryExpression # TODO(sjy): do we need this?
+  ! UnaryExpression
+  CastExpression
+
+CastExpression:
+  ( PrimitiveType ) UnaryExpression
+  ( ReferenceType ) UnaryExpressionNotPlusMinus
+
+PostfixExpression:
+  Primary
+  QualifiedName
+
+
 
