@@ -310,8 +310,7 @@ InterfaceMethodOrFieldRest:
   InterfaceMethodDeclaratorRest
 
 MethodDeclaratorRest:
-    FormalParameters BracketsOpt [throws QualifiedIdentifierList] ( 
-MethodBody |   ;  )
+    FormalParameters ( MethodBody |   ;  )
 
 VoidMethodDeclaratorRest:
     FormalParameters [throws QualifiedIdentifierList] ( MethodBody |   ;  )
@@ -323,7 +322,7 @@ VoidInterfaceMethodDeclaratorRest:
   FormalParameters [throws QualifiedIdentifierList]   ;  
 
 ConstructorDeclaratorRest:
-  FormalParameters [throws QualifiedIdentifierList] MethodBody
+  FormalParameters MethodBody
 
 QualifiedIdentifierList: 
   QualifiedIdentifier {  ,   QualifiedIdentifier}
@@ -332,7 +331,7 @@ FormalParameters:
   ( [FormalParameter { , FormalParameter}] )
 
 FormalParameter: 
-  [final] Type VariableDeclaratorId
+  Type VariableDeclaratorId
 
 MethodBody:
   Block
