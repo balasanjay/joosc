@@ -1,0 +1,167 @@
+CompilationUnit:
+  [PackageDeclaration] [ImportDeclarations] [TypeDeclaration]
+
+PackageDeclaration:
+  package PackageName ;
+
+PackageName:
+  Identifier
+  PackageName . Identifier
+
+ImportDeclarations:
+  ImportDeclaration
+  ImportDeclarations ImportDeclaration
+
+ImportDeclaration:
+  SingleTypeImportDeclaration
+  TypeImportOnDemandDeclaration
+
+SingleTypeImportDeclaration:
+  import TypeName ;
+
+TypeName:
+  Identifier
+  PackageOrTypeName . Identifier
+
+PackageOrTypeName:
+  Identifier
+  PackageOrTypeName . Identifier
+
+TypeImportOnDemandDeclaration:
+  import PackageOrTypeName . * ;
+
+TypeDeclaration:
+  ClassDeclaration
+  InterfaceDeclaration
+  ;
+
+ClassDeclaration:
+  {Modifier} class Identifier [Super] [Interfaces] ClassBody
+
+Modifier:
+  public
+  protected
+  abstract
+  final
+  static
+  native
+
+Super:
+  extends TypeName
+
+Interfaces:
+  implements TypeName {, TypeName}
+
+InterfaceDeclaration:
+  {Modifier} interface Identifier [ExtendsInterfaces] InterfaceBody
+
+ExtendsInterfaces:
+  extends TypeName {, TypeName}
+
+ClassBody:
+  "{" {ClassBodyDeclaration} "}"
+
+ClassBodyDeclaration:
+  ConstructorDeclaration
+  FieldDeclaration
+  MethodDeclaration
+  ;
+
+ConstructorDeclaration:
+  {Modifier} ConstructorDeclarator ConstructorBody
+
+ConstructorDeclarator:
+  Identifier  "(" [FormalParameterList] ")"
+
+FormalParameterList:
+  FormalParamater {, FormalParameter}
+
+FormalParameter:
+  Type VariableDeclaratorId
+
+VariableDeclaratorId:
+  Identifier [ "[" "]" ]
+
+ConstructorBody:
+  "{" [ExplicitConstructorInvocation] {BlockStatement} "}"
+
+FieldDeclaration:
+  {Modifier} Type VariableDeclaratorId ["=" Expression] ";"
+
+MethodDeclaration:
+  {Modifier} ResultType MethodDeclarator MethodBody
+
+MethodDeclarator:
+  Identifier "(" [FormalParameterList] ")
+
+ResultType:
+  Type
+  void
+
+MethodBody:
+  Block
+  ";"
+
+InterfaceBody:
+  "{" {InterfaceMemberDeclaration} "}"
+
+InterfaceMemberDeclaration:
+  AbstractMethodDeclaration
+
+AbstractMethodDeclaration:
+  {Modifier} ResultType MethodDeclarator ";"
+
+Block:
+  "{" {BlockStatement} "}
+
+BlockStatement:
+  LocalVariableDeclarationStatement
+  Statement
+
+LocalVariableDeclarationStatement:
+  Type VariableDeclaratorId "=" Expression ";"
+
+Statement:
+  StatementWithoutTrailingSubstatement
+  IfThenStatement
+  IfThenElseStatement
+  ForStatement
+
+StatementWithoutTrailingSubstatement:
+  Block
+  ";"
+  ExpressionStatement
+  ReturnStatement
+
+ExpressionStatement:
+  StatementExpression ;
+
+StatementExpression:
+  Assignment
+  MethodInvocation
+  ClassInstanceCreationExpression
+
+Assignment:
+    LeftHandSide "=" AssignmentExpression
+
+LeftHandSide:
+  ExpressionName
+  FieldAccess
+  ArrayAccess
+
+FieldAccess:
+  Primary . Identifier
+
+Primary:
+  PrimaryNoNewArray
+  ArrayCreationExpression
+
+PrimaryNoNewArray:
+  Literal
+  this
+  "(" Expression ")"
+  ClassInstanceCreationExpression
+  FieldAccess
+  MethodInvocation
+  ArrayAccess
+
