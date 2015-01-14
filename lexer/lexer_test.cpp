@@ -332,4 +332,16 @@ TEST_F(LexerTest, UnclosedChar) {
   EXPECT_EQ("InvalidCharacterLitError(0:0-2)", testing::PrintToString(*errors.Get(0)));
 }
 
+
+
+TEST(LexerPostProcessTest, RemoveWhitespace) {
+  vector<vector<Token>> tokens;
+  ErrorList errors;
+  tokens.push_back(vector<Token>());
+  tokens[0].push_back(Token(WHITESPACE, PosRange(0, 0, 0)));
+  LexPostProcess(&tokens, &errors);
+  ASSERT_FALSE(errors.IsFatal());
+  EXPECT_TRUE(tokens[0].empty());
+}
+
 }  // namespace base

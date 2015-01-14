@@ -44,7 +44,12 @@ int main(int argc, char** argv) {
   vector<vector<Token>> tokens;
 
   LexJoosFiles(fs, &tokens, &errors);
+  if (errors.IsFatal()) {
+    errors.PrintTo(&cerr, base::OutputOptions::kUserOutput);
+    return ERROR;
+  }
 
+  LexPostProcess(&tokens, &errors);
   if (errors.IsFatal()) {
     errors.PrintTo(&cerr, base::OutputOptions::kUserOutput);
     return ERROR;

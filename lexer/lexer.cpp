@@ -382,4 +382,16 @@ void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
   }
 }
 
+void LexPostProcess(vector<vector<Token>>* tokens_out, base::ErrorList* errors_out) {
+  for (auto file_tokens_it = tokens_out->begin(); file_tokens_it != tokens_out->end(); file_tokens_it++) {
+    auto token_it = file_tokens_it->begin();
+    while (token_it != file_tokens_it->end()) {
+      if (token_it->type == WHITESPACE) {
+        file_tokens_it->erase(token_it);
+      }
+    }
+  }
+}
+
+
 }  // namespace lexer
