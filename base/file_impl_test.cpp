@@ -69,6 +69,24 @@ TEST(StringFileTest, LineMapEmptyFile) {
   StringFile sf("foo.txt", "");
 }
 
+TEST(StringFileTest, PrintRangePtr) {
+  const string file =
+"class Foo {\n"
+"  String bar = 3; /* foo bar \n"
+"}\n";
+
+  const string expected =
+"  String bar = 3; /* foo bar \n"
+"                  ^~         ";
+
+  StringFile sf("foo.txt", file);
+
+  std::stringstream ss;
+  PrintRangePtr(&ss, &sf, PosRange(0, 30, 32));
+
+  EXPECT_EQ(expected, ss.str());
+}
+
 TEST(DiskFileTest, Simple) {
   File* df = nullptr;
   ErrorList errors;
