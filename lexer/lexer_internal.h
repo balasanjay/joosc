@@ -7,8 +7,42 @@ namespace lexer {
 namespace internal {
 
 const string kTokenTypeToString[NUM_TOKEN_TYPES] = {
-    "LINE_COMMENT", "BLOCK_COMMENT", "WHITESPACE", "IF",    "WHILE",
-    "INTEGER",      "IDENTIFIER",    "CHAR",       "STRING"};
+  "LINE_COMMENT",
+  "BLOCK_COMMENT",
+  "WHITESPACE",
+  "LE",
+  "GE",
+  "EQ",
+  "NEQ",
+  "AND",
+  "OR",
+  "ADD",
+  "SUB",
+  "MUL",
+  "DIV",
+  "MOD",
+  "LT",
+  "GT",
+  "BAND",
+  "BOR",
+  "NOT",
+  "ASSG",
+  "LPAREN",
+  "RPAREN",
+  "LBRACE",
+  "RBRACE",
+  "LBRACK",
+  "RBRACK",
+  "SEMI",
+  "COMMA",
+  "DOT",
+  "IF",
+  "WHILE",
+  "INTEGER",
+  "IDENTIFIER",
+  "CHAR",
+  "STRING"
+};
 
 const int kNumSymbolLiterals = 26;
 const pair<string, TokenType> kSymbolLiterals[kNumSymbolLiterals] = {

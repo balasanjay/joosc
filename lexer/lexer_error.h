@@ -28,38 +28,10 @@ class SimplePosRangeError : public base::Error {
         << Red(opt) << "error: " << ResetFmt(opt) << Error() << '\n';
 
 
-      PrettyPrintRange(out, file, posrange_, col);
+      base::PrintRangePtr(out, file, posrange_);
 
       // TODO: implement Pos to column:offset conversion.
       // TODO: implement pretty range-printing.
-    }
-
-    void PrettyPrintRange(std::ostream* out, const base::File* file, const base::PosRange& range, int col) const {
-      const int MAX_CONTEXT = 40;
-
-      int begin = std::max(range.begin - MAX_CONTEXT, range.begin - col);
-      int end = range.begin + MAX_CONTEXT;
-
-      for (int i = begin; i < end; ++i) {
-        u8 c = file->At(i);
-        if (c == '\n') {
-          end = i;
-          break;
-        }
-
-        *out << c;
-      }
-      *out << '\n';
-
-      for (int i = begin; i < end; ++i) {
-        if (i == range.begin) {
-          *out << '^';
-        } else if (range.begin < i && i < range.end) {
-          *out << '~';
-        } else {
-          *out << ' ';
-        }
-      }
     }
 
     virtual string SimpleError() const = 0;
@@ -76,7 +48,7 @@ class NonAnsiCharError : public SimplePosRangeError {
 
   protected:
     string SimpleError() const override { return "NonAnsiCharError"; }
-    string Error() const override { return "Non-ANSI character"; }
+    string Error() const override { return "Cannot have non-ANSI character."; }
 };
 
 class LeadingZeroInIntLitError : public SimplePosRangeError {
@@ -94,7 +66,7 @@ class UnclosedBlockCommentError : public SimplePosRangeError {
 
   protected:
     string SimpleError() const override { return "UnclosedBlockCommentError"; }
-    string Error() const override { return "Unclosed block comment at end of file."; }
+    string Error() const override { return "Unclosed block comment."; }
 };
 
 class UnclosedStringLitError : public SimplePosRangeError {

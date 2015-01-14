@@ -81,6 +81,8 @@ struct PosRange {
 
 std::ostream& operator<<(std::ostream& out, const PosRange& p);
 
+void PrintRangePtr(std::ostream* out, const File* file, const PosRange& pos);
+
 }  // namespace base
 
 #endif
