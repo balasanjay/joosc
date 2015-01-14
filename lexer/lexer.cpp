@@ -354,6 +354,30 @@ void String(LexState* state) {
   state->SetNextState(&Start);
 }
 
+bool TokenStringMatches(FileSet* fs, const Token& tok, string s) {
+  if ((int)s.length() != tok.pos.end - tok.pos.begin) {
+    return false;
+  }
+  File* f = fs->Get(tok.pos.fileid);
+  for (u64 i = 0; i < s.length(); ++i) {
+    if (s[i] != f->At(tok.pos.begin + i)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void ConvertIdentifierToKeyword(FileSet* fs, Token& tok) {
+  for (int i = 0; i < kNumKeywordLiterals; ++i) {
+    const string& keywordString = kKeywordLiterals[i].first;
+    if (TokenStringMatches(fs, tok, keywordString)) {
+      tok.type = kKeywordLiterals[i].second;
+      return;
+    }
+  }
+}
+
+
 }  // namespace internal
 
 void LexJoosFile(base::FileSet* fs, base::File* file, int fileid, vector<Token>* tokens_out,
@@ -382,27 +406,6 @@ void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
   }
 }
 
-bool TokenStringMatches(FileSet* fs, const Token& tok, string s) {
-  if ((int)s.length() != tok.pos.end - tok.pos.begin) {
-    return false;
-  }
-  File* f = fs->Get(tok.pos.fileid);
-  for (u64 i = 0; i < s.length(); ++i) {
-    if (s[i] != f->At(tok.pos.begin + i)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-void ConvertIdentifierToKeyword(FileSet* fs, Token& tok) {
-  if (TokenStringMatches(fs, tok, "if")) {
-    tok.type = IF;
-  } else if (TokenStringMatches(fs, tok, "while")) {
-    tok.type = WHILE;
-  }
-}
-
 void LexPostProcess(FileSet* fs, vector<vector<Token>>* tokens_out, base::ErrorList* errors_out) {
   for (auto file_tokens_it = tokens_out->begin(); file_tokens_it != tokens_out->end(); file_tokens_it++) {
     auto token_it = file_tokens_it->begin();
@@ -412,7 +415,7 @@ void LexPostProcess(FileSet* fs, vector<vector<Token>>* tokens_out, base::ErrorL
           file_tokens_it->erase(token_it);
           break;
         case IDENTIFIER:
-          ConvertIdentifierToKeyword(fs, *token_it);
+          internal::ConvertIdentifierToKeyword(fs, *token_it);
           token_it++;
           break;
         default:
