@@ -6,6 +6,8 @@ using base::Error;
 using base::ErrorList;
 using base::File;
 using base::FileSet;
+using base::Pos;
+using base::PosRange;
 
 namespace lexer {
 
@@ -170,7 +172,7 @@ void Start(LexState* state) {
     }
   }
 
-  throw "Found unknown prefix.";
+  state->EmitFatal(new UnexpectedCharError(state->fs, Pos(state->fileid, state->begin)));
 }
 
 void Integer(LexState* state) {
@@ -378,19 +380,6 @@ void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
   for (int i = 0; i < fs->Size(); i++) {
     LexJoosFile(fs, fs->Get(i), i, &(*tokens_out)[i], errors_out);
   }
-}
-
-std::ostream& operator<<(std::ostream& out, const Pos& p) {
-  return out << p.fileid << ":" << p.offset;
-}
-
-std::ostream& operator<<(std::ostream& out, const PosRange& p) {
-  // Handle single-element ranges specially.
-  if (p.begin.offset + 1 == p.end.offset) {
-    return out << p.begin;
-  }
-
-  return out << p.begin << "-" << p.end;
 }
 
 }  // namespace lexer
