@@ -342,7 +342,7 @@ TEST_F(LexerTest, PostProcessRemoveWhitespace) {
 }
 
 TEST_F(LexerTest, PostProcessConvertKeywords) {
-  LexString("while true null char if");
+  LexString("while true null char if const");
   LexPostProcess(fs, &tokens, &errors);
   ASSERT_FALSE(errors.IsFatal());
   EXPECT_EQ(K_WHILE, tokens[0][0].type);
@@ -350,6 +350,7 @@ TEST_F(LexerTest, PostProcessConvertKeywords) {
   EXPECT_EQ(K_NULL, tokens[0][2].type);
   EXPECT_EQ(K_CHAR, tokens[0][3].type);
   EXPECT_EQ(K_IF, tokens[0][4].type);
+  EXPECT_EQ(K_CONST, tokens[0][5].type);
 }
 
 }  // namespace base
