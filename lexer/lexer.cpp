@@ -290,17 +290,32 @@ bool AdvanceEscapedChar(LexState* state) {
 void Char(LexState* state) {
   state->Advance();  // Advance past apostrophe.
 
+  if (state->IsAtEnd()) {
+    state->EmitFatal(new InvalidCharacterLitError(state->fs, PosRange(state->fileid, state->begin, state->end)));
+    return;
+  }
+
   // Advance past normal or escape char.
-  if (state->Peek() == '\\') {
+  u8 next = state->Peek();
+  if (next == '\\') {
     if (!AdvanceEscapedChar(state)) {
-      throw "Invalid escaped character in character literal.";
+      state->EmitFatal(new InvalidCharacterEscapeError(state->fs, PosRange(state->fileid, state->begin, state->end)));
+      return;
     }
+  } else if (next == '\'' || next == '\n') {
+    state->EmitFatal(new InvalidCharacterLitError(state->fs, PosRange(state->fileid, state->begin, state->end)));
+    return;
   } else {
     state->Advance();
   }
+
   // Require another apostrophe.
-  if (state->Peek() != '\'') {
-    throw "Unclosed character literal. Expected ' at __.";
+  if (state->IsAtEnd()) {
+    state->EmitFatal(new InvalidCharacterLitError(state->fs, PosRange(state->fileid, state->begin, state->end)));
+    return;
+  } else if (state->Peek() != '\'') {
+    state->EmitFatal(new InvalidCharacterLitError(state->fs, PosRange(state->fileid, state->begin, state->end)));
+    return;
   }
   state->Advance();
   state->EmitToken(CHAR);
@@ -324,8 +339,10 @@ void String(LexState* state) {
       state->Advance();
       break;
     } else if (next == '\\') {
+      int startEscapePos = state->end;
       if (!AdvanceEscapedChar(state)) {
-        throw "Invalid escaped character in string literal.";
+        state->EmitFatal(new InvalidCharacterEscapeError(state->fs, PosRange(state->fileid, startEscapePos, state->end)));
+        return;
       }
     } else {
       // For any other character, just make it part of the string.

@@ -1,6 +1,9 @@
 #ifndef LEXER_ERROR_H
 #define LEXER_ERROR_H
 
+#include "base/file.h"
+#include "base/fileset.h"
+#include "lexer/lexer.h"
 #include "base/error.h"
 #include "base/macros.h"
 
@@ -85,6 +88,22 @@ class UnexpectedCharError : public SimplePosRangeError {
   protected:
     string SimpleError() const override { return "UnexpectedCharError"; }
     string Error() const override { return "Unexpected character found."; }
+};
+
+class InvalidCharacterEscapeError : public SimplePosRangeError {
+public:
+  InvalidCharacterEscapeError(base::FileSet* fs, base::PosRange posrange) : SimplePosRangeError(fs, posrange) {}
+protected:
+  string SimpleError() const override { return "InvalidCharacterEscapeError"; }
+  string Error() const override { return "Invalid character escape."; }
+};
+
+class InvalidCharacterLitError : public SimplePosRangeError {
+public:
+  InvalidCharacterLitError(base::FileSet* fs, base::PosRange posrange) : SimplePosRangeError(fs, posrange) {}
+protected:
+  string SimpleError() const override { return "InvalidCharacterLitError"; }
+  string Error() const override { return "Invalid character literal."; }
 };
 
 } // namespace lexer
