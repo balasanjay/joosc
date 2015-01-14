@@ -11,7 +11,7 @@ namespace lexer {
 
 class SimplePosRangeError : public base::Error {
   protected:
-    SimplePosRangeError(base::FileSet* fs, PosRange posrange) : fs_(fs), posrange_(posrange) {}
+    SimplePosRangeError(base::FileSet* fs, base::PosRange posrange) : fs_(fs), posrange_(posrange) {}
 
     void PrintTo(std::ostream* out, const base::OutputOptions& opt) const override {
       if (opt.simple) {
@@ -19,11 +19,19 @@ class SimplePosRangeError : public base::Error {
         return;
       }
 
-      base::File* file = fs_->Get(posrange_.begin.fileid);
+      const base::File* file = fs_->Get(posrange_.fileid);
+
+      // Get line and column info.
+      int line = -1;
+      int col = -1;
+      file->IndexToLineCol(posrange_.begin, &line, &col);
 
       *out << file->Dirname() << file->Basename() << ":"
-        << posrange_.begin << ": " << Red(opt) << "error: " << ResetFmt(opt)
-        << Error();
+        << line + 1 << ":" << col + 1 << ": "
+        << Red(opt) << "error: " << ResetFmt(opt) << Error() << '\n';
+
+
+      base::PrintRangePtr(out, file, posrange_);
 
       // TODO: implement Pos to column:offset conversion.
       // TODO: implement pretty range-printing.
@@ -34,21 +42,21 @@ class SimplePosRangeError : public base::Error {
 
   private:
     base::FileSet* fs_;
-    PosRange posrange_;
+    base::PosRange posrange_;
 };
 
 class NonAnsiCharError : public SimplePosRangeError {
   public:
-    NonAnsiCharError(base::FileSet* fs, Pos pos) : SimplePosRangeError(fs, PosRange(pos)) {}
+    NonAnsiCharError(base::FileSet* fs, base::PosRange pos) : SimplePosRangeError(fs, base::PosRange(pos)) {}
 
   protected:
     string SimpleError() const override { return "NonAnsiCharError"; }
-    string Error() const override { return "Non-ANSI character"; }
+    string Error() const override { return "Cannot have non-ANSI character."; }
 };
 
 class LeadingZeroInIntLitError : public SimplePosRangeError {
   public:
-    LeadingZeroInIntLitError(base::FileSet* fs, Pos pos) : SimplePosRangeError(fs, PosRange(pos)) {}
+    LeadingZeroInIntLitError(base::FileSet* fs, base::PosRange pos) : SimplePosRangeError(fs, base::PosRange(pos)) {}
 
   protected:
     string SimpleError() const override { return "LeadingZeroInIntLitError"; }
@@ -57,25 +65,34 @@ class LeadingZeroInIntLitError : public SimplePosRangeError {
 
 class UnclosedBlockCommentError : public SimplePosRangeError {
   public:
-    UnclosedBlockCommentError(base::FileSet* fs, PosRange posrange) : SimplePosRangeError(fs, posrange) {}
+    UnclosedBlockCommentError(base::FileSet* fs, base::PosRange posrange) : SimplePosRangeError(fs, posrange) {}
 
   protected:
     string SimpleError() const override { return "UnclosedBlockCommentError"; }
-    string Error() const override { return "Unclosed block comment at end of file."; }
+    string Error() const override { return "Unclosed block comment."; }
 };
 
 class UnclosedStringLitError : public SimplePosRangeError {
   public:
-    UnclosedStringLitError(base::FileSet* fs, Pos pos) : SimplePosRangeError(fs, PosRange(pos)) {}
+    UnclosedStringLitError(base::FileSet* fs, base::PosRange pos) : SimplePosRangeError(fs, pos) {}
 
   protected:
     string SimpleError() const override { return "UnclosedStringLitError"; }
     string Error() const override { return "Unclosed string literal."; }
 };
 
+class UnexpectedCharError : public SimplePosRangeError {
+  public:
+    UnexpectedCharError(base::FileSet* fs, base::PosRange pos) : SimplePosRangeError(fs, pos) {}
+
+  protected:
+    string SimpleError() const override { return "UnexpectedCharError"; }
+    string Error() const override { return "Unexpected character found."; }
+};
+
 class InvalidCharacterEscapeError : public SimplePosRangeError {
 public:
-  InvalidCharacterEscapeError(base::FileSet* fs, PosRange posrange) : SimplePosRangeError(fs, posrange) {}
+  InvalidCharacterEscapeError(base::FileSet* fs, base::PosRange posrange) : SimplePosRangeError(fs, posrange) {}
 protected:
   string SimpleError() const override { return "InvalidCharacterEscapeError"; }
   string Error() const override { return "Invalid character escape."; }
@@ -83,12 +100,11 @@ protected:
 
 class InvalidCharacterLitError : public SimplePosRangeError {
 public:
-  InvalidCharacterLitError(base::FileSet* fs, PosRange posrange) : SimplePosRangeError(fs, posrange) {}
+  InvalidCharacterLitError(base::FileSet* fs, base::PosRange posrange) : SimplePosRangeError(fs, posrange) {}
 protected:
   string SimpleError() const override { return "InvalidCharacterLitError"; }
   string Error() const override { return "Invalid character literal."; }
 };
-
 
 } // namespace lexer
 

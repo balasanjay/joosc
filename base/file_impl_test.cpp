@@ -22,6 +22,71 @@ TEST(StringFileTest, TestReadOutsideBounds) {
   ASSERT_THROW({ sf.At(10); }, string);
 }
 
+TEST(StringFileTest, LineMap) {
+  StringFile sf("foo.txt", "abc\ncde\nfgh\n\nijk");
+
+  int line = -1;
+  int col = -1;
+
+  // Query before any newlines.
+  {
+    sf.IndexToLineCol(0, &line, &col);
+    EXPECT_EQ(0, line);
+    EXPECT_EQ(0, col);
+  }
+
+  // Query first newline.
+  {
+    sf.IndexToLineCol(3, &line, &col);
+    EXPECT_EQ(0, line);
+    EXPECT_EQ(3, col);
+  }
+
+  // Query first character in second line.
+  {
+    sf.IndexToLineCol(4, &line, &col);
+    EXPECT_EQ(1, line);
+    EXPECT_EQ(0, col);
+  }
+
+  // Query newline in second line.
+  {
+    sf.IndexToLineCol(7, &line, &col);
+    EXPECT_EQ(1, line);
+    EXPECT_EQ(3, col);
+  }
+
+  // Query value after all newlines.
+  {
+    sf.IndexToLineCol(14, &line, &col);
+    EXPECT_EQ(4, line);
+    EXPECT_EQ(1, col);
+  }
+}
+
+TEST(StringFileTest, LineMapEmptyFile) {
+  // Just testing that creating an empty-file doesn't crash.
+  StringFile sf("foo.txt", "");
+}
+
+TEST(StringFileTest, PrintRangePtr) {
+  const string file =
+"class Foo {\n"
+"  String bar = 3; /* foo bar \n"
+"}\n";
+
+  const string expected =
+"  String bar = 3; /* foo bar \n"
+"                  ^~         ";
+
+  StringFile sf("foo.txt", file);
+
+  std::stringstream ss;
+  PrintRangePtr(&ss, &sf, PosRange(0, 30, 32));
+
+  EXPECT_EQ(expected, ss.str());
+}
+
 TEST(DiskFileTest, Simple) {
   File* df = nullptr;
   ErrorList errors;
