@@ -1,337 +1,289 @@
-Identifier:
-  IDENTIFIER
+CompilationUnit:
+  [PackageDeclaration] [ImportDeclarations] [TypeDeclaration]
 
-QualifiedIdentifier:
-  Identifier { . Identifier }
+PackageDeclaration:
+  package QualifiedName ;
 
-Literal:
-  IntegerLiteral  
-  FloatingPointLiteral  
-  CharacterLiteral  
-  StringLiteral   
-  BooleanLiteral
-  NullLiteral
+QualifiedName:
+  Identifier {"." Identifier}
 
-Expression: 
-  Expression1 [AssignmentOperator Expression1]]
+ImportDeclarations:
+  ImportDeclaration
+  ImportDeclarations ImportDeclaration
 
-AssignmentOperator: 
-  = 
-  += 
-  -= 
-  *= 
-  /= 
-  &= 
-  |= 
-  ^= 
-  %= 
-  <<= 
-  >>= 
-  >>>= 
+ImportDeclaration:
+  SingleTypeImportDeclaration
+  TypeImportOnDemandDeclaration
 
-Type: 
-  Identifier {   .   Identifier } BracketsOpt
-  BasicType
+SingleTypeImportDeclaration:
+  import QualifiedName ";"
 
-StatementExpression: 
-  Expression
+TypeImportOnDemandDeclaration:
+  import QualifiedName ".*;"
 
-ConstantExpression: 
-  Expression
-
-Expression1: 
-  Expression2 [Expression1Rest]
-
-Expression1Rest: 
-  [  ?   Expression   :   Expression1]
-
-Expression2 : 
-  Expression3 [Expression2Rest]
-
-Expression2Rest: 
-  {Infixop Expression3}
-  Expression3 instanceof Type
-
-Infixop:
-  || 
-  && 
-  | 
-  ^ 
-  & 
-  == 
-  != 
-  < 
-  > 
-  <= 
-  >= 
-  << 
-  >> 
-  >>> 
-  + 
-  - 
-  * 
-  / 
-  % 
-
-Expression3: 
-  PrefixOp Expression3
-  (   Expr | Type   )   Expression3
-  Primary {Selector} {PostfixOp}
-
-Primary: 
-  ( Expression )
-  this [Arguments]
-  super SuperSuffix
-  Literal
-  new Creator
-  Identifier { . Identifier }[ IdentifierSuffix]
-  BasicType BracketsOpt .class
-  void.class
-
-IdentifierSuffix:
-  [ ( ] BracketsOpt   .   class | Expression ])
-  Arguments
-  .   ( class | this | super Arguments | new InnerCreator )
-
-PrefixOp:
-  ++ 
-  -- 
-  ! 
-  ~ 
-  + 
-  - 
-
-PostfixOp: 
-  ++ 
-  -- 
-
-Selector: 
-  . Identifier [Arguments]
-  . this
-  . super SuperSuffix
-  . new InnerCreator
-  [ Expression ]
-
-SuperSuffix: 
-  Arguments 
-  . Identifier [Arguments]
-
-BasicType: 
-  byte 
-  short 
-  char 
-  int 
-  long 
-  float 
-  double 
-  boolean
-
-ArgumentsOpt: 
-  [ Arguments ]
-
-Arguments: 
-  ( [Expression { , Expression }] )
-
-BracketsOpt: 
-  {[]}
-
-Creator: 
-  QualifiedIdentifier ( ArrayCreatorRest  | ClassCreatorRest )
-
-InnerCreator: 
-  Identifier ClassCreatorRest
-
-ArrayCreatorRest: 
-  [ ( ] BracketsOpt ArrayInitializer | Expression ] {[ Expression ]} 
-BracketsOpt )
-
-ClassCreatorRest: 
-  Arguments [ClassBody]
-
-ArrayInitializer: 
-  { [VariableInitializer {, VariableInitializer} [,]] }
-
-VariableInitializer: 
-  ArrayInitializer
-  Expression
-
-ParExpression: 
-  ( Expression )
-
-Block: 
-  { BlockStatements }
-
-BlockStatements: 
-  { BlockStatement }
-
-BlockStatement : 
-  LocalVariableDeclarationStatement
-  [Identifier :] Statement
-
-LocalVariableDeclarationStatement:
-  [final] Type VariableDeclarators   ;  
-
-Statement:
-  Block
-  if ParExpression Statement [else Statement]
-  for ( ForInitOpt   ;   [Expression]   ;   ForUpdateOpt ) Statement
-  while ParExpression Statement
-  do Statement while ParExpression   ; 
-  try Block ( Catches | [Catches] finally Block )
-  switch ParExpression { SwitchBlockStatementGroups }
-  synchronized ParExpression Block
-  return [Expression] ; 
-  throw Expression   ; 
-  break [Identifier]
-  continue [Identifier]
-  ; 
-  ExpressionStatement
-  Identifier   :   Statement
-
-Catches:
-  CatchClause {CatchClause}
-
-CatchClause: 
-  catch ( FormalParameter ) Block
-
-SwitchBlockStatementGroups: 
-  { SwitchBlockStatementGroup }
-
-SwitchBlockStatementGroup: 
-  SwitchLabel BlockStatements
-
-SwitchLabel: 
-  case ConstantExpression   :
-  default:  
-
-MoreStatementExpressions: 
-  { , StatementExpression }
-
-ForInit: 
-  StatementExpression MoreStatementExpressions
-  [final] Type VariableDeclarators
-
-ForUpdate: 
-  StatementExpression MoreStatementExpressions
-
-ModifiersOpt: 
-  { Modifier }
-
-Modifier: 
-  public 
-  protected 
-  static 
-  abstract 
-  final 
-  native 
-
-VariableDeclarators: 
-  VariableDeclarator { ,   VariableDeclarator }
-
-VariableDeclaratorsRest: 
-  VariableDeclaratorRest { ,   VariableDeclarator }
-
-ConstantDeclaratorsRest: 
-  ConstantDeclaratorRest { ,   ConstantDeclarator }
-
-VariableDeclarator: 
-  Identifier VariableDeclaratorRest
-
-ConstantDeclarator: 
-  Identifier ConstantDeclaratorRest
-
-VariableDeclaratorRest: 
-  BracketsOpt [  =   VariableInitializer]
-
-ConstantDeclaratorRest: 
-  BracketsOpt   =   VariableInitializer
-
-VariableDeclaratorId: 
-  Identifier BracketsOpt
-
-CompilationUnit: 
-  [package QualifiedIdentifier   ;  ] {ImportDeclaration} 
-[ TypeDeclaration ]
-
-ImportDeclaration: 
-  import Identifier {   .   Identifier } [   .     *   ] ;  
-
-TypeDeclaration: 
-  ClassOrInterfaceDeclaration
+TypeDeclaration:
+  ClassDeclaration
+  InterfaceDeclaration
   ;
 
-ClassOrInterfaceDeclaration: 
-  ModifiersOpt (ClassDeclaration | InterfaceDeclaration)
+ClassDeclaration:
+  {Modifier} class Identifier [Super] [Interfaces] ClassBody
 
-ClassDeclaration: 
-  class Identifier [extends Type] [implements TypeList] ClassBody
+Modifier:
+  public
+  protected
+  abstract
+  final
+  static
+  native
 
-InterfaceDeclaration: 
-  interface Identifier [extends TypeList] InterfaceBody
+Super:
+  extends QualifiedName
 
-TypeList: 
-  Type {  ,   Type}
+Interfaces:
+  implements QualifiedName {, QualifiedName}
 
-ClassBody: 
-  { {ClassBodyDeclaration} }
+InterfaceDeclaration:
+  {Modifier} interface Identifier [ExtendsInterfaces] InterfaceBody
 
-InterfaceBody: 
-  { {InterfaceBodyDeclaration} }
+ExtendsInterfaces:
+  extends QualifiedName {, QualifiedName}
+
+ClassBody:
+  "{" {ClassBodyDeclaration} "}"
 
 ClassBodyDeclaration:
+  ConstructorDeclaration
+  FieldDeclaration
+  MethodDeclaration
   ;
-  ModifiersOpt MemberDecl
 
-MemberDecl:
-  MethodOrFieldDecl
-  void Identifier MethodDeclaratorRest
-  Identifier ConstructorDeclaratorRest
+ConstructorDeclaration:
+  {Modifier} ConstructorDeclarator ConstructorBody
 
-MethodOrFieldDecl:
-  Type Identifier MethodOrFieldRest
+ConstructorDeclarator:
+  Identifier  "(" [FormalParameterList] ")"
 
-MethodOrFieldRest:
-  VariableDeclaratorRest
-  MethodDeclaratorRest
+FormalParameterList:
+  FormalParamater {, FormalParameter}
 
-InterfaceBodyDeclaration:
-  ; 
-  ModifiersOpt InterfaceMemberDecl
+FormalParameter:
+  Type Identifier
 
-InterfaceMemberDecl:
-  InterfaceMethodOrFieldDecl
-  void Identifier VoidInterfaceMethodDeclaratorRest
+ConstructorBody:
+  "{" [ExplicitConstructorInvocation] {BlockStatement} "}"
 
-InterfaceMethodOrFieldDecl:
-  Type Identifier InterfaceMethodOrFieldRest
+FieldDeclaration:
+  {Modifier} Type Identifier ["=" Expression] ";"
 
-InterfaceMethodOrFieldRest:
-  ConstantDeclaratorsRest ;
-  InterfaceMethodDeclaratorRest
+MethodDeclaration:
+  {Modifier} ResultType MethodDeclarator MethodBody
 
-MethodDeclaratorRest:
-    FormalParameters ( MethodBody |   ;  )
+MethodDeclarator:
+  Identifier "(" [FormalParameterList] ")
 
-VoidMethodDeclaratorRest:
-    FormalParameters [throws QualifiedIdentifierList] ( MethodBody |   ;  )
-
-InterfaceMethodDeclaratorRest:
-  FormalParameters BracketsOpt [throws QualifiedIdentifierList]   ;  
-
-VoidInterfaceMethodDeclaratorRest:
-  FormalParameters [throws QualifiedIdentifierList]   ;  
-
-ConstructorDeclaratorRest:
-  FormalParameters MethodBody
-
-QualifiedIdentifierList: 
-  QualifiedIdentifier {  ,   QualifiedIdentifier}
-
-FormalParameters: 
-  ( [FormalParameter { , FormalParameter}] )
-
-FormalParameter: 
-  Type VariableDeclaratorId
+ResultType:
+  Type
+  void
 
 MethodBody:
   Block
+  ";"
+
+InterfaceBody:
+  "{" {InterfaceMemberDeclaration} "}"
+
+InterfaceMemberDeclaration:
+  AbstractMethodDeclaration
+
+AbstractMethodDeclaration:
+  {Modifier} ResultType MethodDeclarator ";"
+
+Block:
+  "{" {BlockStatement} "}
+
+BlockStatement:
+  LocalVariableDeclarationStatement
+  Statement
+
+LocalVariableDeclarationStatement:
+  Type Identifier "=" Expression ";"
+
+Statement:
+  StatementWithoutTrailingSubstatement
+  IfThenStatement
+  IfThenElseStatement
+  ForStatement
+
+StatementWithoutTrailingSubstatement:
+  Block
+  ";"
+  ExpressionStatement
+  ReturnStatement
+
+ExpressionStatement:
+  StatementExpression ;
+
+StatementExpression:
+  Assignment
+  MethodInvocation
+  ClassInstanceCreationExpression
+
+Assignment:
+    LeftHandSide "=" AssignmentExpression
+
+LeftHandSide:
+  QualifiedName
+  FieldAccess
+  ArrayAccess
+
+FieldAccess:
+  Primary . Identifier
+
+Primary:
+  PrimaryNoNewArray
+  ArrayCreationExpression
+
+PrimaryNoNewArray:
+  Literal
+  this
+  "(" Expression ")"
+  ClassInstanceCreationExpression
+  FieldAccess
+  MethodInvocation
+  ArrayAccess
+
+ClassInstanceCreationExpression:
+  new QualifiedName "(" [ArgumentList] ")"
+
+ArgumentList:
+  Expression {, Expression}
+
+MethodInvocation:
+  QualifiedName "(" [ArgumentList] ")"
+  Primary "." Identifier "(" [ArgumentList] ")"
+
+ArrayCreationExpression:
+  "new" QualifiedName "[" [Expression] "]
+  "new" PrimitiveType "[" [Expression] "]
+
+Type:
+  PrimitiveType ["[" "]"]
+  QualifiedName ["[" "]"]
+
+PrimitiveType:
+  IntegralType
+  "boolean"
+
+IntegralType:
+  "byte"
+  "short"
+  "int"
+  "char"
+
+ArrayAccess:
+  QualifiedName [ Expression ]
+  PrimaryNoNewArray [ Expression ]
+
+Expression:
+  AssignmentExpression
+
+AssignmentExpression:
+  ConditionalExpression
+  Assignment
+
+ConditionalExpression:
+  ConditionalOrExpression
+
+ConditionalOrExpression:
+  ConditionalAndExpression
+  ConditionalOrExpression "||" ConditionalAndExpression
+
+ConditionalAndExpression:
+  InclusiveOrExpression
+  ConditionalAndExpression && InclusiveOrExpression
+
+AndExpression:
+  EqualityExpression
+  AndExpression & EqualityExpression
+
+ExclusiveOrExpression:
+  AndExpression
+  ExclusiveOrExpression ^ AndExpression
+
+InclusiveOrExpression:
+  ExclusiveOrExpression
+  InclusiveOrExpression | ExclusiveOrExpression
+
+EqualityExpression:
+  RelationalExpression
+  EqualityExpression == RelationalExpression
+  EqualityExpression != RelationalExpression
+
+RelationalExpression:
+  AdditiveExpression
+  RelationalExpression < AdditiveExpression
+  RelationalExpression > AdditiveExpression
+  RelationalExpression <= AdditiveExpression
+  RelationalExpression >= AdditiveExpression
+  RelationalExpression instanceof ReferenceType
+
+AdditiveExpression:
+  MultiplicativeExpression
+  AdditiveExpression + MultiplicativeExpression
+  AdditiveExpression - MultiplicativeExpression
+
+MultiplicativeExpression:
+  UnaryExpression
+  MultiplicativeExpression * UnaryExpression
+  MultiplicativeExpression / UnaryExpression
+  MultiplicativeExpression % UnaryExpression
+
+UnaryExpression:
+  - UnaryExpression
+  UnaryExpressionNotPlusMinus
+
+UnaryExpressionNotPlusMinus:
+  PostfixExpression
+  ~ UnaryExpression # TODO(sjy): do we need this?
+  ! UnaryExpression
+  CastExpression
+
+CastExpression:
+  ( PrimitiveType ) UnaryExpression
+  ( QualifiedName ) UnaryExpressionNotPlusMinus
+
+PostfixExpression:
+  Primary
+  QualifiedName
+
+ReturnStatement:
+  "return" [Expression] ";"
+
+IfThenStatement:
+  "if" "(" Expression ")" Statement
+
+IfThenElseStatement:
+  "if" "(" Expression ")" StatementNoShortIf "else" Statement
+
+IfThenElseStatementNoShortIf:
+  "if" "(" Expression ")" StatementNoShortIf "else" StatementNoShortIf
+
+StatementNoShortIf:
+  StatementWithoutTrailingSubstatement
+  IfThenElseStatementNoShortIf
+  ForStatementNoShortIf
+
+ForStatement:
+  "for" "(" [ForInit] ";" [Expression] ";" [ForUpdate] ")" Statement
+
+ForStatementNoShortIf:
+  "for" "(" [ForInit] ";" [Expression] ";" [ForUpdate] ")" StatementNoShortIf
+
+ForInit:
+  StatementExpression
+  LocalVariableDeclaration
+
+ForUpdate:
+  StatementExpression
+
