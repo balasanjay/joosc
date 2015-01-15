@@ -185,6 +185,35 @@ TEST_F(LexerTest, CommentBetweenIdentifiers) {
   EXPECT_EQ(Token(IDENTIFIER, PosRange(0, 13, 16)), tokens[0][2]);
 }
 
+TEST_F(LexerTest, Keywords) {
+  LexString("while true null char if const");
+  ASSERT_FALSE(errors.IsFatal());
+  ASSERT_EQ(11u, tokens[0].size());
+  EXPECT_EQ(K_WHILE, tokens[0][0].type);
+  EXPECT_EQ(K_TRUE, tokens[0][2].type);
+  EXPECT_EQ(K_NULL, tokens[0][4].type);
+  EXPECT_EQ(K_CHAR, tokens[0][6].type);
+  EXPECT_EQ(K_IF, tokens[0][8].type);
+  EXPECT_EQ(K_CONST, tokens[0][10].type);
+}
+
+TEST_F(LexerTest, AlmostKeywords) {
+  LexString("if3 dof ifwhile freturn");
+  ASSERT_FALSE(errors.IsFatal());
+  ASSERT_EQ(7u, tokens[0].size());
+  EXPECT_EQ(IDENTIFIER, tokens[0][0].type);
+  EXPECT_EQ(IDENTIFIER, tokens[0][2].type);
+  EXPECT_EQ(IDENTIFIER, tokens[0][4].type);
+  EXPECT_EQ(IDENTIFIER, tokens[0][6].type);
+}
+
+TEST_F(LexerTest, KeywordPrefixAtEOF) {
+  LexString("whil");
+  ASSERT_FALSE(errors.IsFatal());
+  ASSERT_EQ(1u, tokens[0].size());
+  EXPECT_EQ(IDENTIFIER, tokens[0][0].type);
+}
+
 TEST_F(LexerTest, OnlyString) {
   LexString("\"goober\"");
   ASSERT_FALSE(errors.IsFatal());

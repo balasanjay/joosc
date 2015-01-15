@@ -123,6 +123,34 @@ bool IsStringEscapable(u8 c) {
          c == '"' | c == '\\' | IsOctal(c);
 }
 
+bool PosRangeStringMatches(const FileSet* fs, const PosRange& range, const string& s) {
+  if ((int)s.size() != range.end - range.begin) {
+    return false;
+  }
+  File* f = fs->Get(range.fileid);
+  for (u64 i = 0; i < s.size(); ++i) {
+    if (s[i] != f->At(range.begin + i)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Tries to match a string with all tokens/reserved words.
+ * Returns the type of the keyword, or IDENTIFIER if no keywords were matched.
+ */
+TokenType MatchKeywords(const FileSet* fs, const PosRange& range) {
+  for (int i = 0; i < kNumKeywordLiterals; ++i) {
+    const string& keywordString = kKeywordLiterals[i].first;
+    if (PosRangeStringMatches(fs, range, keywordString)) {
+      return  kKeywordLiterals[i].second;
+    }
+  }
+  return IDENTIFIER;
+}
+
+
 void Start(LexState* state);
 void Integer(LexState* state);
 void Whitespace(LexState* state);
@@ -255,7 +283,8 @@ void Identifier(LexState* state) {
     state->Advance();
   }
 
-  state->EmitToken(IDENTIFIER);
+  TokenType keywordOrIdentifier = MatchKeywords(state->fs, PosRange(state->fileid, state->begin, state->end));
+  state->EmitToken(keywordOrIdentifier);
   state->SetNextState(&Start);
 }
 
@@ -387,5 +416,6 @@ void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
     LexJoosFile(fs, fs->Get(i), i, &(*tokens_out)[i], errors_out);
   }
 }
+
 
 }  // namespace lexer
