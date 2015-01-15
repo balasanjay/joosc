@@ -123,6 +123,31 @@ bool IsStringEscapable(u8 c) {
          c == '"' | c == '\\' | IsOctal(c);
 }
 
+bool PosRangeStringMatches(const FileSet* fs, const PosRange& range, const string& s) {
+  if ((int)s.size() != range.end - range.begin) {
+    return false;
+  }
+  File* f = fs->Get(range.fileid);
+  for (u64 i = 0; i < s.size(); ++i) {
+    if (s[i] != f->At(range.begin + i)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool MatchKeywords(const FileSet* fs, const PosRange& range, TokenType* type_out) {
+  for (int i = 0; i < kNumKeywordLiterals; ++i) {
+    const string& keywordString = kKeywordLiterals[i].first;
+    if (PosRangeStringMatches(fs, range, keywordString)) {
+      *type_out =  kKeywordLiterals[i].second;
+      return true;
+    }
+  }
+  return false;
+}
+
+
 void Start(LexState* state);
 void Integer(LexState* state);
 void Whitespace(LexState* state);
@@ -255,7 +280,12 @@ void Identifier(LexState* state) {
     state->Advance();
   }
 
-  state->EmitToken(IDENTIFIER);
+  TokenType keywordType;
+  if (MatchKeywords(state->fs, PosRange(state->fileid, state->begin, state->end), &keywordType)) {
+    state->EmitToken(keywordType);
+  } else {
+    state->EmitToken(IDENTIFIER);
+  }
   state->SetNextState(&Start);
 }
 
@@ -360,30 +390,6 @@ void String(LexState* state) {
   state->SetNextState(&Start);
 }
 
-bool TokenStringMatches(const FileSet* fs, const Token& tok, string s) {
-  if ((int)s.size() != tok.pos.end - tok.pos.begin) {
-    return false;
-  }
-  File* f = fs->Get(tok.pos.fileid);
-  for (u64 i = 0; i < s.size(); ++i) {
-    if (s[i] != f->At(tok.pos.begin + i)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-void ConvertIdentifierToKeyword(const FileSet* fs, Token* tok) {
-  for (int i = 0; i < kNumKeywordLiterals; ++i) {
-    const string& keywordString = kKeywordLiterals[i].first;
-    if (TokenStringMatches(fs, *tok, keywordString)) {
-      tok->type = kKeywordLiterals[i].second;
-      return;
-    }
-  }
-}
-
-
 }  // namespace internal
 
 void LexJoosFile(base::FileSet* fs, base::File* file, int fileid, vector<Token>* tokens_out,
@@ -409,26 +415,6 @@ void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
 
   for (int i = 0; i < fs->Size(); i++) {
     LexJoosFile(fs, fs->Get(i), i, &(*tokens_out)[i], errors_out);
-  }
-}
-
-void LexPostProcess(FileSet* fs, vector<vector<Token>>* tokens_out, base::ErrorList* errors_out) {
-  for (auto file_tokens_it = tokens_out->begin(); file_tokens_it != tokens_out->end(); file_tokens_it++) {
-    auto token_it = file_tokens_it->begin();
-    while (token_it != file_tokens_it->end()) {
-      switch (token_it->type) {
-        case WHITESPACE:
-          file_tokens_it->erase(token_it);
-          break;
-        case IDENTIFIER:
-          internal::ConvertIdentifierToKeyword(fs, &(*token_it));
-          token_it++;
-          break;
-        default:
-          token_it++;
-          break;
-      }
-    }
   }
 }
 

@@ -185,6 +185,33 @@ TEST_F(LexerTest, CommentBetweenIdentifiers) {
   EXPECT_EQ(Token(IDENTIFIER, PosRange(0, 13, 16)), tokens[0][2]);
 }
 
+TEST_F(LexerTest, Keywords) {
+  LexString("while true null char if const");
+  ASSERT_FALSE(errors.IsFatal());
+  ASSERT_EQ(11u, tokens[0].size());
+  EXPECT_EQ(K_WHILE, tokens[0][0].type);
+  EXPECT_EQ(K_TRUE, tokens[0][2].type);
+  EXPECT_EQ(K_NULL, tokens[0][4].type);
+  EXPECT_EQ(K_CHAR, tokens[0][6].type);
+  EXPECT_EQ(K_IF, tokens[0][8].type);
+  EXPECT_EQ(K_CONST, tokens[0][10].type);
+}
+
+TEST_F(LexerTest, KeywordPrefix) {
+  LexString("whil e");
+  ASSERT_FALSE(errors.IsFatal());
+  ASSERT_EQ(3u, tokens[0].size());
+  EXPECT_EQ(IDENTIFIER, tokens[0][0].type);
+  EXPECT_EQ(IDENTIFIER, tokens[0][2].type);
+}
+
+TEST_F(LexerTest, KeywordPrefixAtEOF) {
+  LexString("whil");
+  ASSERT_FALSE(errors.IsFatal());
+  ASSERT_EQ(1u, tokens[0].size());
+  EXPECT_EQ(IDENTIFIER, tokens[0][0].type);
+}
+
 TEST_F(LexerTest, OnlyString) {
   LexString("\"goober\"");
   ASSERT_FALSE(errors.IsFatal());
@@ -346,27 +373,6 @@ TEST_F(LexerTest, UnclosedChar) {
   LexString("'foobar");
   ASSERT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidCharacterLitError(0:0-2)", testing::PrintToString(*errors.Get(0)));
-}
-
-
-
-TEST_F(LexerTest, PostProcessRemoveWhitespace) {
-  LexString(" ");
-  LexPostProcess(fs, &tokens, &errors);
-  ASSERT_FALSE(errors.IsFatal());
-  EXPECT_TRUE(tokens[0].empty());
-}
-
-TEST_F(LexerTest, PostProcessConvertKeywords) {
-  LexString("while true null char if const");
-  LexPostProcess(fs, &tokens, &errors);
-  ASSERT_FALSE(errors.IsFatal());
-  EXPECT_EQ(K_WHILE, tokens[0][0].type);
-  EXPECT_EQ(K_TRUE, tokens[0][1].type);
-  EXPECT_EQ(K_NULL, tokens[0][2].type);
-  EXPECT_EQ(K_CHAR, tokens[0][3].type);
-  EXPECT_EQ(K_IF, tokens[0][4].type);
-  EXPECT_EQ(K_CONST, tokens[0][5].type);
 }
 
 }  // namespace base

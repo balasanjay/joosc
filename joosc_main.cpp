@@ -49,12 +49,6 @@ int main(int argc, char** argv) {
     return ERROR;
   }
 
-  LexPostProcess(fs, &tokens, &errors);
-  if (errors.IsFatal()) {
-    errors.PrintTo(&cerr, base::OutputOptions::kUserOutput);
-    return ERROR;
-  }
-
   for (auto token : tokens[0]) {
     cout << TokenTypeToString(token.type) << endl;
   }
