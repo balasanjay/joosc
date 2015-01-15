@@ -197,12 +197,14 @@ TEST_F(LexerTest, Keywords) {
   EXPECT_EQ(K_CONST, tokens[0][10].type);
 }
 
-TEST_F(LexerTest, KeywordPrefix) {
-  LexString("whil e");
+TEST_F(LexerTest, KeywordPrefixes) {
+  LexString("if3 dof ifwhile freturn");
   ASSERT_FALSE(errors.IsFatal());
-  ASSERT_EQ(3u, tokens[0].size());
+  ASSERT_EQ(7u, tokens[0].size());
   EXPECT_EQ(IDENTIFIER, tokens[0][0].type);
   EXPECT_EQ(IDENTIFIER, tokens[0][2].type);
+  EXPECT_EQ(IDENTIFIER, tokens[0][4].type);
+  EXPECT_EQ(IDENTIFIER, tokens[0][6].type);
 }
 
 TEST_F(LexerTest, KeywordPrefixAtEOF) {
