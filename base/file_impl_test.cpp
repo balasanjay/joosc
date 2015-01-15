@@ -71,13 +71,13 @@ TEST(StringFileTest, LineMapEmptyFile) {
 
 TEST(StringFileTest, PrintRangePtr) {
   const string file =
-"class Foo {\n"
-"  String bar = 3; /* foo bar \n"
-"}\n";
+      "class Foo {\n"
+      "  String bar = 3; /* foo bar \n"
+      "}\n";
 
   const string expected =
-"  String bar = 3; /* foo bar \n"
-"                  ^~         ";
+      "  String bar = 3; /* foo bar \n"
+      "                  ^~         ";
 
   StringFile sf("foo.txt", file);
 

@@ -4,7 +4,7 @@
 namespace base {
 
 class FileSetTest : public testing::Test {
-protected:
+ protected:
   void SetUp() { fs = nullptr; }
 
   void TearDown() {
@@ -23,7 +23,8 @@ TEST_F(FileSetTest, EmptyBuilder) {
 }
 
 TEST_F(FileSetTest, StringEntry) {
-  ASSERT_TRUE(FileSet::Builder().AddStringFile("a.txt", "a").Build(&fs, &errors));
+  ASSERT_TRUE(
+      FileSet::Builder().AddStringFile("a.txt", "a").Build(&fs, &errors));
   EXPECT_EQ(1, fs->Size());
   EXPECT_FALSE(errors.IsFatal());
 
@@ -35,7 +36,8 @@ TEST_F(FileSetTest, StringEntry) {
 }
 
 TEST_F(FileSetTest, DiskEntry) {
-  ASSERT_TRUE(FileSet::Builder().AddDiskFile("base/testdata/a.txt").Build(&fs, &errors));
+  ASSERT_TRUE(FileSet::Builder().AddDiskFile("base/testdata/a.txt").Build(
+      &fs, &errors));
   EXPECT_EQ(1, fs->Size());
   EXPECT_FALSE(errors.IsFatal());
 
@@ -47,12 +49,12 @@ TEST_F(FileSetTest, DiskEntry) {
 }
 
 TEST_F(FileSetTest, NonExistentDiskEntry) {
-  ASSERT_FALSE(FileSet::Builder().AddDiskFile("notafolder/notafile.txt").Build(&fs, &errors));
+  ASSERT_FALSE(FileSet::Builder().AddDiskFile("notafolder/notafile.txt").Build(
+      &fs, &errors));
   EXPECT_EQ(nullptr, fs);
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ(
-      "DiskFileError{errval_:2,path_:notafolder/notafile.txt,}\n",
-      testing::PrintToString(errors));
+  EXPECT_EQ("DiskFileError{errval_:2,path_:notafolder/notafile.txt,}\n",
+            testing::PrintToString(errors));
 }
 
 TEST_F(FileSetTest, MultiEntry) {

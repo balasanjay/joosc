@@ -12,14 +12,15 @@ using std::cout;
 using std::endl;
 
 class NonAnsiCharError : public base::Error {
-  void PrintTo(std::ostream* out, const base::OutputOptions& opt) const override {
+  void PrintTo(std::ostream* out, const base::OutputOptions& opt) const
+      override {
     if (opt.simple) {
       *out << "NonAnsiCharError\n";
       return;
     }
 
-    *out << Red(opt) << "error: My user visible message." << ResetFmt(opt) <<
-      " Other sub-message.";
+    *out << Red(opt) << "error: My user visible message." << ResetFmt(opt)
+         << " Other sub-message.";
   }
 };
 

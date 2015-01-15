@@ -6,7 +6,8 @@
 namespace base {
 
 struct OutputOptions {
-  OutputOptions(bool colorize, bool simple) : colorize(colorize), simple(simple) {}
+  OutputOptions(bool colorize, bool simple)
+      : colorize(colorize), simple(simple) {}
 
   const bool colorize = true;
   const bool simple = false;
@@ -16,12 +17,12 @@ struct OutputOptions {
 };
 
 class Error {
-public:
+ public:
   virtual ~Error() {}
 
   virtual void PrintTo(std::ostream* out, const OutputOptions& opt) const = 0;
 
-protected:
+ protected:
   Error() {}
 
   string Red(const OutputOptions& opt) const;
@@ -30,6 +31,6 @@ protected:
 
 std::ostream& operator<<(std::ostream& out, const Error& e);
 
-} // namespace base
+}  // namespace base
 
 #endif

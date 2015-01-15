@@ -7,4 +7,4 @@ std::ostream& operator<<(std::ostream& out, const ErrorList& e) {
   return out;
 }
 
-} // namespace base
+}  // namespace base

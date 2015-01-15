@@ -10,7 +10,7 @@ inline string IfColor(const OutputOptions& opt, string color) {
   return "\033[" + color;
 }
 
-} // namespace
+}  // namespace
 
 const OutputOptions OutputOptions::kSimpleOutput(false, true);
 const OutputOptions OutputOptions::kUserOutput(true, false);
@@ -27,4 +27,4 @@ std::ostream& operator<<(std::ostream& out, const Error& e) {
   return out;
 }
 
-} // namespace base
+}  // namespace base

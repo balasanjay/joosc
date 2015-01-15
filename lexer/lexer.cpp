@@ -22,7 +22,8 @@ string TokenTypeToString(TokenType t) {
 namespace internal {
 
 struct LexState {
-  LexState(FileSet* fs, File* file, int fileid, vector<Token>* tokens, base::ErrorList* errors)
+  LexState(FileSet* fs, File* file, int fileid, vector<Token>* tokens,
+           base::ErrorList* errors)
       : fs(fs), file(file), fileid(fileid), tokens(tokens), errors(errors) {}
 
   typedef void (*StateFn)(LexState*);
@@ -114,16 +115,21 @@ bool IsAlpha(u8 c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'); }
 
 bool IsAlphaNumeric(u8 c) { return IsAlpha(c) || IsNumeric(c); }
 
-bool IsValidIdentifierStartChar(u8 c) { return IsAlpha(c) || c == '_' || c == '$'; }
+bool IsValidIdentifierStartChar(u8 c) {
+  return IsAlpha(c) || c == '_' || c == '$';
+}
 
-bool IsValidIdentifierChar(u8 c) { return IsValidIdentifierStartChar(c) || IsNumeric(c); }
+bool IsValidIdentifierChar(u8 c) {
+  return IsValidIdentifierStartChar(c) || IsNumeric(c);
+}
 
 bool IsStringEscapable(u8 c) {
   return c == 'b' | c == 't' | c == 'n' | c == 'f' | c == 'r' | c == '\'' |
          c == '"' | c == '\\' | IsOctal(c);
 }
 
-bool PosRangeStringMatches(const FileSet* fs, const PosRange& range, const string& s) {
+bool PosRangeStringMatches(const FileSet* fs, const PosRange& range,
+                           const string& s) {
   if ((int)s.size() != range.end - range.begin) {
     return false;
   }
@@ -144,12 +150,11 @@ TokenType MatchKeywords(const FileSet* fs, const PosRange& range) {
   for (int i = 0; i < kNumKeywordLiterals; ++i) {
     const string& keywordString = kKeywordLiterals[i].first;
     if (PosRangeStringMatches(fs, range, keywordString)) {
-      return  kKeywordLiterals[i].second;
+      return kKeywordLiterals[i].second;
     }
   }
   return IDENTIFIER;
 }
-
 
 void Start(LexState* state);
 void Integer(LexState* state);
@@ -204,7 +209,8 @@ void Start(LexState* state) {
     }
   }
 
-  state->EmitFatal(new UnexpectedCharError(state->fs, Pos(state->fileid, state->begin)));
+  state->EmitFatal(
+      new UnexpectedCharError(state->fs, Pos(state->fileid, state->begin)));
 }
 
 void Integer(LexState* state) {
@@ -213,7 +219,8 @@ void Integer(LexState* state) {
     if (state->begin + 1 == state->end &&
         state->file->At(state->begin) == '0') {
 
-      state->EmitFatal(new LeadingZeroInIntLitError(state->fs, Pos(state->fileid, state->begin)));
+      state->EmitFatal(new LeadingZeroInIntLitError(
+          state->fs, Pos(state->fileid, state->begin)));
       return;
     }
     state->Advance();
@@ -256,7 +263,8 @@ void BlockComment(LexState* state) {
 
   while (true) {
     if (state->IsAtEnd()) {
-      state->EmitFatal(new UnclosedBlockCommentError(state->fs, PosRange(state->fileid, state->begin, state->begin + 2)));
+      state->EmitFatal(new UnclosedBlockCommentError(
+          state->fs, PosRange(state->fileid, state->begin, state->begin + 2)));
       return;
     }
 
@@ -277,13 +285,14 @@ void Identifier(LexState* state) {
   if (state->IsAtEnd() || !IsValidIdentifierStartChar(state->Peek())) {
     throw "Internal error: Tried to lex identifier at invalid start char.";
   }
-  state->Advance(); // Advance past first char.
+  state->Advance();  // Advance past first char.
 
   while (!state->IsAtEnd() && IsValidIdentifierChar(state->Peek())) {
     state->Advance();
   }
 
-  TokenType keywordOrIdentifier = MatchKeywords(state->fs, PosRange(state->fileid, state->begin, state->end));
+  TokenType keywordOrIdentifier = MatchKeywords(
+      state->fs, PosRange(state->fileid, state->begin, state->end));
   state->EmitToken(keywordOrIdentifier);
   state->SetNextState(&Start);
 }
@@ -326,7 +335,8 @@ void Char(LexState* state) {
   state->Advance();  // Advance past apostrophe.
 
   if (state->IsAtEnd()) {
-    state->EmitFatal(new InvalidCharacterLitError(state->fs, PosRange(state->fileid, state->begin, state->end)));
+    state->EmitFatal(new InvalidCharacterLitError(
+        state->fs, PosRange(state->fileid, state->begin, state->end)));
     return;
   }
 
@@ -334,11 +344,13 @@ void Char(LexState* state) {
   u8 next = state->Peek();
   if (next == '\\') {
     if (!AdvanceEscapedChar(state)) {
-      state->EmitFatal(new InvalidCharacterEscapeError(state->fs, PosRange(state->fileid, state->begin, state->end)));
+      state->EmitFatal(new InvalidCharacterEscapeError(
+          state->fs, PosRange(state->fileid, state->begin, state->end)));
       return;
     }
   } else if (next == '\'' || next == '\n') {
-    state->EmitFatal(new InvalidCharacterLitError(state->fs, PosRange(state->fileid, state->begin, state->end)));
+    state->EmitFatal(new InvalidCharacterLitError(
+        state->fs, PosRange(state->fileid, state->begin, state->end)));
     return;
   } else {
     state->Advance();
@@ -346,10 +358,12 @@ void Char(LexState* state) {
 
   // Require another apostrophe.
   if (state->IsAtEnd()) {
-    state->EmitFatal(new InvalidCharacterLitError(state->fs, PosRange(state->fileid, state->begin, state->end)));
+    state->EmitFatal(new InvalidCharacterLitError(
+        state->fs, PosRange(state->fileid, state->begin, state->end)));
     return;
   } else if (state->Peek() != '\'') {
-    state->EmitFatal(new InvalidCharacterLitError(state->fs, PosRange(state->fileid, state->begin, state->end)));
+    state->EmitFatal(new InvalidCharacterLitError(
+        state->fs, PosRange(state->fileid, state->begin, state->end)));
     return;
   }
   state->Advance();
@@ -362,13 +376,15 @@ void String(LexState* state) {
 
   while (true) {
     if (state->IsAtEnd()) {
-      state->EmitFatal(new UnclosedStringLitError(state->fs, Pos(state->fileid, state->begin)));
+      state->EmitFatal(new UnclosedStringLitError(
+          state->fs, Pos(state->fileid, state->begin)));
       return;
     }
 
     u8 next = state->Peek();
     if (next == '\n') {
-      state->EmitFatal(new UnclosedStringLitError(state->fs, Pos(state->fileid, state->begin)));
+      state->EmitFatal(new UnclosedStringLitError(
+          state->fs, Pos(state->fileid, state->begin)));
       return;
     } else if (next == '"') {
       state->Advance();
@@ -376,7 +392,8 @@ void String(LexState* state) {
     } else if (next == '\\') {
       int startEscapePos = state->end;
       if (!AdvanceEscapedChar(state)) {
-        state->EmitFatal(new InvalidCharacterEscapeError(state->fs, PosRange(state->fileid, startEscapePos, state->end)));
+        state->EmitFatal(new InvalidCharacterEscapeError(
+            state->fs, PosRange(state->fileid, startEscapePos, state->end)));
         return;
       }
     } else {
@@ -391,8 +408,8 @@ void String(LexState* state) {
 
 }  // namespace internal
 
-void LexJoosFile(base::FileSet* fs, base::File* file, int fileid, vector<Token>* tokens_out,
-                 base::ErrorList* errors_out) {
+void LexJoosFile(base::FileSet* fs, base::File* file, int fileid,
+                 vector<Token>* tokens_out, base::ErrorList* errors_out) {
   // Remove anything with non-ANSI characters.
   for (int i = 0; i < file->Size(); i++) {
     u8 c = file->At(i);
@@ -416,6 +433,5 @@ void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
     LexJoosFile(fs, fs->Get(i), i, &(*tokens_out)[i], errors_out);
   }
 }
-
 
 }  // namespace lexer
