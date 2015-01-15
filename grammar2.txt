@@ -68,16 +68,13 @@ FormalParameterList:
   FormalParamater {, FormalParameter}
 
 FormalParameter:
-  Type VariableDeclaratorId
-
-VariableDeclaratorId:
-  Identifier [ "[" "]" ]
+  Type Identifier
 
 ConstructorBody:
   "{" [ExplicitConstructorInvocation] {BlockStatement} "}"
 
 FieldDeclaration:
-  {Modifier} Type VariableDeclaratorId ["=" Expression] ";"
+  {Modifier} Type Identifier ["=" Expression] ";"
 
 MethodDeclaration:
   {Modifier} ResultType MethodDeclarator MethodBody
@@ -110,7 +107,7 @@ BlockStatement:
   Statement
 
 LocalVariableDeclarationStatement:
-  Type VariableDeclaratorId "=" Expression ";"
+  Type Identifier "=" Expression ";"
 
 Statement:
   StatementWithoutTrailingSubstatement
@@ -170,19 +167,26 @@ ArrayCreationExpression:
   "new" QualifiedName "[" [Expression] "]
   "new" PrimitiveType "[" [Expression] "]
 
+Type:
+  PrimitiveType ["[" "]"]
+  QualifiedName ["[" "]"]
+
 PrimitiveType:
   IntegralType
-  boolean
+  "boolean"
 
 IntegralType:
-  byte
-  short
-  int
-  char
+  "byte"
+  "short"
+  "int"
+  "char"
 
 ArrayAccess:
   QualifiedName [ Expression ]
   PrimaryNoNewArray [ Expression ]
+
+Expression:
+  AssignmentExpression
 
 AssignmentExpression:
   ConditionalExpression
@@ -247,11 +251,39 @@ UnaryExpressionNotPlusMinus:
 
 CastExpression:
   ( PrimitiveType ) UnaryExpression
-  ( ReferenceType ) UnaryExpressionNotPlusMinus
+  ( QualifiedName ) UnaryExpressionNotPlusMinus
 
 PostfixExpression:
   Primary
   QualifiedName
 
+ReturnStatement:
+  "return" [Expression] ";"
 
+IfThenStatement:
+  "if" "(" Expression ")" Statement
+
+IfThenElseStatement:
+  "if" "(" Expression ")" StatementNoShortIf "else" Statement
+
+IfThenElseStatementNoShortIf:
+  "if" "(" Expression ")" StatementNoShortIf "else" StatementNoShortIf
+
+StatementNoShortIf:
+  StatementWithoutTrailingSubstatement
+  IfThenElseStatementNoShortIf
+  ForStatementNoShortIf
+
+ForStatement:
+  "for" "(" [ForInit] ";" [Expression] ";" [ForUpdate] ")" Statement
+
+ForStatementNoShortIf:
+  "for" "(" [ForInit] ";" [Expression] ";" [ForUpdate] ")" StatementNoShortIf
+
+ForInit:
+  StatementExpression
+  LocalVariableDeclaration
+
+ForUpdate:
+  StatementExpression
 
