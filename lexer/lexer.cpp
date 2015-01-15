@@ -114,6 +114,10 @@ bool IsAlpha(u8 c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'); }
 
 bool IsAlphaNumeric(u8 c) { return IsAlpha(c) || IsNumeric(c); }
 
+bool IsValidIdentifierStartChar(u8 c) { return IsAlpha(c) || c == '_' || c == '$'; }
+
+bool IsValidIdentifierChar(u8 c) { return IsValidIdentifierStartChar(c) || IsNumeric(c); }
+
 bool IsStringEscapable(u8 c) {
   return c == 'b' | c == 't' | c == 'n' | c == 'f' | c == 'r' | c == '\'' |
          c == '"' | c == '\\' | IsOctal(c);
@@ -156,7 +160,7 @@ void Start(LexState* state) {
   } else if (IsNumeric(state->Peek())) {
     state->SetNextState(&Integer);
     return;
-  } else if (IsAlpha(state->Peek())) {
+  } else if (IsValidIdentifierStartChar(state->Peek())) {
     state->SetNextState(&Identifier);
     return;
   }
@@ -242,10 +246,12 @@ void BlockComment(LexState* state) {
 }
 
 void Identifier(LexState* state) {
-  if (state->IsAtEnd() || !IsAlpha(state->Peek())) {
-    throw "Tried to lex identifier that starts with non-alpha character";
+  if (state->IsAtEnd() || !IsValidIdentifierStartChar(state->Peek())) {
+    throw "Internal error: Tried to lex identifier at invalid start char.";
   }
-  while (!state->IsAtEnd() && IsAlphaNumeric(state->Peek())) {
+  state->Advance(); // Advance past first char.
+
+  while (!state->IsAtEnd() && IsValidIdentifierChar(state->Peek())) {
     state->Advance();
   }
 
