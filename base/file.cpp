@@ -31,23 +31,22 @@ vector<int> FindLineStarts(const u8* buf, int len) {
   for (int i = 0; i < len; ++i) {
     // TODO: handle windows-style newlines?
     if (buf[i] == '\n') {
-      newlines.push_back(i+1);
+      newlines.push_back(i + 1);
     }
   }
   return newlines;
 }
 
-} // namespace
+}  // namespace
 
 File::File(const string& path, u8* buf, int len)
-  : dirname_(base::Dirname(path)),
-    basename_(base::Basename(path)),
-    buf_(buf),
-    len_(len),
-    linestarts_(FindLineStarts(buf_, len_)) {
-    assert(buf != nullptr && len >= 0);
-  }
-
+    : dirname_(base::Dirname(path)),
+      basename_(base::Basename(path)),
+      buf_(buf),
+      len_(len),
+      linestarts_(FindLineStarts(buf_, len_)) {
+  assert(buf != nullptr && len >= 0);
+}
 
 u8 File::At(int index) const {
   AssertInRange(index);

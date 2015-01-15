@@ -15,21 +15,23 @@ namespace base {
 namespace internal {
 
 class DiskFileError : public base::Error {
-public:
-  DiskFileError(int errval, const string& path) : errval_(errval), path_(path) {}
+ public:
+  DiskFileError(int errval, const string& path)
+      : errval_(errval), path_(path) {}
 
-  void PrintTo(std::ostream* out, const base::OutputOptions& opt) const override {
+  void PrintTo(std::ostream* out, const base::OutputOptions& opt) const
+      override {
     if (opt.simple) {
-      *out << "DiskFileError{"
-            << FIELD_PRINT(errval_)
-            << FIELD_PRINT(path_) << "}";
+      *out << "DiskFileError{" << FIELD_PRINT(errval_) << FIELD_PRINT(path_)
+           << "}";
       return;
     }
 
-    *out << path_ << " " << Red(opt) << "error: " << ResetFmt(opt) << string(strerror(errval_));
+    *out << path_ << " " << Red(opt) << "error: " << ResetFmt(opt)
+         << string(strerror(errval_));
   }
 
-private:
+ private:
   int errval_;
   string path_;
 };
@@ -40,7 +42,7 @@ u8* StringCopy(string s) {
   return buf;
 }
 
-} // namespace internal
+}  // namespace internal
 
 StringFile::StringFile(string path, string content)
     : File(path, internal::StringCopy(content), content.length()) {}

@@ -46,7 +46,7 @@ class File {
   const u8* buf_;
   const int len_;
 
-  const vector<int> linestarts_; // Stored as indices into buf_.
+  const vector<int> linestarts_;  // Stored as indices into buf_.
 };
 
 struct Pos {
@@ -67,7 +67,8 @@ struct PosRange {
   PosRange(int fileid, int begin, int end)
       : fileid(fileid), begin(begin), end(end) {};
 
-  PosRange(const Pos& pos) : fileid(pos.fileid), begin(pos.index), end(pos.index + 1) {}
+  PosRange(const Pos& pos)
+      : fileid(pos.fileid), begin(pos.index), end(pos.index + 1) {}
 
   bool operator==(const PosRange& other) const {
     return fileid == other.fileid && begin == other.begin && end == other.end;
