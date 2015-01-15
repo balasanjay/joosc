@@ -354,12 +354,12 @@ void String(LexState* state) {
   state->SetNextState(&Start);
 }
 
-bool TokenStringMatches(FileSet* fs, const Token& tok, string s) {
-  if ((int)s.length() != tok.pos.end - tok.pos.begin) {
+bool TokenStringMatches(const FileSet* fs, const Token& tok, string s) {
+  if ((int)s.size() != tok.pos.end - tok.pos.begin) {
     return false;
   }
   File* f = fs->Get(tok.pos.fileid);
-  for (u64 i = 0; i < s.length(); ++i) {
+  for (u64 i = 0; i < s.size(); ++i) {
     if (s[i] != f->At(tok.pos.begin + i)) {
       return false;
     }
@@ -367,11 +367,11 @@ bool TokenStringMatches(FileSet* fs, const Token& tok, string s) {
   return true;
 }
 
-void ConvertIdentifierToKeyword(FileSet* fs, Token& tok) {
+void ConvertIdentifierToKeyword(const FileSet* fs, Token* tok) {
   for (int i = 0; i < kNumKeywordLiterals; ++i) {
     const string& keywordString = kKeywordLiterals[i].first;
-    if (TokenStringMatches(fs, tok, keywordString)) {
-      tok.type = kKeywordLiterals[i].second;
+    if (TokenStringMatches(fs, *tok, keywordString)) {
+      tok->type = kKeywordLiterals[i].second;
       return;
     }
   }
@@ -415,7 +415,7 @@ void LexPostProcess(FileSet* fs, vector<vector<Token>>* tokens_out, base::ErrorL
           file_tokens_it->erase(token_it);
           break;
         case IDENTIFIER:
-          internal::ConvertIdentifierToKeyword(fs, *token_it);
+          internal::ConvertIdentifierToKeyword(fs, &(*token_it));
           token_it++;
           break;
         default:
