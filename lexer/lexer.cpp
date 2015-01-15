@@ -136,15 +136,18 @@ bool PosRangeStringMatches(const FileSet* fs, const PosRange& range, const strin
   return true;
 }
 
-bool MatchKeywords(const FileSet* fs, const PosRange& range, TokenType* type_out) {
+/**
+ * Tries to match a string with all tokens/reserved words.
+ * Returns the type of the keyword, or IDENTIFIER if no keywords were matched.
+ */
+TokenType MatchKeywords(const FileSet* fs, const PosRange& range) {
   for (int i = 0; i < kNumKeywordLiterals; ++i) {
     const string& keywordString = kKeywordLiterals[i].first;
     if (PosRangeStringMatches(fs, range, keywordString)) {
-      *type_out =  kKeywordLiterals[i].second;
-      return true;
+      return  kKeywordLiterals[i].second;
     }
   }
-  return false;
+  return IDENTIFIER;
 }
 
 
@@ -280,12 +283,8 @@ void Identifier(LexState* state) {
     state->Advance();
   }
 
-  TokenType keywordType;
-  if (MatchKeywords(state->fs, PosRange(state->fileid, state->begin, state->end), &keywordType)) {
-    state->EmitToken(keywordType);
-  } else {
-    state->EmitToken(IDENTIFIER);
-  }
+  TokenType keywordOrIdentifier = MatchKeywords(state->fs, PosRange(state->fileid, state->begin, state->end));
+  state->EmitToken(keywordOrIdentifier);
   state->SetNextState(&Start);
 }
 

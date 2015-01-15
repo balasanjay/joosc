@@ -197,7 +197,7 @@ TEST_F(LexerTest, Keywords) {
   EXPECT_EQ(K_CONST, tokens[0][10].type);
 }
 
-TEST_F(LexerTest, KeywordPrefixes) {
+TEST_F(LexerTest, AlmostKeywords) {
   LexString("if3 dof ifwhile freturn");
   ASSERT_FALSE(errors.IsFatal());
   ASSERT_EQ(7u, tokens[0].size());
