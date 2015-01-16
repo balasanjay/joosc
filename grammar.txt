@@ -1,15 +1,11 @@
 CompilationUnit:
-  [PackageDeclaration] [ImportDeclarations] [TypeDeclaration]
+  [PackageDeclaration] {ImportDeclaration} [TypeDeclaration]
 
 PackageDeclaration:
   package QualifiedName ;
 
 QualifiedName:
   Identifier {"." Identifier}
-
-ImportDeclarations:
-  ImportDeclaration
-  ImportDeclarations ImportDeclaration
 
 ImportDeclaration:
   SingleTypeImportDeclaration
@@ -24,7 +20,7 @@ TypeImportOnDemandDeclaration:
 TypeDeclaration:
   ClassDeclaration
   InterfaceDeclaration
-  ;
+  ";"
 
 ClassDeclaration:
   {Modifier} class Identifier [Super] [Interfaces] ClassBody
