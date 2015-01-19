@@ -40,38 +40,44 @@ public:
 };
 
 class BinExpr : public Expr {
+public:
+  BinExpr(Expr* lhs, lexer::Token op, Expr* rhs) : op_(op), lhs_(lhs), rhs_(rhs) {
+    assert(lhs != nullptr);
+    assert(lexer::TokenTypeIsBinOp(op.type));
+    assert(rhs != nullptr);
+  }
+
   void PrintTo(std::ostream* os) const override {
     *os << '(';
     lhs_->PrintTo(os);
-    *os << ' ' << Op() << ' ';
+    *os << ' ' << TokenTypeToString(op_.type) << ' ';
     rhs_->PrintTo(os);
     *os << ')';
   }
 
-protected:
-  BinExpr(Expr* lhs, Expr* rhs) : lhs_(lhs), rhs_(rhs) {}
-
-  virtual string Op() const = 0;
-
 private:
+  lexer::Token op_;
+
   unique_ptr<Expr> lhs_;
   unique_ptr<Expr> rhs_;
 };
 
-class AddExpr : public BinExpr {
+class UnaryExpr : public Expr {
 public:
-  AddExpr(Expr* lhs, Expr* rhs) : BinExpr(lhs, rhs) {}
+  UnaryExpr(lexer::Token op, Expr* rhs) : op_(op), rhs_(rhs) {
+    assert(lexer::TokenTypeIsUnaryOp(op.type));
+    assert(rhs != nullptr);
+  }
 
-protected:
-  string Op() const { return "+"; }
-};
+  void PrintTo(std::ostream* os) const override {
+    *os << '(' << TokenTypeToString(op_.type) << ' ';
+    rhs_->PrintTo(os);
+    *os << ')';
+  }
 
-class MulExpr : public BinExpr {
-public:
-  MulExpr(Expr* lhs, Expr* rhs) : BinExpr(lhs, rhs) {}
-
-protected:
-  string Op() const { return "*"; }
+private:
+  lexer::Token op_;
+  unique_ptr<Expr> rhs_;
 };
 
 class ConstExpr : public Expr {

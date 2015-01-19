@@ -201,39 +201,39 @@ ConditionalAndExpression:
 
 AndExpression:
   EqualityExpression
-  AndExpression & EqualityExpression
+  AndExpression "&" EqualityExpression
 
 ExclusiveOrExpression:
   AndExpression
-  ExclusiveOrExpression ^ AndExpression
+  ExclusiveOrExpression "^" AndExpression
 
 InclusiveOrExpression:
   ExclusiveOrExpression
-  InclusiveOrExpression | ExclusiveOrExpression
+  InclusiveOrExpression "|" ExclusiveOrExpression
 
 EqualityExpression:
   RelationalExpression
-  EqualityExpression == RelationalExpression
-  EqualityExpression != RelationalExpression
+  EqualityExpression "==" RelationalExpression
+  EqualityExpression "!=" RelationalExpression
 
 RelationalExpression:
   AdditiveExpression
-  RelationalExpression < AdditiveExpression
-  RelationalExpression > AdditiveExpression
-  RelationalExpression <= AdditiveExpression
-  RelationalExpression >= AdditiveExpression
-  RelationalExpression instanceof ReferenceType
+  RelationalExpression "<" AdditiveExpression
+  RelationalExpression ">" AdditiveExpression
+  RelationalExpression "<=" AdditiveExpression
+  RelationalExpression ">=" AdditiveExpression
+  RelationalExpression "instanceof" Type
 
 AdditiveExpression:
   MultiplicativeExpression
-  AdditiveExpression + MultiplicativeExpression
-  AdditiveExpression - MultiplicativeExpression
+  AdditiveExpression "+" MultiplicativeExpression
+  AdditiveExpression "-" MultiplicativeExpression
 
 MultiplicativeExpression:
   UnaryExpression
-  MultiplicativeExpression * UnaryExpression
-  MultiplicativeExpression / UnaryExpression
-  MultiplicativeExpression % UnaryExpression
+  MultiplicativeExpression "*" UnaryExpression
+  MultiplicativeExpression "/" UnaryExpression
+  MultiplicativeExpression "%" UnaryExpression
 
 UnaryExpression:
   - UnaryExpression
@@ -241,7 +241,6 @@ UnaryExpression:
 
 UnaryExpressionNotPlusMinus:
   PostfixExpression
-  ~ UnaryExpression # TODO(sjy): do we need this?
   ! UnaryExpression
   CastExpression
 

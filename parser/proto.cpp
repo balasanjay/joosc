@@ -2,15 +2,16 @@
 #include "lexer/lexer.h"
 #include <iostream>
 
-using lexer::Token;
-using std::cerr;
-using lexer::IDENTIFIER;
-using lexer::LPAREN;
-using lexer::RPAREN;
-using lexer::INTEGER;
-using lexer::TokenType;
 using lexer::ADD;
+using lexer::ASSG;
+using lexer::IDENTIFIER;
+using lexer::INTEGER;
+using lexer::LPAREN;
 using lexer::MUL;
+using lexer::RPAREN;
+using lexer::Token;
+using lexer::TokenType;
+using std::cerr;
 
 namespace parser {
 
@@ -81,22 +82,6 @@ private:
 
 } // namespace
 
-int BinOpPrec(Token tok) {
-  switch (tok.type) {
-    case ADD: return 0;
-    case MUL: return 1;
-    default: throw "foo bar";
-  }
-}
-
-Expr* MakeBinOp(Token tok, Expr* lhs, Expr* rhs) {
-  switch (tok.type) {
-    case ADD: return new AddExpr(lhs, rhs);
-    case MUL: return new MulExpr(lhs, rhs);
-    default: throw "foo bar";
-  }
-}
-
 Expr* FixPrecedence(vector<Expr*> exprs, vector<Token> ops) {
   assert(exprs.size() == ops.size() + 1);
   vector<Expr*> outstack;
@@ -117,7 +102,9 @@ Expr* FixPrecedence(vector<Expr*> exprs, vector<Token> ops) {
       assert(i % 2 == 1);
       Token op = ops.at(i/2);
 
-      if (opstack.empty() || BinOpPrec(*opstack.rbegin()) < BinOpPrec(op)) {
+      if (opstack.empty() ||
+          (op.type == ASSG && TokenTypeBinOpPrec(op.type) >= TokenTypeBinOpPrec(opstack.rbegin()->type)) ||
+          (op.type != ASSG && TokenTypeBinOpPrec(op.type) > TokenTypeBinOpPrec(opstack.rbegin()->type))) {
         opstack.push_back(op);
         i++;
         continue;
@@ -134,9 +121,7 @@ Expr* FixPrecedence(vector<Expr*> exprs, vector<Token> ops) {
     outstack.pop_back();
     opstack.pop_back();
 
-    Expr* binop = MakeBinOp(nextop, lhs, rhs);
-
-    outstack.push_back(binop);
+    outstack.push_back(new BinExpr(lhs, nextop, rhs));
   }
 
   assert(outstack.size() == 1);
@@ -150,8 +135,6 @@ Result<Expr> ParseBottomExpr(State state) {
   if (state.IsAtEnd()) {
     return Result<Expr>::Failure();
   }
-
-  // cerr << "In ParseBottomExpr; found TokenType " << TokenTypeToString(state.GetNext().type) << "\n";
 
   if (state.GetNext().type == INTEGER) {
     return Result<Expr>::Success(new ConstExpr(), state.Advance());
@@ -171,11 +154,15 @@ Result<Expr> ParseBottomExpr(State state) {
     }
   }
 
-  return Result<Expr>::Failure();
-}
+  if (TokenTypeIsUnaryOp(state.GetNext().type)) {
+    Result<Expr> nested = ParseBottomExpr(state.Advance());
+    if (!nested.IsSuccess()) {
+      return nested;
+    }
+    return Result<Expr>::Success(new UnaryExpr(state.GetNext(), nested.Release()), nested.NewState());
+  }
 
-bool IsBinOp(TokenType tok) {
-  return tok == ADD || tok == MUL;
+  return Result<Expr>::Failure();
 }
 
 Result<Expr> ParseExpr(State state) {
@@ -200,7 +187,7 @@ Result<Expr> ParseExpr(State state) {
           cur);
     }
 
-    if (IsBinOp(cur.GetNext().type)) {
+    if (TokenTypeIsBinOp(cur.GetNext().type)) {
       operators.push_back(cur.GetNext());
       cur = cur.Advance();
       continue;
@@ -218,7 +205,6 @@ void Parse(const vector<Token>* tokens) {
   assert(result.IsSuccess());
   result.Get()->PrintTo(&std::cout);
   std::cout << '\n';
-  // result.Get().Print();
 }
 
 

@@ -11,6 +11,67 @@ using base::PosRange;
 
 namespace lexer {
 
+bool TokenTypeIsBinOp(TokenType t) {
+  switch (t) {
+    case LE:
+    case GE:
+    case EQ:
+    case NEQ:
+    case AND:
+    case OR:
+    case ADD:
+    case SUB:
+    case MUL:
+    case DIV:
+    case MOD:
+    case LT:
+    case GT:
+    case BAND:
+    case BOR:
+    case XOR:
+    case ASSG:
+    case K_INSTANCEOF:
+      return true;
+    default:
+      return false;
+  }
+}
+
+int TokenTypeBinOpPrec(TokenType t) {
+  switch (t) {
+    case LE: return 7;
+    case GE: return 7;
+    case EQ: return 6;
+    case NEQ: return 6;
+    case AND: return 2;
+    case OR: return 1;
+    case ADD: return 8;
+    case SUB: return 8;
+    case MUL: return 9;
+    case DIV: return 9;
+    case MOD: return 9;
+    case LT: return 7;
+    case GT: return 7;
+    case BAND: return 5;
+    case BOR: return 3;
+    case XOR: return 4;
+    case ASSG: return 0;
+    case K_INSTANCEOF: return 7;
+    default:
+      throw "foo bar";
+  }
+}
+
+bool TokenTypeIsUnaryOp(TokenType t) {
+  switch (t) {
+    case SUB:
+    case NOT:
+      return true;
+    default:
+      return false;
+  }
+}
+
 string TokenTypeToString(TokenType t) {
   if (t >= NUM_TOKEN_TYPES || t < 0) {
     throw "invalid token type";

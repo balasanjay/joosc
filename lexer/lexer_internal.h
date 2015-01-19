@@ -10,7 +10,7 @@ const string kTokenTypeToString[NUM_TOKEN_TYPES] = {
     "LINE_COMMENT",   "BLOCK_COMMENT", "WHITESPACE",  "LE",         "GE",
     "EQ",             "NEQ",           "AND",         "OR",         "ADD",
     "SUB",            "MUL",           "DIV",         "MOD",        "LT",
-    "GT",             "BAND",          "BOR",         "NOT",        "ASSG",
+    "GT",             "BAND",          "BOR", "XOR",         "NOT",        "ASSG",
     "LPAREN",         "RPAREN",        "LBRACE",      "RBRACE",     "LBRACK",
     "RBRACK",         "SEMI",          "COMMA",       "DOT",        "INTEGER",
     "IDENTIFIER",     "CHAR",          "STRING",      "K_ABSTRACT", "K_DEFAULT",
@@ -79,13 +79,13 @@ const pair<string, TokenType> kKeywordLiterals[kNumKeywordLiterals] = {
     make_pair("false", K_FALSE),
     make_pair("null", K_NULL)};
 
-const int kNumSymbolLiterals = 26;
+const int kNumSymbolLiterals = 27;
 const pair<string, TokenType> kSymbolLiterals[kNumSymbolLiterals] = {
     make_pair("<=", LE),    make_pair(">=", GE),    make_pair("==", EQ),
     make_pair("!=", NEQ),   make_pair("&&", AND),   make_pair("||", OR),
     make_pair("+", ADD),    make_pair("-", SUB),    make_pair("*", MUL),
     make_pair("/", DIV),    make_pair("%", MOD),    make_pair("<", LT),
-    make_pair(">", GT),     make_pair("&", BAND),   make_pair("|", BOR),
+    make_pair(">", GT),     make_pair("&", BAND),   make_pair("|", BOR), make_pair("^", XOR),
     make_pair("!", NOT),    make_pair("=", ASSG),   make_pair("(", LPAREN),
     make_pair(")", RPAREN), make_pair("{", LBRACE), make_pair("}", RBRACE),
     make_pair("[", LBRACK), make_pair("]", RBRACK), make_pair(";", SEMI),
