@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
   }
 
   int ins = 0;
-  for (int i = 0; i < tokens[0].size(); ++i) {
+  for (uint i = 0; i < tokens[0].size(); ++i) {
     if (tokens[0][i].type == lexer::WHITESPACE) {
       continue;
     }
