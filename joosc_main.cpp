@@ -1,4 +1,5 @@
 #include "base/error.h"
+#include "parser/ast.h"
 #include "base/errorlist.h"
 #include "base/fileset.h"
 #include "lexer/lexer.h"
@@ -50,8 +51,18 @@ int main(int argc, char** argv) {
     return ERROR;
   }
 
+  int ins = 0;
+  for (int i = 0; i < tokens[0].size(); ++i) {
+    if (tokens[0][i].type == lexer::WHITESPACE) {
+      continue;
+    }
+    tokens[0][ins++] = tokens[0][i];
+  }
+
+  parser::Parse(&tokens[0]);
+
   for (auto token : tokens[0]) {
-    cout << TokenTypeToString(token.type) << endl;
+    // cout << TokenTypeToString(token.type) << endl;
   }
 
   return 0;
