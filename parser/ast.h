@@ -82,12 +82,18 @@ private:
 
 class ConstExpr : public Expr {
 public :
-  // ConstExpr(lexer::Token token) : token_(token) {}
   void PrintTo(std::ostream* os) const override {
     *os << "IDENTIFIER";
   }
 private:
-  // lexer::Token token_;
+};
+
+class ThisExpr : public Expr {
+public :
+  void PrintTo(std::ostream* os) const override {
+    *os << "THIS";
+  }
+private:
 };
 
 void Parse(const vector<lexer::Token>* tokens);

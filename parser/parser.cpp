@@ -3,6 +3,7 @@
 #include <iostream>
 
 using lexer::ADD;
+using lexer::K_THIS;
 using lexer::ASSG;
 using lexer::IDENTIFIER;
 using lexer::INTEGER;
@@ -129,19 +130,54 @@ Expr* FixPrecedence(vector<Expr*> exprs, vector<Token> ops) {
   return outstack.at(0);
 }
 
-Result<Expr> ParseExpr(State state);
+Result<Expr> ParseExpression(State state);
+Result<Expr> ParseUnaryExpression(State state);
 
-Result<Expr> ParseBottomExpr(State state) {
+Result<Expr> ParseCastExpression(State state) {
+  if (state.IsAtEnd() || state.GetNext().type != LPAREN) {
+    return Result<Expr>::Failure();
+  }
+
+  // HACK: only casting to identifiers.
+  State afterLParen = state.Advance();
+  if (afterLParen.IsAtEnd() || afterLParen.GetNext().type != IDENTIFIER) {
+    return Result<Expr>::Failure();
+  }
+
+  State afterIdent = afterLParen.Advance();
+  if (afterIdent.IsAtEnd() || afterIdent.GetNext().type != RPAREN) {
+    return Result<Expr>::Failure();
+  }
+
+  State afterRParen = afterIdent.Advance();
+  return ParseUnaryExpression(afterRParen);
+}
+
+Result<Expr> ParsePrimaryBase(State state) {
+  // PrimaryBase:
+  //   QualifiedName
+  //   Literal
+  //   "this"
+  //   "(" Expression ")"
+  //   ClassInstanceCreationExpression
+
   if (state.IsAtEnd()) {
     return Result<Expr>::Failure();
   }
 
+  // TODO: QualifiedName
+
+  // TODO: literals other than integer.
   if (state.GetNext().type == INTEGER) {
     return Result<Expr>::Success(new ConstExpr(), state.Advance());
   }
 
+  if (state.GetNext().type == K_THIS) {
+    return Result<Expr>::Success(new ThisExpr(), state.Advance());
+  }
+
   if (state.GetNext().type == LPAREN) {
-    Result<Expr> nested = ParseExpr(state.Advance(1));
+    Result<Expr> nested = ParseExpression(state.Advance(1));
     if (!nested.IsSuccess()) {
       return Result<Expr>::Failure();
     }
@@ -154,25 +190,60 @@ Result<Expr> ParseBottomExpr(State state) {
     }
   }
 
+  // TODO: ClassInstanceCreationExpression.
+  throw;
+}
+
+Result<Expr> ParsePrimary(State state) {
+  // Primary:
+  //   PrimaryBase [ PrimaryEnd ]
+  //   ArrayCreationExpression [ PrimaryEndNoArrayAccess ]
+
+  Result<Expr> base = ParsePrimaryBase(state);
+  if (base.IsSuccess()) {
+    // TODO: optional PrimaryEnd.
+    return base;
+  }
+
+  // TODO: ArrayCreationExpression [ PrimaryEndNoArrayAccess ]
+  throw;
+}
+
+Result<Expr> ParseUnaryExpression(State state) {
+  // UnaryExpressionession:
+  //   "-" UnaryExpressionession
+  //   "!" UnaryExpressionession
+  //   CastExpression
+  //   Primary
+
+  if (state.IsAtEnd()) {
+    return Result<Expr>::Failure();
+  }
+
   if (TokenTypeIsUnaryOp(state.GetNext().type)) {
-    Result<Expr> nested = ParseBottomExpr(state.Advance());
+    Result<Expr> nested = ParseUnaryExpression(state.Advance());
     if (!nested.IsSuccess()) {
       return nested;
     }
     return Result<Expr>::Success(new UnaryExpr(state.GetNext(), nested.Release()), nested.NewState());
   }
 
-  return Result<Expr>::Failure();
+  Result<Expr> castExpr = ParseCastExpression(state);
+  if (castExpr.IsSuccess()) {
+    return castExpr;
+  }
+
+  return ParsePrimary(state);
 }
 
-Result<Expr> ParseExpr(State state) {
+Result<Expr> ParseExpression(State state) {
   vector<Expr*> exprs;
   vector<Token> operators;
 
   State cur = state;
 
   while (true) {
-    Result<Expr> nextExpr = ParseBottomExpr(cur);
+    Result<Expr> nextExpr = ParseUnaryExpression(cur);
     if (!nextExpr.IsSuccess()) {
       // TODO: we leak exprs.
       return nextExpr;
@@ -201,11 +272,16 @@ Result<Expr> ParseExpr(State state) {
 
 void Parse(const vector<Token>* tokens) {
   State state(tokens, 0);
-  Result<Expr> result = ParseExpr(state);
+  Result<Expr> result = ParseExpression(state);
   assert(result.IsSuccess());
   result.Get()->PrintTo(&std::cout);
   std::cout << '\n';
 }
 
+
+// TODO: in for-loop initializers, for-loop incrementors, and top-level
+// statements, we must ensure that they are either assignment, method
+// invocation, or class creation, not other types of expressions (like boolean
+// ops).
 
 } // namespace parser
