@@ -72,6 +72,30 @@ bool TokenTypeIsUnaryOp(TokenType t) {
   }
 }
 
+bool TokenTypeIsPrimitive(TokenType t) {
+  switch (t) {
+    case K_BYTE:
+    case K_SHORT:
+    case K_INT:
+    case K_CHAR:
+    case K_BOOL:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool TokenTypeIsLit(TokenType t) {
+  switch (t) {
+    case INTEGER:
+    case CHAR:
+    case STRING:
+      return true;
+    default:
+      return false;
+  }
+}
+
 string TokenTypeToString(TokenType t) {
   if (t >= NUM_TOKEN_TYPES || t < 0) {
     throw "invalid token type";

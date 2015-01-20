@@ -48,7 +48,7 @@ enum TokenType {
   K_IF,
   K_PRIVATE,
   K_THIS,
-  K_BOOLEAN,
+  K_BOOL,
   K_DO,
   K_IMPLEMENTS,
   K_PROTECTED,
@@ -102,6 +102,8 @@ string TokenTypeToString(TokenType t);
 bool TokenTypeIsBinOp(TokenType t);
 int TokenTypeBinOpPrec(TokenType t);
 bool TokenTypeIsUnaryOp(TokenType t);
+bool TokenTypeIsPrimitive(TokenType t);
+bool TokenTypeIsLit(TokenType t);
 
 struct Token {
   Token(TokenType type, base::PosRange pos) : type(type), pos(pos) {}

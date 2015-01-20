@@ -132,8 +132,8 @@ PrimaryBase:
   ClassInstanceCreationExpression
 
 PrimaryEnd:
-  PrimaryEndNoArrayAccess
   "[" Expression "]" [ PrimaryEndNoArrayAccess ]
+  PrimaryEndNoArrayAccess
 
 PrimaryEndNoArrayAccess:
   "(" [ArgumentList] ")" [ PrimaryEnd ]
@@ -154,18 +154,18 @@ ArrayCreationExpression:
   "new" PrimitiveType "[" [Expression] "]
 
 Type:
-  PrimitiveType ["[" "]"]
-  QualifiedName ["[" "]"]
+  SingleType ["[" "]"]
+
+SingleType:
+  PrimitiveType
+  QualifiedName
 
 PrimitiveType:
-  IntegralType
-  "boolean"
-
-IntegralType:
   "byte"
   "short"
   "int"
   "char"
+  "boolean"
 
 ArrayAccess:
   QualifiedName [ Expression ]

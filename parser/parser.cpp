@@ -3,16 +3,31 @@
 #include <iostream>
 
 using lexer::ADD;
-using lexer::K_THIS;
 using lexer::ASSG;
+using lexer::DOT;
 using lexer::IDENTIFIER;
 using lexer::INTEGER;
+using lexer::K_THIS;
+using lexer::LBRACK;
 using lexer::LPAREN;
 using lexer::MUL;
+using lexer::RBRACK;
 using lexer::RPAREN;
 using lexer::Token;
 using lexer::TokenType;
 using std::cerr;
+
+#define RETURN_IF_ERR(check) {\
+  if (!(check).IsSuccess()) { \
+    return (check); \
+  } \
+}
+
+#define RETURN_IF_GOOD(check, expr) {\
+  if ((check).IsSuccess()) { \
+    return (expr); \
+  } \
+}
 
 namespace parser {
 
@@ -132,25 +147,107 @@ Expr* FixPrecedence(vector<Expr*> exprs, vector<Token> ops) {
 
 Result<Expr> ParseExpression(State state);
 Result<Expr> ParseUnaryExpression(State state);
+Result<Expr> ParsePrimaryEnd(State state, Expr* base);
+Result<Expr> ParsePrimaryEndNoArrayAccess(State state, Expr* base);
+
+Result<vector<Token>> ParseQualifiedName(State state) {
+  if (state.IsAtEnd() || state.GetNext().type != IDENTIFIER) {
+    return Result<vector<Token>>::Failure();
+  }
+
+  vector<Token> name;
+  name.push_back(state.GetNext());
+
+  State cur = state.Advance();
+  while (true) {
+    if (cur.IsAtEnd() || cur.GetNext().type != DOT) {
+      return Result<vector<Token>>::Success(new vector<Token>(name), cur);
+    }
+
+    State afterdot = cur.Advance();
+    if (afterdot.IsAtEnd() || afterdot.GetNext().type != IDENTIFIER) {
+      return Result<vector<Token>>::Success(new vector<Token>(name), cur);
+    }
+
+    name.push_back(cur.GetNext());
+    name.push_back(afterdot.GetNext());
+    cur = afterdot.Advance();
+  }
+}
+
+Result<PrimitiveType> ParsePrimitiveType(State state) {
+  if (state.IsAtEnd()) {
+    return Result<PrimitiveType>::Failure();
+  }
+
+  if (TokenTypeIsPrimitive(state.GetNext().type)) {
+    return Result<PrimitiveType>::Success(new PrimitiveType(state.GetNext()), state.Advance());
+  }
+
+  return Result<PrimitiveType>::Failure();
+}
+
+Result<Type> ParseSingleType(State state) {
+  // SingleType:
+  //   PrimitiveType
+  //   QualifiedName
+
+  {
+    Result<PrimitiveType> primitive = ParsePrimitiveType(state);
+    if (primitive.IsSuccess()) {
+      return Result<Type>::Success(primitive.Release(), primitive.NewState());
+    }
+  }
+
+  {
+    Result<vector<Token>> reference = ParseQualifiedName(state);
+    if (reference.IsSuccess()) {
+      return Result<Type>::Success(new ReferenceType(reference.Release()), reference.NewState());
+    }
+  }
+
+  return Result<Type>::Failure();
+}
+
+Result<Type> ParseType(State state) {
+  Result<Type> single = ParseSingleType(state);
+  RETURN_IF_ERR(single);
+
+  State aftertype = single.NewState();
+  if (aftertype.IsAtEnd() || aftertype.GetNext().type != LBRACK) {
+    return single;
+  }
+
+  State afterlbrack = aftertype.Advance();
+  if (afterlbrack.IsAtEnd() || afterlbrack.GetNext().type != RBRACK) {
+    return single;
+  }
+
+  return Result<Type>::Success(new ArrayType(single.Release()), afterlbrack.Advance());
+}
 
 Result<Expr> ParseCastExpression(State state) {
   if (state.IsAtEnd() || state.GetNext().type != LPAREN) {
     return Result<Expr>::Failure();
   }
 
-  // HACK: only casting to identifiers.
-  State afterLParen = state.Advance();
-  if (afterLParen.IsAtEnd() || afterLParen.GetNext().type != IDENTIFIER) {
+  Result<Type> casttype = ParseType(state.Advance());
+  if (!casttype.IsSuccess()) {
     return Result<Expr>::Failure();
   }
 
-  State afterIdent = afterLParen.Advance();
-  if (afterIdent.IsAtEnd() || afterIdent.GetNext().type != RPAREN) {
+  State aftertype = casttype.NewState();
+  if (aftertype.IsAtEnd() || aftertype.GetNext().type != RPAREN) {
     return Result<Expr>::Failure();
   }
 
-  State afterRParen = afterIdent.Advance();
-  return ParseUnaryExpression(afterRParen);
+  Result<Expr> castedExpr = ParseUnaryExpression(aftertype.Advance());
+  RETURN_IF_ERR(castedExpr);
+
+  return Result<Expr>::Success(
+      new CastExpr(casttype.Release(), castedExpr.Release()),
+      castedExpr.NewState()
+  );
 }
 
 Result<Expr> ParsePrimaryBase(State state) {
@@ -167,9 +264,8 @@ Result<Expr> ParsePrimaryBase(State state) {
 
   // TODO: QualifiedName
 
-  // TODO: literals other than integer.
-  if (state.GetNext().type == INTEGER) {
-    return Result<Expr>::Success(new ConstExpr(), state.Advance());
+  if (TokenTypeIsLit(state.GetNext().type)) {
+    return Result<Expr>::Success(new LitExpr(state.GetNext()), state.Advance());
   }
 
   if (state.GetNext().type == K_THIS) {
@@ -177,17 +273,15 @@ Result<Expr> ParsePrimaryBase(State state) {
   }
 
   if (state.GetNext().type == LPAREN) {
-    Result<Expr> nested = ParseExpression(state.Advance(1));
-    if (!nested.IsSuccess()) {
+    Result<Expr> nested = ParseExpression(state.Advance());
+    RETURN_IF_ERR(nested);
+
+    State next = nested.NewState();
+    if (next.IsAtEnd() || next.GetNext().type != RPAREN) {
       return Result<Expr>::Failure();
     }
 
-    State next = nested.NewState();
-    if (!next.IsAtEnd() && next.GetNext().type == RPAREN) {
-      return Result<Expr>::Success(nested.Release(), next.Advance(1));
-    } else {
-      return Result<Expr>::Failure();
-    }
+    return Result<Expr>::Success(nested.Release(), next.Advance());
   }
 
   // TODO: ClassInstanceCreationExpression.
@@ -200,19 +294,56 @@ Result<Expr> ParsePrimary(State state) {
   //   ArrayCreationExpression [ PrimaryEndNoArrayAccess ]
 
   Result<Expr> base = ParsePrimaryBase(state);
-  if (base.IsSuccess()) {
-    // TODO: optional PrimaryEnd.
-    return base;
-  }
+  RETURN_IF_GOOD(base, ParsePrimaryEnd(base.NewState(), base.Release()));
 
   // TODO: ArrayCreationExpression [ PrimaryEndNoArrayAccess ]
   throw;
 }
 
+Result<Expr> ParsePrimaryEnd(State state, Expr* base) {
+  // PrimaryEnd:
+  //   "[" Expression "]" [ PrimaryEndNoArrayAccess ]
+  //   PrimaryEndNoArrayAccess
+
+  unique_ptr<Expr> base_deleter(base);
+  if (state.IsAtEnd()) {
+    return Result<Expr>::Success(base_deleter.release(), state);
+  }
+
+  if (state.GetNext().type == LBRACK) {
+    Result<Expr> index = ParseExpression(state.Advance());
+    if (!index.IsSuccess()) {
+      return Result<Expr>::Success(base_deleter.release(), state);
+    }
+
+    State afterIndex = index.NewState();
+    if (afterIndex.IsAtEnd() || afterIndex.GetNext().type != RBRACK) {
+      return Result<Expr>::Success(base_deleter.release(), state);
+    }
+
+    return Result<Expr>::Success(
+        new ArrayIndexExpr(base_deleter.release(), index.Release()),
+        afterIndex.Advance()
+    );
+  }
+
+  return ParsePrimaryEndNoArrayAccess(state, base_deleter.release());
+}
+
+Result<Expr> ParsePrimaryEndNoArrayAccess(State state, Expr* base) {
+  // PrimaryEndNoArrayAccess:
+  //   "(" [ArgumentList] ")" [ PrimaryEnd ]
+  //   "." Identifier [ PrimaryEnd ]
+
+  // TODO: implement this.
+  return Result<Expr>::Success(base, state);
+}
+
+
 Result<Expr> ParseUnaryExpression(State state) {
-  // UnaryExpressionession:
-  //   "-" UnaryExpressionession
-  //   "!" UnaryExpressionession
+  // UnaryExpression:
+  //   "-" UnaryExpression
+  //   "!" UnaryExpression
   //   CastExpression
   //   Primary
 
@@ -222,10 +353,12 @@ Result<Expr> ParseUnaryExpression(State state) {
 
   if (TokenTypeIsUnaryOp(state.GetNext().type)) {
     Result<Expr> nested = ParseUnaryExpression(state.Advance());
-    if (!nested.IsSuccess()) {
-      return nested;
-    }
-    return Result<Expr>::Success(new UnaryExpr(state.GetNext(), nested.Release()), nested.NewState());
+    RETURN_IF_ERR(nested);
+
+    return Result<Expr>::Success(
+        new UnaryExpr(state.GetNext(), nested.Release()),
+        nested.NewState()
+    );
   }
 
   Result<Expr> castExpr = ParseCastExpression(state);
