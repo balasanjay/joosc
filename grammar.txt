@@ -118,39 +118,29 @@ StatementWithoutTrailingSubstatement:
   ReturnStatement
 
 ExpressionStatement:
-  StatementExpression ;
-
-StatementExpression:
-  Assignment
-  MethodInvocation
-  ClassInstanceCreationExpression
-
-Assignment:
-    LeftHandSide "=" AssignmentExpression
-
-LeftHandSide:
-  QualifiedName
-  FieldAccess
-  ArrayAccess
-
-FieldAccess:
-  Primary . Identifier
+  Expression ";"
 
 Primary:
-  PrimaryNoNewArray
-  ArrayCreationExpression
+  PrimaryBase [ PrimaryEnd ]
+  ArrayCreationExpression [ PrimaryEndNoArrayAccess ]
 
-PrimaryNoNewArray:
+PrimaryBase:
+  QualifiedName
   Literal
-  this
+  "this"
   "(" Expression ")"
   ClassInstanceCreationExpression
-  FieldAccess
-  MethodInvocation
-  ArrayAccess
+
+PrimaryEnd:
+  PrimaryEndNoArrayAccess
+  "[" Expression "]" [ PrimaryEndNoArrayAccess ]
+
+PrimaryEndNoArrayAccess:
+  "(" [ArgumentList] ")" [ PrimaryEnd ]
+  "." Identifier [ PrimaryEnd ]
 
 ClassInstanceCreationExpression:
-  new QualifiedName "(" [ArgumentList] ")"
+  "new" QualifiedName "(" [ArgumentList] ")"
 
 ArgumentList:
   Expression {, Expression}
@@ -182,11 +172,10 @@ ArrayAccess:
   PrimaryNoNewArray [ Expression ]
 
 Expression:
-  AssignmentExpression
+  AssignmentExpression [ "=" AssignmentExpression ]
 
 AssignmentExpression:
   ConditionalExpression
-  Assignment
 
 ConditionalExpression:
   ConditionalOrExpression
@@ -236,21 +225,13 @@ MultiplicativeExpression:
   MultiplicativeExpression "%" UnaryExpression
 
 UnaryExpression:
-  - UnaryExpression
-  UnaryExpressionNotPlusMinus
-
-UnaryExpressionNotPlusMinus:
-  PostfixExpression
-  ! UnaryExpression
+  "-" UnaryExpression
+  "!" UnaryExpression
   CastExpression
+  Primary
 
 CastExpression:
-  ( PrimitiveType ) UnaryExpression
-  ( QualifiedName ) UnaryExpressionNotPlusMinus
-
-PostfixExpression:
-  Primary
-  QualifiedName
+  "(" Type ")" UnaryExpression
 
 ReturnStatement:
   "return" [Expression] ";"
@@ -276,9 +257,9 @@ ForStatementNoShortIf:
   "for" "(" [ForInit] ";" [Expression] ";" [ForUpdate] ")" StatementNoShortIf
 
 ForInit:
-  StatementExpression
+  Expression
   LocalVariableDeclaration
 
 ForUpdate:
-  StatementExpression
+  Expression
 
