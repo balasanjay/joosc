@@ -7,6 +7,8 @@ namespace base {
 
 class ErrorList {
  public:
+  ErrorList() {}
+
   ~ErrorList() {
     for (auto error : errors_) {
       delete error;
@@ -32,6 +34,8 @@ class ErrorList {
   }
 
  private:
+  DISALLOW_COPY_AND_ASSIGN(ErrorList);
+
   vector<Error*> errors_;
 };
 

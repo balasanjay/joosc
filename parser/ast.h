@@ -5,38 +5,25 @@
 
 namespace parser {
 
-/*
-class CompilationUnit {
-  PackageDecl* package_;
-  vector<ImportDecls*> imports_;
-  TypeDecl* type_;
-};
-
-class PackageDecl {
-  QualifiedName name_;
-};
-
 class QualifiedName {
-  vector<string> parts_;
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(QualifiedName);
+
+  vector<lexer::Token> tokens_; // Alternating IDENTIFIER and DOT.
+  vector<string> names_;
+  string fullname_;
 };
-
-class TypeDecl {
-
-};
-
-class ClassDecl : public TypeDecl {
-  vector<Modfier> modifiers_;
-  Identifier name_;
-};
-
-class IfaceDecl : public TypeDecl {
-
-};
-*/
 
 class Expr {
 public:
   virtual void PrintTo(std::ostream* os) const = 0;
+
+protected:
+  Expr() {}
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(Expr);
 };
 
 class BinExpr : public Expr {
@@ -184,7 +171,7 @@ class CastExpr : public Expr {
 };
 
 
-void Parse(const vector<lexer::Token>* tokens);
+void Parse(const base::File* file, const vector<lexer::Token>* tokens);
 
 } // namespace parser
 

@@ -59,11 +59,7 @@ int main(int argc, char** argv) {
     tokens[0][ins++] = tokens[0][i];
   }
 
-  parser::Parse(&tokens[0]);
-
-  for (auto token : tokens[0]) {
-    // cout << TokenTypeToString(token.type) << endl;
-  }
+  parser::Parse(fs->Get(0), &tokens[0]);
 
   return 0;
 }

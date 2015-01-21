@@ -27,6 +27,9 @@ class Error {
 
   string Red(const OutputOptions& opt) const;
   string ResetFmt(const OutputOptions& opt) const;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Error);
 };
 
 std::ostream& operator<<(std::ostream& out, const Error& e);

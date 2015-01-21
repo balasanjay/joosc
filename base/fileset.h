@@ -38,6 +38,8 @@ class FileSet final {
   }
 
  private:
+  DISALLOW_COPY_AND_ASSIGN(FileSet);
+
   friend FileSet::Builder;
 
   FileSet(vector<File*> files) : files_(files) {}

@@ -2,6 +2,7 @@
 #include "lexer/lexer.h"
 #include <iostream>
 
+using base::File;
 using lexer::ADD;
 using lexer::ASSG;
 using lexer::DOT;
@@ -34,8 +35,8 @@ namespace parser {
 namespace {
 struct State {
 public:
-  State(const vector<lexer::Token>* tokens, int index) : tokens_(tokens), index_(index) {}
-  State(State old, int advance) : tokens_(old.tokens_), index_(old.index_ + advance) {}
+  State(const File* file, const vector<lexer::Token>* tokens, int index) : file_(file), tokens_(tokens), index_(index) {}
+  State(State old, int advance) : file_(old.file_), tokens_(old.tokens_), index_(old.index_ + advance) {}
 
   bool IsAtEnd() const {
     return tokens_ == nullptr || (uint)index_ >= tokens_->size();
@@ -50,6 +51,7 @@ public:
   }
 
 private:
+  const File* file_;
   const vector<lexer::Token>* tokens_;
   int index_;
 };
@@ -89,7 +91,7 @@ public:
 
 private:
   Result(T* data, State state) : data_(data), state_(state), success_(true) {}
-  Result() : state_(nullptr, 0), success_(false) {}
+  Result() : state_(nullptr, nullptr, 0), success_(false) {}
 
   unique_ptr<T> data_;
   State state_;
@@ -403,8 +405,8 @@ Result<Expr> ParseExpression(State state) {
   }
 }
 
-void Parse(const vector<Token>* tokens) {
-  State state(tokens, 0);
+void Parse(const File* file, const vector<Token>* tokens) {
+  State state(file, tokens, 0);
   Result<Expr> result = ParseExpression(state);
   assert(result.IsSuccess());
   result.Get()->PrintTo(&std::cout);
