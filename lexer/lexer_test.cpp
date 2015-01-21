@@ -44,8 +44,8 @@ TEST_F(LexerTest, Whitespace) {
 // munch correctly.
 TEST_F(LexerTest, SymbolsMaximalMunch) {
   uint last = 2;
-  for (TokenType t = LE; t < LPAREN; ++t) {
-    uint cur = TokenTypeInfo::FromTokenType(t).Value().size();
+  for (uint t = LE; t < LPAREN; ++t) {
+    uint cur = TokenTypeInfo::FromTokenType((TokenType)t).Value().size();
     EXPECT_GE(last, cur);
     last = cur;
   }
