@@ -52,9 +52,9 @@ TEST_F(LexerTest, SymbolsMaximalMunch) {
 }
 
 TEST_F(LexerTest, Symbols) {
-  LexString("<<=>>====!=!&&&|||+-*/%(){}[];,.");
+  LexString("<<=>>====!=!&&&|||+-*/%(){}[];,.++--");
 
-  ASSERT_EQ(26u, tokens[0].size());
+  ASSERT_EQ(28u, tokens[0].size());
 
   EXPECT_EQ(LT, tokens[0][0].type);
   EXPECT_EQ(LE, tokens[0][1].type);
@@ -82,6 +82,8 @@ TEST_F(LexerTest, Symbols) {
   EXPECT_EQ(SEMI, tokens[0][23].type);
   EXPECT_EQ(COMMA, tokens[0][24].type);
   EXPECT_EQ(DOT, tokens[0][25].type);
+  EXPECT_EQ(INCR, tokens[0][26].type);
+  EXPECT_EQ(DECR, tokens[0][27].type);
 }
 
 TEST_F(LexerTest, Comment) {
@@ -190,15 +192,18 @@ TEST_F(LexerTest, CommentBetweenIdentifiers) {
 }
 
 TEST_F(LexerTest, Keywords) {
-  LexString("while true null char if const");
+  LexString("while true null char if const volatile synchronized goto");
   ASSERT_FALSE(errors.IsFatal());
-  ASSERT_EQ(11u, tokens[0].size());
+  ASSERT_EQ(17u, tokens[0].size());
   EXPECT_EQ(K_WHILE, tokens[0][0].type);
   EXPECT_EQ(K_TRUE, tokens[0][2].type);
   EXPECT_EQ(K_NULL, tokens[0][4].type);
   EXPECT_EQ(K_CHAR, tokens[0][6].type);
   EXPECT_EQ(K_IF, tokens[0][8].type);
   EXPECT_EQ(K_CONST, tokens[0][10].type);
+  EXPECT_EQ(K_VOLATILE, tokens[0][12].type);
+  EXPECT_EQ(K_SYNCHRONIZED, tokens[0][14].type);
+  EXPECT_EQ(K_GOTO, tokens[0][16].type);
 }
 
 TEST_F(LexerTest, AlmostKeywords) {
@@ -212,7 +217,7 @@ TEST_F(LexerTest, AlmostKeywords) {
 }
 
 TEST_F(LexerTest, KeywordPrefixAtEOF) {
-  LexString("whil");
+  LexString("fo");
   ASSERT_FALSE(errors.IsFatal());
   ASSERT_EQ(1u, tokens[0].size());
   EXPECT_EQ(IDENTIFIER, tokens[0][0].type);

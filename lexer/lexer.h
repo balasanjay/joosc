@@ -17,6 +17,8 @@ enum TokenType {
   NEQ,
   AND,
   OR,
+  INCR,
+  DECR,
   ADD,
   SUB,
   MUL,
@@ -108,7 +110,7 @@ struct TokenTypeInfo {
 
   static TokenTypeInfo FromTokenType(TokenType type);
 
-  TokenTypeInfo(const TokenTypeInfo& other) : type_(other.type_), kind_(other.kind_), supported_(other.supported_), precedence_(other.precedence_), repr_(other.repr_), value_(other.value_) {  }
+  TokenTypeInfo(const TokenTypeInfo& other) : type_(other.type_), kind_(other.kind_), precedence_(other.precedence_), repr_(other.repr_), value_(other.value_) {  }
 
   TokenTypeInfo Keyword() const {
     TokenTypeInfo ret = *this;
@@ -133,7 +135,7 @@ struct TokenTypeInfo {
 
   TokenTypeInfo Unsupported() const {
     TokenTypeInfo ret = *this;
-    ret.supported_ = false;
+    ret.kind_ = Kind(ret.kind_ & ~SUPPORTED);
     return ret;
   }
 
@@ -155,13 +157,21 @@ struct TokenTypeInfo {
     return ret;
   }
 
+  TokenTypeInfo Skippable() const {
+    TokenTypeInfo ret = *this;
+    ret.kind_ = Kind(ret.kind_ | SKIPPABLE);
+    return ret;
+  }
+
   TokenType Type() const { return type_; }
+  bool IsSupported() const { return (kind_ & SUPPORTED) == SUPPORTED; }
   bool IsKeyword() const { return (kind_ & KEYWORD) == KEYWORD; }
   bool IsBinOp() const { return (kind_ & BIN_OP) == BIN_OP; }
   bool IsUnaryOp() const { return (kind_ & UNARY_OP) == UNARY_OP; }
   bool IsPrimitive() const { return (kind_ & PRIMITIVE) == PRIMITIVE; }
   bool IsLiteral() const { return (kind_ & LITERAL) == LITERAL; }
   bool IsSymbol() const { return (kind_ & SYMBOL) == SYMBOL; }
+  bool IsSkippable() const { return (kind_ & SKIPPABLE) == SKIPPABLE; }
 
   int BinOpPrec() const {
     assert(IsBinOp());
@@ -173,12 +183,14 @@ struct TokenTypeInfo {
 private:
   enum Kind {
     NONE = 0,
+    SUPPORTED = 1 << 0,
     KEYWORD = 1 << 1,
     BIN_OP = 1 << 2,
     UNARY_OP = 1 << 3,
     PRIMITIVE = 1 << 4,
     LITERAL = 1 << 5,
     SYMBOL = 1 << 6,
+    SKIPPABLE = 1 << 7,
   };
 
   friend std::ostream& operator<<(std::ostream& out, const TokenTypeInfo& t);
@@ -186,8 +198,7 @@ private:
   TokenTypeInfo() {}
 
   TokenType type_ = NUM_TOKEN_TYPES;
-  Kind kind_ = NONE;
-  bool supported_ = true;
+  Kind kind_ = SUPPORTED;
   int precedence_ = -1; // Only valid if kind_ == BIN_OP.
   string repr_ = "";
   string value_ = "";

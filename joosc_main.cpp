@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
 
   int ins = 0;
   for (uint i = 0; i < tokens[0].size(); ++i) {
-    if (tokens[0][i].type == lexer::WHITESPACE) {
+    if (tokens[0][i].TypeInfo().IsSkippable()) {
       continue;
     }
     tokens[0][ins++] = tokens[0][i];
