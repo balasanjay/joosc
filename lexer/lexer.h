@@ -133,9 +133,7 @@ struct TokenTypeInfo {
 
   TokenTypeInfo Unsupported() const {
     TokenTypeInfo ret = *this;
-    ret.kind_ = NONE;
     ret.supported_ = false;
-    ret.precedence_ = -1;
     return ret;
   }
 
@@ -159,7 +157,7 @@ struct TokenTypeInfo {
 
   TokenType Type() const { return type_; }
   bool IsKeyword() const { return (kind_ & KEYWORD) == KEYWORD; }
-  bool IsBinOp() const { return (uint(kind_) & uint(BIN_OP)) == uint(BIN_OP); }
+  bool IsBinOp() const { return (kind_ & BIN_OP) == BIN_OP; }
   bool IsUnaryOp() const { return (kind_ & UNARY_OP) == UNARY_OP; }
   bool IsPrimitive() const { return (kind_ & PRIMITIVE) == PRIMITIVE; }
   bool IsLiteral() const { return (kind_ & LITERAL) == LITERAL; }
