@@ -2,21 +2,30 @@
 #define PARSER_AST_H
 
 #include "lexer/lexer.h"
+#include <iostream>
 
 namespace parser {
 
-class QualifiedName {
+class QualifiedName final {
+public:
+  QualifiedName(const vector<lexer::Token>& tokens, const vector<string>& parts, const string& name) : tokens_(tokens), parts_(parts), name_(name) {}
+
+  void PrintTo(std::ostream* os) const  {
+    *os << name_;
+  }
 
 private:
   DISALLOW_COPY_AND_ASSIGN(QualifiedName);
 
-  vector<lexer::Token> tokens_; // Alternating IDENTIFIER and DOT.
-  vector<string> names_;
-  string fullname_;
+  vector<lexer::Token> tokens_; // [IDENTIFIER, DOT, IDENTIFIER, DOT, IDENTIFIER]
+  vector<string> parts_; // ["java", "lang", "String"]
+  string name_; // "java.lang.String"
 };
 
 class Expr {
 public:
+  virtual ~Expr() {}
+
   virtual void PrintTo(std::ostream* os) const = 0;
 
 protected:
@@ -24,6 +33,18 @@ protected:
 
 private:
   DISALLOW_COPY_AND_ASSIGN(Expr);
+};
+
+class NameExpr : public Expr {
+  public:
+    NameExpr(QualifiedName* name) : name_(name) {}
+
+    void PrintTo(std::ostream* os) const override {
+      name_->PrintTo(os);
+    }
+
+  private:
+    unique_ptr<QualifiedName> name_;
 };
 
 class BinExpr : public Expr {
@@ -105,6 +126,8 @@ class ArrayIndexExpr : public Expr {
 
 class Type {
 public:
+  virtual ~Type() {}
+
   virtual void PrintTo(std::ostream* os) const = 0;
 };
 
@@ -122,23 +145,14 @@ private:
 
 class ReferenceType : public Type {
 public:
-  ReferenceType(vector<lexer::Token>* toks) : toks_(toks) {}
+  ReferenceType(QualifiedName* name) : name_(name) {}
 
   void PrintTo(std::ostream* os) const override {
-    *os << '(';
-    bool first = true;
-    for (const auto& tok : *toks_) {
-      if (!first) {
-        *os << ' ';
-      }
-      first = false;
-
-      *os << tok.TypeInfo();
-    }
-    *os << ')';
+    name_->PrintTo(os);
   }
+
 private:
-  unique_ptr<vector<lexer::Token>> toks_;
+  unique_ptr<QualifiedName> name_;
 };
 
 class ArrayType : public Type {

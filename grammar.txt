@@ -128,11 +128,11 @@ Primary:
   ArrayCreationExpression [ PrimaryEndNoArrayAccess ]
 
 PrimaryBase:
-  QualifiedName
   Literal
   "this"
   "(" Expression ")"
   ClassInstanceCreationExpression
+  QualifiedName
 
 PrimaryEnd:
   "[" Expression "]" [ PrimaryEndNoArrayAccess ]
