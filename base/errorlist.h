@@ -7,7 +7,8 @@ namespace base {
 
 class ErrorList {
  public:
-  ErrorList() {}
+  ErrorList() = default;
+  ErrorList(ErrorList&&) = default;
 
   ~ErrorList() {
     for (auto error : errors_) {

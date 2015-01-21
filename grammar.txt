@@ -139,22 +139,21 @@ PrimaryEnd:
   PrimaryEndNoArrayAccess
 
 PrimaryEndNoArrayAccess:
-  "(" [ArgumentList] ")" [ PrimaryEnd ]
   "." Identifier [ PrimaryEnd ]
+  "(" [ArgumentList] ")" [ PrimaryEnd ]
 
 ClassInstanceCreationExpression:
   "new" QualifiedName "(" [ArgumentList] ")"
 
 ArgumentList:
-  Expression {, Expression}
+  Expression {"," Expression}
 
 MethodInvocation:
   QualifiedName "(" [ArgumentList] ")"
   Primary "." Identifier "(" [ArgumentList] ")"
 
 ArrayCreationExpression:
-  "new" QualifiedName "[" [Expression] "]
-  "new" PrimitiveType "[" [Expression] "]
+  "new" SingleType "[" [Expression] "]
 
 Type:
   SingleType ["[" "]"]

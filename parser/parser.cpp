@@ -156,6 +156,14 @@ Result<Expr> ParseUnaryExpression(State state);
 Result<Expr> ParsePrimaryEnd(State state, Expr* base);
 Result<Expr> ParsePrimaryEndNoArrayAccess(State state, Expr* base);
 
+string TokenString(const File* file, Token token) {
+  stringstream s;
+  for (int i = token.pos.begin; i < token.pos.end; ++i) {
+    s << file->At(i);
+  }
+  return s.str();
+}
+
 QualifiedName* MakeQualifiedName(const File *file, const vector<Token>& tokens) {
   assert(tokens.size() > 0);
   assert((tokens.size() - 1) % 2 == 0);
@@ -164,13 +172,7 @@ QualifiedName* MakeQualifiedName(const File *file, const vector<Token>& tokens) 
   vector<string> parts;
 
   for (uint i = 0; i < tokens.size(); ++i) {
-    stringstream partname;
-    Token token = tokens.at(i);
-    for (int j = token.pos.begin; j < token.pos.end; ++j) {
-      partname << file->At(j);
-    }
-
-    string part = partname.str();
+    string part = TokenString(file, tokens.at(i));
     fullname << part;
     if ((i % 2) == 0) {
       parts.push_back(part);
@@ -341,37 +343,58 @@ Result<Expr> ParsePrimaryEnd(State state, Expr* base) {
   //   "[" Expression "]" [ PrimaryEndNoArrayAccess ]
   //   PrimaryEndNoArrayAccess
 
-  unique_ptr<Expr> base_deleter(base);
   if (state.IsAtEnd()) {
-    return Result<Expr>::Success(base_deleter.release(), state);
+    return Result<Expr>::Success(base, state);
   }
 
   if (state.GetNext().type == LBRACK) {
     Result<Expr> index = ParseExpression(state.Advance());
     if (!index.IsSuccess()) {
-      return Result<Expr>::Success(base_deleter.release(), state);
+      return Result<Expr>::Success(base, state);
     }
 
     State afterIndex = index.NewState();
     if (afterIndex.IsAtEnd() || afterIndex.GetNext().type != RBRACK) {
-      return Result<Expr>::Success(base_deleter.release(), state);
+      return Result<Expr>::Success(base, state);
     }
 
-    return Result<Expr>::Success(
-        new ArrayIndexExpr(base_deleter.release(), index.Release()),
-        afterIndex.Advance()
+    return ParsePrimaryEndNoArrayAccess(
+        afterIndex.Advance(),
+        new ArrayIndexExpr(base, index.Release())
     );
   }
 
-  return ParsePrimaryEndNoArrayAccess(state, base_deleter.release());
+  return ParsePrimaryEndNoArrayAccess(state, base);
+}
+
+FieldDerefExpr* MakeFieldDeref(State state, Expr* base) {
+  assert(!state.IsAtEnd() && state.GetNext().type == IDENTIFIER);
+  string fieldname = TokenString(state.GetFile(), state.GetNext());
+  return new FieldDerefExpr(base, fieldname, state.GetNext());
 }
 
 Result<Expr> ParsePrimaryEndNoArrayAccess(State state, Expr* base) {
   // PrimaryEndNoArrayAccess:
-  //   "(" [ArgumentList] ")" [ PrimaryEnd ]
   //   "." Identifier [ PrimaryEnd ]
+  //   "(" [ArgumentList] ")" [ PrimaryEnd ]
 
-  // TODO: implement this.
+  // NOTE: both productions have at least two tokens, so we pre-advance and
+  // check IsAtEnd().
+  State afterFirst = state.Advance();
+
+  if (state.IsAtEnd() || afterFirst.IsAtEnd()) {
+    return Result<Expr>::Success(base, state);
+  }
+
+  if (state.GetNext().type == DOT && afterFirst.GetNext().type == IDENTIFIER) {
+    return ParsePrimaryEnd(
+        afterFirst.Advance(),
+        MakeFieldDeref(afterFirst, base)
+    );
+  }
+
+  // TODO: "(" [ArgumentList] ")" [ PrimaryEnd ]
+
   return Result<Expr>::Success(base, state);
 }
 
@@ -439,7 +462,6 @@ void Parse(const File* file, const vector<Token>* tokens) {
   result.Get()->PrintTo(&std::cout);
   std::cout << '\n';
 }
-
 
 // TODO: in for-loop initializers, for-loop incrementors, and top-level
 // statements, we must ensure that they are either assignment, method
