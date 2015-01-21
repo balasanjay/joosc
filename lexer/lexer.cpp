@@ -1,6 +1,5 @@
 #include "lexer/lexer.h"
 #include "lexer/lexer_error.h"
-#include "lexer/lexer_internal.h"
 
 using base::Error;
 using base::ErrorList;
@@ -10,6 +9,116 @@ using base::Pos;
 using base::PosRange;
 
 namespace lexer {
+
+namespace {
+
+#define NEW(repr, value) TokenTypeInfo::New(repr, #repr, value)
+
+const TokenTypeInfo kTokenTypeInfo[NUM_TOKEN_TYPES] = {
+  NEW(LINE_COMMENT, "LINE_COMMENT"),
+  NEW(BLOCK_COMMENT, "BLOCK_COMMENT"),
+  NEW(WHITESPACE, "WHITESPACE"),
+  NEW(LE, "<=").BinOp(7),
+  NEW(GE, ">=").BinOp(7),
+  NEW(EQ, "==").BinOp(6),
+  NEW(NEQ, "!=").BinOp(6),
+  NEW(AND, "&&").BinOp(2),
+  NEW(OR, "||").BinOp(1),
+  NEW(ADD, "+").BinOp(8),
+  NEW(SUB, "-").BinOp(8).UnaryOp(),
+  NEW(MUL, "*").BinOp(9),
+  NEW(DIV, "/").BinOp(9),
+  NEW(MOD, "%").BinOp(9),
+  NEW(LT, "<").BinOp(7),
+  NEW(GT, ">").BinOp(7),
+  NEW(BAND, "&").BinOp(5),
+  NEW(BOR, "|").BinOp(3),
+  NEW(XOR, "^").BinOp(4),
+  NEW(NOT, "!").UnaryOp(),
+  NEW(ASSG, "=").BinOp(0),
+  NEW(LPAREN, "(").Symbol(),
+  NEW(RPAREN, ")").Symbol(),
+  NEW(LBRACE, "{").Symbol(),
+  NEW(RBRACE, "}").Symbol(),
+  NEW(LBRACK, "[").Symbol(),
+  NEW(RBRACK, "]").Symbol(),
+  NEW(SEMI, ";").Symbol(),
+  NEW(COMMA, ",").Symbol(),
+  NEW(DOT, ".").Symbol(),
+  NEW(INTEGER, "INTEGER").Literal(),
+  NEW(IDENTIFIER, "IDENTIFIER"),
+  NEW(CHAR, "CHAR").Literal(),
+  NEW(STRING, "STRING").Literal(),
+  // Keywords.
+  NEW(K_ABSTRACT, "abstract").Keyword(),
+  NEW(K_DEFAULT, "default").Keyword(),
+  NEW(K_IF, "if").Keyword(),
+  NEW(K_PRIVATE, "private").Keyword(),
+  NEW(K_THIS, "this").Keyword(),
+  NEW(K_BOOL, "bool").Keyword().Primitive(),
+  NEW(K_DO, "do").Keyword(),
+  NEW(K_IMPLEMENTS, "implements").Keyword(),
+  NEW(K_PROTECTED, "protected").Keyword(),
+  NEW(K_THROW, "throw").Keyword(),
+  NEW(K_BREAK, "break").Keyword(),
+  NEW(K_DOUBLE, "double").Keyword(),
+  NEW(K_IMPORT, "import").Keyword(),
+  NEW(K_PUBLIC, "public").Keyword(),
+  NEW(K_THROWS, "throws").Keyword(),
+  NEW(K_BYTE, "byte").Keyword().Primitive(),
+  NEW(K_ELSE, "else").Keyword(),
+  NEW(K_INSTANCEOF, "instanceof").Keyword().BinOp(7),
+  NEW(K_RETURN, "return").Keyword(),
+  NEW(K_TRANSIENT, "transient").Keyword(),
+  NEW(K_CASE, "case").Keyword(),
+  NEW(K_EXTENDS, "extends").Keyword(),
+  NEW(K_INT, "int").Keyword().Primitive(),
+  NEW(K_SHORT, "short").Keyword().Primitive(),
+  NEW(K_TRY, "try").Keyword(),
+  NEW(K_CATCH, "catch").Keyword(),
+  NEW(K_FINAL, "final").Keyword(),
+  NEW(K_INTERFACE, "interface").Keyword(),
+  NEW(K_STATIC, "static").Keyword(),
+  NEW(K_VOID, "void").Keyword(),
+  NEW(K_CHAR, "char").Keyword().Primitive(),
+  NEW(K_FINALLY, "finally").Keyword(),
+  NEW(K_LONG, "long").Keyword().Unsupported(),
+  NEW(K_STRICTFP, "strictfp").Keyword().Unsupported(),
+  NEW(K_VOLATILE, "volatile").Keyword(),
+  NEW(K_CLASS, "class").Keyword(),
+  NEW(K_FLOAT, "float").Keyword(),
+  NEW(K_NATIVE, "native").Keyword(),
+  NEW(K_SUPER, "super").Keyword(),
+  NEW(K_WHILE, "while").Keyword(),
+  NEW(K_CONST, "const").Keyword(),
+  NEW(K_FOR, "for").Keyword(),
+  NEW(K_NEW, "new").Keyword(),
+  NEW(K_SWITCH, "switch").Keyword(),
+  NEW(K_CONTINUE, "continue").Keyword(),
+  NEW(K_GOTO, "goto").Keyword(),
+  NEW(K_PACKAGE, "package").Keyword(),
+  NEW(K_SYNCHRONIZED, "synchronized").Keyword(),
+  NEW(K_TRUE, "true").Keyword().Literal(),
+  NEW(K_FALSE, "false").Keyword().Literal(),
+  NEW(K_NULL, "null").Keyword(),
+};
+
+#undef NEW
+
+} // namespace
+
+std::ostream& operator<<(std::ostream& out, const TokenTypeInfo& t) {
+  return out << t.repr_;
+}
+
+TokenTypeInfo TokenTypeInfo::FromTokenType(TokenType type) {
+  assert(0 <= type && type < NUM_TOKEN_TYPES);
+  return kTokenTypeInfo[type];
+}
+
+TokenTypeInfo Token::TypeInfo() const {
+  return TokenTypeInfo::FromTokenType(type);
+}
 
 bool TokenTypeIsBinOp(TokenType t) {
   switch (t) {
@@ -94,14 +203,6 @@ bool TokenTypeIsLit(TokenType t) {
     default:
       return false;
   }
-}
-
-string TokenTypeToString(TokenType t) {
-  if (t >= NUM_TOKEN_TYPES || t < 0) {
-    throw "invalid token type";
-  }
-
-  return internal::kTokenTypeToString[t];
 }
 
 namespace internal {
@@ -232,12 +333,17 @@ bool PosRangeStringMatches(const FileSet* fs, const PosRange& range,
  * Returns the type of the keyword, or IDENTIFIER if no keywords were matched.
  */
 TokenType MatchKeywords(const FileSet* fs, const PosRange& range) {
-  for (int i = 0; i < kNumKeywordLiterals; ++i) {
-    const string& keywordString = kKeywordLiterals[i].first;
-    if (PosRangeStringMatches(fs, range, keywordString)) {
-      return kKeywordLiterals[i].second;
+  for (int i = 0; i < NUM_TOKEN_TYPES; ++i) {
+    TokenTypeInfo typeInfo = kTokenTypeInfo[i];
+    if (!typeInfo.IsKeyword()) {
+      continue;
+    }
+
+    if (PosRangeStringMatches(fs, range, typeInfo.Value())) {
+      return typeInfo.Type();
     }
   }
+
   return IDENTIFIER;
 }
 
@@ -284,12 +390,16 @@ void Start(LexState* state) {
   }
 
   // This should be run after checking for comment tokens.
-  for (int i = 0; i < kNumSymbolLiterals; ++i) {
-    const string& symbolString = kSymbolLiterals[i].first;
+  for (int i = 0; i < NUM_TOKEN_TYPES; ++i) {
+    TokenTypeInfo typeInfo = kTokenTypeInfo[i];
+    if (!typeInfo.IsSymbol()) {
+      continue;
+    }
 
+    const string& symbolString = typeInfo.Value();
     if (state->HasPrefix(symbolString)) {
       state->Advance(symbolString.size());
-      state->EmitToken(kSymbolLiterals[i].second);
+      state->EmitToken(typeInfo.Type());
       return;
     }
   }

@@ -119,8 +119,8 @@ Expr* FixPrecedence(vector<Expr*> exprs, vector<Token> ops) {
       Token op = ops.at(i/2);
 
       if (opstack.empty() ||
-          (op.type == ASSG && TokenTypeBinOpPrec(op.type) >= TokenTypeBinOpPrec(opstack.rbegin()->type)) ||
-          (op.type != ASSG && TokenTypeBinOpPrec(op.type) > TokenTypeBinOpPrec(opstack.rbegin()->type))) {
+          (op.type == ASSG && op.TypeInfo().BinOpPrec() >= opstack.rbegin()->TypeInfo().BinOpPrec()) ||
+          (op.type != ASSG && op.TypeInfo().BinOpPrec() > opstack.rbegin()->TypeInfo().BinOpPrec())) {
         opstack.push_back(op);
         i++;
         continue;
@@ -180,7 +180,7 @@ Result<PrimitiveType> ParsePrimitiveType(State state) {
     return Result<PrimitiveType>::Failure();
   }
 
-  if (TokenTypeIsPrimitive(state.GetNext().type)) {
+  if (state.GetNext().TypeInfo().IsPrimitive()) {
     return Result<PrimitiveType>::Success(new PrimitiveType(state.GetNext()), state.Advance());
   }
 
@@ -264,7 +264,7 @@ Result<Expr> ParsePrimaryBase(State state) {
 
   // TODO: QualifiedName
 
-  if (TokenTypeIsLit(state.GetNext().type)) {
+  if (state.GetNext().TypeInfo().IsLiteral()) {
     return Result<Expr>::Success(new LitExpr(state.GetNext()), state.Advance());
   }
 
@@ -351,7 +351,7 @@ Result<Expr> ParseUnaryExpression(State state) {
     return Result<Expr>::Failure();
   }
 
-  if (TokenTypeIsUnaryOp(state.GetNext().type)) {
+  if (state.GetNext().TypeInfo().IsUnaryOp()) {
     Result<Expr> nested = ParseUnaryExpression(state.Advance());
     RETURN_IF_ERR(nested);
 
@@ -391,7 +391,7 @@ Result<Expr> ParseExpression(State state) {
           cur);
     }
 
-    if (TokenTypeIsBinOp(cur.GetNext().type)) {
+    if (cur.GetNext().TypeInfo().IsBinOp()) {
       operators.push_back(cur.GetNext());
       cur = cur.Advance();
       continue;

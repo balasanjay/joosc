@@ -43,14 +43,14 @@ class BinExpr : public Expr {
 public:
   BinExpr(Expr* lhs, lexer::Token op, Expr* rhs) : op_(op), lhs_(lhs), rhs_(rhs) {
     assert(lhs != nullptr);
-    assert(lexer::TokenTypeIsBinOp(op.type));
+    assert(op.TypeInfo().IsBinOp());
     assert(rhs != nullptr);
   }
 
   void PrintTo(std::ostream* os) const override {
     *os << '(';
     lhs_->PrintTo(os);
-    *os << ' ' << TokenTypeToString(op_.type) << ' ';
+    *os << ' ' << op_.TypeInfo() << ' ';
     rhs_->PrintTo(os);
     *os << ')';
   }
@@ -65,12 +65,12 @@ private:
 class UnaryExpr : public Expr {
 public:
   UnaryExpr(lexer::Token op, Expr* rhs) : op_(op), rhs_(rhs) {
-    assert(lexer::TokenTypeIsUnaryOp(op.type));
+    assert(op.TypeInfo().IsUnaryOp());
     assert(rhs != nullptr);
   }
 
   void PrintTo(std::ostream* os) const override {
-    *os << '(' << TokenTypeToString(op_.type) << ' ';
+    *os << '(' << op_.TypeInfo() << ' ';
     rhs_->PrintTo(os);
     *os << ')';
   }
@@ -85,7 +85,7 @@ public :
   LitExpr(lexer::Token token) : token_(token) {}
 
   void PrintTo(std::ostream* os) const override {
-    *os << lexer::TokenTypeToString(token_.type);
+    *os << token_.TypeInfo();
   }
 
 private:
@@ -126,7 +126,7 @@ public:
   PrimitiveType(lexer::Token token) : token_(token) {}
 
   void PrintTo(std::ostream* os) const override {
-    *os << lexer::TokenTypeToString(token_.type);
+    *os << token_.TypeInfo();
   }
 
 private:
@@ -146,7 +146,7 @@ public:
       }
       first = false;
 
-      *os << lexer::TokenTypeToString(tok.type);
+      *os << tok.TypeInfo();
     }
     *os << ')';
   }

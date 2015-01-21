@@ -1,5 +1,4 @@
 #include "lexer/lexer.h"
-#include "lexer/lexer_internal.h"
 #include "third_party/gtest/gtest.h"
 
 using base::ErrorList;
@@ -43,17 +42,19 @@ TEST_F(LexerTest, Whitespace) {
 
 // Tests that the SymbolLiterals are sorted by length, so that we do maximal
 // munch correctly.
-TEST_F(LexerTest, SymbolLiterals) {
-  for (int i = 1; i < lexer::internal::kNumSymbolLiterals; ++i) {
-    EXPECT_LE(lexer::internal::kSymbolLiterals[i].first.size(),
-              lexer::internal::kSymbolLiterals[i - 1].first.size());
+TEST_F(LexerTest, SymbolsMaximalMunch) {
+  uint last = 2;
+  for (TokenType t = LE; t < LPAREN; ++t) {
+    uint cur = TokenTypeInfo::FromTokenType(t).Value().size();
+    EXPECT_GE(last, cur);
+    last = cur;
   }
 }
 
 TEST_F(LexerTest, Symbols) {
   LexString("<<=>>====!=!&&&|||+-*/%(){}[];,.");
 
-  EXPECT_EQ(26u, tokens[0].size());
+  ASSERT_EQ(26u, tokens[0].size());
 
   EXPECT_EQ(LT, tokens[0][0].type);
   EXPECT_EQ(LE, tokens[0][1].type);
