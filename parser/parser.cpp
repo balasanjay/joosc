@@ -1,6 +1,8 @@
-#include "parser/ast.h"
+#include "base/unique_ptr_vector.h"
 #include "lexer/lexer.h"
+#include "parser/ast.h"
 
+using base::UniquePtrVector;
 using base::File;
 using lexer::ADD;
 using lexer::ASSG;
@@ -104,10 +106,14 @@ private:
 
 } // namespace
 
-Expr* FixPrecedence(vector<Expr*> exprs, vector<Token> ops) {
-  assert(exprs.size() == ops.size() + 1);
+Expr* FixPrecedence(UniquePtrVector<Expr> owned_exprs, vector<Token> ops) {
   vector<Expr*> outstack;
   vector<Token> opstack;
+
+  vector<Expr*> exprs;
+  owned_exprs.Release(&exprs);
+
+  assert(exprs.size() == ops.size() + 1);
 
   uint i = 0;
   while (i < exprs.size() + ops.size() || opstack.size() > 0) {
@@ -429,7 +435,7 @@ Result<Expr> ParseUnaryExpression(State state) {
 }
 
 Result<Expr> ParseExpression(State state) {
-  vector<Expr*> exprs;
+  UniquePtrVector<Expr> exprs;
   vector<Token> operators;
 
   State cur = state;
@@ -441,12 +447,13 @@ Result<Expr> ParseExpression(State state) {
       return nextExpr;
     }
 
-    exprs.push_back(nextExpr.Release());
+    exprs.Append(nextExpr.Release());
     cur = nextExpr.NewState();
 
     if (cur.IsAtEnd() || !cur.GetNext().TypeInfo().IsBinOp()) {
+      // exprs is about to be destroyed here, so calling std::move is safe.
       return Result<Expr>::Success(
-          FixPrecedence(exprs, operators),
+          FixPrecedence(std::move(exprs), operators),
           cur);
     }
 
