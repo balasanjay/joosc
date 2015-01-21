@@ -401,4 +401,7 @@ TEST_F(LexerTest, UnclosedChar) {
             testing::PrintToString(*errors.Get(0)));
 }
 
+TEST(TokenTypeInfoTest, Unsupported) {
+  EXPECT_FALSE(TokenTypeInfo::FromTokenType(K_DO).IsSupported());
+}
 }  // namespace base
