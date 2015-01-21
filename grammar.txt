@@ -102,8 +102,11 @@ BlockStatement:
   LocalVariableDeclarationStatement
   Statement
 
+LocalVariableDeclaration:
+  Type Identifier "=" Expression
+
 LocalVariableDeclarationStatement:
-  Type Identifier "=" Expression ";"
+  LocalVariableDeclaration ";"
 
 Statement:
   StatementWithoutTrailingSubstatement
