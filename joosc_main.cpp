@@ -63,7 +63,6 @@ int main(int argc, char** argv) {
   vector<Token> stripped;
   StripTokens(tokens[0], &stripped);
 
-  parser::Parse(fs->Get(0), &stripped);
-
+  parser::Parse(fs, fs->Get(0), &stripped);
   return 0;
 }

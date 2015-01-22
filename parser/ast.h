@@ -14,6 +14,9 @@ public:
     *os << name_;
   }
 
+private:
+  DISALLOW_COPY_AND_ASSIGN(QualifiedName);
+
   vector<lexer::Token> tokens_; // [IDENTIFIER, DOT, IDENTIFIER, DOT, IDENTIFIER]
   vector<string> parts_; // ["java", "lang", "String"]
   string name_; // "java.lang.String"
@@ -21,11 +24,15 @@ public:
 
 class Expr {
 public:
-  virtual ~Expr() {}
+  virtual ~Expr() = default;
 
   virtual void PrintTo(std::ostream* os) const = 0;
+
 protected:
-  Expr() {}
+  Expr() = default;
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(Expr);
 };
 
 class NameExpr : public Expr {
@@ -96,7 +103,7 @@ private:
 class ThisExpr : public Expr {
 public :
   void PrintTo(std::ostream* os) const override {
-    *os << "THIS";
+    *os << "this";
   }
 private:
 };
@@ -117,9 +124,24 @@ class ArrayIndexExpr : public Expr {
     unique_ptr<Expr> index_;
 };
 
+class FieldDerefExpr : public Expr {
+  public:
+    FieldDerefExpr(Expr* base, const string& fieldname, lexer::Token token) : base_(base), fieldname_(fieldname), token_(token) {}
+
+    void PrintTo(std::ostream* os) const override {
+      base_->PrintTo(os);
+      *os << '.' << fieldname_;
+    }
+
+  private:
+    unique_ptr<Expr> base_;
+    string fieldname_;
+    lexer::Token token_;
+};
+
 class Type {
 public:
-  virtual ~Type() {}
+  virtual ~Type() = default;
 
   virtual void PrintTo(std::ostream* os) const = 0;
 };
@@ -178,7 +200,7 @@ class CastExpr : public Expr {
 };
 
 
-void Parse(const base::File* file, const vector<lexer::Token>* tokens);
+void Parse(const base::FileSet* fs, const base::File* file, const vector<lexer::Token>* tokens);
 
 } // namespace parser
 
