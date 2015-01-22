@@ -124,14 +124,17 @@ ExpressionStatement:
   Expression ";"
 
 Primary:
+  "new" SingleType NewEnd
   PrimaryBase [ PrimaryEnd ]
-  ArrayCreationExpression [ PrimaryEndNoArrayAccess ]
+
+NewEnd:
+  "(" [ArgumentList] ")" [ PrimaryEnd ]
+  "[" [Expression] "] [ PrimaryEndNoArrayAccess ]
 
 PrimaryBase:
   Literal
   "this"
   "(" Expression ")"
-  ClassInstanceCreationExpression
   QualifiedName
 
 PrimaryEnd:
@@ -142,18 +145,12 @@ PrimaryEndNoArrayAccess:
   "." Identifier [ PrimaryEnd ]
   "(" [ArgumentList] ")" [ PrimaryEnd ]
 
-ClassInstanceCreationExpression:
-  "new" QualifiedName "(" [ArgumentList] ")"
-
 ArgumentList:
   Expression {"," Expression}
 
 MethodInvocation:
   QualifiedName "(" [ArgumentList] ")"
   Primary "." Identifier "(" [ArgumentList] ")"
-
-ArrayCreationExpression:
-  "new" SingleType "[" [Expression] "]
 
 Type:
   SingleType ["[" "]"]

@@ -495,5 +495,7 @@ void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
 // statements, we must ensure that they are either assignment, method
 // invocation, or class creation, not other types of expressions (like boolean
 // ops).
+//
+// TODO: Weed out statements of the form "new PrimitiveType([ArgumentList])".
 
 } // namespace parser
