@@ -8,7 +8,7 @@ class UniquePtrVector {
 public:
   UniquePtrVector() = default;
   UniquePtrVector(UniquePtrVector&&) = default;
-  ~UniquePtrVector() {
+  virtual ~UniquePtrVector() {
     for (uint i = 0; i < vec_.size(); ++i) {
       delete vec_.at(i);
     }
@@ -44,6 +44,6 @@ private:
   vector<T*> vec_;
 };
 
-} // namespace base`
+} // namespace base
 
 #endif

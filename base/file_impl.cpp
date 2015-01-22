@@ -56,14 +56,14 @@ bool DiskFile::LoadFile(string path, File** file_out, ErrorList* error_out) {
   RESET_ERRNO;
   int fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
-    error_out->Add(new internal::DiskFileError(errno, path));
+    error_out->Append(new internal::DiskFileError(errno, path));
     return false;
   }
 
   RESET_ERRNO;
   struct stat filestat;
   if (fstat(fd, &filestat) == -1) {
-    error_out->Add(new internal::DiskFileError(errno, path));
+    error_out->Append(new internal::DiskFileError(errno, path));
     close(fd);
     return false;
   }
@@ -71,7 +71,7 @@ bool DiskFile::LoadFile(string path, File** file_out, ErrorList* error_out) {
   RESET_ERRNO;
   void* addr = mmap(nullptr, filestat.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
   if (addr == MAP_FAILED) {
-    error_out->Add(new internal::DiskFileError(errno, path));
+    error_out->Append(new internal::DiskFileError(errno, path));
     close(fd);
     return false;
   }

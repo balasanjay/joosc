@@ -200,7 +200,7 @@ class CastExpr : public Expr {
 };
 
 
-void Parse(const base::File* file, const vector<lexer::Token>* tokens);
+void Parse(const base::FileSet* fs, const base::File* file, const vector<lexer::Token>* tokens);
 
 } // namespace parser
 

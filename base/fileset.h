@@ -1,10 +1,11 @@
 #ifndef BASE_FILESET_H
 #define BASE_FILESET_H
 
-#include "base/errorlist.h"
 #include "base/file.h"
 
 namespace base {
+
+class ErrorList;
 
 class FileSet final {
  public:
