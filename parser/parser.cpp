@@ -44,13 +44,6 @@ namespace parser {
 
 namespace {
 
-template <class T>
-T deleteReturnVal(T* ptr) {
-  T t = *ptr;
-  delete ptr;
-  return t;
-}
-
 template<class T>
 struct Result {
 public:
@@ -243,8 +236,6 @@ QualifiedName* MakeQualifiedName(const File *file, const vector<Token>& tokens) 
   for (uint i = 0; i < tokens.size(); ++i) {
     stringstream partname;
     Token token = tokens.at(i);
-    //throw;
-    std::cout << "MakeQualifiedName [" << token.pos.begin << ", " << token.pos.end << "). File " << file->Basename() << " has " << file->Size() << std::endl;
     for (int j = token.pos.begin; j < token.pos.end; ++j) {
       partname << file->At(j);
     }
@@ -262,14 +253,13 @@ QualifiedName* MakeQualifiedName(const File *file, const vector<Token>& tokens) 
 
 template<class T>
 Result<QualifiedName> Result<T>::ParseQualifiedName() const {
-  //std::cout << "ParseQualifiedName " << GetFile()->Basename() << std::endl;
   Result<Token> ident = ParseToken(IDENTIFIER);
   if (!ident.IsSuccess()) {
     return ident.Failure<QualifiedName>();
   }
 
   vector<Token> nameParts;
-  nameParts.push_back(deleteReturnVal(ident.Release()));
+  nameParts.push_back(*ident.Get());
 
   while (true) {
     Result<Token> nextIdent = ident.ParseToken(DOT).ParseToken(IDENTIFIER);
@@ -277,7 +267,7 @@ Result<QualifiedName> Result<T>::ParseQualifiedName() const {
       return ident.Success(MakeQualifiedName(GetFile(), nameParts));
     }
 
-    nameParts.push_back(deleteReturnVal(nextIdent.Release()));
+    nameParts.push_back(*nextIdent.Get());
     ident = nextIdent;
   }
 }
@@ -311,7 +301,6 @@ Result<Type> Result<T>::ParseSingleType() const {
 
 template<class T>
 Result<Type> Result<T>::ParseType() const {
-  //std::cout << "ParseType " << GetFile()->Basename() << std::endl;
   Result<Type> single = ParseSingleType();
   Result<Token> arrayType = single.ParseToken(LBRACK).ParseToken(RBRACK);
   RETURN_WRAPPED_IF_GOOD(arrayType, (Type*)new ArrayType(single.Release()));
@@ -320,7 +309,6 @@ Result<Type> Result<T>::ParseType() const {
 
 template<class T>
 Result<Expr> Result<T>::ParseCastExpression() const {
-  //std::cout << "ParseCastExpression " << GetFile()->Basename() << std::endl;
   Result<Type> castType = ParseToken(LPAREN).ParseType();
   Result<Expr> castedExpr = castType.ParseToken(RPAREN).ParseUnaryExpression();
 
@@ -354,11 +342,6 @@ Result<Expr> Result<T>::ParsePrimaryBase() const {
 
   // TODO: ClassInstanceCreationExpression.
 
-  if (IsSuccess()) {
-    std::cout << "IsSuccess\n";
-  } else {
-    std::cout << "IsFail\n";
-  }
   Result<QualifiedName> name = ParseQualifiedName();
   RETURN_WRAPPED_IF_GOOD(name, (Expr*)new NameExpr(name.Release()));
 
@@ -419,10 +402,9 @@ Result<Expr> Result<T>::ParseUnaryExpression() const {
   if (!IsSuccess()) {
     return Failure<Expr>();
   }
-  //std::cout << "ParseUnaryExpression " << GetFile()->Basename() << std::endl;
   Result<Token> unaryOp = ParseUnaryOp();
   Result<Expr> nested = unaryOp.ParseUnaryExpression();
-  RETURN_WRAPPED_IF_GOOD(nested, (Expr*)new UnaryExpr(deleteReturnVal(unaryOp.Release()), nested.Release()));
+  RETURN_WRAPPED_IF_GOOD(nested, (Expr*)new UnaryExpr(*unaryOp.Get(), nested.Release()));
 
   Result<Expr> castExpr = ParseCastExpression();
   RETURN_IF_GOOD(castExpr);
@@ -447,14 +429,13 @@ Result<Expr> Result<T>::ParseExpression() const {
       return expr.Success(FixPrecedence(exprs, operators));
     }
 
-    operators.push_back(deleteReturnVal(binOp.Release()));
+    operators.push_back(*binOp.Get());
     exprs.push_back(nextExpr.Release());
     expr = nextExpr;
   }
 }
 
 void Parse(const File* file, const vector<Token>* tokens) {
-  std::cout << "Parse " << file->Basename() << std::endl;
   Result<Expr> result = Result<Expr>::Init(file, tokens).ParseExpression();
   assert(result.IsSuccess());
   assert(result.IsAtEnd());
