@@ -2,11 +2,12 @@
 #include "lexer/lexer.h"
 #include "parser/ast.h"
 
-using base::UniquePtrVector;
 using base::Error;
 using base::ErrorList;
 using base::File;
 using base::FileSet;
+using base::Pos;
+using base::UniquePtrVector;
 using lexer::ADD;
 using lexer::ASSG;
 using lexer::DOT;
@@ -118,7 +119,7 @@ private:
 };
 
 Error* MakeUnexpectedTokenError(const FileSet* fs, Token token) {
-  return MakeSimplePosRangeError(fs, token.pos, "UnexpectedTokenError", "Unexpected token.");
+  return MakeSimplePosRangeError(fs, Pos(token.pos.fileid, token.pos.begin), "UnexpectedTokenError", "Unexpected token.");
 }
 
 } // namespace
