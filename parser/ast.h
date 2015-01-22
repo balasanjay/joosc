@@ -2,41 +2,42 @@
 #define PARSER_AST_H
 
 #include "lexer/lexer.h"
+#include <iostream>
 
 namespace parser {
 
-/*
-class CompilationUnit {
-  PackageDecl* package_;
-  vector<ImportDecls*> imports_;
-  TypeDecl* type_;
+class QualifiedName final {
+public:
+  QualifiedName(const vector<lexer::Token>& tokens, const vector<string>& parts, const string& name) : tokens_(tokens), parts_(parts), name_(name) {}
+
+  void PrintTo(std::ostream* os) const  {
+    *os << name_;
+  }
+
+  vector<lexer::Token> tokens_; // [IDENTIFIER, DOT, IDENTIFIER, DOT, IDENTIFIER]
+  vector<string> parts_; // ["java", "lang", "String"]
+  string name_; // "java.lang.String"
 };
-
-class PackageDecl {
-  QualifiedName name_;
-};
-
-class QualifiedName {
-  vector<string> parts_;
-};
-
-class TypeDecl {
-
-};
-
-class ClassDecl : public TypeDecl {
-  vector<Modfier> modifiers_;
-  Identifier name_;
-};
-
-class IfaceDecl : public TypeDecl {
-
-};
-*/
 
 class Expr {
 public:
+  virtual ~Expr() {}
+
   virtual void PrintTo(std::ostream* os) const = 0;
+protected:
+  Expr() {}
+};
+
+class NameExpr : public Expr {
+  public:
+    NameExpr(QualifiedName* name) : name_(name) {}
+
+    void PrintTo(std::ostream* os) const override {
+      name_->PrintTo(os);
+    }
+
+  private:
+    unique_ptr<QualifiedName> name_;
 };
 
 class BinExpr : public Expr {
@@ -118,6 +119,8 @@ class ArrayIndexExpr : public Expr {
 
 class Type {
 public:
+  virtual ~Type() {}
+
   virtual void PrintTo(std::ostream* os) const = 0;
 };
 
@@ -135,23 +138,14 @@ private:
 
 class ReferenceType : public Type {
 public:
-  ReferenceType(vector<lexer::Token>* toks) : toks_(toks) {}
+  ReferenceType(QualifiedName* name) : name_(name) {}
 
   void PrintTo(std::ostream* os) const override {
-    *os << '(';
-    bool first = true;
-    for (const auto& tok : *toks_) {
-      if (!first) {
-        *os << ' ';
-      }
-      first = false;
-
-      *os << tok.TypeInfo();
-    }
-    *os << ')';
+    name_->PrintTo(os);
   }
+
 private:
-  unique_ptr<vector<lexer::Token>> toks_;
+  unique_ptr<QualifiedName> name_;
 };
 
 class ArrayType : public Type {
@@ -184,7 +178,7 @@ class CastExpr : public Expr {
 };
 
 
-void Parse(const vector<lexer::Token>* tokens);
+void Parse(const base::File* file, const vector<lexer::Token>* tokens);
 
 } // namespace parser
 
