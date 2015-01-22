@@ -124,7 +124,7 @@ ExpressionStatement:
   Expression ";"
 
 Primary:
-  "new" Type NewEnd
+  "new" SingleType NewEnd
   PrimaryBase [ PrimaryEnd ]
 
 NewEnd:
