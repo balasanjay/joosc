@@ -17,25 +17,66 @@ using lexer::Token;
 using lexer::TokenType;
 using std::cerr;
 
+#define FAIL_IF_END(result, return_type) {\
+  if ((result).IsAtEnd()) { return (result).template Failure<return_type>(); } \
+}
+
 #define RETURN_IF_ERR(check) {\
   if (!(check).IsSuccess()) { \
     return (check); \
   } \
 }
 
-#define RETURN_IF_GOOD(check, expr) {\
-  if ((check).IsSuccess()) { \
-    return (expr); \
+#define RETURN_IF_GOOD(result) {\
+  if ((result).IsSuccess()) { \
+    return (result); \
+  } \
+}
+
+#define RETURN_WRAPPED_IF_GOOD(result, ret) {\
+  if ((result).IsSuccess()) { \
+    return (result).Success(ret); \
   } \
 }
 
 namespace parser {
 
 namespace {
-struct State {
+
+template<class T>
+struct Result {
 public:
-  State(const vector<lexer::Token>* tokens, int index) : tokens_(tokens), index_(index) {}
-  State(State old, int advance) : tokens_(old.tokens_), index_(old.index_ + advance) {}
+  static Result Init(const vector<Token> *tokens) {
+    return Result(nullptr, tokens, 0);
+  }
+
+  Result(Result<T> &&r) {
+    data_.reset(r.data_.release());
+    tokens_ = r.tokens_;
+    index_ = r.index_;
+    success_ = r.success_;
+  }
+  void operator=(Result<T> &r) {
+    data_.reset(r.data_.release());
+    tokens_ = r.tokens_;
+    index_ = r.index_;
+    success_ = r.success_;
+  }
+
+  template<class R>
+  Result<R> Success(R* r) const {
+    return Result<R>(r, tokens_, index_);
+  }
+
+  // TODO: Error.
+  template<class R>
+  Result<R> Failure() const {
+    return Result<R>();
+  }
+
+  bool IsSuccess() const {
+    return success_;
+  }
 
   bool IsAtEnd() const {
     return tokens_ == nullptr || (uint)index_ >= tokens_->size();
@@ -45,29 +86,25 @@ public:
     return tokens_->at(index_);
   }
 
-  State Advance(int i = 1) const {
-    return State(*this, i);
+  Result<T> Advance(int i = 1) const {
+    return Result<T>(nullptr, tokens_, index_ + i);
   }
 
-private:
-  const vector<lexer::Token>* tokens_;
-  int index_;
-};
-
-template<class T>
-struct Result {
-public:
-  static Result<T> Success(T* t, State state) {
-    return Result<T>(t, state);
-  }
-
-  static Result<T> Failure() {
-    return Result<T>();
-  }
-
-  bool IsSuccess() const {
-    return success_;
-  }
+  Result<Token> ParseToken(TokenType tt) const;
+  Result<Token> ParseBinOp() const;
+  Result<Token> ParseUnaryOp() const;
+  Result<Token> ParseLiteral() const;
+  Result<PrimitiveType> ParsePrimitiveType() const;
+  Result<Type> ParseType() const;
+  Result<Type> ParseSingleType() const;
+  Result<Expr> ParseExpression() const;
+  Result<Expr> ParseUnaryExpression() const;
+  Result<Expr> ParseCastExpression() const;
+  Result<Expr> ParsePrimary() const;
+  Result<Expr> ParsePrimaryBase() const;
+  Result<Expr> ParsePrimaryEnd(Expr* base) const;
+  Result<Expr> ParsePrimaryEndNoArrayAccess(Expr* base) const;
+  Result<vector<Token>> ParseQualifiedName() const;
 
   T* Get() const {
     if (!IsSuccess()) {
@@ -76,9 +113,6 @@ public:
     return data_.get();
   }
 
-  State NewState() const {
-    return state_;
-  }
 
   T* Release() {
     if (!IsSuccess()) {
@@ -87,13 +121,15 @@ public:
     return data_.release();
   }
 
-private:
-  Result(T* data, State state) : data_(data), state_(state), success_(true) {}
-  Result() : state_(nullptr, 0), success_(false) {}
+  Result(T* data, const vector<Token>* tokens, int index) : data_(data), tokens_(tokens), index_(index), success_(true) {}
+  Result() : tokens_(nullptr), index_(0), success_(false) {}
 
+//private:
   unique_ptr<T> data_;
-  State state_;
+  const vector<lexer::Token>* tokens_;
+  int index_;
   bool success_;
+  // TODO: Error.
 };
 
 } // namespace
@@ -145,112 +181,117 @@ Expr* FixPrecedence(vector<Expr*> exprs, vector<Token> ops) {
   return outstack.at(0);
 }
 
-Result<Expr> ParseExpression(State state);
-Result<Expr> ParseUnaryExpression(State state);
-Result<Expr> ParsePrimaryEnd(State state, Expr* base);
-Result<Expr> ParsePrimaryEndNoArrayAccess(State state, Expr* base);
+template<class T>
+Result<Token> Result<T>::ParseToken(TokenType tt) const {
+  FAIL_IF_END(*this, Token);
+  Token t = GetNext();
+  if (t.TypeInfo().Type() == tt) {
+    return Advance().Success(new Token(t));
+  }
+  return Failure<Token>();
+}
 
-Result<vector<Token>> ParseQualifiedName(State state) {
-  if (state.IsAtEnd() || state.GetNext().type != IDENTIFIER) {
-    return Result<vector<Token>>::Failure();
+template<class T>
+Result<Token> Result<T>::ParseUnaryOp() const {
+  FAIL_IF_END(*this, Token);
+  Token t = GetNext();
+  if (t.TypeInfo().IsUnaryOp()) {
+    return Advance().Success(new Token(t));
+  }
+  return Failure<Token>();
+}
+template<class T>
+Result<Token> Result<T>::ParseBinOp() const {
+  FAIL_IF_END(*this, Token);
+  Token t = GetNext();
+  if (t.TypeInfo().IsBinOp()) {
+    return Advance().Success(new Token(t));
+  }
+  return Failure<Token>();
+}
+template<class T>
+Result<Token> Result<T>::ParseLiteral() const {
+  FAIL_IF_END(*this, Token);
+  Token t = GetNext();
+  if (t.TypeInfo().IsLiteral()) {
+    return Advance().Success(new Token(t));
+  }
+  return Failure<Token>();
+}
+
+template<class T>
+Result<vector<Token>> Result<T>::ParseQualifiedName() const {
+  Result<Token> ident = ParseToken(IDENTIFIER);
+  if (!ident.IsSuccess()) {
+    return Failure<vector<Token>>();
   }
 
+  // TODO: Check mem? How does this work O_O
   vector<Token> name;
-  name.push_back(state.GetNext());
+  name.push_back(*ident.Release());
 
-  State cur = state.Advance();
   while (true) {
-    if (cur.IsAtEnd() || cur.GetNext().type != DOT) {
-      return Result<vector<Token>>::Success(new vector<Token>(name), cur);
+    Result<Token> nextIdent = ident.ParseToken(DOT).ParseToken(IDENTIFIER);
+    if (!nextIdent.IsSuccess()) {
+      return ident.Success(new vector<Token>(name));
     }
 
-    State afterdot = cur.Advance();
-    if (afterdot.IsAtEnd() || afterdot.GetNext().type != IDENTIFIER) {
-      return Result<vector<Token>>::Success(new vector<Token>(name), cur);
-    }
-
-    name.push_back(cur.GetNext());
-    name.push_back(afterdot.GetNext());
-    cur = afterdot.Advance();
+    Token* t = ident.Release();
+    name.push_back(*t);
+    delete t;
+    ident = nextIdent;
   }
 }
 
-Result<PrimitiveType> ParsePrimitiveType(State state) {
-  if (state.IsAtEnd()) {
-    return Result<PrimitiveType>::Failure();
-  }
+template<class T>
+Result<PrimitiveType> Result<T>::ParsePrimitiveType() const {
+  FAIL_IF_END(*this, PrimitiveType);
 
-  if (state.GetNext().TypeInfo().IsPrimitive()) {
-    return Result<PrimitiveType>::Success(new PrimitiveType(state.GetNext()), state.Advance());
+  Token t = GetNext();
+  if (t.TypeInfo().IsPrimitive()) {
+    return Advance().Success(new PrimitiveType(t));
   }
-
-  return Result<PrimitiveType>::Failure();
+  return Failure<PrimitiveType>();
 }
 
-Result<Type> ParseSingleType(State state) {
+template<class T>
+Result<Type> Result<T>::ParseSingleType() const {
   // SingleType:
   //   PrimitiveType
   //   QualifiedName
 
-  {
-    Result<PrimitiveType> primitive = ParsePrimitiveType(state);
-    if (primitive.IsSuccess()) {
-      return Result<Type>::Success(primitive.Release(), primitive.NewState());
-    }
-  }
+  Result<PrimitiveType> primitive = ParsePrimitiveType();
+  RETURN_WRAPPED_IF_GOOD(primitive, (Type*)primitive.Release());
 
-  {
-    Result<vector<Token>> reference = ParseQualifiedName(state);
-    if (reference.IsSuccess()) {
-      return Result<Type>::Success(new ReferenceType(reference.Release()), reference.NewState());
-    }
-  }
+  Result<vector<Token>> reference = ParseQualifiedName();
+  RETURN_WRAPPED_IF_GOOD(reference, (Type*)new ReferenceType(reference.Release()));
 
-  return Result<Type>::Failure();
+  return Failure<Type>();
 }
 
-Result<Type> ParseType(State state) {
-  Result<Type> single = ParseSingleType(state);
-  RETURN_IF_ERR(single);
 
-  State aftertype = single.NewState();
-  if (aftertype.IsAtEnd() || aftertype.GetNext().type != LBRACK) {
-    return single;
-  }
-
-  State afterlbrack = aftertype.Advance();
-  if (afterlbrack.IsAtEnd() || afterlbrack.GetNext().type != RBRACK) {
-    return single;
-  }
-
-  return Result<Type>::Success(new ArrayType(single.Release()), afterlbrack.Advance());
+template<class T>
+Result<Type> Result<T>::ParseType() const {
+  Result<Type> single = ParseSingleType();
+  Result<Token> arrayType = single.ParseToken(LBRACK).ParseToken(RBRACK);
+  RETURN_WRAPPED_IF_GOOD(arrayType, (Type*)new ArrayType(single.Release()));
+  return single;
 }
 
-Result<Expr> ParseCastExpression(State state) {
-  if (state.IsAtEnd() || state.GetNext().type != LPAREN) {
-    return Result<Expr>::Failure();
-  }
+template<class T>
+Result<Expr> Result<T>::ParseCastExpression() const {
+  Result<Type> castType = ParseToken(LPAREN).ParseType();
+  Result<Expr> castedExpr = castType.ParseToken(RPAREN).ParseUnaryExpression();
 
-  Result<Type> casttype = ParseType(state.Advance());
-  if (!casttype.IsSuccess()) {
-    return Result<Expr>::Failure();
-  }
-
-  State aftertype = casttype.NewState();
-  if (aftertype.IsAtEnd() || aftertype.GetNext().type != RPAREN) {
-    return Result<Expr>::Failure();
-  }
-
-  Result<Expr> castedExpr = ParseUnaryExpression(aftertype.Advance());
-  RETURN_IF_ERR(castedExpr);
-
-  return Result<Expr>::Success(
-      new CastExpr(casttype.Release(), castedExpr.Release()),
-      castedExpr.NewState()
-  );
+  RETURN_WRAPPED_IF_GOOD(
+      castedExpr,
+      (Expr*)new CastExpr(castType.Release(),
+                          castedExpr.Release()));
+  return Failure<Expr>();
 }
 
-Result<Expr> ParsePrimaryBase(State state) {
+template <class T>
+Result<Expr> Result<T>::ParsePrimaryBase() const {
   // PrimaryBase:
   //   QualifiedName
   //   Literal
@@ -258,155 +299,122 @@ Result<Expr> ParsePrimaryBase(State state) {
   //   "(" Expression ")"
   //   ClassInstanceCreationExpression
 
-  if (state.IsAtEnd()) {
-    return Result<Expr>::Failure();
-  }
+  //FAIL_IF_END();
 
   // TODO: QualifiedName
 
-  if (state.GetNext().TypeInfo().IsLiteral()) {
-    return Result<Expr>::Success(new LitExpr(state.GetNext()), state.Advance());
+  Result<Token> litExpr = ParseLiteral();
+  if (litExpr.IsSuccess()) {
   }
+  RETURN_WRAPPED_IF_GOOD(litExpr, (Expr*)new LitExpr(*litExpr.Get()));
 
-  if (state.GetNext().type == K_THIS) {
-    return Result<Expr>::Success(new ThisExpr(), state.Advance());
-  }
+  Result<Token> thisExpr = ParseToken(K_THIS);
+  RETURN_WRAPPED_IF_GOOD(thisExpr, (Expr*)new ThisExpr());
 
-  if (state.GetNext().type == LPAREN) {
-    Result<Expr> nested = ParseExpression(state.Advance());
-    RETURN_IF_ERR(nested);
-
-    State next = nested.NewState();
-    if (next.IsAtEnd() || next.GetNext().type != RPAREN) {
-      return Result<Expr>::Failure();
-    }
-
-    return Result<Expr>::Success(nested.Release(), next.Advance());
-  }
+  Result<Expr> nested = ParseToken(LPAREN).ParseExpression();
+  Result<Token> afterRParen = nested.ParseToken(RPAREN);
+  RETURN_WRAPPED_IF_GOOD(afterRParen, nested.Release());
 
   // TODO: ClassInstanceCreationExpression.
-  throw;
+
+  return Failure<Expr>();
 }
 
-Result<Expr> ParsePrimary(State state) {
+template <class T>
+Result<Expr> Result<T>::ParsePrimary() const {
   // Primary:
   //   PrimaryBase [ PrimaryEnd ]
   //   ArrayCreationExpression [ PrimaryEndNoArrayAccess ]
 
-  Result<Expr> base = ParsePrimaryBase(state);
-  RETURN_IF_GOOD(base, ParsePrimaryEnd(base.NewState(), base.Release()));
+  Result<Expr> base = ParsePrimaryBase();
+  RETURN_IF_ERR(base);
+
+  Result<Expr> baseWithEnds = base.ParsePrimaryEnd(base.Release());
+  RETURN_IF_GOOD(baseWithEnds);
 
   // TODO: ArrayCreationExpression [ PrimaryEndNoArrayAccess ]
-  throw;
+
+  return base;
 }
 
-Result<Expr> ParsePrimaryEnd(State state, Expr* base) {
+template <class T>
+Result<Expr> Result<T>::ParsePrimaryEnd(Expr* base) const {
   // PrimaryEnd:
   //   "[" Expression "]" [ PrimaryEndNoArrayAccess ]
   //   PrimaryEndNoArrayAccess
 
-  unique_ptr<Expr> base_deleter(base);
-  if (state.IsAtEnd()) {
-    return Result<Expr>::Success(base_deleter.release(), state);
-  }
+  Result<Expr> arrayIndex = ParseToken(LBRACK).ParseExpression();
+  Result<Token> afterRBrack = arrayIndex.ParseToken(RBRACK);
 
-  if (state.GetNext().type == LBRACK) {
-    Result<Expr> index = ParseExpression(state.Advance());
-    if (!index.IsSuccess()) {
-      return Result<Expr>::Success(base_deleter.release(), state);
-    }
+  RETURN_WRAPPED_IF_GOOD(afterRBrack, (Expr*)new ArrayIndexExpr(base, arrayIndex.Release()));
 
-    State afterIndex = index.NewState();
-    if (afterIndex.IsAtEnd() || afterIndex.GetNext().type != RBRACK) {
-      return Result<Expr>::Success(base_deleter.release(), state);
-    }
-
-    return Result<Expr>::Success(
-        new ArrayIndexExpr(base_deleter.release(), index.Release()),
-        afterIndex.Advance()
-    );
-  }
-
-  return ParsePrimaryEndNoArrayAccess(state, base_deleter.release());
+  return ParsePrimaryEndNoArrayAccess(base);
 }
 
-Result<Expr> ParsePrimaryEndNoArrayAccess(State state, Expr* base) {
+template <class T>
+Result<Expr> Result<T>::ParsePrimaryEndNoArrayAccess(Expr* base) const {
   // PrimaryEndNoArrayAccess:
   //   "(" [ArgumentList] ")" [ PrimaryEnd ]
   //   "." Identifier [ PrimaryEnd ]
 
   // TODO: implement this.
-  return Result<Expr>::Success(base, state);
+  return Success(base);
+
+  // TODO: Free base if we fail.
 }
 
 
-Result<Expr> ParseUnaryExpression(State state) {
+template <class T>
+Result<Expr> Result<T>::ParseUnaryExpression() const {
   // UnaryExpression:
   //   "-" UnaryExpression
   //   "!" UnaryExpression
   //   CastExpression
   //   Primary
 
-  if (state.IsAtEnd()) {
-    return Result<Expr>::Failure();
+  if (!IsSuccess()) {
+    return Failure<Expr>();
   }
+  Result<Token> unaryOp = ParseUnaryOp();
+  Result<Expr> nested = unaryOp.ParseUnaryExpression();
+  unique_ptr<Token> t(unaryOp.Release());
+  RETURN_WRAPPED_IF_GOOD(nested, (Expr*)new UnaryExpr(*t, nested.Release()));
 
-  if (state.GetNext().TypeInfo().IsUnaryOp()) {
-    Result<Expr> nested = ParseUnaryExpression(state.Advance());
-    RETURN_IF_ERR(nested);
+  Result<Expr> castExpr = ParseCastExpression();
+  RETURN_IF_GOOD(castExpr);
 
-    return Result<Expr>::Success(
-        new UnaryExpr(state.GetNext(), nested.Release()),
-        nested.NewState()
-    );
-  }
-
-  Result<Expr> castExpr = ParseCastExpression(state);
-  if (castExpr.IsSuccess()) {
-    return castExpr;
-  }
-
-  return ParsePrimary(state);
+  return ParsePrimary();
 }
 
-Result<Expr> ParseExpression(State state) {
+template <class T>
+Result<Expr> Result<T>::ParseExpression() const {
   vector<Expr*> exprs;
   vector<Token> operators;
 
-  State cur = state;
+  Result<Expr> expr = ParseUnaryExpression();
+  RETURN_IF_ERR(expr);
+  exprs.push_back(expr.Release());
 
   while (true) {
-    Result<Expr> nextExpr = ParseUnaryExpression(cur);
+    Result<Token> binOp = expr.ParseBinOp();
+    Result<Expr> nextExpr = binOp.ParseUnaryExpression();
+
     if (!nextExpr.IsSuccess()) {
-      // TODO: we leak exprs.
-      return nextExpr;
+      return expr.Success(FixPrecedence(exprs, operators));
     }
 
+    Token* t = binOp.Release();
+    operators.push_back(*t);
+    delete t;
     exprs.push_back(nextExpr.Release());
-    cur = nextExpr.NewState();
-
-    if (cur.IsAtEnd()) {
-      return Result<Expr>::Success(
-          FixPrecedence(exprs, operators),
-          cur);
-    }
-
-    if (cur.GetNext().TypeInfo().IsBinOp()) {
-      operators.push_back(cur.GetNext());
-      cur = cur.Advance();
-      continue;
-    }
-
-    return Result<Expr>::Success(
-        FixPrecedence(exprs, operators),
-        cur);
+    expr = nextExpr;
   }
 }
 
 void Parse(const vector<Token>* tokens) {
-  State state(tokens, 0);
-  Result<Expr> result = ParseExpression(state);
+  Result<Expr> result = Result<Expr>::Init(tokens).ParseExpression();
   assert(result.IsSuccess());
+  assert(result.IsAtEnd());
   result.Get()->PrintTo(&std::cout);
   std::cout << '\n';
 }

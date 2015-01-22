@@ -58,12 +58,13 @@ int main(int argc, char** argv) {
     }
     tokens[0][ins++] = tokens[0][i];
   }
+  tokens[0].resize(ins, tokens[0][0]);
 
   parser::Parse(&tokens[0]);
 
-  for (auto token : tokens[0]) {
+  //for (auto token : tokens[0]) {
     // cout << TokenTypeToString(token.type) << endl;
-  }
+  //}
 
   return 0;
 }
