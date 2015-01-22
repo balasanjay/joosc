@@ -25,6 +25,15 @@ class NonAnsiCharError : public base::Error {
   }
 };
 
+void StripTokens(const vector<Token>& tokens, vector<Token>* out) {
+  for (const auto& token : tokens) {
+    if (token.TypeInfo().IsSkippable()) {
+      continue;
+    }
+    out->push_back(token);
+  }
+}
+
 int main(int argc, char** argv) {
   const int ERROR = 42;
 
@@ -51,20 +60,10 @@ int main(int argc, char** argv) {
     return ERROR;
   }
 
-  int ins = 0;
-  for (uint i = 0; i < tokens[0].size(); ++i) {
-    if (tokens[0][i].TypeInfo().IsSkippable()) {
-      continue;
-    }
-    tokens[0][ins++] = tokens[0][i];
-  }
-  tokens[0].resize(ins, tokens[0][0]);
+  vector<Token> stripped;
+  StripTokens(tokens[0], &stripped);
 
-  parser::Parse(&tokens[0]);
-
-  //for (auto token : tokens[0]) {
-    // cout << TokenTypeToString(token.type) << endl;
-  //}
+  parser::Parse(fs->Get(0), &stripped);
 
   return 0;
 }
