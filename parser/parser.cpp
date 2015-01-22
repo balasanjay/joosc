@@ -1,7 +1,7 @@
 #include "parser/ast.h"
 #include "lexer/lexer.h"
-#include <iostream>
 
+using base::File;
 using lexer::ADD;
 using lexer::ASSG;
 using lexer::DOT;
@@ -16,6 +16,7 @@ using lexer::RPAREN;
 using lexer::Token;
 using lexer::TokenType;
 using std::cerr;
+using std::stringstream;
 
 #define RETURN_IF_ERR(check) {\
   if (!(check).IsSuccess()) { \
@@ -32,10 +33,10 @@ using std::cerr;
 namespace parser {
 
 namespace {
-struct State {
+struct State final {
 public:
-  State(const vector<lexer::Token>* tokens, int index) : tokens_(tokens), index_(index) {}
-  State(State old, int advance) : tokens_(old.tokens_), index_(old.index_ + advance) {}
+  State(const File* file, const vector<lexer::Token>* tokens, int index) : file_(file), tokens_(tokens), index_(index) {}
+  State(State old, int advance) : file_(old.file_), tokens_(old.tokens_), index_(old.index_ + advance) {}
 
   bool IsAtEnd() const {
     return tokens_ == nullptr || (uint)index_ >= tokens_->size();
@@ -49,13 +50,16 @@ public:
     return State(*this, i);
   }
 
+  const File* GetFile() const { return file_; }
+
 private:
+  const File *file_;
   const vector<lexer::Token>* tokens_;
   int index_;
 };
 
 template<class T>
-struct Result {
+struct Result final {
 public:
   static Result<T> Success(T* t, State state) {
     return Result<T>(t, state);
@@ -64,6 +68,8 @@ public:
   static Result<T> Failure() {
     return Result<T>();
   }
+
+  Result(Result&& other) = default;
 
   bool IsSuccess() const {
     return success_;
@@ -89,7 +95,7 @@ public:
 
 private:
   Result(T* data, State state) : data_(data), state_(state), success_(true) {}
-  Result() : state_(nullptr, 0), success_(false) {}
+  Result() : state_(nullptr, nullptr, 0), success_(false) {}
 
   unique_ptr<T> data_;
   State state_;
@@ -150,9 +156,33 @@ Result<Expr> ParseUnaryExpression(State state);
 Result<Expr> ParsePrimaryEnd(State state, Expr* base);
 Result<Expr> ParsePrimaryEndNoArrayAccess(State state, Expr* base);
 
-Result<vector<Token>> ParseQualifiedName(State state) {
+QualifiedName* MakeQualifiedName(const File *file, const vector<Token>& tokens) {
+  assert(tokens.size() > 0);
+  assert((tokens.size() - 1) % 2 == 0);
+
+  stringstream fullname;
+  vector<string> parts;
+
+  for (uint i = 0; i < tokens.size(); ++i) {
+    stringstream partname;
+    Token token = tokens.at(i);
+    for (int j = token.pos.begin; j < token.pos.end; ++j) {
+      partname << file->At(j);
+    }
+
+    string part = partname.str();
+    fullname << part;
+    if ((i % 2) == 0) {
+      parts.push_back(part);
+    }
+  }
+
+  return new QualifiedName(tokens, parts, fullname.str());
+}
+
+Result<QualifiedName> ParseQualifiedName(State state) {
   if (state.IsAtEnd() || state.GetNext().type != IDENTIFIER) {
-    return Result<vector<Token>>::Failure();
+    return Result<QualifiedName>::Failure();
   }
 
   vector<Token> name;
@@ -161,12 +191,12 @@ Result<vector<Token>> ParseQualifiedName(State state) {
   State cur = state.Advance();
   while (true) {
     if (cur.IsAtEnd() || cur.GetNext().type != DOT) {
-      return Result<vector<Token>>::Success(new vector<Token>(name), cur);
+      return Result<QualifiedName>::Success(MakeQualifiedName(state.GetFile(), name), cur);
     }
 
     State afterdot = cur.Advance();
     if (afterdot.IsAtEnd() || afterdot.GetNext().type != IDENTIFIER) {
-      return Result<vector<Token>>::Success(new vector<Token>(name), cur);
+      return Result<QualifiedName>::Success(MakeQualifiedName(state.GetFile(), name), cur);
     }
 
     name.push_back(cur.GetNext());
@@ -200,7 +230,7 @@ Result<Type> ParseSingleType(State state) {
   }
 
   {
-    Result<vector<Token>> reference = ParseQualifiedName(state);
+    Result<QualifiedName> reference = ParseQualifiedName(state);
     if (reference.IsSuccess()) {
       return Result<Type>::Success(new ReferenceType(reference.Release()), reference.NewState());
     }
@@ -252,17 +282,15 @@ Result<Expr> ParseCastExpression(State state) {
 
 Result<Expr> ParsePrimaryBase(State state) {
   // PrimaryBase:
-  //   QualifiedName
   //   Literal
   //   "this"
   //   "(" Expression ")"
   //   ClassInstanceCreationExpression
+  //   QualifiedName
 
   if (state.IsAtEnd()) {
     return Result<Expr>::Failure();
   }
-
-  // TODO: QualifiedName
 
   if (state.GetNext().TypeInfo().IsLiteral()) {
     return Result<Expr>::Success(new LitExpr(state.GetNext()), state.Advance());
@@ -285,6 +313,14 @@ Result<Expr> ParsePrimaryBase(State state) {
   }
 
   // TODO: ClassInstanceCreationExpression.
+
+  {
+    Result<QualifiedName> name = ParseQualifiedName(state);
+    if (name.IsSuccess()) {
+      return Result<Expr>::Success(new NameExpr(name.Release()), name.NewState());
+    }
+  }
+
   throw;
 }
 
@@ -385,26 +421,19 @@ Result<Expr> ParseExpression(State state) {
     exprs.push_back(nextExpr.Release());
     cur = nextExpr.NewState();
 
-    if (cur.IsAtEnd()) {
+    if (cur.IsAtEnd() || !cur.GetNext().TypeInfo().IsBinOp()) {
       return Result<Expr>::Success(
           FixPrecedence(exprs, operators),
           cur);
     }
 
-    if (cur.GetNext().TypeInfo().IsBinOp()) {
-      operators.push_back(cur.GetNext());
-      cur = cur.Advance();
-      continue;
-    }
-
-    return Result<Expr>::Success(
-        FixPrecedence(exprs, operators),
-        cur);
+    operators.push_back(cur.GetNext());
+    cur = cur.Advance();
   }
 }
 
-void Parse(const vector<Token>* tokens) {
-  State state(tokens, 0);
+void Parse(const File* file, const vector<Token>* tokens) {
+  State state(file, tokens, 0);
   Result<Expr> result = ParseExpression(state);
   assert(result.IsSuccess());
   result.Get()->PrintTo(&std::cout);

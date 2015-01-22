@@ -132,10 +132,10 @@ NewEnd:
   "[" [Expression] "] [ PrimaryEndNoArrayAccess ]
 
 PrimaryBase:
-  QualifiedName
   Literal
   "this"
   "(" Expression ")"
+  QualifiedName
 
 PrimaryEnd:
   "[" Expression "]" [ PrimaryEndNoArrayAccess ]
