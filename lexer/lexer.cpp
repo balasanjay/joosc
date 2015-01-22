@@ -258,7 +258,7 @@ struct LexState {
   }
 
   void EmitFatal(Error* err) {
-    errors->Add(err);
+    errors->Append(err);
     SetNextState(nullptr);
   }
 
@@ -611,7 +611,7 @@ void LexJoosFile(base::FileSet* fs, base::File* file, int fileid,
   for (int i = 0; i < file->Size(); i++) {
     u8 c = file->At(i);
     if (c > 127) {
-      errors_out->Add(new NonAnsiCharError(fs, Pos(fileid, i)));
+      errors_out->Append(new NonAnsiCharError(fs, Pos(fileid, i)));
       return;
     }
   }

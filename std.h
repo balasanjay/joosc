@@ -23,4 +23,10 @@ using std::string;
 using std::vector;
 using std::unique_ptr;
 
+// Copied from Chromium.
+#define DISALLOW_COPY_AND_ASSIGN(TypeName) \
+  TypeName(const TypeName&);               \
+  void operator=(const TypeName&)
+
+
 #endif

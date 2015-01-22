@@ -1,4 +1,5 @@
 #include "lexer/lexer.h"
+#include "base/error.h"
 #include "third_party/gtest/gtest.h"
 
 using base::ErrorList;
@@ -111,7 +112,7 @@ TEST_F(LexerTest, UnclosedBlockComment) {
   LexString("hello /* there \n\n end");
   EXPECT_EQ(1, errors.Size());
   EXPECT_EQ("UnclosedBlockCommentError(0:6-8)",
-            testing::PrintToString(*errors.Get(0)));
+            testing::PrintToString(*errors.At(0)));
 }
 
 TEST_F(LexerTest, SimpleInteger) {
@@ -127,7 +128,7 @@ TEST_F(LexerTest, LeadingZeroInteger) {
 
   EXPECT_EQ(1, errors.Size());
   EXPECT_EQ("LeadingZeroInIntLitError(0:0)",
-            testing::PrintToString(*errors.Get(0)));
+            testing::PrintToString(*errors.At(0)));
 }
 
 TEST_F(LexerTest, OnlyZero) {
@@ -236,28 +237,28 @@ TEST_F(LexerTest, UnendedString) {
   LexString("\"goober");
   EXPECT_EQ(1, errors.Size());
   EXPECT_EQ("UnclosedStringLitError(0:0)",
-            testing::PrintToString(*errors.Get(0)));
+            testing::PrintToString(*errors.At(0)));
 }
 
 TEST_F(LexerTest, UnendedStringAtEOF) {
   LexString("\"");
   EXPECT_EQ(1, errors.Size());
   EXPECT_EQ("UnclosedStringLitError(0:0)",
-            testing::PrintToString(*errors.Get(0)));
+            testing::PrintToString(*errors.At(0)));
 }
 
 TEST_F(LexerTest, UnendedEscapedQuoteString) {
   LexString("foo\"goober\\\"");
   EXPECT_EQ(1, errors.Size());
   EXPECT_EQ("UnclosedStringLitError(0:3)",
-            testing::PrintToString(*errors.Get(0)));
+            testing::PrintToString(*errors.At(0)));
 }
 
 TEST_F(LexerTest, StringOverNewline) {
   LexString("baz\"foo\nbar\"");
   EXPECT_EQ(1, errors.Size());
   EXPECT_EQ("UnclosedStringLitError(0:3)",
-            testing::PrintToString(*errors.Get(0)));
+            testing::PrintToString(*errors.At(0)));
 }
 
 TEST_F(LexerTest, StringWithEscapedOctal) {
@@ -278,7 +279,7 @@ TEST_F(LexerTest, StringWithOutOfRangeOctalWorks) {
 TEST_F(LexerTest, StringWithBadEscape) {
   LexString("\"Lol: \\91\"");
   EXPECT_EQ("InvalidCharacterEscapeError(0:6)",
-            testing::PrintToString(*errors.Get(0)));
+            testing::PrintToString(*errors.At(0)));
 }
 
 TEST_F(LexerTest, StringEscapedQuote) {
@@ -309,7 +310,7 @@ TEST_F(LexerTest, MultipleChars) {
   LexString("'ab'");
   ASSERT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidCharacterLitError(0:0-2)",
-            testing::PrintToString(*errors.Get(0)));
+            testing::PrintToString(*errors.At(0)));
 }
 
 TEST_F(LexerTest, EscapedChars) {
@@ -336,69 +337,69 @@ TEST_F(LexerTest, BadEscapedChar) {
   LexString("'\\a'");
   ASSERT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidCharacterEscapeError(0:0-2)",
-            testing::PrintToString(*errors.Get(0)));
+            testing::PrintToString(*errors.At(0)));
 }
 
 TEST_F(LexerTest, BadTooHighEscapedChar) {
   LexString("'\\456'");
   ASSERT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidCharacterLitError(0:0-4)",
-            testing::PrintToString(*errors.Get(0)));
+            testing::PrintToString(*errors.At(0)));
 }
 
 TEST_F(LexerTest, UnexpectedChar) {
   LexString("\\");
   EXPECT_EQ(1, errors.Size());
-  EXPECT_EQ("UnexpectedCharError(0:0)", testing::PrintToString(*errors.Get(0)));
+  EXPECT_EQ("UnexpectedCharError(0:0)", testing::PrintToString(*errors.At(0)));
 }
 
 TEST_F(LexerTest, BadBarelyTooHighEscapedChar) {
   LexString("'\\378'");
   ASSERT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidCharacterLitError(0:0-4)",
-            testing::PrintToString(*errors.Get(0)));
+            testing::PrintToString(*errors.At(0)));
 }
 
 TEST_F(LexerTest, MultipleCharsWithEscape) {
   LexString("'\\0a'");
   ASSERT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidCharacterLitError(0:0-3)",
-            testing::PrintToString(*errors.Get(0)));
+            testing::PrintToString(*errors.At(0)));
 }
 
 TEST_F(LexerTest, EmptyChar) {
   LexString("''");
   ASSERT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidCharacterLitError(0:0)",
-            testing::PrintToString(*errors.Get(0)));
+            testing::PrintToString(*errors.At(0)));
 }
 
 TEST_F(LexerTest, ThreeApostropheChar) {
   LexString("'''");
   ASSERT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidCharacterLitError(0:0)",
-            testing::PrintToString(*errors.Get(0)));
+            testing::PrintToString(*errors.At(0)));
 }
 
 TEST_F(LexerTest, UnclosedCharAtEOF) {
   LexString("'");
   ASSERT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidCharacterLitError(0:0)",
-            testing::PrintToString(*errors.Get(0)));
+            testing::PrintToString(*errors.At(0)));
 }
 
 TEST_F(LexerTest, UnclosedChar2AtEOF) {
   LexString("'a");
   ASSERT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidCharacterLitError(0:0-2)",
-            testing::PrintToString(*errors.Get(0)));
+            testing::PrintToString(*errors.At(0)));
 }
 
 TEST_F(LexerTest, UnclosedChar) {
   LexString("'foobar");
   ASSERT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidCharacterLitError(0:0-2)",
-            testing::PrintToString(*errors.Get(0)));
+            testing::PrintToString(*errors.At(0)));
 }
 
 TEST(TokenTypeInfoTest, Unsupported) {

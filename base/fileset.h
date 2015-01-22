@@ -1,10 +1,11 @@
 #ifndef BASE_FILESET_H
 #define BASE_FILESET_H
 
-#include "base/errorlist.h"
 #include "base/file.h"
 
 namespace base {
+
+class ErrorList;
 
 class FileSet final {
  public:
@@ -38,6 +39,8 @@ class FileSet final {
   }
 
  private:
+  DISALLOW_COPY_AND_ASSIGN(FileSet);
+
   friend FileSet::Builder;
 
   FileSet(vector<File*> files) : files_(files) {}

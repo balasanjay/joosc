@@ -1,7 +1,13 @@
-#include "parser/ast.h"
+#include "base/unique_ptr_vector.h"
 #include "lexer/lexer.h"
+#include "parser/ast.h"
 
+using base::Error;
+using base::ErrorList;
 using base::File;
+using base::FileSet;
+using base::Pos;
+using base::UniquePtrVector;
 using lexer::ADD;
 using lexer::ASSG;
 using lexer::DOT;
@@ -35,8 +41,8 @@ namespace parser {
 namespace {
 struct State final {
 public:
-  State(const File* file, const vector<lexer::Token>* tokens, int index) : file_(file), tokens_(tokens), index_(index) {}
-  State(State old, int advance) : file_(old.file_), tokens_(old.tokens_), index_(old.index_ + advance) {}
+  State(const FileSet* fs, const File* file, const vector<lexer::Token>* tokens, int index) : fs_(fs), file_(file), tokens_(tokens), index_(index) {}
+  State(State old, int advance) : fs_(old.fs_), file_(old.file_), tokens_(old.tokens_), index_(old.index_ + advance) {}
 
   bool IsAtEnd() const {
     return tokens_ == nullptr || (uint)index_ >= tokens_->size();
@@ -50,10 +56,12 @@ public:
     return State(*this, i);
   }
 
+  const FileSet* Fs() const { return fs_; }
   const File* GetFile() const { return file_; }
 
 private:
-  const File *file_;
+  const FileSet* fs_;
+  const File* file_;
   const vector<lexer::Token>* tokens_;
   int index_;
 };
@@ -65,14 +73,16 @@ public:
     return Result<T>(t, state);
   }
 
-  static Result<T> Failure() {
-    return Result<T>();
+  static Result<T> Failure(Error* err) {
+    Result<T> ret;
+    ret.errors_.Append(err);
+    return ret;
   }
 
   Result(Result&& other) = default;
 
   bool IsSuccess() const {
-    return success_;
+    return !errors_.IsFatal();
   }
 
   T* Get() const {
@@ -80,6 +90,10 @@ public:
       throw "Get() from non-successful result.";
     }
     return data_.get();
+  }
+
+  const ErrorList& Errors() const {
+    return errors_;
   }
 
   State NewState() const {
@@ -94,20 +108,30 @@ public:
   }
 
 private:
-  Result(T* data, State state) : data_(data), state_(state), success_(true) {}
-  Result() : state_(nullptr, nullptr, 0), success_(false) {}
+  DISALLOW_COPY_AND_ASSIGN(Result);
+
+  Result(T* data, State state) : data_(data), state_(state) {}
+  Result() : state_(nullptr, nullptr, nullptr, 0) {}
 
   unique_ptr<T> data_;
   State state_;
-  bool success_;
+  ErrorList errors_;
 };
+
+Error* MakeUnexpectedTokenError(const FileSet* fs, Token token) {
+  return MakeSimplePosRangeError(fs, Pos(token.pos.fileid, token.pos.begin), "UnexpectedTokenError", "Unexpected token.");
+}
 
 } // namespace
 
-Expr* FixPrecedence(vector<Expr*> exprs, vector<Token> ops) {
-  assert(exprs.size() == ops.size() + 1);
+Expr* FixPrecedence(UniquePtrVector<Expr>&& owned_exprs, vector<Token> ops) {
   vector<Expr*> outstack;
   vector<Token> opstack;
+
+  vector<Expr*> exprs;
+  owned_exprs.Release(&exprs);
+
+  assert(exprs.size() == ops.size() + 1);
 
   uint i = 0;
   while (i < exprs.size() + ops.size() || opstack.size() > 0) {
@@ -156,6 +180,14 @@ Result<Expr> ParseUnaryExpression(State state);
 Result<Expr> ParsePrimaryEnd(State state, Expr* base);
 Result<Expr> ParsePrimaryEndNoArrayAccess(State state, Expr* base);
 
+string TokenString(const File* file, Token token) {
+  stringstream s;
+  for (int i = token.pos.begin; i < token.pos.end; ++i) {
+    s << file->At(i);
+  }
+  return s.str();
+}
+
 QualifiedName* MakeQualifiedName(const File *file, const vector<Token>& tokens) {
   assert(tokens.size() > 0);
   assert((tokens.size() - 1) % 2 == 0);
@@ -164,13 +196,7 @@ QualifiedName* MakeQualifiedName(const File *file, const vector<Token>& tokens) 
   vector<string> parts;
 
   for (uint i = 0; i < tokens.size(); ++i) {
-    stringstream partname;
-    Token token = tokens.at(i);
-    for (int j = token.pos.begin; j < token.pos.end; ++j) {
-      partname << file->At(j);
-    }
-
-    string part = partname.str();
+    string part = TokenString(file, tokens.at(i));
     fullname << part;
     if ((i % 2) == 0) {
       parts.push_back(part);
@@ -182,7 +208,7 @@ QualifiedName* MakeQualifiedName(const File *file, const vector<Token>& tokens) 
 
 Result<QualifiedName> ParseQualifiedName(State state) {
   if (state.IsAtEnd() || state.GetNext().type != IDENTIFIER) {
-    return Result<QualifiedName>::Failure();
+    return Result<QualifiedName>::Failure(nullptr);
   }
 
   vector<Token> name;
@@ -207,14 +233,14 @@ Result<QualifiedName> ParseQualifiedName(State state) {
 
 Result<PrimitiveType> ParsePrimitiveType(State state) {
   if (state.IsAtEnd()) {
-    return Result<PrimitiveType>::Failure();
+    return Result<PrimitiveType>::Failure(nullptr);
   }
 
   if (state.GetNext().TypeInfo().IsPrimitive()) {
     return Result<PrimitiveType>::Success(new PrimitiveType(state.GetNext()), state.Advance());
   }
 
-  return Result<PrimitiveType>::Failure();
+  return Result<PrimitiveType>::Failure(nullptr);
 }
 
 Result<Type> ParseSingleType(State state) {
@@ -236,7 +262,7 @@ Result<Type> ParseSingleType(State state) {
     }
   }
 
-  return Result<Type>::Failure();
+  return Result<Type>::Failure(nullptr);
 }
 
 Result<Type> ParseType(State state) {
@@ -258,17 +284,17 @@ Result<Type> ParseType(State state) {
 
 Result<Expr> ParseCastExpression(State state) {
   if (state.IsAtEnd() || state.GetNext().type != LPAREN) {
-    return Result<Expr>::Failure();
+    return Result<Expr>::Failure(nullptr);
   }
 
   Result<Type> casttype = ParseType(state.Advance());
   if (!casttype.IsSuccess()) {
-    return Result<Expr>::Failure();
+    return Result<Expr>::Failure(nullptr);
   }
 
   State aftertype = casttype.NewState();
   if (aftertype.IsAtEnd() || aftertype.GetNext().type != RPAREN) {
-    return Result<Expr>::Failure();
+    return Result<Expr>::Failure(nullptr);
   }
 
   Result<Expr> castedExpr = ParseUnaryExpression(aftertype.Advance());
@@ -289,7 +315,7 @@ Result<Expr> ParsePrimaryBase(State state) {
   //   QualifiedName
 
   if (state.IsAtEnd()) {
-    return Result<Expr>::Failure();
+    return Result<Expr>::Failure(nullptr);
   }
 
   if (state.GetNext().TypeInfo().IsLiteral()) {
@@ -306,7 +332,7 @@ Result<Expr> ParsePrimaryBase(State state) {
 
     State next = nested.NewState();
     if (next.IsAtEnd() || next.GetNext().type != RPAREN) {
-      return Result<Expr>::Failure();
+      return Result<Expr>::Failure(nullptr);
     }
 
     return Result<Expr>::Success(nested.Release(), next.Advance());
@@ -321,7 +347,7 @@ Result<Expr> ParsePrimaryBase(State state) {
     }
   }
 
-  throw;
+  return Result<Expr>::Failure(MakeUnexpectedTokenError(state.Fs(), state.GetNext()));
 }
 
 Result<Expr> ParsePrimary(State state) {
@@ -333,7 +359,8 @@ Result<Expr> ParsePrimary(State state) {
   RETURN_IF_GOOD(base, ParsePrimaryEnd(base.NewState(), base.Release()));
 
   // TODO: ArrayCreationExpression [ PrimaryEndNoArrayAccess ]
-  throw;
+
+  return base;
 }
 
 Result<Expr> ParsePrimaryEnd(State state, Expr* base) {
@@ -341,37 +368,58 @@ Result<Expr> ParsePrimaryEnd(State state, Expr* base) {
   //   "[" Expression "]" [ PrimaryEndNoArrayAccess ]
   //   PrimaryEndNoArrayAccess
 
-  unique_ptr<Expr> base_deleter(base);
   if (state.IsAtEnd()) {
-    return Result<Expr>::Success(base_deleter.release(), state);
+    return Result<Expr>::Success(base, state);
   }
 
   if (state.GetNext().type == LBRACK) {
     Result<Expr> index = ParseExpression(state.Advance());
     if (!index.IsSuccess()) {
-      return Result<Expr>::Success(base_deleter.release(), state);
+      return Result<Expr>::Success(base, state);
     }
 
     State afterIndex = index.NewState();
     if (afterIndex.IsAtEnd() || afterIndex.GetNext().type != RBRACK) {
-      return Result<Expr>::Success(base_deleter.release(), state);
+      return Result<Expr>::Success(base, state);
     }
 
-    return Result<Expr>::Success(
-        new ArrayIndexExpr(base_deleter.release(), index.Release()),
-        afterIndex.Advance()
+    return ParsePrimaryEndNoArrayAccess(
+        afterIndex.Advance(),
+        new ArrayIndexExpr(base, index.Release())
     );
   }
 
-  return ParsePrimaryEndNoArrayAccess(state, base_deleter.release());
+  return ParsePrimaryEndNoArrayAccess(state, base);
+}
+
+FieldDerefExpr* MakeFieldDeref(State state, Expr* base) {
+  assert(!state.IsAtEnd() && state.GetNext().type == IDENTIFIER);
+  string fieldname = TokenString(state.GetFile(), state.GetNext());
+  return new FieldDerefExpr(base, fieldname, state.GetNext());
 }
 
 Result<Expr> ParsePrimaryEndNoArrayAccess(State state, Expr* base) {
   // PrimaryEndNoArrayAccess:
-  //   "(" [ArgumentList] ")" [ PrimaryEnd ]
   //   "." Identifier [ PrimaryEnd ]
+  //   "(" [ArgumentList] ")" [ PrimaryEnd ]
 
-  // TODO: implement this.
+  // NOTE: both productions have at least two tokens, so we pre-advance and
+  // check IsAtEnd().
+  State afterFirst = state.Advance();
+
+  if (state.IsAtEnd() || afterFirst.IsAtEnd()) {
+    return Result<Expr>::Success(base, state);
+  }
+
+  if (state.GetNext().type == DOT && afterFirst.GetNext().type == IDENTIFIER) {
+    return ParsePrimaryEnd(
+        afterFirst.Advance(),
+        MakeFieldDeref(afterFirst, base)
+    );
+  }
+
+  // TODO: "(" [ArgumentList] ")" [ PrimaryEnd ]
+
   return Result<Expr>::Success(base, state);
 }
 
@@ -384,7 +432,7 @@ Result<Expr> ParseUnaryExpression(State state) {
   //   Primary
 
   if (state.IsAtEnd()) {
-    return Result<Expr>::Failure();
+    return Result<Expr>::Failure(nullptr);
   }
 
   if (state.GetNext().TypeInfo().IsUnaryOp()) {
@@ -406,7 +454,7 @@ Result<Expr> ParseUnaryExpression(State state) {
 }
 
 Result<Expr> ParseExpression(State state) {
-  vector<Expr*> exprs;
+  UniquePtrVector<Expr> exprs;
   vector<Token> operators;
 
   State cur = state;
@@ -414,16 +462,16 @@ Result<Expr> ParseExpression(State state) {
   while (true) {
     Result<Expr> nextExpr = ParseUnaryExpression(cur);
     if (!nextExpr.IsSuccess()) {
-      // TODO: we leak exprs.
       return nextExpr;
     }
 
-    exprs.push_back(nextExpr.Release());
+    exprs.Append(nextExpr.Release());
     cur = nextExpr.NewState();
 
     if (cur.IsAtEnd() || !cur.GetNext().TypeInfo().IsBinOp()) {
+      // exprs is about to be destroyed here, so calling std::move is safe.
       return Result<Expr>::Success(
-          FixPrecedence(exprs, operators),
+          FixPrecedence(std::move(exprs), operators),
           cur);
     }
 
@@ -432,14 +480,16 @@ Result<Expr> ParseExpression(State state) {
   }
 }
 
-void Parse(const File* file, const vector<Token>* tokens) {
-  State state(file, tokens, 0);
+void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
+  State state(fs, file, tokens, 0);
   Result<Expr> result = ParseExpression(state);
-  assert(result.IsSuccess());
-  result.Get()->PrintTo(&std::cout);
-  std::cout << '\n';
+  if (result.IsSuccess()) {
+    result.Get()->PrintTo(&std::cout);
+    std::cout << '\n';
+  } else {
+    result.Errors().PrintTo(&std::cout, base::OutputOptions::kUserOutput);
+  }
 }
-
 
 // TODO: in for-loop initializers, for-loop incrementors, and top-level
 // statements, we must ensure that they are either assignment, method

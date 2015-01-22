@@ -142,11 +142,11 @@ PrimaryEnd:
   PrimaryEndNoArrayAccess
 
 PrimaryEndNoArrayAccess:
-  "(" [ArgumentList] ")" [ PrimaryEnd ]
   "." Identifier [ PrimaryEnd ]
+  "(" [ArgumentList] ")" [ PrimaryEnd ]
 
 ArgumentList:
-  Expression {, Expression}
+  Expression {"," Expression}
 
 MethodInvocation:
   QualifiedName "(" [ArgumentList] ")"

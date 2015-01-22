@@ -47,6 +47,9 @@ class File {
   const int len_;
 
   const vector<int> linestarts_;  // Stored as indices into buf_.
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(File);
 };
 
 struct Pos {
