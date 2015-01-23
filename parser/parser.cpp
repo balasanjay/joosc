@@ -14,6 +14,7 @@ using lexer::COMMA;
 using lexer::DOT;
 using lexer::IDENTIFIER;
 using lexer::INTEGER;
+using lexer::K_NEW;
 using lexer::K_THIS;
 using lexer::LBRACK;
 using lexer::LPAREN;
@@ -220,6 +221,7 @@ struct Parser {
   Parser ParseUnaryExpression(Result<Expr>*) const;
   Parser ParseCastExpression(Result<Expr>* out) const;
   Parser ParsePrimary(Result<Expr>* out) const;
+  Parser ParseNewExpression(Result<Expr>* out) const;
   Parser ParsePrimaryBase(Result<Expr>* out) const;
   Parser ParsePrimaryEnd(Expr* base, Result<Expr>* out) const;
   Parser ParsePrimaryEndNoArrayAccess(Expr* base, Result<Expr>* out) const;
@@ -246,6 +248,10 @@ struct Parser {
   Token GetNext() const {
     assert(!IsAtEnd());
     return tokens_->at(index_);
+  }
+
+  bool IsNext(TokenType type) const {
+    return !IsAtEnd() && GetNext().type == type;
   }
 
   Parser Advance(int i = 1) const {
@@ -580,7 +586,9 @@ Parser Parser::ParsePrimary(Result<Expr>* out) const {
   //   PrimaryBase [ PrimaryEnd ]
   SHORT_CIRCUIT;
 
-  // TODO: "new" SingleType NewEnd
+  if (IsNext(K_NEW)) {
+    return ParseNewExpression(out);
+  }
 
   Result<Expr> base;
   Parser afterBase = ParsePrimaryBase(&base);
@@ -599,6 +607,89 @@ Parser Parser::ParsePrimary(Result<Expr>* out) const {
 
   // If we couldn't parse the PrimaryEnd, then just use base; it's optional.
   return afterBase.Success(baseExpr, out);
+}
+
+Parser Parser::ParseNewExpression(Result<Expr>* out) const {
+  // "new" SingleType NewEnd
+  //
+  // NewEnd:
+  //   "(" ArgumentList ")" [ PrimaryEnd ]
+  //   "[" [Expression] "] [ PrimaryEndNoArrayAccess ]
+  SHORT_CIRCUIT;
+
+  Result<Token> newTok;
+  Result<Type> type;
+  Parser afterType = ParseTokenIf(ExactType(K_NEW), &newTok).ParseSingleType(&type);
+  if (!afterType) {
+    // Collect the first error, and use that.
+    ErrorList errors;
+    FirstOf(&errors, &newTok, &type);
+    return Fail(move(errors), out);
+  }
+
+  if (afterType.IsAtEnd()) {
+    return Fail(MakeUnexpectedEOFError(), out);
+  }
+
+  if (!afterType.IsNext(LPAREN) && !afterType.IsNext(LBRACK)) {
+    return Fail(MakeUnexpectedTokenError(afterType.GetNext()), out);
+  }
+
+  if (afterType.IsNext(LPAREN)) {
+    Result<Token> lparen;
+    Result<ArgumentList> args;
+    Result<Token> rparen;
+    Parser afterCall = afterType
+      .ParseTokenIf(ExactType(LPAREN), &lparen)
+      .ParseArgumentList(&args)
+      .ParseTokenIf(ExactType(RPAREN), &rparen);
+
+    if (!afterCall) {
+      // Collect the first error, and use that.
+      ErrorList errors;
+      FirstOf(&errors, &newTok, &type);
+      return Fail(move(errors), out);
+    }
+
+    Expr* newExpr = new NewClassExpr(type.Release(), move(*args.Release()));
+    Result<Expr> nested;
+    Parser afterEnd = afterCall.ParsePrimaryEnd(newExpr, &nested);
+    RETURN_IF_GOOD(afterEnd, nested.Release(), out);
+
+    return afterCall.Success(newExpr, out);
+  }
+
+  assert(afterType.IsNext(LBRACK));
+  Expr* sizeExpr = nullptr;
+  Parser after = *this;
+
+  if (afterType.Advance().IsNext(RBRACK)) {
+    after = afterType.Advance().Advance();
+  } else {
+    Result<Expr> nested;
+    Result<Token> rbrack;
+
+    Parser fullAfter = afterType
+      .Advance() // LBRACK.
+      .ParseExpression(&nested)
+      .ParseTokenIf(ExactType(RBRACK), &rbrack);
+    if (!fullAfter) {
+      // Collect the first error, and use that.
+      ErrorList errors;
+      FirstOf(&errors, &nested, &rbrack);
+      return Fail(move(errors), out);
+    }
+
+    sizeExpr = nested.Release();
+    after = fullAfter;
+  }
+
+  Expr* newExpr = new NewArrayExpr(type.Release(), sizeExpr);
+  Result<Expr> nested;
+  Parser afterEnd = after.ParsePrimaryEndNoArrayAccess(newExpr, &nested);
+  RETURN_IF_GOOD(afterEnd, nested.Release(), out);
+
+  return after.Success(newExpr, out);
 }
 
 Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
@@ -625,7 +716,7 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
     RETURN_IF_GOOD(after, new ThisExpr(), out);
   }
 
-  {
+  if (GetNext().type == LPAREN) {
     Result<Token> lparen;
     Result<Expr> expr;
     Result<Token> rparen;
@@ -635,6 +726,7 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
       .ParseExpression(&expr)
       .ParseTokenIf(ExactType(RPAREN), &rparen);
     RETURN_IF_GOOD(after, expr.Release(), out);
+    throw;
   }
 
   {

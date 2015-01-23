@@ -181,6 +181,12 @@ public:
   virtual ~Type() = default;
 
   virtual void PrintTo(std::ostream* os) const = 0;
+
+protected:
+  Type() = default;
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(Type);
 };
 
 class PrimitiveType : public Type {
@@ -192,6 +198,8 @@ public:
   }
 
 private:
+  DISALLOW_COPY_AND_ASSIGN(PrimitiveType);
+
   lexer::Token token_;
 };
 
@@ -204,6 +212,8 @@ public:
   }
 
 private:
+  DISALLOW_COPY_AND_ASSIGN(ReferenceType);
+
   unique_ptr<QualifiedName> name_;
 };
 
@@ -218,6 +228,8 @@ public:
   }
 
 private:
+  DISALLOW_COPY_AND_ASSIGN(ArrayType);
+
   unique_ptr<Type> elemtype_;
 };
 
@@ -232,8 +244,51 @@ class CastExpr : public Expr {
       *os << ')';
     }
   private:
+    DISALLOW_COPY_AND_ASSIGN(CastExpr);
+
     unique_ptr<Type> type_;
     unique_ptr<Expr> expr_;
+};
+
+class NewClassExpr : public Expr {
+public:
+  NewClassExpr(Type* type, ArgumentList&& args) : type_(type), args_(std::forward<ArgumentList>(args)) {}
+
+  void PrintTo(std::ostream* os) const override {
+    *os << "new<";
+    type_->PrintTo(os);
+    *os << ">(";
+    args_.PrintTo(os);
+    *os << ")";
+  }
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(NewClassExpr);
+
+  unique_ptr<Type> type_;
+  ArgumentList args_;
+};
+
+class NewArrayExpr : public Expr {
+public:
+  NewArrayExpr(Type* type, Expr* expr) : type_(type), expr_(expr) {}
+
+  void PrintTo(std::ostream* os) const override {
+    *os << "new<array<";
+    type_->PrintTo(os);
+
+    *os << ">>(";
+    if (expr_ != nullptr) {
+      expr_->PrintTo(os);
+    }
+    *os << ")";
+  }
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(NewArrayExpr);
+
+  unique_ptr<Type> type_;
+  unique_ptr<Expr> expr_;
 };
 
 void Parse(const base::FileSet* fs, const base::File* file, const vector<lexer::Token>* tokens);
