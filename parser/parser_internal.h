@@ -4,6 +4,8 @@
 #include "base/errorlist.h"
 #include "base/file.h"
 #include "lexer/lexer.h"
+#include "parser/ast.h"
+#include "third_party/gtest/gtest.h"
 
 namespace parser {
 namespace internal {
@@ -112,6 +114,10 @@ Result<U> ConvertError(Result<T>&& r) {
 struct Parser {
   Parser(const base::FileSet* fs, const base::File* file, const vector<lexer::Token>* tokens, int index = 0, bool failed = false) : fs_(fs), file_(file), tokens_(tokens), index_(index), failed_(failed) {}
 
+  explicit operator bool() const {
+    return !failed_;
+  }
+
   Parser ParseTokenIf(std::function<bool(lexer::Token)> pred, internal::Result<lexer::Token>* out) const;
 
   // Type-related parsers.
@@ -141,18 +147,14 @@ struct Parser {
     return failed_;
   }
 
- private:
-  explicit operator bool() const {
-    return !failed_;
-  }
-
-  base::Error* MakeUnexpectedTokenError(lexer::Token token) const;
-  base::Error* MakeUnexpectedEOFError() const;
-
   lexer::Token GetNext() const {
     assert(!IsAtEnd());
     return tokens_->at(index_);
   }
+
+ private:
+  base::Error* MakeUnexpectedTokenError(lexer::Token token) const;
+  base::Error* MakeUnexpectedEOFError() const;
 
   bool IsNext(lexer::TokenType type) const {
     return !IsAtEnd() && GetNext().type == type;
