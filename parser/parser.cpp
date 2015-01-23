@@ -73,13 +73,12 @@ int ScopedPrint::level_ = 0;
   } \
 }
 
-#define SHORT_CIRCUIT \
-  ScopedPrint _scoped_print(string("Entering ") + __FUNCTION__, string("Leaving ") + __FUNCTION__); \
-{\
+#define SHORT_CIRCUIT {\
   if (!(*this)) { \
     return *this; \
   }\
-}
+};\
+ScopedPrint _scoped_print(string("Entering ") + __FUNCTION__, string("Leaving ") + __FUNCTION__)
 
 namespace parser {
 
