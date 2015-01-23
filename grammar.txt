@@ -128,7 +128,7 @@ Primary:
   PrimaryBase [ PrimaryEnd ]
 
 NewEnd:
-  "(" [ArgumentList] ")" [ PrimaryEnd ]
+  "(" ArgumentList ")" [ PrimaryEnd ]
   "[" [Expression] "] [ PrimaryEndNoArrayAccess ]
 
 PrimaryBase:
@@ -143,14 +143,10 @@ PrimaryEnd:
 
 PrimaryEndNoArrayAccess:
   "." Identifier [ PrimaryEnd ]
-  "(" [ArgumentList] ")" [ PrimaryEnd ]
+  "(" ArgumentList ")" [ PrimaryEnd ]
 
 ArgumentList:
-  Expression {"," Expression}
-
-MethodInvocation:
-  QualifiedName "(" [ArgumentList] ")"
-  Primary "." Identifier "(" [ArgumentList] ")"
+  [Expression {"," Expression}]
 
 Type:
   SingleType ["[" "]"]

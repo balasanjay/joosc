@@ -35,6 +35,27 @@ private:
   DISALLOW_COPY_AND_ASSIGN(Expr);
 };
 
+class ArgumentList final {
+  public:
+    ArgumentList(base::UniquePtrVector<Expr>&& args) : args_(std::forward<base::UniquePtrVector<Expr>>(args)) {}
+    ~ArgumentList() = default;
+    ArgumentList(ArgumentList&&) = default;
+
+    void PrintTo(std::ostream* os) const {
+      for (int i = 0; i < args_.Size(); ++i) {
+        if (i > 0) {
+          *os << ", ";
+        }
+        args_.At(i)->PrintTo(os);
+      }
+    }
+
+  private:
+    DISALLOW_COPY_AND_ASSIGN(ArgumentList);
+
+    base::UniquePtrVector<Expr> args_;
+};
+
 class NameExpr : public Expr {
   public:
     NameExpr(QualifiedName* name) : name_(name) {}
@@ -139,6 +160,22 @@ class FieldDerefExpr : public Expr {
     lexer::Token token_;
 };
 
+class CallExpr : public Expr {
+  public:
+    CallExpr(Expr* base, ArgumentList&& args) : base_(base), args_(std::forward<ArgumentList>(args)) {}
+
+  void PrintTo(std::ostream* os) const override {
+    base_->PrintTo(os);
+    *os << '(';
+    args_.PrintTo(os);
+    *os << ')';
+  }
+
+  private:
+    unique_ptr<Expr> base_;
+    ArgumentList args_;
+};
+
 class Type {
 public:
   virtual ~Type() = default;
@@ -198,7 +235,6 @@ class CastExpr : public Expr {
     unique_ptr<Type> type_;
     unique_ptr<Expr> expr_;
 };
-
 
 void Parse(const base::FileSet* fs, const base::File* file, const vector<lexer::Token>* tokens);
 

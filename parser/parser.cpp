@@ -2,8 +2,8 @@
 #include "lexer/lexer.h"
 #include "parser/ast.h"
 
+using lexer::END;
 using base::Error;
-using std::move;
 using base::ErrorList;
 using base::File;
 using base::FileSet;
@@ -11,6 +11,7 @@ using base::Pos;
 using base::UniquePtrVector;
 using lexer::ADD;
 using lexer::ASSG;
+using lexer::COMMA;
 using lexer::DOT;
 using lexer::IDENTIFIER;
 using lexer::INTEGER;
@@ -23,6 +24,7 @@ using lexer::RPAREN;
 using lexer::Token;
 using lexer::TokenType;
 using std::cerr;
+using std::move;
 using std::stringstream;
 
 struct repstr {
@@ -222,6 +224,9 @@ struct Parser {
   Parser ParsePrimaryBase(Result<Expr>* out) const;
   Parser ParsePrimaryEnd(Expr* base, Result<Expr>* out) const;
   Parser ParsePrimaryEndNoArrayAccess(Expr* base, Result<Expr>* out) const;
+
+  // Other parsers.
+  Parser ParseArgumentList(Result<ArgumentList>*) const;
 
   bool IsAtEnd() const {
     return failed_ || (uint)index_ >= tokens_->size();
@@ -686,9 +691,54 @@ Parser Parser::ParsePrimaryEndNoArrayAccess(Expr* base, Result<Expr>* out) const
     }
   }
 
-  // TODO: "(" [ArgumentList] ")" [ PrimaryEnd ]
+  {
+    Result<Token> lparen;
+    Result<ArgumentList> args;
+    Result<Token> rparen;
+
+    Parser after = (*this)
+      .ParseTokenIf(ExactType(LPAREN), &lparen)
+      .ParseArgumentList(&args)
+      .ParseTokenIf(ExactType(RPAREN), &rparen);
+
+    if (after) {
+      Expr* call = new CallExpr(base, move(*args.Release()));
+      Result<Expr> nested;
+      Parser afterEnd = after.ParsePrimaryEnd(call, &nested);
+      RETURN_IF_GOOD(afterEnd, nested.Release(), out);
+
+      return after.Success(call, out);
+    }
+  }
 
   return Fail(nullptr, out);
+}
+
+Parser Parser::ParseArgumentList(Result<ArgumentList>* out) const {
+  // ArgumentList:
+  //   [Expression {"," Expression}]
+  SHORT_CIRCUIT;
+
+  UniquePtrVector<Expr> args;
+  Result<Expr> first;
+  Parser cur = ParseExpression(&first);
+  if (!cur) {
+    return Success(new ArgumentList(move(args)), out);
+  }
+  args.Append(first.Release());
+
+  while (true) {
+    Result<Token> comma;
+    Result<Expr> expr;
+
+    Parser next = cur.ParseTokenIf(ExactType(COMMA), &comma).ParseExpression(&expr);
+    if (!next) {
+      return cur.Success(new ArgumentList(move(args)), out);
+    }
+
+    args.Append(expr.Release());
+    cur = next;
+  }
 }
 
 void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
