@@ -2,7 +2,6 @@
 #include "lexer/lexer.h"
 #include "parser/ast.h"
 
-using lexer::END;
 using base::Error;
 using base::ErrorList;
 using base::File;
