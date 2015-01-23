@@ -162,18 +162,18 @@ class FieldDerefExpr : public Expr {
 
 class CallExpr : public Expr {
   public:
-    CallExpr(Expr* base, ArgumentList&& args) : base_(base), args_(std::forward<ArgumentList>(args)) {}
+    CallExpr(Expr* base, ArgumentList* args) : base_(base), args_(args) {}
 
   void PrintTo(std::ostream* os) const override {
     base_->PrintTo(os);
     *os << '(';
-    args_.PrintTo(os);
+    args_->PrintTo(os);
     *os << ')';
   }
 
   private:
     unique_ptr<Expr> base_;
-    ArgumentList args_;
+    unique_ptr<ArgumentList> args_;
 };
 
 class Type {
@@ -252,13 +252,13 @@ class CastExpr : public Expr {
 
 class NewClassExpr : public Expr {
 public:
-  NewClassExpr(Type* type, ArgumentList&& args) : type_(type), args_(std::forward<ArgumentList>(args)) {}
+  NewClassExpr(Type* type, ArgumentList* args) : type_(type), args_(args) {}
 
   void PrintTo(std::ostream* os) const override {
     *os << "new<";
     type_->PrintTo(os);
     *os << ">(";
-    args_.PrintTo(os);
+    args_->PrintTo(os);
     *os << ")";
   }
 
@@ -266,7 +266,7 @@ private:
   DISALLOW_COPY_AND_ASSIGN(NewClassExpr);
 
   unique_ptr<Type> type_;
-  ArgumentList args_;
+  unique_ptr<ArgumentList> args_;
 };
 
 class NewArrayExpr : public Expr {

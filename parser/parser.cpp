@@ -651,7 +651,7 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
       return Fail(move(errors), out);
     }
 
-    Expr* newExpr = new NewClassExpr(type.Release(), move(*args.Release()));
+    Expr* newExpr = new NewClassExpr(type.Release(), args.Release());
     Result<Expr> nested;
     Parser afterEnd = afterCall.ParsePrimaryEnd(newExpr, &nested);
     RETURN_IF_GOOD(afterEnd, nested.Release(), out);
@@ -716,7 +716,7 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
     RETURN_IF_GOOD(after, new ThisExpr(), out);
   }
 
-  if (GetNext().type == LPAREN) {
+  if (IsNext(LPAREN)) {
     Result<Token> lparen;
     Result<Expr> expr;
     Result<Token> rparen;
@@ -726,10 +726,13 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
       .ParseExpression(&expr)
       .ParseTokenIf(ExactType(RPAREN), &rparen);
     RETURN_IF_GOOD(after, expr.Release(), out);
-    throw;
+
+    ErrorList errors;
+    FirstOf(&errors, &lparen, &expr, &rparen);
+    return Fail(move(errors), out);
   }
 
-  {
+  if (IsNext(IDENTIFIER)) {
     Result<QualifiedName> name;
     Parser after = ParseQualifiedName(&name);
     RETURN_IF_GOOD(after, new NameExpr(name.Release()), out);
@@ -744,7 +747,7 @@ Parser Parser::ParsePrimaryEnd(Expr* base, Result<Expr>* out) const {
   //   PrimaryEndNoArrayAccess
   SHORT_CIRCUIT;
 
-  {
+  if (IsNext(LBRACK)) {
     Result<Token> lbrack;
     Result<Expr> expr;
     Result<Token> rbrack;
@@ -793,7 +796,7 @@ Parser Parser::ParsePrimaryEndNoArrayAccess(Expr* base, Result<Expr>* out) const
       .ParseTokenIf(ExactType(RPAREN), &rparen);
 
     if (after) {
-      Expr* call = new CallExpr(base, move(*args.Release()));
+      Expr* call = new CallExpr(base, args.Release());
       Result<Expr> nested;
       Parser afterEnd = after.ParsePrimaryEnd(call, &nested);
       RETURN_IF_GOOD(afterEnd, nested.Release(), out);
