@@ -3,6 +3,7 @@
 #include "parser/ast.h"
 
 using base::Error;
+using std::move;
 using base::ErrorList;
 using base::File;
 using base::FileSet;
@@ -24,62 +25,96 @@ using lexer::TokenType;
 using std::cerr;
 using std::stringstream;
 
+struct repstr {
+  repstr(int n, string str) : n_(n), str_(str) {}
+  friend std::ostream& operator<<(std::ostream&, const repstr& r);
+ private:
+  int n_;
+  string str_;
+};
+
+std::ostream& operator<<(std::ostream& os, const repstr& r) {
+  for (int i = 0; i < r.n_; ++i) {
+    os << r.str_;
+  }
+  return os;
+}
+
+struct ScopedPrint {
+  ScopedPrint(const string& construct, const string& destruct) : construct_(construct), destruct_(destruct) {
+    cerr << repstr(level_, "|  ") << construct_ << '\n';
+    ++level_;
+  }
+  ~ScopedPrint() {
+    --level_;
+    cerr << repstr(level_, "|  ") << destruct_ << '\n';
+  }
+
+
+
+private:
+  string construct_;
+  string destruct_;
+  static int level_;
+};
+
+int ScopedPrint::level_ = 0;
+
 #define RETURN_IF_ERR(check) {\
   if (!(check).IsSuccess()) { \
     return (check); \
   } \
 }
 
-#define RETURN_IF_GOOD(check, expr) {\
-  if ((check).IsSuccess()) { \
-    return (expr); \
+#define RETURN_IF_GOOD(state, value, out) {\
+  State2 _hope_you_didnt_declare_this = (state); \
+  if ((_hope_you_didnt_declare_this)) {\
+    return (_hope_you_didnt_declare_this).Success2((value), (out)); \
   } \
+}
+
+#define SHORT_CIRCUIT \
+  ScopedPrint _scoped_print(string("Entering ") + __FUNCTION__, string("Leaving ") + __FUNCTION__); \
+{\
+  if (!(*this)) { \
+    return *this; \
+  }\
 }
 
 namespace parser {
 
 namespace {
-struct State final {
-public:
-  State(const FileSet* fs, const File* file, const vector<lexer::Token>* tokens, int index) : fs_(fs), file_(file), tokens_(tokens), index_(index) {}
-  State(State old, int advance) : fs_(old.fs_), file_(old.file_), tokens_(old.tokens_), index_(old.index_ + advance) {}
 
-  bool IsAtEnd() const {
-    return tokens_ == nullptr || (uint)index_ >= tokens_->size();
-  }
-
-  lexer::Token GetNext() const {
-    return tokens_->at(index_);
-  }
-
-  State Advance(int i = 1) const {
-    return State(*this, i);
-  }
-
-  const FileSet* Fs() const { return fs_; }
-  const File* GetFile() const { return file_; }
-
+// Predicates for ParseTokenIf.
+struct ExactType {
+  ExactType(TokenType type) : type_(type) {}
+  bool operator()(const Token& t) { return t.type == type_; }
 private:
-  const FileSet* fs_;
-  const File* file_;
-  const vector<lexer::Token>* tokens_;
-  int index_;
+  TokenType type_;
+};
+struct IsBinOp {
+  bool operator()(const Token& t) { return t.TypeInfo().IsBinOp(); }
+};
+struct IsUnaryOp {
+  bool operator()(const Token& t) { return t.TypeInfo().IsUnaryOp(); }
+};
+struct IsLiteral {
+  bool operator()(const Token& t) { return t.TypeInfo().IsLiteral(); }
+};
+struct IsPrimitive {
+  bool operator()(const Token& t) { return t.TypeInfo().IsPrimitive(); }
 };
 
-template<class T>
-struct Result final {
+template <typename T>
+class Result2 final {
 public:
-  static Result<T> Success(T* t, State state) {
-    return Result<T>(t, state);
-  }
+  Result2() = default;
+  Result2(Result2&& other) = default;
+  Result2& operator=(Result2&& other) = default;
 
-  static Result<T> Failure(Error* err) {
-    Result<T> ret;
-    ret.errors_.Append(err);
-    return ret;
+  explicit operator bool() const {
+    return IsSuccess();
   }
-
-  Result(Result&& other) = default;
 
   bool IsSuccess() const {
     return !errors_.IsFatal();
@@ -92,14 +127,6 @@ public:
     return data_.get();
   }
 
-  const ErrorList& Errors() const {
-    return errors_;
-  }
-
-  State NewState() const {
-    return state_;
-  }
-
   T* Release() {
     if (!IsSuccess()) {
       throw "Release() from non-successful result.";
@@ -107,24 +134,156 @@ public:
     return data_.release();
   }
 
+  void ReleaseErrors(ErrorList* out) {
+    vector<Error*> errors;
+    errors_.Release(&errors);
+    for (auto err : errors) {
+      out->Append(err);
+    }
+  }
+
+  const ErrorList& Errors() const {
+    return errors_;
+  }
+
 private:
-  DISALLOW_COPY_AND_ASSIGN(Result);
+  DISALLOW_COPY_AND_ASSIGN(Result2);
 
-  Result(T* data, State state) : data_(data), state_(state) {}
-  Result() : state_(nullptr, nullptr, nullptr, 0) {}
+  Result2(T* data) : success_(true), data_(data) {}
+  Result2(Error* err) {
+    errors_.Append(err);
+  }
+  Result2(ErrorList&& errors) : success_(false), errors_(std::forward<ErrorList>(errors)) {}
 
+  template <typename U>
+  friend Result2<U> Success(U* t);
+
+  template <typename U>
+  friend Result2<U> Failure(Error* e);
+
+  template <typename U>
+  friend Result2<U> Failure(ErrorList&&);
+
+  template <typename T1, typename T2>
+  friend Result2<T2> ConvertError(Result2<T1>&&);
+
+  bool success_ = false;
   unique_ptr<T> data_;
-  State state_;
   ErrorList errors_;
 };
 
-Error* MakeUnexpectedTokenError(const FileSet* fs, Token token) {
-  return MakeSimplePosRangeError(fs, Pos(token.pos.fileid, token.pos.begin), "UnexpectedTokenError", "Unexpected token.");
+template <typename T>
+Result2<T> Success(T* t) {
+  return Result2<T>(t);
 }
+template <typename T>
+Result2<T> Failure(Error* e) {
+  return Result2<T>(e);
+}
+template <typename T>
+Result2<T> Failure(ErrorList&& e) {
+  return Result2<T>(std::forward<ErrorList>(e));
+}
+
+template <typename T>
+void FirstOf(ErrorList* out, T* result) {
+  result->ReleaseErrors(out);
+}
+
+template <typename T, typename... Rest>
+void FirstOf(ErrorList* out, T* first, Rest... rest) {
+  if (first->Errors().Size() == 0) {
+    return FirstOf(out, rest...);
+  }
+
+  first->ReleaseErrors(out);
+}
+
+template <typename T, typename U>
+Result2<U> ConvertError(Result2<T>&& r) {
+  return Result2<U>(move(r.errors_));
+}
+
+struct State2 {
+  State2(const FileSet* fs, const File* file, const vector<Token>* tokens, int index = 0, bool failed = false) : fs_(fs), file_(file), tokens_(tokens), index_(index), failed_(failed) {}
+
+  State2 ParseTokenIf(std::function<bool(Token)> pred, Result2<Token>* out) const;
+
+  // Type-related parsers.
+  State2 ParseQualifiedName(Result2<QualifiedName>* out) const;
+  State2 ParsePrimitiveType(Result2<Type>* out) const;
+  State2 ParseSingleType(Result2<Type>* out) const;
+  State2 ParseType(Result2<Type>* out) const;
+
+  // Expression parsers.
+  State2 ParseExpression(Result2<Expr>*) const;
+  State2 ParseUnaryExpression(Result2<Expr>*) const;
+  State2 ParseCastExpression(Result2<Expr>* out) const;
+  State2 ParsePrimary(Result2<Expr>* out) const;
+  State2 ParsePrimaryBase(Result2<Expr>* out) const;
+  State2 ParsePrimaryEnd(Expr* base, Result2<Expr>* out) const;
+  State2 ParsePrimaryEndNoArrayAccess(Expr* base, Result2<Expr>* out) const;
+
+  bool IsAtEnd() const {
+    return failed_ || (uint)index_ >= tokens_->size();
+  }
+
+  bool Failed() const {
+    return failed_;
+  }
+
+ private:
+  explicit operator bool() const {
+    return !failed_;
+  }
+
+  Error* MakeUnexpectedTokenError(Token token) const;
+  Error* MakeUnexpectedEOFError() const;
+
+  Token GetNext() const {
+    assert(!IsAtEnd());
+    return tokens_->at(index_);
+  }
+
+  State2 Advance(int i = 1) const {
+    return State2(fs_, file_, tokens_, index_ + i, failed_);
+  }
+
+  template <typename T>
+  State2 Fail(Error* error, Result2<T>* out) const {
+    *out = Failure<T>(error);
+    return Fail();
+  }
+
+  template <typename T>
+  State2 Fail(ErrorList&& errors, Result2<T>* out) const {
+    *out = Failure<T>(std::forward<ErrorList>(errors));
+    return Fail();
+  }
+
+  State2 Fail() const {
+    return State2(fs_, file_, tokens_, index_, /* failed */ true);
+  }
+
+  template <typename T, typename U>
+  State2 Success2(T* t, Result2<U>* out) const {
+    *out = Success<U>(t);
+    return *this;
+  }
+
+  const FileSet* Fs() const { return fs_; }
+  const File* GetFile() const { return file_; }
+
+  const FileSet* fs_ = nullptr;
+  const File* file_ = nullptr;
+  const vector<Token>* tokens_ = nullptr;
+  int index_ = -1;
+  bool failed_ = false;
+};
 
 } // namespace
 
-Expr* FixPrecedence(UniquePtrVector<Expr>&& owned_exprs, vector<Token> ops) {
+Expr* FixPrecedence(UniquePtrVector<Expr>&& owned_exprs, const vector<Token>& ops) {
   vector<Expr*> outstack;
   vector<Token> opstack;
 
@@ -175,11 +334,6 @@ Expr* FixPrecedence(UniquePtrVector<Expr>&& owned_exprs, vector<Token> ops) {
   return outstack.at(0);
 }
 
-Result<Expr> ParseExpression(State state);
-Result<Expr> ParseUnaryExpression(State state);
-Result<Expr> ParsePrimaryEnd(State state, Expr* base);
-Result<Expr> ParsePrimaryEndNoArrayAccess(State state, Expr* base);
-
 string TokenString(const File* file, Token token) {
   stringstream s;
   for (int i = token.pos.begin; i < token.pos.end; ++i) {
@@ -206,283 +360,345 @@ QualifiedName* MakeQualifiedName(const File *file, const vector<Token>& tokens) 
   return new QualifiedName(tokens, parts, fullname.str());
 }
 
-Result<QualifiedName> ParseQualifiedName(State state) {
-  if (state.IsAtEnd() || state.GetNext().type != IDENTIFIER) {
-    return Result<QualifiedName>::Failure(nullptr);
-  }
-
-  vector<Token> name;
-  name.push_back(state.GetNext());
-
-  State cur = state.Advance();
-  while (true) {
-    if (cur.IsAtEnd() || cur.GetNext().type != DOT) {
-      return Result<QualifiedName>::Success(MakeQualifiedName(state.GetFile(), name), cur);
-    }
-
-    State afterdot = cur.Advance();
-    if (afterdot.IsAtEnd() || afterdot.GetNext().type != IDENTIFIER) {
-      return Result<QualifiedName>::Success(MakeQualifiedName(state.GetFile(), name), cur);
-    }
-
-    name.push_back(cur.GetNext());
-    name.push_back(afterdot.GetNext());
-    cur = afterdot.Advance();
-  }
+Error* State2::MakeUnexpectedTokenError(Token token) const {
+  // TODO: say what you expected instead.
+  return MakeSimplePosRangeError(fs_, Pos(token.pos.fileid, token.pos.begin), "UnexpectedTokenError", "Unexpected token.");
 }
 
-Result<PrimitiveType> ParsePrimitiveType(State state) {
-  if (state.IsAtEnd()) {
-    return Result<PrimitiveType>::Failure(nullptr);
-  }
-
-  if (state.GetNext().TypeInfo().IsPrimitive()) {
-    return Result<PrimitiveType>::Success(new PrimitiveType(state.GetNext()), state.Advance());
-  }
-
-  return Result<PrimitiveType>::Failure(nullptr);
-}
-
-Result<Type> ParseSingleType(State state) {
-  // SingleType:
-  //   PrimitiveType
-  //   QualifiedName
-
-  {
-    Result<PrimitiveType> primitive = ParsePrimitiveType(state);
-    if (primitive.IsSuccess()) {
-      return Result<Type>::Success(primitive.Release(), primitive.NewState());
-    }
-  }
-
-  {
-    Result<QualifiedName> reference = ParseQualifiedName(state);
-    if (reference.IsSuccess()) {
-      return Result<Type>::Success(new ReferenceType(reference.Release()), reference.NewState());
-    }
-  }
-
-  return Result<Type>::Failure(nullptr);
-}
-
-Result<Type> ParseType(State state) {
-  Result<Type> single = ParseSingleType(state);
-  RETURN_IF_ERR(single);
-
-  State aftertype = single.NewState();
-  if (aftertype.IsAtEnd() || aftertype.GetNext().type != LBRACK) {
-    return single;
-  }
-
-  State afterlbrack = aftertype.Advance();
-  if (afterlbrack.IsAtEnd() || afterlbrack.GetNext().type != RBRACK) {
-    return single;
-  }
-
-  return Result<Type>::Success(new ArrayType(single.Release()), afterlbrack.Advance());
-}
-
-Result<Expr> ParseCastExpression(State state) {
-  if (state.IsAtEnd() || state.GetNext().type != LPAREN) {
-    return Result<Expr>::Failure(nullptr);
-  }
-
-  Result<Type> casttype = ParseType(state.Advance());
-  if (!casttype.IsSuccess()) {
-    return Result<Expr>::Failure(nullptr);
-  }
-
-  State aftertype = casttype.NewState();
-  if (aftertype.IsAtEnd() || aftertype.GetNext().type != RPAREN) {
-    return Result<Expr>::Failure(nullptr);
-  }
-
-  Result<Expr> castedExpr = ParseUnaryExpression(aftertype.Advance());
-  RETURN_IF_ERR(castedExpr);
-
-  return Result<Expr>::Success(
-      new CastExpr(casttype.Release(), castedExpr.Release()),
-      castedExpr.NewState()
+Error* State2::MakeUnexpectedEOFError() const {
+  // TODO: say what you expected instead.
+  // TODO: this will crash on an empty file.
+  return MakeSimplePosRangeError(
+      fs_,
+      Pos(tokens_->at(0).pos.fileid, file_->Size() - 1),
+      "UnexpectedEOFError",
+      "Unexpected end-of-file."
   );
 }
 
-Result<Expr> ParsePrimaryBase(State state) {
-  // PrimaryBase:
-  //   Literal
-  //   "this"
-  //   "(" Expression ")"
-  //   ClassInstanceCreationExpression
-  //   QualifiedName
-
-  if (state.IsAtEnd()) {
-    return Result<Expr>::Failure(nullptr);
+State2 State2::ParseTokenIf(std::function<bool(Token)> pred, Result2<Token> *out) const {
+  if (IsAtEnd()) {
+    return Fail(MakeUnexpectedEOFError(), out);
   }
 
-  if (state.GetNext().TypeInfo().IsLiteral()) {
-    return Result<Expr>::Success(new LitExpr(state.GetNext()), state.Advance());
+  if (!pred(GetNext())) {
+    return Fail(MakeUnexpectedTokenError(GetNext()), out);
   }
+  return Advance().Success2(new Token(GetNext()), out);
+}
 
-  if (state.GetNext().type == K_THIS) {
-    return Result<Expr>::Success(new ThisExpr(), state.Advance());
+State2 State2::ParseQualifiedName(Result2<QualifiedName>* out) const {
+  // QualifiedName:
+  //   Identifier {"." Identifier}
+  SHORT_CIRCUIT;
+
+  vector<Token> tokens;
+
+  Result2<Token> ident;
+  State2 cur = ParseTokenIf(ExactType(IDENTIFIER), &ident);
+  if (!ident) {
+    *out = ConvertError<Token, QualifiedName>(move(ident));
+    return Fail();
   }
+  tokens.push_back(*ident.Get());
 
-  if (state.GetNext().type == LPAREN) {
-    Result<Expr> nested = ParseExpression(state.Advance());
-    RETURN_IF_ERR(nested);
-
-    State next = nested.NewState();
-    if (next.IsAtEnd() || next.GetNext().type != RPAREN) {
-      return Result<Expr>::Failure(nullptr);
+  while (true) {
+    Result2<Token> dot;
+    Result2<Token> nextIdent;
+    State2 next = cur
+      .ParseTokenIf(ExactType(DOT), &dot)
+      .ParseTokenIf(ExactType(IDENTIFIER), &nextIdent);
+    if (!dot || !nextIdent) {
+      return cur.Success2(MakeQualifiedName(GetFile(), tokens), out);
     }
 
-    return Result<Expr>::Success(nested.Release(), next.Advance());
+    tokens.push_back(*dot.Get());
+    tokens.push_back(*nextIdent.Get());
+    cur = next;
+  }
+}
+
+State2 State2::ParsePrimitiveType(Result2<Type>* out) const {
+  // PrimitiveType:
+  //   "byte"
+  //   "short"
+  //   "int"
+  //   "char"
+  //   "boolean"
+  SHORT_CIRCUIT;
+
+  Result2<Token> primitive;
+  State2 after = ParseTokenIf(IsPrimitive(), &primitive);
+  if (primitive) {
+    *out = Success<Type>(new PrimitiveType(*primitive.Get()));
+    return after;
   }
 
-  // TODO: ClassInstanceCreationExpression.
+  // TODO: make an error here.
+  return Fail(nullptr, out);
+}
+
+State2 State2::ParseSingleType(Result2<Type>* out) const {
+  // SingleType:
+  //   PrimitiveType
+  //   QualifiedName
+  SHORT_CIRCUIT;
 
   {
-    Result<QualifiedName> name = ParseQualifiedName(state);
-    if (name.IsSuccess()) {
-      return Result<Expr>::Success(new NameExpr(name.Release()), name.NewState());
+    Result2<Type> primitive;
+    State2 after = ParsePrimitiveType(&primitive);
+    if (after) {
+      *out = move(primitive);
+      return after;
     }
   }
 
-  return Result<Expr>::Failure(MakeUnexpectedTokenError(state.Fs(), state.GetNext()));
-}
-
-Result<Expr> ParsePrimary(State state) {
-  // Primary:
-  //   PrimaryBase [ PrimaryEnd ]
-  //   ArrayCreationExpression [ PrimaryEndNoArrayAccess ]
-
-  Result<Expr> base = ParsePrimaryBase(state);
-  RETURN_IF_GOOD(base, ParsePrimaryEnd(base.NewState(), base.Release()));
-
-  // TODO: ArrayCreationExpression [ PrimaryEndNoArrayAccess ]
-
-  return base;
-}
-
-Result<Expr> ParsePrimaryEnd(State state, Expr* base) {
-  // PrimaryEnd:
-  //   "[" Expression "]" [ PrimaryEndNoArrayAccess ]
-  //   PrimaryEndNoArrayAccess
-
-  if (state.IsAtEnd()) {
-    return Result<Expr>::Success(base, state);
+  {
+    Result2<QualifiedName> reference;
+    State2 after = ParseQualifiedName(&reference);
+    RETURN_IF_GOOD(after, new ReferenceType(reference.Release()), out);
   }
 
-  if (state.GetNext().type == LBRACK) {
-    Result<Expr> index = ParseExpression(state.Advance());
-    if (!index.IsSuccess()) {
-      return Result<Expr>::Success(base, state);
+  // TODO: make an error here.
+  return Fail(nullptr, out);
+}
+
+State2 State2::ParseType(Result2<Type>* out) const {
+  // Type:
+  //   SingleType ["[" "]"]
+  SHORT_CIRCUIT;
+
+  Result2<Type> single;
+  State2 afterSingle = ParseSingleType(&single);
+  if (!afterSingle) {
+    *out = move(single);
+    return afterSingle;
+  }
+
+  Result2<Token> lbrack;
+  Result2<Token> rbrack;
+
+  State2 afterArray = afterSingle
+    .ParseTokenIf(ExactType(LBRACK), &lbrack)
+    .ParseTokenIf(ExactType(RBRACK), &rbrack);
+  RETURN_IF_GOOD(afterArray, new ArrayType(single.Release()), out);
+
+  // If we didn't find brackets, then just use the initial expression on its own.
+  *out = move(single);
+  return afterSingle;
+}
+
+
+// Expression parsers.
+
+State2 State2::ParseExpression(Result2<Expr>* out) const {
+  // TODO: Regrammarize.
+  SHORT_CIRCUIT;
+
+  UniquePtrVector<Expr> exprs;
+  vector<Token> operators;
+
+  Result2<Expr> expr;
+  State2 cur = ParseUnaryExpression(&expr);
+  if (!cur) {
+    *out = move(expr);
+    return cur;
+  }
+
+  exprs.Append(expr.Release());
+
+  while (true) {
+    Result2<Token> binOp;
+    Result2<Expr> nextExpr;
+
+    State2 next = cur.ParseTokenIf(IsBinOp(), &binOp).ParseUnaryExpression(&nextExpr);
+    if (!next) {
+      return cur.Success2(FixPrecedence(move(exprs), operators), out);
     }
 
-    State afterIndex = index.NewState();
-    if (afterIndex.IsAtEnd() || afterIndex.GetNext().type != RBRACK) {
-      return Result<Expr>::Success(base, state);
-    }
-
-    return ParsePrimaryEndNoArrayAccess(
-        afterIndex.Advance(),
-        new ArrayIndexExpr(base, index.Release())
-    );
+    operators.push_back(*binOp.Get());
+    exprs.Append(nextExpr.Release());
+    cur = next;
   }
-
-  return ParsePrimaryEndNoArrayAccess(state, base);
 }
 
-FieldDerefExpr* MakeFieldDeref(State state, Expr* base) {
-  assert(!state.IsAtEnd() && state.GetNext().type == IDENTIFIER);
-  string fieldname = TokenString(state.GetFile(), state.GetNext());
-  return new FieldDerefExpr(base, fieldname, state.GetNext());
-}
-
-Result<Expr> ParsePrimaryEndNoArrayAccess(State state, Expr* base) {
-  // PrimaryEndNoArrayAccess:
-  //   "." Identifier [ PrimaryEnd ]
-  //   "(" [ArgumentList] ")" [ PrimaryEnd ]
-
-  // NOTE: both productions have at least two tokens, so we pre-advance and
-  // check IsAtEnd().
-  State afterFirst = state.Advance();
-
-  if (state.IsAtEnd() || afterFirst.IsAtEnd()) {
-    return Result<Expr>::Success(base, state);
-  }
-
-  if (state.GetNext().type == DOT && afterFirst.GetNext().type == IDENTIFIER) {
-    return ParsePrimaryEnd(
-        afterFirst.Advance(),
-        MakeFieldDeref(afterFirst, base)
-    );
-  }
-
-  // TODO: "(" [ArgumentList] ")" [ PrimaryEnd ]
-
-  return Result<Expr>::Success(base, state);
-}
-
-
-Result<Expr> ParseUnaryExpression(State state) {
+State2 State2::ParseUnaryExpression(Result2<Expr>* out) const {
   // UnaryExpression:
   //   "-" UnaryExpression
   //   "!" UnaryExpression
   //   CastExpression
   //   Primary
+  SHORT_CIRCUIT;
 
-  if (state.IsAtEnd()) {
-    return Result<Expr>::Failure(nullptr);
+  // Prevent infinite recursion on first production.
+  if (IsAtEnd()) {
+    return Fail(MakeUnexpectedEOFError(), out);
   }
 
-  if (state.GetNext().TypeInfo().IsUnaryOp()) {
-    Result<Expr> nested = ParseUnaryExpression(state.Advance());
-    RETURN_IF_ERR(nested);
-
-    return Result<Expr>::Success(
-        new UnaryExpr(state.GetNext(), nested.Release()),
-        nested.NewState()
-    );
+  {
+    Result2<Token> unaryOp;
+    Result2<Expr> expr;
+    State2 after = ParseTokenIf(IsUnaryOp(), &unaryOp).ParseUnaryExpression(&expr);
+    RETURN_IF_GOOD(after, new UnaryExpr(*unaryOp.Get(), expr.Release()), out);
   }
 
-  Result<Expr> castExpr = ParseCastExpression(state);
-  if (castExpr.IsSuccess()) {
-    return castExpr;
+  {
+    Result2<Expr> expr;
+    State2 after = ParseCastExpression(&expr);
+    RETURN_IF_GOOD(after, expr.Release(), out);
   }
 
-  return ParsePrimary(state);
+  return ParsePrimary(out);
 }
 
-Result<Expr> ParseExpression(State state) {
-  UniquePtrVector<Expr> exprs;
-  vector<Token> operators;
+State2 State2::ParseCastExpression(Result2<Expr>* out) const {
+  // CastExpression:
+  //   "(" Type ")" UnaryExpression
+  SHORT_CIRCUIT;
 
-  State cur = state;
+  Result2<Token> lparen;
+  Result2<Type> type;
+  Result2<Token> rparen;
+  Result2<Expr> expr;
 
-  while (true) {
-    Result<Expr> nextExpr = ParseUnaryExpression(cur);
-    if (!nextExpr.IsSuccess()) {
-      return nextExpr;
-    }
+  State2 after = (*this)
+    .ParseTokenIf(ExactType(LPAREN), &lparen)
+    .ParseType(&type)
+    .ParseTokenIf(ExactType(RPAREN), &rparen)
+    .ParseUnaryExpression(&expr);
+  RETURN_IF_GOOD(after, new CastExpr(type.Release(), expr.Release()), out);
 
-    exprs.Append(nextExpr.Release());
-    cur = nextExpr.NewState();
+  // Collect the first error, and use that.
+  ErrorList errors;
+  FirstOf(&errors, &lparen, &type, &rparen, &expr);
+  return Fail(move(errors), out);
+}
 
-    if (cur.IsAtEnd() || !cur.GetNext().TypeInfo().IsBinOp()) {
-      // exprs is about to be destroyed here, so calling std::move is safe.
-      return Result<Expr>::Success(
-          FixPrecedence(std::move(exprs), operators),
-          cur);
-    }
+State2 State2::ParsePrimary(Result2<Expr>* out) const {
+  // Primary:
+  //   "new" SingleType NewEnd
+  //   PrimaryBase [ PrimaryEnd ]
+  SHORT_CIRCUIT;
 
-    operators.push_back(cur.GetNext());
-    cur = cur.Advance();
+  // TODO: "new" SingleType NewEnd
+
+  Result2<Expr> base;
+  State2 afterBase = ParsePrimaryBase(&base);
+  if (!afterBase) {
+    *out = move(base);
+    return afterBase;
   }
+
+  // We retain ownership IF ParsePrimaryEnd fails. If it succeeds, the
+  // expectation is that it will take ownership.
+  Expr* baseExpr = base.Release();
+  Result2<Expr> baseWithEnds;
+  State2 afterEnds = afterBase.ParsePrimaryEnd(baseExpr, &baseWithEnds);
+  RETURN_IF_GOOD(afterEnds, baseWithEnds.Release(), out);
+
+
+  // If we couldn't parse the PrimaryEnd, then just use base; it's optional.
+  return afterBase.Success2(baseExpr, out);
+}
+
+State2 State2::ParsePrimaryBase(Result2<Expr>* out) const {
+  // PrimaryBase:
+  //   Literal
+  //   "this"
+  //   "(" Expression ")"
+  //   QualifiedName
+  SHORT_CIRCUIT;
+
+  if (IsAtEnd()) {
+    return Fail(MakeUnexpectedEOFError(), out);
+  }
+
+  {
+    Result2<Token> litExpr;
+    State2 after = ParseTokenIf(IsLiteral(), &litExpr);
+    RETURN_IF_GOOD(after, new LitExpr(*litExpr.Get()), out);
+  }
+
+  {
+    Result2<Token> thisExpr;
+    State2 after = ParseTokenIf(ExactType(K_THIS), &thisExpr);
+    RETURN_IF_GOOD(after, new ThisExpr(), out);
+  }
+
+  {
+    Result2<Token> lparen;
+    Result2<Expr> expr;
+    Result2<Token> rparen;
+
+    State2 after = (*this)
+      .ParseTokenIf(ExactType(LPAREN), &lparen)
+      .ParseExpression(&expr)
+      .ParseTokenIf(ExactType(RPAREN), &rparen);
+    RETURN_IF_GOOD(after, expr.Release(), out);
+  }
+
+  {
+    Result2<QualifiedName> name;
+    State2 after = ParseQualifiedName(&name);
+    RETURN_IF_GOOD(after, new NameExpr(name.Release()), out);
+  }
+
+  return Fail(MakeUnexpectedTokenError(GetNext()), out);
+}
+
+State2 State2::ParsePrimaryEnd(Expr* base, Result2<Expr>* out) const {
+  // PrimaryEnd:
+  //   "[" Expression "]" [ PrimaryEndNoArrayAccess ]
+  //   PrimaryEndNoArrayAccess
+  SHORT_CIRCUIT;
+
+  {
+    Result2<Token> lbrack;
+    Result2<Expr> expr;
+    Result2<Token> rbrack;
+
+    State2 after = (*this)
+      .ParseTokenIf(ExactType(LBRACK), &lbrack)
+      .ParseExpression(&expr)
+      .ParseTokenIf(ExactType(RBRACK), &rbrack);
+    RETURN_IF_GOOD(after, new ArrayIndexExpr(base, expr.Release()), out);
+  }
+
+  return ParsePrimaryEndNoArrayAccess(base, out);
+}
+
+State2 State2::ParsePrimaryEndNoArrayAccess(Expr* base, Result2<Expr>* out) const {
+  // PrimaryEndNoArrayAccess:
+  //   "." Identifier [ PrimaryEnd ]
+  //   "(" [ArgumentList] ")" [ PrimaryEnd ]
+  SHORT_CIRCUIT;
+
+  {
+    Result2<Token> dot;
+    Result2<Token> ident;
+    State2 after = (*this)
+      .ParseTokenIf(ExactType(DOT), &dot)
+      .ParseTokenIf(ExactType(IDENTIFIER), &ident);
+
+    if (after) {
+      Expr* deref = new FieldDerefExpr(base, TokenString(GetFile(), *ident.Get()), *ident.Get());
+      Result2<Expr> nested;
+      State2 afterEnd = after.ParsePrimaryEnd(deref, &nested);
+      RETURN_IF_GOOD(afterEnd, nested.Release(), out);
+
+      return after.Success2(deref, out);
+    }
+  }
+
+  // TODO: "(" [ArgumentList] ")" [ PrimaryEnd ]
+
+  return Fail(nullptr, out);
 }
 
 void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
-  State state(fs, file, tokens, 0);
-  Result<Expr> result = ParseExpression(state);
+  State2 state(fs, file, tokens, 0);
+  Result2<Expr> result;
+  state.ParseExpression(&result);
   if (result.IsSuccess()) {
     result.Get()->PrintTo(&std::cout);
     std::cout << '\n';
@@ -490,6 +706,7 @@ void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
     result.Errors().PrintTo(&std::cout, base::OutputOptions::kUserOutput);
   }
 }
+
 
 // TODO: in for-loop initializers, for-loop incrementors, and top-level
 // statements, we must ensure that they are either assignment, method

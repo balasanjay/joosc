@@ -14,6 +14,7 @@ public:
     }
     vec_.clear();
   }
+  UniquePtrVector& operator=(UniquePtrVector&&) = default;
 
   // Returns the number of elements in the vector.
   int Size() const {
