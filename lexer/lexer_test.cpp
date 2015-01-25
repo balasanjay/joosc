@@ -1,5 +1,5 @@
-#include "lexer/lexer.h"
 #include "base/error.h"
+#include "lexer/lexer.h"
 #include "third_party/gtest/gtest.h"
 
 using base::ErrorList;
