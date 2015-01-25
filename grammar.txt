@@ -129,7 +129,7 @@ Primary:
 
 NewEnd:
   "(" ArgumentList ")" [ PrimaryEnd ]
-  "[" [Expression] "] [ PrimaryEndNoArrayAccess ]
+  "[" [Expression] "]" [ PrimaryEndNoArrayAccess ]
 
 PrimaryBase:
   Literal

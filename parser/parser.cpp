@@ -448,6 +448,8 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
   // NewEnd:
   //   "(" ArgumentList ")" [ PrimaryEnd ]
   //   "[" [Expression] "] [ PrimaryEndNoArrayAccess ]
+
+  assert(IsNext(K_NEW));
   SHORT_CIRCUIT;
 
   Result<Token> newTok;

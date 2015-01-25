@@ -261,4 +261,197 @@ TEST_F(ParserTest, ArgumentListStartingComma) {
   EXPECT_EQ("", Str(args.Get()));
 }
 
+TEST_F(ParserTest, PrimaryNewSuccess) {
+  MakeParser("new int[]");
+
+  Result<Expr> newExpr;
+  Parser after = parser_->ParsePrimary(&newExpr);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(newExpr));
+  EXPECT_TRUE(after.IsAtEnd());
+  EXPECT_FALSE(newExpr.Errors().IsFatal());
+  EXPECT_EQ("new<array<K_INT>>()", Str(newExpr.Get()));
+}
+
+TEST_F(ParserTest, PrimaryNewFail) {
+  MakeParser("new ;");
+
+  Result<Expr> newExpr;
+  Parser after = parser_->ParsePrimary(&newExpr);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(newExpr));
+  EXPECT_TRUE(newExpr.Errors().IsFatal());
+  EXPECT_EQ("UnexpectedTokenError(0:4)\n", testing::PrintToString(newExpr.Errors()));
+}
+
+TEST_F(ParserTest, PrimaryCallBaseFail) {
+  MakeParser(";");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParsePrimary(&expr);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(expr));
+  EXPECT_TRUE(expr.Errors().IsFatal());
+  EXPECT_EQ("UnexpectedTokenError(0:0)\n", testing::PrintToString(expr.Errors()));
+}
+
+TEST_F(ParserTest, PrimaryCallBaseNoEnd) {
+  MakeParser("3");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParsePrimary(&expr);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(expr));
+  EXPECT_FALSE(expr.Errors().IsFatal());
+  EXPECT_EQ("INTEGER", Str(expr.Get()));
+}
+
+TEST_F(ParserTest, PrimaryCallBaseWithEnd) {
+  MakeParser("3()");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParsePrimary(&expr);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(expr));
+  EXPECT_FALSE(expr.Errors().IsFatal());
+  EXPECT_EQ("INTEGER()", Str(expr.Get()));
+}
+
+TEST_F(ParserTest, DISABLED_PrimaryCallBaseWithEndFail) {
+  MakeParser("3(]");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParsePrimary(&expr);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(expr));
+  EXPECT_TRUE(expr.Errors().IsFatal());
+  EXPECT_EQ("UnexpectedTokenError(0:2)\n", testing::PrintToString(expr.Errors()));
+}
+
+TEST_F(ParserTest, NewExprNoType) {
+  MakeParser("new if");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseNewExpression(&expr);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(expr));
+  EXPECT_TRUE(expr.Errors().IsFatal());
+  EXPECT_EQ("UnexpectedTokenError(0:4)\n", testing::PrintToString(expr.Errors()));
+}
+
+TEST_F(ParserTest, NewExprAfterTypeEOF) {
+  MakeParser("new int");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseNewExpression(&expr);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(expr));
+  EXPECT_TRUE(expr.Errors().IsFatal());
+  EXPECT_EQ("UnexpectedEOFError(0:6)\n", testing::PrintToString(expr.Errors()));
+}
+
+TEST_F(ParserTest, NewExprAfterTypeNoParenOrBrack) {
+  MakeParser("new int;");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseNewExpression(&expr);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(expr));
+  EXPECT_TRUE(expr.Errors().IsFatal());
+  EXPECT_EQ("UnexpectedTokenError(0:7)\n", testing::PrintToString(expr.Errors()));
+}
+
+TEST_F(ParserTest, NewExprInvalidArgList) {
+  MakeParser("new int(;)");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseNewExpression(&expr);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(expr));
+  EXPECT_TRUE(expr.Errors().IsFatal());
+  EXPECT_EQ("UnexpectedTokenError(0:8)\n", testing::PrintToString(expr.Errors()));
+}
+
+TEST_F(ParserTest, NewExprClassWithPrimaryEnd) {
+  MakeParser("new int().f");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseNewExpression(&expr);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(expr));
+  EXPECT_FALSE(expr.Errors().IsFatal());
+  EXPECT_EQ("new<K_INT>().f", Str(expr.Get()));
+}
+
+TEST_F(ParserTest, NewExprClassWithNoPrimaryEnd) {
+  MakeParser("new int();");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseNewExpression(&expr);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(expr));
+  EXPECT_FALSE(expr.Errors().IsFatal());
+  EXPECT_EQ("new<K_INT>()", Str(expr.Get()));
+}
+
+TEST_F(ParserTest, NewExprArrayNoSizeNoEnd) {
+  MakeParser("new int[]");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseNewExpression(&expr);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(expr));
+  EXPECT_FALSE(expr.Errors().IsFatal());
+  EXPECT_EQ("new<array<K_INT>>()", Str(expr.Get()));
+}
+
+TEST_F(ParserTest, NewExprArraySizeError) {
+  MakeParser("new int[;]");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseNewExpression(&expr);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(expr));
+  EXPECT_TRUE(expr.Errors().IsFatal());
+  EXPECT_EQ("UnexpectedTokenError(0:8)\n", testing::PrintToString(expr.Errors()));
+}
+
+TEST_F(ParserTest, NewExprArrayEndSuccess) {
+  MakeParser("new int[3].f");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseNewExpression(&expr);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(expr));
+  EXPECT_FALSE(expr.Errors().IsFatal());
+  EXPECT_EQ("new<array<K_INT>>(INTEGER).f", Str(expr.Get()));
+}
+
+TEST_F(ParserTest, NewExprArrayEndFail) {
+  MakeParser("new int[3];");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseNewExpression(&expr);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(expr));
+  EXPECT_FALSE(expr.Errors().IsFatal());
+  EXPECT_EQ("new<array<K_INT>>(INTEGER)", Str(expr.Get()));
+}
+
 } // namespace parser
