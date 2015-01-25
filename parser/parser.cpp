@@ -647,7 +647,9 @@ Parser Parser::ParseArgumentList(Result<ArgumentList>* out) const {
     if (!next) {
       // Fail on hanging comma.
       if (comma) {
-        return cur.Fail(MakeUnexpectedTokenError(*comma.Get()), out);
+        ErrorList errors;
+        expr.ReleaseErrors(&errors);
+        return next.Fail(move(errors), out);
       }
       return cur.Success(new ArgumentList(move(args)), out);
     }

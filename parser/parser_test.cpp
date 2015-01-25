@@ -151,6 +151,24 @@ TEST_F(ParserTest, ArgumentListHangingComma) {
   EXPECT_FALSE(b(args));
 }
 
+TEST_F(ParserTest, ArgumentListNestedExpr) {
+  MakeParser("a, (1 + b))");
+  Result<ArgumentList> args;
+  Parser after = parser_->ParseArgumentList(&args);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(args));
+  EXPECT_EQ("a, (INTEGER ADD b)", Str(args.Get()));
+}
+
+TEST_F(ParserTest, ArgumentListBadExpr) {
+  MakeParser("a, ;)");
+  Result<ArgumentList> args;
+  Parser after = parser_->ParseArgumentList(&args);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(args));
+  EXPECT_EQ("UnexpectedTokenError(0:3)\n", testing::PrintToString(args.Errors()));
+}
+
 TEST_F(ParserTest, ArgumentListStartingComma) {
   MakeParser(", a, b, c)");
   Result<ArgumentList> args;
