@@ -75,7 +75,7 @@ TEST_F(ParserTest, QualifiedNameNoLeadingIdent) {
   EXPECT_EQ("UnexpectedTokenError(0:0)\n", testing::PrintToString(name.Errors()));
 }
 
-TEST_F(ParserTest, SingleIdent) {
+TEST_F(ParserTest, QualifiedNameSingleIdent) {
   MakeParser("foo");
 
   Result<QualifiedName> name;
@@ -88,7 +88,7 @@ TEST_F(ParserTest, SingleIdent) {
   EXPECT_EQ("foo", Str(name.Get()));
 }
 
-TEST_F(ParserTest, MultiIdent) {
+TEST_F(ParserTest, QualifiedNameMultiIdent) {
   MakeParser("foo.bar.baz");
 
   Result<QualifiedName> name;
@@ -101,18 +101,117 @@ TEST_F(ParserTest, MultiIdent) {
   EXPECT_EQ("foo.bar.baz", Str(name.Get()));
 }
 
-TEST_F(ParserTest, TrailingDot) {
+TEST_F(ParserTest, QualifiedNameTrailingDot) {
   MakeParser("foo.bar.baz.");
 
   Result<QualifiedName> name;
   Parser after = parser_->ParseQualifiedName(&name);
 
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(name));
+  EXPECT_TRUE(name.Errors().IsFatal());
+  EXPECT_EQ("UnexpectedEOFError(0:11)\n", testing::PrintToString(name.Errors()));
+}
+
+TEST_F(ParserTest, SingleTypePrimitive) {
+  MakeParser("int");
+
+  Result<Type> type;
+  Parser after = parser_->ParseSingleType(&type);
+
   EXPECT_TRUE(b(after));
-  EXPECT_TRUE(b(name));
-  EXPECT_FALSE(after.IsAtEnd());
-  EXPECT_EQ(DOT, after.GetNext().type);
-  EXPECT_FALSE(name.Errors().IsFatal());
-  EXPECT_EQ("foo.bar.baz", Str(name.Get()));
+  EXPECT_TRUE(b(type));
+  EXPECT_TRUE(after.IsAtEnd());
+  EXPECT_FALSE(type.Errors().IsFatal());
+  EXPECT_EQ("K_INT", Str(type.Get()));
+}
+
+TEST_F(ParserTest, SingleTypeReference) {
+  MakeParser("String");
+
+  Result<Type> type;
+  Parser after = parser_->ParseSingleType(&type);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(type));
+  EXPECT_TRUE(after.IsAtEnd());
+  EXPECT_FALSE(type.Errors().IsFatal());
+  EXPECT_EQ("String", Str(type.Get()));
+}
+
+TEST_F(ParserTest, SingleTypeMultiReference) {
+  MakeParser("java.lang.String");
+
+  Result<Type> type;
+  Parser after = parser_->ParseSingleType(&type);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(type));
+  EXPECT_TRUE(after.IsAtEnd());
+  EXPECT_FALSE(type.Errors().IsFatal());
+  EXPECT_EQ("java.lang.String", Str(type.Get()));
+}
+
+TEST_F(ParserTest, SingleTypeBothFail) {
+  MakeParser(";");
+
+  Result<Type> type;
+  Parser after = parser_->ParseSingleType(&type);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(type));
+  EXPECT_TRUE(type.Errors().IsFatal());
+  EXPECT_EQ("UnexpectedTokenError(0:0)\n", testing::PrintToString(type.Errors()));
+}
+
+TEST_F(ParserTest, TypeNonArray) {
+  MakeParser("int");
+
+  Result<Type> type;
+  Parser after = parser_->ParseType(&type);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(type));
+  EXPECT_TRUE(after.IsAtEnd());
+  EXPECT_FALSE(type.Errors().IsFatal());
+  EXPECT_EQ("K_INT", Str(type.Get()));
+}
+
+TEST_F(ParserTest, TypeFail) {
+  MakeParser(";");
+
+  Result<Type> type;
+  Parser after = parser_->ParseType(&type);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(type));
+  EXPECT_TRUE(type.Errors().IsFatal());
+  EXPECT_EQ("UnexpectedTokenError(0:0)\n", testing::PrintToString(type.Errors()));
+}
+
+TEST_F(ParserTest, TypeArray) {
+  MakeParser("int[]");
+
+  Result<Type> type;
+  Parser after = parser_->ParseType(&type);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(type));
+  EXPECT_TRUE(after.IsAtEnd());
+  EXPECT_FALSE(type.Errors().IsFatal());
+  EXPECT_EQ("array<K_INT>", Str(type.Get()));
+}
+
+TEST_F(ParserTest, TypeArrayFail) {
+  MakeParser("int[;");
+
+  Result<Type> type;
+  Parser after = parser_->ParseType(&type);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(type));
+  EXPECT_TRUE(type.Errors().IsFatal());
+  EXPECT_EQ("UnexpectedTokenError(0:4)\n", testing::PrintToString(type.Errors()));
 }
 
 } // namespace parser

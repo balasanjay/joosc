@@ -229,20 +229,23 @@ Parser Parser::ParseQualifiedName(Result<QualifiedName>* out) const {
   }
   tokens.push_back(*ident.Get());
 
-  while (true) {
+  while (cur.IsNext(DOT)) {
     Result<Token> dot;
     Result<Token> nextIdent;
     Parser next = cur
       .ParseTokenIf(ExactType(DOT), &dot)
       .ParseTokenIf(ExactType(IDENTIFIER), &nextIdent);
-    if (!dot || !nextIdent) {
-      return cur.Success(MakeQualifiedName(GetFile(), tokens), out);
+    if (!next) {
+      ErrorList errors;
+      FirstOf(&errors, &dot, &nextIdent);
+      return Fail(move(errors), out);
     }
 
     tokens.push_back(*dot.Get());
     tokens.push_back(*nextIdent.Get());
     cur = next;
   }
+  return cur.Success(MakeQualifiedName(GetFile(), tokens), out);
 }
 
 Parser Parser::ParsePrimitiveType(Result<Type>* out) const {
@@ -258,8 +261,8 @@ Parser Parser::ParsePrimitiveType(Result<Type>* out) const {
   Parser after = ParseTokenIf(IsPrimitive(), &primitive);
   RETURN_IF_GOOD(after, new PrimitiveType(*primitive.Get()), out);
 
-  // TODO: make an error here.
-  return Fail(nullptr, out);
+  *out = ConvertError<Token, Type>(move(primitive));
+  return Fail();
 }
 
 Parser Parser::ParseSingleType(Result<Type>* out) const {
@@ -277,14 +280,20 @@ Parser Parser::ParseSingleType(Result<Type>* out) const {
     }
   }
 
-  {
+  if (IsNext(IDENTIFIER)) {
     Result<QualifiedName> reference;
     Parser after = ParseQualifiedName(&reference);
     RETURN_IF_GOOD(after, new ReferenceType(reference.Release()), out);
+
+    *out = ConvertError<QualifiedName, Type>(move(reference));
+    return Fail();
   }
 
-  // TODO: make an error here.
-  return Fail(nullptr, out);
+  if (IsAtEnd()) {
+    return Fail(MakeUnexpectedEOFError(), out);
+  }
+
+  return Fail(MakeUnexpectedTokenError(GetNext()), out);
 }
 
 Parser Parser::ParseType(Result<Type>* out) const {
@@ -299,15 +308,21 @@ Parser Parser::ParseType(Result<Type>* out) const {
     return afterSingle;
   }
 
-  Result<Token> lbrack;
-  Result<Token> rbrack;
+  if (afterSingle.IsNext(LBRACK)) {
+    Result<Token> lbrack;
+    Result<Token> rbrack;
 
-  Parser afterArray = afterSingle
-    .ParseTokenIf(ExactType(LBRACK), &lbrack)
-    .ParseTokenIf(ExactType(RBRACK), &rbrack);
-  RETURN_IF_GOOD(afterArray, new ArrayType(single.Release()), out);
+    Parser afterArray = afterSingle
+      .ParseTokenIf(ExactType(LBRACK), &lbrack)
+      .ParseTokenIf(ExactType(RBRACK), &rbrack);
+    RETURN_IF_GOOD(afterArray, new ArrayType(single.Release()), out);
 
-  // If we didn't find brackets, then just use the initial expression on its own.
+    *out = ConvertError<Token, Type>(move(rbrack));
+    return Fail();
+  }
+
+  // If we didn't find brackets, then just use the initial expression on its
+  // own.
   *out = move(single);
   return afterSingle;
 }
