@@ -1,6 +1,7 @@
 #include "base/unique_ptr_vector.h"
 #include "lexer/lexer.h"
 #include "parser/ast.h"
+#include "parser/parser_internal.h"
 
 using base::Error;
 using base::ErrorList;
@@ -14,6 +15,7 @@ using lexer::COMMA;
 using lexer::DOT;
 using lexer::IDENTIFIER;
 using lexer::INTEGER;
+using lexer::K_NEW;
 using lexer::K_THIS;
 using lexer::LBRACK;
 using lexer::LPAREN;
@@ -22,6 +24,8 @@ using lexer::RBRACK;
 using lexer::RPAREN;
 using lexer::Token;
 using lexer::TokenType;
+using parser::internal::ConvertError;
+using parser::internal::Result;
 using std::cerr;
 using std::move;
 using std::stringstream;
@@ -51,8 +55,6 @@ struct ScopedPrint {
     cerr << repstr(level_, "|  ") << destruct_ << '\n';
   }
 
-
-
 private:
   string construct_;
   string destruct_;
@@ -79,7 +81,7 @@ int ScopedPrint::level_ = 0;
     return *this; \
   }\
 };\
-ScopedPrint _scoped_print(string("Entering ") + __FUNCTION__, string("Leaving ") + __FUNCTION__)
+// ScopedPrint _scoped_print(string("Entering ") + __FUNCTION__, string("Leaving ") + __FUNCTION__)
 
 namespace parser {
 
@@ -105,186 +107,6 @@ struct IsPrimitive {
   bool operator()(const Token& t) { return t.TypeInfo().IsPrimitive(); }
 };
 
-template <typename T>
-class Result final {
-public:
-  Result() = default;
-  Result(Result&& other) = default;
-  Result& operator=(Result&& other) = default;
-
-  explicit operator bool() const {
-    return IsSuccess();
-  }
-
-  bool IsSuccess() const {
-    return !errors_.IsFatal();
-  }
-
-  T* Get() const {
-    if (!IsSuccess()) {
-      throw "Get() from non-successful result.";
-    }
-    return data_.get();
-  }
-
-  T* Release() {
-    if (!IsSuccess()) {
-      throw "Release() from non-successful result.";
-    }
-    return data_.release();
-  }
-
-  void ReleaseErrors(ErrorList* out) {
-    vector<Error*> errors;
-    errors_.Release(&errors);
-    for (auto err : errors) {
-      out->Append(err);
-    }
-  }
-
-  const ErrorList& Errors() const {
-    return errors_;
-  }
-
-private:
-  DISALLOW_COPY_AND_ASSIGN(Result);
-
-  Result(T* data) : success_(true), data_(data) {}
-  Result(Error* err) {
-    errors_.Append(err);
-  }
-  Result(ErrorList&& errors) : success_(false), errors_(std::forward<ErrorList>(errors)) {}
-
-  template <typename U>
-  friend Result<U> MakeSuccess(U* t);
-
-  template <typename U>
-  friend Result<U> Failure(Error* e);
-
-  template <typename U>
-  friend Result<U> Failure(ErrorList&&);
-
-  template <typename T1, typename T2>
-  friend Result<T2> ConvertError(Result<T1>&&);
-
-  bool success_ = false;
-  unique_ptr<T> data_;
-  ErrorList errors_;
-};
-
-template <typename T>
-Result<T> MakeSuccess(T* t) {
-  return Result<T>(t);
-}
-template <typename T>
-Result<T> Failure(Error* e) {
-  return Result<T>(e);
-}
-template <typename T>
-Result<T> Failure(ErrorList&& e) {
-  return Result<T>(std::forward<ErrorList>(e));
-}
-
-template <typename T>
-void FirstOf(ErrorList* out, T* result) {
-  result->ReleaseErrors(out);
-}
-
-template <typename T, typename... Rest>
-void FirstOf(ErrorList* out, T* first, Rest... rest) {
-  if (first->Errors().Size() == 0) {
-    return FirstOf(out, rest...);
-  }
-
-  first->ReleaseErrors(out);
-}
-
-template <typename T, typename U>
-Result<U> ConvertError(Result<T>&& r) {
-  return Result<U>(move(r.errors_));
-}
-
-struct Parser {
-  Parser(const FileSet* fs, const File* file, const vector<Token>* tokens, int index = 0, bool failed = false) : fs_(fs), file_(file), tokens_(tokens), index_(index), failed_(failed) {}
-
-  Parser ParseTokenIf(std::function<bool(Token)> pred, Result<Token>* out) const;
-
-  // Type-related parsers.
-  Parser ParseQualifiedName(Result<QualifiedName>* out) const;
-  Parser ParsePrimitiveType(Result<Type>* out) const;
-  Parser ParseSingleType(Result<Type>* out) const;
-  Parser ParseType(Result<Type>* out) const;
-
-  // Expression parsers.
-  Parser ParseExpression(Result<Expr>*) const;
-  Parser ParseUnaryExpression(Result<Expr>*) const;
-  Parser ParseCastExpression(Result<Expr>* out) const;
-  Parser ParsePrimary(Result<Expr>* out) const;
-  Parser ParsePrimaryBase(Result<Expr>* out) const;
-  Parser ParsePrimaryEnd(Expr* base, Result<Expr>* out) const;
-  Parser ParsePrimaryEndNoArrayAccess(Expr* base, Result<Expr>* out) const;
-
-  // Other parsers.
-  Parser ParseArgumentList(Result<ArgumentList>*) const;
-
-  bool IsAtEnd() const {
-    return failed_ || (uint)index_ >= tokens_->size();
-  }
-
-  bool Failed() const {
-    return failed_;
-  }
-
- private:
-  explicit operator bool() const {
-    return !failed_;
-  }
-
-  Error* MakeUnexpectedTokenError(Token token) const;
-  Error* MakeUnexpectedEOFError() const;
-
-  Token GetNext() const {
-    assert(!IsAtEnd());
-    return tokens_->at(index_);
-  }
-
-  Parser Advance(int i = 1) const {
-    return Parser(fs_, file_, tokens_, index_ + i, failed_);
-  }
-
-  template <typename T>
-  Parser Fail(Error* error, Result<T>* out) const {
-    *out = Failure<T>(error);
-    return Fail();
-  }
-
-  template <typename T>
-  Parser Fail(ErrorList&& errors, Result<T>* out) const {
-    *out = Failure<T>(std::forward<ErrorList>(errors));
-    return Fail();
-  }
-
-  Parser Fail() const {
-    return Parser(fs_, file_, tokens_, index_, /* failed */ true);
-  }
-
-  template <typename T, typename U>
-  Parser Success(T* t, Result<U>* out) const {
-    *out = MakeSuccess<U>(t);
-    return *this;
-  }
-
-  const FileSet* Fs() const { return fs_; }
-  const File* GetFile() const { return file_; }
-
-  const FileSet* fs_ = nullptr;
-  const File* file_ = nullptr;
-  const vector<Token>* tokens_ = nullptr;
-  int index_ = -1;
-  bool failed_ = false;
-};
-
-} // namespace
 
 Expr* FixPrecedence(UniquePtrVector<Expr>&& owned_exprs, const vector<Token>& ops) {
   vector<Expr*> outstack;
@@ -362,6 +184,8 @@ QualifiedName* MakeQualifiedName(const File *file, const vector<Token>& tokens) 
 
   return new QualifiedName(tokens, parts, fullname.str());
 }
+
+} // namespace
 
 Error* Parser::MakeUnexpectedTokenError(Token token) const {
   // TODO: say what you expected instead.
@@ -580,7 +404,9 @@ Parser Parser::ParsePrimary(Result<Expr>* out) const {
   //   PrimaryBase [ PrimaryEnd ]
   SHORT_CIRCUIT;
 
-  // TODO: "new" SingleType NewEnd
+  if (IsNext(K_NEW)) {
+    return ParseNewExpression(out);
+  }
 
   Result<Expr> base;
   Parser afterBase = ParsePrimaryBase(&base);
@@ -599,6 +425,89 @@ Parser Parser::ParsePrimary(Result<Expr>* out) const {
 
   // If we couldn't parse the PrimaryEnd, then just use base; it's optional.
   return afterBase.Success(baseExpr, out);
+}
+
+Parser Parser::ParseNewExpression(Result<Expr>* out) const {
+  // "new" SingleType NewEnd
+  //
+  // NewEnd:
+  //   "(" ArgumentList ")" [ PrimaryEnd ]
+  //   "[" [Expression] "] [ PrimaryEndNoArrayAccess ]
+  SHORT_CIRCUIT;
+
+  Result<Token> newTok;
+  Result<Type> type;
+  Parser afterType = ParseTokenIf(ExactType(K_NEW), &newTok).ParseSingleType(&type);
+  if (!afterType) {
+    // Collect the first error, and use that.
+    ErrorList errors;
+    FirstOf(&errors, &newTok, &type);
+    return Fail(move(errors), out);
+  }
+
+  if (afterType.IsAtEnd()) {
+    return Fail(MakeUnexpectedEOFError(), out);
+  }
+
+  if (!afterType.IsNext(LPAREN) && !afterType.IsNext(LBRACK)) {
+    return Fail(MakeUnexpectedTokenError(afterType.GetNext()), out);
+  }
+
+  if (afterType.IsNext(LPAREN)) {
+    Result<Token> lparen;
+    Result<ArgumentList> args;
+    Result<Token> rparen;
+    Parser afterCall = afterType
+      .ParseTokenIf(ExactType(LPAREN), &lparen)
+      .ParseArgumentList(&args)
+      .ParseTokenIf(ExactType(RPAREN), &rparen);
+
+    if (!afterCall) {
+      // Collect the first error, and use that.
+      ErrorList errors;
+      FirstOf(&errors, &newTok, &type);
+      return Fail(move(errors), out);
+    }
+
+    Expr* newExpr = new NewClassExpr(type.Release(), args.Release());
+    Result<Expr> nested;
+    Parser afterEnd = afterCall.ParsePrimaryEnd(newExpr, &nested);
+    RETURN_IF_GOOD(afterEnd, nested.Release(), out);
+
+    return afterCall.Success(newExpr, out);
+  }
+
+  assert(afterType.IsNext(LBRACK));
+  Expr* sizeExpr = nullptr;
+  Parser after = *this;
+
+  if (afterType.Advance().IsNext(RBRACK)) {
+    after = afterType.Advance().Advance();
+  } else {
+    Result<Expr> nested;
+    Result<Token> rbrack;
+
+    Parser fullAfter = afterType
+      .Advance() // LBRACK.
+      .ParseExpression(&nested)
+      .ParseTokenIf(ExactType(RBRACK), &rbrack);
+    if (!fullAfter) {
+      // Collect the first error, and use that.
+      ErrorList errors;
+      FirstOf(&errors, &nested, &rbrack);
+      return Fail(move(errors), out);
+    }
+
+    sizeExpr = nested.Release();
+    after = fullAfter;
+  }
+
+  Expr* newExpr = new NewArrayExpr(type.Release(), sizeExpr);
+  Result<Expr> nested;
+  Parser afterEnd = after.ParsePrimaryEndNoArrayAccess(newExpr, &nested);
+  RETURN_IF_GOOD(afterEnd, nested.Release(), out);
+
+  return after.Success(newExpr, out);
 }
 
 Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
@@ -625,7 +534,7 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
     RETURN_IF_GOOD(after, new ThisExpr(), out);
   }
 
-  {
+  if (IsNext(LPAREN)) {
     Result<Token> lparen;
     Result<Expr> expr;
     Result<Token> rparen;
@@ -635,9 +544,13 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
       .ParseExpression(&expr)
       .ParseTokenIf(ExactType(RPAREN), &rparen);
     RETURN_IF_GOOD(after, expr.Release(), out);
+
+    ErrorList errors;
+    FirstOf(&errors, &lparen, &expr, &rparen);
+    return Fail(move(errors), out);
   }
 
-  {
+  if (IsNext(IDENTIFIER)) {
     Result<QualifiedName> name;
     Parser after = ParseQualifiedName(&name);
     RETURN_IF_GOOD(after, new NameExpr(name.Release()), out);
@@ -652,7 +565,7 @@ Parser Parser::ParsePrimaryEnd(Expr* base, Result<Expr>* out) const {
   //   PrimaryEndNoArrayAccess
   SHORT_CIRCUIT;
 
-  {
+  if (IsNext(LBRACK)) {
     Result<Token> lbrack;
     Result<Expr> expr;
     Result<Token> rbrack;
@@ -701,7 +614,7 @@ Parser Parser::ParsePrimaryEndNoArrayAccess(Expr* base, Result<Expr>* out) const
       .ParseTokenIf(ExactType(RPAREN), &rparen);
 
     if (after) {
-      Expr* call = new CallExpr(base, move(*args.Release()));
+      Expr* call = new CallExpr(base, args.Release());
       Result<Expr> nested;
       Parser afterEnd = after.ParsePrimaryEnd(call, &nested);
       RETURN_IF_GOOD(afterEnd, nested.Release(), out);
