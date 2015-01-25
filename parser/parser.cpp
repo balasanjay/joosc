@@ -465,7 +465,7 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
     if (!afterCall) {
       // Collect the first error, and use that.
       ErrorList errors;
-      FirstOf(&errors, &newTok, &type);
+      FirstOf(&errors, &lparen, &args, &rparen);
       return Fail(move(errors), out);
     }
 
@@ -645,6 +645,10 @@ Parser Parser::ParseArgumentList(Result<ArgumentList>* out) const {
 
     Parser next = cur.ParseTokenIf(ExactType(COMMA), &comma).ParseExpression(&expr);
     if (!next) {
+      // Fail on hanging comma.
+      if (comma) {
+        return cur.Fail(MakeUnexpectedTokenError(*comma.Get()), out);
+      }
       return cur.Success(new ArgumentList(move(args)), out);
     }
 
