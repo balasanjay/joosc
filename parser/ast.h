@@ -400,7 +400,7 @@ private:
 
 class ForStmt : public Stmt {
 public:
-  ForStmt(Stmt* init, Expr* cond, Stmt* update, Stmt* body): init_(init), cond_(cond), update_(update), body_(body) {}
+  ForStmt(Stmt* init, Expr* cond, Expr* update, Stmt* body): init_(init), cond_(cond), update_(update), body_(body) {}
 
   void PrintTo(std::ostream* os) const override {
     *os << "for(";
@@ -410,8 +410,9 @@ public:
       cond_->PrintTo(os);
     }
     *os << ";";
-    update_->PrintTo(os);
-    // TODO: Prints ending semi :(
+    if (update_ != nullptr) {
+      update_->PrintTo(os);
+    }
     *os << "){";
     body_->PrintTo(os);
     *os << "}";
@@ -420,8 +421,8 @@ public:
 private:
   DISALLOW_COPY_AND_ASSIGN(ForStmt);
   unique_ptr<Stmt> init_; // May be EmptyStmt.
-  unique_ptr<Expr> cond_; // May be null.
-  unique_ptr<Stmt> update_; // May be EmptyStmt.
+  unique_ptr<Expr> cond_; // May be nullptr.
+  unique_ptr<Expr> update_; // May be nullptr.
   unique_ptr<Stmt> body_; // May be EmptyStmt.
 };
 

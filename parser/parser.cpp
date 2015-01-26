@@ -747,13 +747,7 @@ Parser Parser::ParseStmt(Result<Stmt>* out) const {
   }
 
   if (IsNext(K_FOR)) {
-    Result<Stmt> forStmt;
-    Parser after = ParseForStmt(&forStmt);
-    RETURN_IF_GOOD(after, forStmt.Release(), out);
-
-    ErrorList errors;
-    forStmt.ReleaseErrors(&errors);
-    return Fail(move(errors), out);
+    return ParseForStmt(out);
   }
 
   {
@@ -1003,10 +997,8 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
 
 
   // Parse optional for update.
-  Stmt* forUpdate = nullptr;
-  if (next.IsNext(RPAREN)) {
-    forUpdate = new EmptyStmt();
-  } else {
+  Expr* forUpdate = nullptr;
+  if (!next.IsNext(RPAREN)) {
     Result<Expr> update;
     Parser afterUpdate = next.ParseExpression(&update);
     if (!afterUpdate) {
@@ -1014,7 +1006,7 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
       update.ReleaseErrors(&errors);
       return next.Fail(move(errors), out);
     }
-    forUpdate = new ExprStmt(update.Release());
+    forUpdate = update.Release();
     next = afterUpdate;
   }
 

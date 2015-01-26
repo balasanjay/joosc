@@ -936,7 +936,7 @@ TEST_F(ParserTest, ForStmtEmpty) {
   Parser after = parser_->ParseForStmt(&stmt);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("for(;;;){;}", Str(stmt.Get()));
+  EXPECT_EQ("for(;;){;}", Str(stmt.Get()));
 }
 
 TEST_F(ParserTest, ForStmtBlock) {
@@ -945,7 +945,7 @@ TEST_F(ParserTest, ForStmtBlock) {
   Parser after = parser_->ParseForStmt(&stmt);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("for(;;;){{a;}}", Str(stmt.Get()));
+  EXPECT_EQ("for(;;){{a;}}", Str(stmt.Get()));
 }
 
 TEST_F(ParserTest, ForStmtFull) {
@@ -954,7 +954,7 @@ TEST_F(ParserTest, ForStmtFull) {
   Parser after = parser_->ParseForStmt(&stmt);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("for((i ASSG INTEGER);i;i;){print(i);}", Str(stmt.Get()));
+  EXPECT_EQ("for((i ASSG INTEGER);i;i){print(i);}", Str(stmt.Get()));
 }
 
 TEST_F(ParserTest, ForStmtBadCond) {
