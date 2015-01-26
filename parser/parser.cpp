@@ -16,12 +16,14 @@ using lexer::DOT;
 using lexer::IDENTIFIER;
 using lexer::INTEGER;
 using lexer::K_NEW;
+using lexer::K_RETURN;
 using lexer::K_THIS;
 using lexer::LBRACK;
 using lexer::LPAREN;
 using lexer::MUL;
 using lexer::RBRACK;
 using lexer::RPAREN;
+using lexer::SEMI;
 using lexer::Token;
 using lexer::TokenType;
 using parser::internal::ConvertError;
@@ -711,6 +713,60 @@ Parser Parser::ParseArgumentList(Result<ArgumentList>* out) const {
   }
 
   return cur.Success(new ArgumentList(move(args)), out);
+}
+
+Parser Parser::ParseVarDecl(Result<Stmt>* out) const {
+  // LocalVariableDeclaration:
+  //   Type Identifier "=" Expression
+  SHORT_CIRCUIT;
+
+  Result<Type> type;
+  Result<Token> ident;
+  Result<Token> eq;
+  Result<Expr> expr;
+  Parser after = (*this)
+    .ParseType(&type)
+    .ParseTokenIf(ExactType(IDENTIFIER), &ident)
+    .ParseTokenIf(ExactType(ASSG), &eq)
+    .ParseExpression(&expr);
+  RETURN_IF_GOOD(
+      after,
+      new LocalDeclStmt(
+        type.Release(), *ident.Get(), expr.Release()),
+      out);
+
+  // TODO: Make it fatal error only after we find equals?
+  ErrorList errors;
+  FirstOf(&errors, &type, &ident, &eq, &expr);
+  return Fail(move(errors), out);
+}
+
+Parser Parser::ParseReturnStmt(Result<Stmt>* out) const {
+  // ReturnStatement:
+  //  "return" [Expression] ";"
+  SHORT_CIRCUIT;
+
+  Result<Token> ret;
+  Parser afterRet = ParseTokenIf(ExactType(K_RETURN), &ret);
+
+  if (afterRet && afterRet.IsNext(SEMI)) {
+    return afterRet.Advance().Success(new ReturnStmt(nullptr), out);
+  }
+
+  Result<Expr> expr;
+  Result<Token> semi;
+  Parser afterAll = afterRet
+    .ParseExpression(&expr)
+    .ParseTokenIf(ExactType(SEMI), &semi);
+
+  RETURN_IF_GOOD(
+      afterAll,
+      new ReturnStmt(expr.Release()),
+      out);
+
+  ErrorList errors;
+  FirstOf(&errors, &ret, &expr, &semi);
+  return Fail(move(errors), out);
 }
 
 void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {

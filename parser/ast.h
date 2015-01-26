@@ -320,6 +320,23 @@ private:
   unique_ptr<Expr> val_;
 };
 
+class ReturnStmt : public Stmt {
+public:
+  ReturnStmt(Expr* val): val_(val) {}
+
+  void PrintTo(std::ostream* os) const override {
+    *os << "return";
+    if (val_ != nullptr) {
+      *os << " ";
+      val_->PrintTo(os);
+    }
+    *os << ";";
+  }
+
+private:
+  unique_ptr<Expr> val_;
+};
+
 void Parse(const base::FileSet* fs, const base::File* file, const vector<lexer::Token>* tokens);
 
 } // namespace parser

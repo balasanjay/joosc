@@ -141,6 +141,7 @@ struct Parser {
 
   // Statement parsers.
   Parser ParseVarDecl(internal::Result<Stmt>* out) const;
+  Parser ParseReturnStmt(internal::Result<Stmt>* out) const;
 
   bool IsAtEnd() const {
     return failed_ || (uint)index_ >= tokens_->size();
