@@ -65,6 +65,13 @@ string Str(T* t) {
   return s.str();
 }
 
+class TestExpr : public Expr {
+public :
+  void PrintTo(std::ostream* os) const override {
+    *os << "TEST";
+  }
+};
+
 TEST_F(ParserTest, QualifiedNameNoLeadingIdent) {
   MakeParser(";");
 
@@ -278,6 +285,239 @@ TEST_F(ParserTest, ArgumentListStartingComma) {
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(args));
   EXPECT_EQ("", Str(args.Get()));
+}
+
+TEST_F(ParserTest, DISABLED_PrimaryBaseShortCircuit) {
+  MakeParser("");
+  Result<Expr> primary;
+  Parser after = parser_->ParsePrimaryBase(&primary);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(primary));
+  EXPECT_EQ("UnexpectedEOFError(0:0)\n", testing::PrintToString(primary.Errors()));
+}
+
+TEST_F(ParserTest, PrimaryBaseLit) {
+  MakeParser("3");
+  Result<Expr> primary;
+  Parser after = parser_->ParsePrimaryBase(&primary);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(primary));
+  EXPECT_EQ("INTEGER", Str(primary.Get()));
+}
+
+TEST_F(ParserTest, PrimaryBaseThis) {
+  MakeParser("this");
+  Result<Expr> primary;
+  Parser after = parser_->ParsePrimaryBase(&primary);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(primary));
+  EXPECT_EQ("this", Str(primary.Get()));
+}
+
+TEST_F(ParserTest, PrimaryBaseParens) {
+  MakeParser("(3)");
+  Result<Expr> primary;
+  Parser after = parser_->ParsePrimaryBase(&primary);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(primary));
+  EXPECT_EQ("INTEGER", Str(primary.Get()));
+}
+
+TEST_F(ParserTest, PrimaryBaseParensExprFail) {
+  MakeParser("(;)");
+  Result<Expr> primary;
+  Parser after = parser_->ParsePrimaryBase(&primary);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(primary));
+  EXPECT_EQ("UnexpectedTokenError(0:1)\n", testing::PrintToString(primary.Errors()));
+}
+
+TEST_F(ParserTest, PrimaryBaseParensNoClosing) {
+  MakeParser("(3;");
+  Result<Expr> primary;
+  Parser after = parser_->ParsePrimaryBase(&primary);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(primary));
+  EXPECT_EQ("UnexpectedTokenError(0:2)\n", testing::PrintToString(primary.Errors()));
+}
+
+TEST_F(ParserTest, PrimaryBaseQualifiedName) {
+  MakeParser("a.b");
+  Result<Expr> primary;
+  Parser after = parser_->ParsePrimaryBase(&primary);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(primary));
+  EXPECT_EQ("a.b", Str(primary.Get()));
+}
+
+TEST_F(ParserTest, PrimaryBaseQualifiedNameFail) {
+  MakeParser("a.b.;");
+  Result<Expr> primary;
+  Parser after = parser_->ParsePrimaryBase(&primary);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(primary));
+  EXPECT_EQ("UnexpectedTokenError(0:4)\n", testing::PrintToString(primary.Errors()));
+}
+
+TEST_F(ParserTest, PrimaryBaseAbort) {
+  MakeParser(";");
+  Result<Expr> primary;
+  Parser after = parser_->ParsePrimaryBase(&primary);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(primary));
+  EXPECT_EQ("UnexpectedTokenError(0:0)\n", testing::PrintToString(primary.Errors()));
+}
+
+TEST_F(ParserTest, PrimaryEndFailedArrayAccess) {
+  MakeParser("[;]");
+  unique_ptr<Expr> primary(new TestExpr());
+  Result<Expr> primaryEnd;
+  Parser after = parser_->ParsePrimaryEnd(primary.get(), &primaryEnd);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(primaryEnd));
+  EXPECT_EQ("UnexpectedTokenError(0:1)\n", testing::PrintToString(primaryEnd.Errors()));
+}
+
+TEST_F(ParserTest, PrimaryEndArrayAccessWithField) {
+  MakeParser("[3].f");
+  unique_ptr<Expr> primary(new TestExpr());
+  Result<Expr> primaryEnd;
+  Parser after = parser_->ParsePrimaryEnd(primary.release(), &primaryEnd);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(primaryEnd));
+  EXPECT_EQ("TEST[INTEGER].f", Str(primaryEnd.Get()));
+}
+
+TEST_F(ParserTest, PrimaryEndArrayAccessNoTrailing) {
+  MakeParser("[3]+5");
+  unique_ptr<Expr> primary(new TestExpr());
+  Result<Expr> primaryEnd;
+  Parser after = parser_->ParsePrimaryEnd(primary.release(), &primaryEnd);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(primaryEnd));
+  EXPECT_EQ("TEST[INTEGER]", Str(primaryEnd.Get()));
+}
+
+TEST_F(ParserTest, PrimaryEndNoAccess) {
+  MakeParser(".f");
+  unique_ptr<Expr> primary(new TestExpr());
+  Result<Expr> primaryEnd;
+  Parser after = parser_->ParsePrimaryEnd(primary.release(), &primaryEnd);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(primaryEnd));
+  EXPECT_EQ("TEST.f", Str(primaryEnd.Get()));
+}
+
+TEST_F(ParserTest, DISABLED_PrimaryEndNoArrayShortCircuit) {
+  MakeParser("");
+  unique_ptr<Expr> primary(new TestExpr());
+  Result<Expr> primaryEnd;
+  Parser after = parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(primaryEnd));
+  EXPECT_EQ("UnexpectedEOFError(0:0)\n", testing::PrintToString(primaryEnd.Errors()));
+}
+
+TEST_F(ParserTest, PrimaryEndNoArrayUnexpectedToken) {
+  MakeParser(";");
+  unique_ptr<Expr> primary(new TestExpr());
+  Result<Expr> primaryEnd;
+  Parser after = parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(primaryEnd));
+  EXPECT_EQ("UnexpectedTokenError(0:0)\n", testing::PrintToString(primaryEnd.Errors()));
+}
+
+TEST_F(ParserTest, PrimaryEndNoArrayFieldFail) {
+  MakeParser(".;");
+  unique_ptr<Expr> primary(new TestExpr());
+  Result<Expr> primaryEnd;
+  Parser after = parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(primaryEnd));
+  EXPECT_EQ("UnexpectedTokenError(0:1)\n", testing::PrintToString(primaryEnd.Errors()));
+}
+
+TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEnd) {
+  MakeParser(".f[0]");
+  unique_ptr<Expr> primary(new TestExpr());
+  Result<Expr> primaryEnd;
+  Parser after = parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(primaryEnd));
+  EXPECT_EQ("TEST.f[INTEGER]", Str(primaryEnd.Get()));
+}
+
+TEST_F(ParserTest, PrimaryEndDoubleArrayAccess) {
+  MakeParser("[0][1]");
+  unique_ptr<Expr> primary(new TestExpr());
+  Result<Expr> primaryEnd;
+  Parser after = parser_->ParsePrimaryEnd(primary.release(), &primaryEnd);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(primaryEnd));
+  EXPECT_EQ("TEST[INTEGER]", Str(primaryEnd.Get()));
+}
+
+TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEndFail) {
+  MakeParser(".f;");
+  unique_ptr<Expr> primary(new TestExpr());
+  Result<Expr> primaryEnd;
+  Parser after = parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(primaryEnd));
+  EXPECT_EQ("TEST.f", Str(primaryEnd.Get()));
+}
+
+TEST_F(ParserTest, PrimaryEndNoArrayMethodFail) {
+  MakeParser("(;)");
+  unique_ptr<Expr> primary(new TestExpr());
+  Result<Expr> primaryEnd;
+  Parser after = parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(primaryEnd));
+  EXPECT_EQ("UnexpectedTokenError(0:1)\n", testing::PrintToString(primaryEnd.Errors()));
+}
+
+TEST_F(ParserTest, PrimaryEndNoArrayMethodWithEnd) {
+  MakeParser("().f");
+  unique_ptr<Expr> primary(new TestExpr());
+  Result<Expr> primaryEnd;
+  Parser after = parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(primaryEnd));
+  EXPECT_EQ("TEST().f", Str(primaryEnd.Get()));
+}
+
+TEST_F(ParserTest, PrimaryEndNoArrayMethodWithEndFail) {
+  MakeParser("();");
+  unique_ptr<Expr> primary(new TestExpr());
+  Result<Expr> primaryEnd;
+  Parser after = parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(primaryEnd));
+  EXPECT_EQ("TEST()", Str(primaryEnd.Get()));
 }
 
 TEST_F(ParserTest, DISABLED_UnaryEmptyShortCircuit) {
