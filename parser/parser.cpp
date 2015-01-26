@@ -229,20 +229,23 @@ Parser Parser::ParseQualifiedName(Result<QualifiedName>* out) const {
   }
   tokens.push_back(*ident.Get());
 
-  while (true) {
+  while (cur.IsNext(DOT)) {
     Result<Token> dot;
     Result<Token> nextIdent;
     Parser next = cur
       .ParseTokenIf(ExactType(DOT), &dot)
       .ParseTokenIf(ExactType(IDENTIFIER), &nextIdent);
-    if (!dot || !nextIdent) {
-      return cur.Success(MakeQualifiedName(GetFile(), tokens), out);
+    if (!next) {
+      ErrorList errors;
+      FirstOf(&errors, &dot, &nextIdent);
+      return Fail(move(errors), out);
     }
 
     tokens.push_back(*dot.Get());
     tokens.push_back(*nextIdent.Get());
     cur = next;
   }
+  return cur.Success(MakeQualifiedName(GetFile(), tokens), out);
 }
 
 Parser Parser::ParsePrimitiveType(Result<Type>* out) const {
@@ -258,8 +261,8 @@ Parser Parser::ParsePrimitiveType(Result<Type>* out) const {
   Parser after = ParseTokenIf(IsPrimitive(), &primitive);
   RETURN_IF_GOOD(after, new PrimitiveType(*primitive.Get()), out);
 
-  // TODO: make an error here.
-  return Fail(nullptr, out);
+  *out = ConvertError<Token, Type>(move(primitive));
+  return Fail();
 }
 
 Parser Parser::ParseSingleType(Result<Type>* out) const {
@@ -277,14 +280,20 @@ Parser Parser::ParseSingleType(Result<Type>* out) const {
     }
   }
 
-  {
+  if (IsNext(IDENTIFIER)) {
     Result<QualifiedName> reference;
     Parser after = ParseQualifiedName(&reference);
     RETURN_IF_GOOD(after, new ReferenceType(reference.Release()), out);
+
+    *out = ConvertError<QualifiedName, Type>(move(reference));
+    return Fail();
   }
 
-  // TODO: make an error here.
-  return Fail(nullptr, out);
+  if (IsAtEnd()) {
+    return Fail(MakeUnexpectedEOFError(), out);
+  }
+
+  return Fail(MakeUnexpectedTokenError(GetNext()), out);
 }
 
 Parser Parser::ParseType(Result<Type>* out) const {
@@ -299,15 +308,21 @@ Parser Parser::ParseType(Result<Type>* out) const {
     return afterSingle;
   }
 
-  Result<Token> lbrack;
-  Result<Token> rbrack;
+  if (afterSingle.IsNext(LBRACK)) {
+    Result<Token> lbrack;
+    Result<Token> rbrack;
 
-  Parser afterArray = afterSingle
-    .ParseTokenIf(ExactType(LBRACK), &lbrack)
-    .ParseTokenIf(ExactType(RBRACK), &rbrack);
-  RETURN_IF_GOOD(afterArray, new ArrayType(single.Release()), out);
+    Parser afterArray = afterSingle
+      .ParseTokenIf(ExactType(LBRACK), &lbrack)
+      .ParseTokenIf(ExactType(RBRACK), &rbrack);
+    RETURN_IF_GOOD(afterArray, new ArrayType(single.Release()), out);
 
-  // If we didn't find brackets, then just use the initial expression on its own.
+    *out = ConvertError<Token, Type>(move(rbrack));
+    return Fail();
+  }
+
+  // If we didn't find brackets, then just use the initial expression on its
+  // own.
   *out = move(single);
   return afterSingle;
 }
@@ -331,19 +346,24 @@ Parser Parser::ParseExpression(Result<Expr>* out) const {
 
   exprs.Append(expr.Release());
 
-  while (true) {
+  while (cur.IsNext(IsBinOp())) {
     Result<Token> binOp;
     Result<Expr> nextExpr;
 
     Parser next = cur.ParseTokenIf(IsBinOp(), &binOp).ParseUnaryExpression(&nextExpr);
+
     if (!next) {
-      return cur.Success(FixPrecedence(move(exprs), operators), out);
+      ErrorList errors;
+      FirstOf(&errors, &binOp, &nextExpr);
+      return Fail(move(errors), out);
     }
 
     operators.push_back(*binOp.Get());
     exprs.Append(nextExpr.Release());
     cur = next;
   }
+
+  return cur.Success(FixPrecedence(move(exprs), operators), out);
 }
 
 Parser Parser::ParseUnaryExpression(Result<Expr>* out) const {
@@ -359,11 +379,15 @@ Parser Parser::ParseUnaryExpression(Result<Expr>* out) const {
     return Fail(MakeUnexpectedEOFError(), out);
   }
 
-  {
+  if (IsNext(IsUnaryOp())) {
     Result<Token> unaryOp;
     Result<Expr> expr;
     Parser after = ParseTokenIf(IsUnaryOp(), &unaryOp).ParseUnaryExpression(&expr);
     RETURN_IF_GOOD(after, new UnaryExpr(*unaryOp.Get(), expr.Release()), out);
+
+    ErrorList errors;
+    FirstOf(&errors, &unaryOp, &expr);
+    return Fail(move(errors), out);
   }
 
   {
@@ -465,7 +489,7 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
     if (!afterCall) {
       // Collect the first error, and use that.
       ErrorList errors;
-      FirstOf(&errors, &newTok, &type);
+      FirstOf(&errors, &lparen, &args, &rparen);
       return Fail(move(errors), out);
     }
 
@@ -554,6 +578,9 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
     Result<QualifiedName> name;
     Parser after = ParseQualifiedName(&name);
     RETURN_IF_GOOD(after, new NameExpr(name.Release()), out);
+
+    *out = ConvertError<QualifiedName, Expr>(move(name));
+    return Fail();
   }
 
   return Fail(MakeUnexpectedTokenError(GetNext()), out);
@@ -574,7 +601,21 @@ Parser Parser::ParsePrimaryEnd(Expr* base, Result<Expr>* out) const {
       .ParseTokenIf(ExactType(LBRACK), &lbrack)
       .ParseExpression(&expr)
       .ParseTokenIf(ExactType(RBRACK), &rbrack);
-    RETURN_IF_GOOD(after, new ArrayIndexExpr(base, expr.Release()), out);
+
+    if (!after) {
+      ErrorList errors;
+      FirstOf(&errors, &lbrack, &expr, &rbrack);
+      return Fail(move(errors), out);
+    }
+
+    // Try optional PrimaryEndNoArrayAccess.
+    Expr* index = new ArrayIndexExpr(base, expr.Release());
+    Result<Expr> nested;
+    Parser afterEnd = after.ParsePrimaryEndNoArrayAccess(index, &nested);
+    RETURN_IF_GOOD(afterEnd, nested.Release(), out);
+
+    // If it failed, return what we had so far.
+    return after.Success(index, out);
   }
 
   return ParsePrimaryEndNoArrayAccess(base, out);
@@ -586,21 +627,33 @@ Parser Parser::ParsePrimaryEndNoArrayAccess(Expr* base, Result<Expr>* out) const
   //   "(" [ArgumentList] ")" [ PrimaryEnd ]
   SHORT_CIRCUIT;
 
-  {
+  if (IsAtEnd()) {
+    return Fail(MakeUnexpectedEOFError(), out);
+  }
+
+  if (!IsNext(DOT) && !IsNext(LPAREN)) {
+    return Fail(MakeUnexpectedTokenError(GetNext()), out);
+  }
+
+  if (IsNext(DOT)) {
     Result<Token> dot;
     Result<Token> ident;
     Parser after = (*this)
       .ParseTokenIf(ExactType(DOT), &dot)
       .ParseTokenIf(ExactType(IDENTIFIER), &ident);
 
-    if (after) {
-      Expr* deref = new FieldDerefExpr(base, TokenString(GetFile(), *ident.Get()), *ident.Get());
-      Result<Expr> nested;
-      Parser afterEnd = after.ParsePrimaryEnd(deref, &nested);
-      RETURN_IF_GOOD(afterEnd, nested.Release(), out);
-
-      return after.Success(deref, out);
+    if (!after) {
+      ErrorList errors;
+      FirstOf(&errors, &dot, &ident);
+      return Fail(move(errors), out);
     }
+
+    Expr* deref = new FieldDerefExpr(base, TokenString(GetFile(), *ident.Get()), *ident.Get());
+    Result<Expr> nested;
+    Parser afterEnd = after.ParsePrimaryEnd(deref, &nested);
+    RETURN_IF_GOOD(afterEnd, nested.Release(), out);
+
+    return after.Success(deref, out);
   }
 
   {
@@ -613,17 +666,19 @@ Parser Parser::ParsePrimaryEndNoArrayAccess(Expr* base, Result<Expr>* out) const
       .ParseArgumentList(&args)
       .ParseTokenIf(ExactType(RPAREN), &rparen);
 
-    if (after) {
-      Expr* call = new CallExpr(base, args.Release());
-      Result<Expr> nested;
-      Parser afterEnd = after.ParsePrimaryEnd(call, &nested);
-      RETURN_IF_GOOD(afterEnd, nested.Release(), out);
-
-      return after.Success(call, out);
+    if (!after) {
+      ErrorList errors;
+      FirstOf(&errors, &lparen, &args, &rparen);
+      return Fail(move(errors), out);
     }
-  }
 
-  return Fail(nullptr, out);
+    Expr* call = new CallExpr(base, args.Release());
+    Result<Expr> nested;
+    Parser afterEnd = after.ParsePrimaryEnd(call, &nested);
+    RETURN_IF_GOOD(afterEnd, nested.Release(), out);
+
+    return after.Success(call, out);
+  }
 }
 
 Parser Parser::ParseArgumentList(Result<ArgumentList>* out) const {
@@ -639,18 +694,23 @@ Parser Parser::ParseArgumentList(Result<ArgumentList>* out) const {
   }
   args.Append(first.Release());
 
-  while (true) {
+  while (cur.IsNext(COMMA)) {
     Result<Token> comma;
     Result<Expr> expr;
 
     Parser next = cur.ParseTokenIf(ExactType(COMMA), &comma).ParseExpression(&expr);
     if (!next) {
-      return cur.Success(new ArgumentList(move(args)), out);
+        // Fail on hanging comma.
+        ErrorList errors;
+        FirstOf(&errors, &comma, &expr);
+        return Fail(move(errors), out);
     }
 
     args.Append(expr.Release());
     cur = next;
   }
+
+  return cur.Success(new ArgumentList(move(args)), out);
 }
 
 void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
@@ -668,9 +728,10 @@ void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
 
 // TODO: in for-loop initializers, for-loop incrementors, and top-level
 // statements, we must ensure that they are either assignment, method
-// invocation, or class creation, not other types of expressions (like boolean
-// ops).
-//
+// invocation, or class creation, not other types of expressions (like
+// boolean ops).
 // TODO: Weed out statements of the form "new PrimitiveType([ArgumentList])".
+// TODO: Handle parsing empty strings.
+// TODO: Weed expressions of the form "f()()()()...".
 
 } // namespace parser

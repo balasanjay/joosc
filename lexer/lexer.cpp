@@ -122,91 +122,6 @@ TokenTypeInfo Token::TypeInfo() const {
   return TokenTypeInfo::FromTokenType(type);
 }
 
-bool TokenTypeIsBinOp(TokenType t) {
-  switch (t) {
-    case LE:
-    case GE:
-    case EQ:
-    case NEQ:
-    case AND:
-    case OR:
-    case ADD:
-    case SUB:
-    case MUL:
-    case DIV:
-    case MOD:
-    case LT:
-    case GT:
-    case BAND:
-    case BOR:
-    case XOR:
-    case ASSG:
-    case K_INSTANCEOF:
-      return true;
-    default:
-      return false;
-  }
-}
-
-int TokenTypeBinOpPrec(TokenType t) {
-  switch (t) {
-    case LE: return 7;
-    case GE: return 7;
-    case EQ: return 6;
-    case NEQ: return 6;
-    case AND: return 2;
-    case OR: return 1;
-    case ADD: return 8;
-    case SUB: return 8;
-    case MUL: return 9;
-    case DIV: return 9;
-    case MOD: return 9;
-    case LT: return 7;
-    case GT: return 7;
-    case BAND: return 5;
-    case BOR: return 3;
-    case XOR: return 4;
-    case ASSG: return 0;
-    case K_INSTANCEOF: return 7;
-    default:
-      throw "foo bar";
-  }
-}
-
-bool TokenTypeIsUnaryOp(TokenType t) {
-  switch (t) {
-    case SUB:
-    case NOT:
-      return true;
-    default:
-      return false;
-  }
-}
-
-bool TokenTypeIsPrimitive(TokenType t) {
-  switch (t) {
-    case K_BYTE:
-    case K_SHORT:
-    case K_INT:
-    case K_CHAR:
-    case K_BOOL:
-      return true;
-    default:
-      return false;
-  }
-}
-
-bool TokenTypeIsLit(TokenType t) {
-  switch (t) {
-    case INTEGER:
-    case CHAR:
-    case STRING:
-      return true;
-    default:
-      return false;
-  }
-}
-
 namespace internal {
 
 struct LexState {
@@ -629,6 +544,21 @@ void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
   for (int i = 0; i < fs->Size(); i++) {
     LexJoosFile(fs, fs->Get(i), i, &(*tokens_out)[i], errors_out);
   }
+}
+
+void StripSkippableTokens(vector<Token>* tokens) {
+  if (tokens->empty()) {
+    return;
+  }
+
+  int i = 0;
+  for (auto& token : *tokens) {
+    if (token.TypeInfo().IsSkippable()) {
+      continue;
+    }
+    (*tokens)[i++] = token;
+  }
+  tokens->resize(i, *tokens->rbegin());
 }
 
 }  // namespace lexer
