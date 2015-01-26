@@ -953,48 +953,40 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   Stmt* forInit = nullptr;
   if (next.IsNext(SEMI)) {
     forInit = new EmptyStmt();
+    next = next.Advance();
   } else {
     Result<Stmt> stmt;
-    Parser afterInit = next.ParseForInit(&stmt);
+    Result<Token> semi;
+    Parser afterInit = next
+      .ParseForInit(&stmt)
+      .ParseTokenIf(ExactType(SEMI), &semi);
     if (!afterInit) {
       ErrorList errors;
-      stmt.ReleaseErrors(&errors);
+      FirstOf(&errors, &stmt, &semi);
       return next.Fail(move(errors), out);
     }
     forInit = stmt.Release();
     next = afterInit;
   }
 
-  // Parse first semicolon.
-  Result<Token> semi1;
-  Parser afterSemi1 = next.ParseTokenIf(ExactType(SEMI), &semi1);
-  if (!afterSemi1) {
-    return next.Fail(MakeUnexpectedTokenError(next.GetNext()), out);
-  }
-  next = afterSemi1;
-
   // Parse optional for condition.
   Expr* forCond = nullptr;
-  if (!next.IsNext(SEMI)) {
+  if (next.IsNext(SEMI)) {
+    next = next.Advance();
+  } else {
     Result<Expr> cond;
-    Parser afterCond = next.ParseExpression(&cond);
+    Result<Token> semi;
+    Parser afterCond = next
+      .ParseExpression(&cond)
+      .ParseTokenIf(ExactType(SEMI), &semi);
     if (!afterCond) {
       ErrorList errors;
-      cond.ReleaseErrors(&errors);
+      FirstOf(&errors, &cond, &semi);
       return next.Fail(move(errors), out);
     }
     forCond = cond.Release();
     next = afterCond;
   }
-
-  // Parse second semicolon.
-  Result<Token> semi2;
-  Parser afterSemi2 = next.ParseTokenIf(ExactType(SEMI), &semi2);
-  if (!afterSemi2) {
-    return next.Fail(MakeUnexpectedTokenError(next.GetNext()), out);
-  }
-  next = afterSemi2;
-
 
   // Parse optional for update.
   Expr* forUpdate = nullptr;
