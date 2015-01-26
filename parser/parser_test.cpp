@@ -368,4 +368,81 @@ TEST_F(ParserTest, CastExprFail) {
   EXPECT_EQ("UnexpectedTokenError(0:6)\n", testing::PrintToString(cast.Errors()));
 }
 
+TEST_F(ParserTest, ExprUnaryFail) {
+  MakeParser(";");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseExpression(&expr);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(expr));
+  EXPECT_EQ("UnexpectedTokenError(0:0)\n", testing::PrintToString(expr.Errors()));
+}
+
+TEST_F(ParserTest, ExprOnlyUnary) {
+  MakeParser("3");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseExpression(&expr);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(expr));
+  EXPECT_EQ("INTEGER", Str(expr.Get()));
+}
+
+TEST_F(ParserTest, ExprUnaryBinFail) {
+  MakeParser("-3+;");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseExpression(&expr);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(expr));
+  EXPECT_EQ("UnexpectedTokenError(0:3)\n", testing::PrintToString(expr.Errors()));
+}
+
+TEST_F(ParserTest, ExprLeftAssoc) {
+  MakeParser("a+b+c");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseExpression(&expr);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(expr));
+  EXPECT_EQ("((a ADD b) ADD c)", Str(expr.Get()));
+}
+
+TEST_F(ParserTest, ExprRightAssoc) {
+  MakeParser("a = b = c");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseExpression(&expr);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(expr));
+  EXPECT_EQ("(a ASSG (b ASSG c))", Str(expr.Get()));
+}
+
+TEST_F(ParserTest, ExprBothAssoc) {
+  MakeParser("a = b + c = d");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseExpression(&expr);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(expr));
+  EXPECT_EQ("(a ASSG ((b ADD c) ASSG d))", Str(expr.Get()));
+}
+
+TEST_F(ParserTest, ExprPrecedence) {
+  MakeParser("a = b || c && d | e ^ f & g == h <= i + j * k");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseExpression(&expr);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(expr));
+  EXPECT_EQ("(a ASSG (b OR (c AND (d BOR (e XOR (f BAND (g EQ (h LE (i ADD (j MUL k))))))))))", Str(expr.Get()));
+}
+
 } // namespace parser
