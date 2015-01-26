@@ -216,7 +216,7 @@ TEST_F(ParserTest, TypeArrayFail) {
 }
 
 TEST_F(ParserTest, ArgumentListNone) {
-  MakeParser(")"); // TODO: Crashes on empty string here.
+  MakeParser(")");
   Result<ArgumentList> args;
   Parser after = parser_->ParseArgumentList(&args);
   EXPECT_TRUE(b(after));
@@ -273,7 +273,8 @@ TEST_F(ParserTest, ArgumentListStartingComma) {
   Result<ArgumentList> args;
   Parser after = parser_->ParseArgumentList(&args);
   // Shouldn't parse anything, since arg list is optional.
-  // TODO: Do we actually want this to fail if it doesn't stop at at an RPAREN?
+  // TODO: Do we actually want this to fail if it doesn't stop at at an
+  // RPAREN?
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(args));
   EXPECT_EQ("", Str(args.Get()));
