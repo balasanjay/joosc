@@ -291,6 +291,35 @@ private:
   unique_ptr<Expr> expr_;
 };
 
+class Stmt {
+public:
+  virtual ~Stmt() = default;
+
+  virtual void PrintTo(std::ostream* os) const = 0;
+
+protected:
+  Stmt() = default;
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(Stmt);
+};
+
+class LocalDeclStmt : public Stmt {
+public:
+  LocalDeclStmt(Type* type, lexer::Token ident, Expr* val): type_(type), ident_(ident), val_(val) {}
+
+  void PrintTo(std::ostream* os) const override {
+    type_->PrintTo(os);
+    *os << " " << ident_.TypeInfo() << " = ";
+    val_->PrintTo(os);
+  }
+
+private:
+  unique_ptr<Type> type_;
+  lexer::Token ident_;
+  unique_ptr<Expr> val_;
+};
+
 void Parse(const base::FileSet* fs, const base::File* file, const vector<lexer::Token>* tokens);
 
 } // namespace parser
