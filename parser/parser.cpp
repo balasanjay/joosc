@@ -739,24 +739,11 @@ Parser Parser::ParseStmt(Result<Stmt>* out) const {
   }
 
   if (IsNext(K_RETURN)) {
-    Result<Stmt> retStmt;
-    Result<Expr> expr;
-    Parser after = ParseReturnStmt(&retStmt);
-    RETURN_IF_GOOD(after, retStmt.Release(), out);
-
-    ErrorList errors;
-    retStmt.ReleaseErrors(&errors);
-    return Fail(move(errors), out);
+    return ParseReturnStmt(out);
   }
 
   if (IsNext(K_IF)) {
-    Result<Stmt> ifStmt;
-    Parser after = ParseIfStmt(&ifStmt);
-    RETURN_IF_GOOD(after, ifStmt.Release(), out);
-
-    ErrorList errors;
-    ifStmt.ReleaseErrors(&errors);
-    return Fail(move(errors), out);
+    return ParseIfStmt(out);
   }
 
   if (IsNext(K_FOR)) {
@@ -909,22 +896,21 @@ Parser Parser::ParseIfStmt(Result<Stmt>* out) const {
     return Fail(move(errors), out);
   }
 
-  if (after.IsNext(K_ELSE)) {
-    Result<Stmt> elseStmt;
-    Parser afterElse = after.Advance().ParseStmt(&elseStmt);
-    RETURN_IF_GOOD(
-        afterElse,
-        new IfStmt(expr.Release(), stmt.Release(), elseStmt.Release()),
-        out);
-
-    // Committed to having else, so fail.
-    ErrorList errors;
-    elseStmt.ReleaseErrors(&errors);
-    return Fail(move(errors), out);
+  if (!after.IsNext(K_ELSE)) {
+    return after.Success(new IfStmt(expr.Release(), stmt.Release(), new EmptyStmt()), out);
   }
 
-  // No else.
-  return after.Success(new IfStmt(expr.Release(), stmt.Release(), new EmptyStmt()), out);
+  Result<Stmt> elseStmt;
+  Parser afterElse = after.Advance().ParseStmt(&elseStmt);
+  RETURN_IF_GOOD(
+      afterElse,
+      new IfStmt(expr.Release(), stmt.Release(), elseStmt.Release()),
+      out);
+
+  // Committed to having else, so fail.
+  ErrorList errors;
+  elseStmt.ReleaseErrors(&errors);
+  return Fail(move(errors), out);
 }
 
 Parser Parser::ParseForInit(Result<Stmt>* out) const {
