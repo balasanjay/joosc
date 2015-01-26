@@ -374,11 +374,15 @@ Parser Parser::ParseUnaryExpression(Result<Expr>* out) const {
     return Fail(MakeUnexpectedEOFError(), out);
   }
 
-  {
+  if (IsNext(IsUnaryOp())) {
     Result<Token> unaryOp;
     Result<Expr> expr;
     Parser after = ParseTokenIf(IsUnaryOp(), &unaryOp).ParseUnaryExpression(&expr);
     RETURN_IF_GOOD(after, new UnaryExpr(*unaryOp.Get(), expr.Release()), out);
+
+    ErrorList errors;
+    FirstOf(&errors, &unaryOp, &expr);
+    return Fail(move(errors), out);
   }
 
   {
@@ -654,24 +658,23 @@ Parser Parser::ParseArgumentList(Result<ArgumentList>* out) const {
   }
   args.Append(first.Release());
 
-  while (true) {
+  while (cur.IsNext(COMMA)) {
     Result<Token> comma;
     Result<Expr> expr;
 
     Parser next = cur.ParseTokenIf(ExactType(COMMA), &comma).ParseExpression(&expr);
     if (!next) {
-      // Fail on hanging comma.
-      if (comma) {
+        // Fail on hanging comma.
         ErrorList errors;
-        expr.ReleaseErrors(&errors);
-        return next.Fail(move(errors), out);
-      }
-      return cur.Success(new ArgumentList(move(args)), out);
+        FirstOf(&errors, &comma, &expr);
+        return Fail(move(errors), out);
     }
 
     args.Append(expr.Release());
     cur = next;
   }
+
+  return cur.Success(new ArgumentList(move(args)), out);
 }
 
 void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
@@ -689,10 +692,10 @@ void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
 
 // TODO: in for-loop initializers, for-loop incrementors, and top-level
 // statements, we must ensure that they are either assignment, method
-// invocation, or class creation, not other types of expressions (like boolean
-// ops).
-//
+// invocation, or class creation, not other types of expressions (like
+// boolean ops).
 // TODO: Weed out statements of the form "new PrimitiveType([ArgumentList])".
+// TODO: Handle parsing empty strings.
 // TODO: Weed expressions of the form "f()()()()...".
 
 } // namespace parser
