@@ -346,19 +346,24 @@ Parser Parser::ParseExpression(Result<Expr>* out) const {
 
   exprs.Append(expr.Release());
 
-  while (true) {
+  while (cur.IsNext(IsBinOp())) {
     Result<Token> binOp;
     Result<Expr> nextExpr;
 
     Parser next = cur.ParseTokenIf(IsBinOp(), &binOp).ParseUnaryExpression(&nextExpr);
+
     if (!next) {
-      return cur.Success(FixPrecedence(move(exprs), operators), out);
+      ErrorList errors;
+      FirstOf(&errors, &binOp, &nextExpr);
+      return Fail(move(errors), out);
     }
 
     operators.push_back(*binOp.Get());
     exprs.Append(nextExpr.Release());
     cur = next;
   }
+
+  return cur.Success(FixPrecedence(move(exprs), operators), out);
 }
 
 Parser Parser::ParseUnaryExpression(Result<Expr>* out) const {
