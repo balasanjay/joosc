@@ -374,11 +374,15 @@ Parser Parser::ParseUnaryExpression(Result<Expr>* out) const {
     return Fail(MakeUnexpectedEOFError(), out);
   }
 
-  {
+  if (IsNext(IsUnaryOp())) {
     Result<Token> unaryOp;
     Result<Expr> expr;
     Parser after = ParseTokenIf(IsUnaryOp(), &unaryOp).ParseUnaryExpression(&expr);
     RETURN_IF_GOOD(after, new UnaryExpr(*unaryOp.Get(), expr.Release()), out);
+
+    ErrorList errors;
+    FirstOf(&errors, &unaryOp, &expr);
+    return Fail(move(errors), out);
   }
 
   {

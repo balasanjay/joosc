@@ -280,4 +280,92 @@ TEST_F(ParserTest, ArgumentListStartingComma) {
   EXPECT_EQ("", Str(args.Get()));
 }
 
+TEST_F(ParserTest, DISABLED_UnaryEmptyShortCircuit) {
+  MakeParser("");
+
+  Result<Expr> unary;
+  Parser after = parser_->ParseUnaryExpression(&unary);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(unary));
+  EXPECT_EQ("UnexpectedEOFError(0:0)\n", testing::PrintToString(unary.Errors()));
+}
+
+TEST_F(ParserTest, UnaryIsUnary) {
+  MakeParser("-3");
+
+  Result<Expr> unary;
+  Parser after = parser_->ParseUnaryExpression(&unary);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(unary));
+  EXPECT_EQ("(SUB INTEGER)", Str(unary.Get()));
+}
+
+TEST_F(ParserTest, UnaryOpFail) {
+  MakeParser("-;");
+
+  Result<Expr> unary;
+  Parser after = parser_->ParseUnaryExpression(&unary);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(unary));
+  EXPECT_EQ("UnexpectedTokenError(0:1)\n", testing::PrintToString(unary.Errors()));
+}
+
+TEST_F(ParserTest, UnaryIsCast) {
+  MakeParser("(int) 3");
+
+  Result<Expr> unary;
+  Parser after = parser_->ParseUnaryExpression(&unary);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(unary));
+  EXPECT_EQ("cast<K_INT>(INTEGER)", Str(unary.Get()));
+}
+
+TEST_F(ParserTest, UnaryCastFailIsPrimary) {
+  MakeParser("3");
+
+  Result<Expr> unary;
+  Parser after = parser_->ParseUnaryExpression(&unary);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(unary));
+  EXPECT_EQ("INTEGER", Str(unary.Get()));
+}
+
+TEST_F(ParserTest, CastSuccess) {
+  MakeParser("(int) 3");
+
+  Result<Expr> cast;
+  Parser after = parser_->ParseCastExpression(&cast);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(cast));
+  EXPECT_EQ("cast<K_INT>(INTEGER)", Str(cast.Get()));
+}
+
+TEST_F(ParserTest, CastTypeFail) {
+  MakeParser("(;) 3");
+
+  Result<Expr> cast;
+  Parser after = parser_->ParseCastExpression(&cast);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(cast));
+  EXPECT_EQ("UnexpectedTokenError(0:1)\n", testing::PrintToString(cast.Errors()));
+}
+
+TEST_F(ParserTest, CastExprFail) {
+  MakeParser("(int) ;");
+
+  Result<Expr> cast;
+  Parser after = parser_->ParseCastExpression(&cast);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(cast));
+  EXPECT_EQ("UnexpectedTokenError(0:6)\n", testing::PrintToString(cast.Errors()));
+}
+
 } // namespace parser
