@@ -398,6 +398,35 @@ private:
   unique_ptr<Stmt> falseBody_;
 };
 
+class ForStmt : public Stmt {
+public:
+  ForStmt(Stmt* init, Expr* cond, Expr* update, Stmt* body): init_(init), cond_(cond), update_(update), body_(body) {}
+
+  void PrintTo(std::ostream* os) const override {
+    *os << "for(";
+    init_->PrintTo(os);
+    // Stmt prints semicolon.
+    if (cond_ != nullptr) {
+      cond_->PrintTo(os);
+    }
+    *os << ";";
+    if (update_ != nullptr) {
+      update_->PrintTo(os);
+    }
+    *os << "){";
+    body_->PrintTo(os);
+    *os << "}";
+  }
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(ForStmt);
+  unique_ptr<Stmt> init_; // May be EmptyStmt.
+  unique_ptr<Expr> cond_; // May be nullptr.
+  unique_ptr<Expr> update_; // May be nullptr.
+  unique_ptr<Stmt> body_; // May be EmptyStmt.
+};
+
+
 void Parse(const base::FileSet* fs, const base::File* file, const vector<lexer::Token>* tokens);
 
 } // namespace parser

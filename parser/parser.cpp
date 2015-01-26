@@ -746,7 +746,9 @@ Parser Parser::ParseStmt(Result<Stmt>* out) const {
     return ParseIfStmt(out);
   }
 
-  // TODO: ForStatement.
+  if (IsNext(K_FOR)) {
+    return ParseForStmt(out);
+  }
 
   {
     Result<Expr> expr;
@@ -903,6 +905,114 @@ Parser Parser::ParseIfStmt(Result<Stmt>* out) const {
   ErrorList errors;
   elseStmt.ReleaseErrors(&errors);
   return Fail(move(errors), out);
+}
+
+Parser Parser::ParseForInit(Result<Stmt>* out) const {
+  // ForInit:
+  //   LocalVariableDeclaration
+  //   Expression
+  SHORT_CIRCUIT;
+
+  {
+    Result<Stmt> varDecl;
+    Parser after = ParseVarDecl(&varDecl);
+    RETURN_IF_GOOD(after, varDecl.Release(), out);
+  }
+
+  {
+    Result<Expr> expr;
+    Parser after = ParseExpression(&expr);
+    // Note: This ExprStmt didn't consume a semicolon!
+    RETURN_IF_GOOD(after, new ExprStmt(expr.Release()), out);
+    ErrorList errors;
+    expr.ReleaseErrors(&errors);
+    return Fail(move(errors), out);
+  }
+}
+
+Parser Parser::ParseForStmt(Result<Stmt>* out) const {
+  // ForStatement:
+  //   "for" "(" [ForInit] ";" [Expression] ";" [ForUpdate] ")" Statement
+  SHORT_CIRCUIT;
+
+  Result<Token> forTok;
+  Result<Token> lparen;
+  Parser next = (*this)
+    .ParseTokenIf(ExactType(K_FOR), &forTok)
+    .ParseTokenIf(ExactType(LPAREN), &lparen);
+
+  if (!next) {
+    ErrorList errors;
+    FirstOf(&errors, &forTok, &lparen);
+    return Fail(move(errors), out);
+  }
+
+  // TODO: Make emptystmt not print anything.
+
+  // Parse optional for initializer.
+  Stmt* forInit = nullptr;
+  if (next.IsNext(SEMI)) {
+    forInit = new EmptyStmt();
+    next = next.Advance();
+  } else {
+    Result<Stmt> stmt;
+    Result<Token> semi;
+    Parser afterInit = next
+      .ParseForInit(&stmt)
+      .ParseTokenIf(ExactType(SEMI), &semi);
+    if (!afterInit) {
+      ErrorList errors;
+      FirstOf(&errors, &stmt, &semi);
+      return next.Fail(move(errors), out);
+    }
+    forInit = stmt.Release();
+    next = afterInit;
+  }
+
+  // Parse optional for condition.
+  Expr* forCond = nullptr;
+  if (next.IsNext(SEMI)) {
+    next = next.Advance();
+  } else {
+    Result<Expr> cond;
+    Result<Token> semi;
+    Parser afterCond = next
+      .ParseExpression(&cond)
+      .ParseTokenIf(ExactType(SEMI), &semi);
+    if (!afterCond) {
+      ErrorList errors;
+      FirstOf(&errors, &cond, &semi);
+      return next.Fail(move(errors), out);
+    }
+    forCond = cond.Release();
+    next = afterCond;
+  }
+
+  // Parse optional for update.
+  Expr* forUpdate = nullptr;
+  if (!next.IsNext(RPAREN)) {
+    Result<Expr> update;
+    Parser afterUpdate = next.ParseExpression(&update);
+    if (!afterUpdate) {
+      ErrorList errors;
+      update.ReleaseErrors(&errors);
+      return next.Fail(move(errors), out);
+    }
+    forUpdate = update.Release();
+    next = afterUpdate;
+  }
+
+  // Parse RParen and statement.
+  Result<Token> rparen;
+  Result<Stmt> body;
+  Parser after = next
+    .ParseTokenIf(ExactType(RPAREN), &rparen)
+    .ParseStmt(&body);
+  RETURN_IF_GOOD(after, new ForStmt(forInit, forCond, forUpdate, body.Release()), out);
+
+  ErrorList errors;
+  FirstOf(&errors, &rparen, &body);
+  return next.Fail(move(errors), out);
 }
 
 void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
