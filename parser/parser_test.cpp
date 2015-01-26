@@ -912,4 +912,13 @@ TEST_F(ParserTest, ForInitNewClass) {
   EXPECT_TRUE(b(stmt));
 }
 
+TEST_F(ParserTest, ForInitNoIf) {
+  MakeParser("if(a)b");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseForInit(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:0)\n", testing::PrintToString(stmt.Errors()));
+}
+
 } // namespace parser
