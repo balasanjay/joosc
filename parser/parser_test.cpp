@@ -37,6 +37,7 @@ class ParserTest : public ::testing::Test {
 
     // Lex tokens.
     lexer::LexJoosFiles(fs, &tokens, &errors);
+    lexer::StripSkippableTokens(&tokens[0]);
 
     // Make sure it worked.
     ASSERT_EQ(1u, tokens.size());
@@ -212,6 +213,70 @@ TEST_F(ParserTest, TypeArrayFail) {
   EXPECT_FALSE(b(type));
   EXPECT_TRUE(type.Errors().IsFatal());
   EXPECT_EQ("UnexpectedTokenError(0:4)\n", testing::PrintToString(type.Errors()));
+}
+
+TEST_F(ParserTest, ArgumentListNone) {
+  MakeParser(")"); // TODO: Crashes on empty string here.
+  Result<ArgumentList> args;
+  Parser after = parser_->ParseArgumentList(&args);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(args));
+  EXPECT_EQ("", Str(args.Get()));
+}
+
+TEST_F(ParserTest, ArgumentListOne) {
+  MakeParser("foo.bar");
+  Result<ArgumentList> args;
+  Parser after = parser_->ParseArgumentList(&args);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(args));
+  EXPECT_EQ("foo.bar", Str(args.Get()));
+}
+
+TEST_F(ParserTest, ArgumentListMany) {
+  MakeParser("a,b, c, d  , e");
+  Result<ArgumentList> args;
+  Parser after = parser_->ParseArgumentList(&args);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(args));
+  EXPECT_EQ("a, b, c, d, e", Str(args.Get()));
+}
+
+TEST_F(ParserTest, ArgumentListHangingComma) {
+  MakeParser("a, b,)");
+  Result<ArgumentList> args;
+  Parser after = parser_->ParseArgumentList(&args);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(args));
+}
+
+TEST_F(ParserTest, ArgumentListNestedExpr) {
+  MakeParser("a, (1 + b))");
+  Result<ArgumentList> args;
+  Parser after = parser_->ParseArgumentList(&args);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(args));
+  EXPECT_EQ("a, (INTEGER ADD b)", Str(args.Get()));
+}
+
+TEST_F(ParserTest, ArgumentListBadExpr) {
+  MakeParser("a, ;)");
+  Result<ArgumentList> args;
+  Parser after = parser_->ParseArgumentList(&args);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(args));
+  EXPECT_EQ("UnexpectedTokenError(0:3)\n", testing::PrintToString(args.Errors()));
+}
+
+TEST_F(ParserTest, ArgumentListStartingComma) {
+  MakeParser(", a, b, c)");
+  Result<ArgumentList> args;
+  Parser after = parser_->ParseArgumentList(&args);
+  // Shouldn't parse anything, since arg list is optional.
+  // TODO: Do we actually want this to fail if it doesn't stop at at an RPAREN?
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(args));
+  EXPECT_EQ("", Str(args.Get()));
 }
 
 } // namespace parser
