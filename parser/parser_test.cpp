@@ -838,4 +838,54 @@ TEST_F(ParserTest, BlockStmtNested) {
   EXPECT_EQ("{a;{b;};}", Str(stmt.Get()));
 }
 
+TEST_F(ParserTest, IfStmtElse) {
+  MakeParser("if(true)foo;else bar;");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseIfStmt(&stmt);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("if(K_TRUE){foo;}else{bar;}", Str(stmt.Get()));
+}
+
+TEST_F(ParserTest, IfStmtElseBlock) {
+  MakeParser("if(true)foo;else{bar;}");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseIfStmt(&stmt);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("if(K_TRUE){foo;}else{{bar;}}", Str(stmt.Get()));
+}
+
+TEST_F(ParserTest, IfStmtTooManyElses) {
+  MakeParser("if(true)foo;else{bar;}else{baz;}");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseIfStmt(&stmt);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("if(K_TRUE){foo;}else{{bar;}}", Str(stmt.Get()));
+}
+
+TEST_F(ParserTest, IfStmtHangingElse) {
+  MakeParser("if(a) if(b) c; else d;");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseIfStmt(&stmt);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("if(a){if(b){c;}else{d;}}else{;}", Str(stmt.Get()));
+}
+
+TEST_F(ParserTest, IfStmtOutsideElse) {
+  MakeParser("if(a){if(b) c;}else d;");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseIfStmt(&stmt);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("if(a){{if(b){c;}else{;}}}else{d;}", Str(stmt.Get()));
+}
+
 } // namespace parser
