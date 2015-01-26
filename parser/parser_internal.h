@@ -146,6 +146,7 @@ struct Parser {
   Parser ParseBlock(internal::Result<Stmt>* out) const;
   Parser ParseIfStmt(internal::Result<Stmt>* out) const;
   Parser ParseForInit(internal::Result<Stmt>* out) const;
+  Parser ParseForStmt(internal::Result<Stmt>* out) const;
 
   bool IsAtEnd() const {
     return failed_ || (uint)index_ >= tokens_->size();

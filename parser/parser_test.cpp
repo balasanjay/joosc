@@ -921,4 +921,130 @@ TEST_F(ParserTest, ForInitNoIf) {
   EXPECT_EQ("UnexpectedTokenError(0:0)\n", testing::PrintToString(stmt.Errors()));
 }
 
+TEST_F(ParserTest, ForStmtEmpty) {
+  MakeParser("for(;;);");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseForStmt(&stmt);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("for(;;;){;}", Str(stmt.Get()));
+}
+
+TEST_F(ParserTest, ForStmtBlock) {
+  MakeParser("for(;;){a;}");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseForStmt(&stmt);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("for(;;;){{a;}}", Str(stmt.Get()));
+}
+
+TEST_F(ParserTest, ForStmtFull) {
+  MakeParser("for(i=1;i;i) print(i);");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseForStmt(&stmt);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("for((i ASSG INTEGER);i;i;){print(i);}", Str(stmt.Get()));
+}
+
+TEST_F(ParserTest, ForStmtBadCond) {
+  MakeParser("for(i=1;int i=2;i) print(i);");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseForStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:8)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, ForStmtBadInit) {
+  MakeParser("for(if(i)i;;);");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseForStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:4)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, ForStmtTooManyStatements) {
+  MakeParser("for(;;;);");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseForStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:6)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, ForStmtUnclosed) {
+  MakeParser("for(;;{;}");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseForStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:6)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, ForStmtTooFewStmts) {
+  MakeParser("for(;)");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseForStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:5)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, ForStmtNoStmts) {
+  MakeParser("for()");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseForStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:4)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, ForStmtNoParen) {
+  MakeParser("for;");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseForStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:3)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, ForStmtPropagateErrorFromInit) {
+  MakeParser("for(a+;;);");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseForStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:6)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, ForStmtPropagateErrorFromCond) {
+  MakeParser("for(;a+;);");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseForStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:7)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, ForStmtPropagateErrorFromUpdate) {
+  MakeParser("for(;;a+);");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseForStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:8)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, ForStmtPropagateErrorFromBody) {
+  MakeParser("for(;;)a+;");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseForStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:9)\n", testing::PrintToString(stmt.Errors()));
+}
+
 } // namespace parser
