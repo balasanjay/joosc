@@ -291,6 +291,92 @@ private:
   unique_ptr<Expr> expr_;
 };
 
+class Stmt {
+public:
+  virtual ~Stmt() = default;
+
+  virtual void PrintTo(std::ostream* os) const = 0;
+
+protected:
+  Stmt() = default;
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(Stmt);
+};
+
+class EmptyStmt : public Stmt {
+public:
+  EmptyStmt() = default;
+
+  void PrintTo(std::ostream* os) const override {
+    *os << ";";
+  }
+};
+
+class LocalDeclStmt : public Stmt {
+public:
+  LocalDeclStmt(Type* type, lexer::Token ident, Expr* val): type_(type), ident_(ident), val_(val) {}
+
+  void PrintTo(std::ostream* os) const override {
+    type_->PrintTo(os);
+    *os << " " << ident_.TypeInfo() << " = ";
+    val_->PrintTo(os);
+  }
+
+private:
+  unique_ptr<Type> type_;
+  lexer::Token ident_;
+  unique_ptr<Expr> val_;
+};
+
+class ReturnStmt : public Stmt {
+public:
+  ReturnStmt(Expr* val): val_(val) {}
+
+  void PrintTo(std::ostream* os) const override {
+    *os << "return";
+    if (val_ != nullptr) {
+      *os << " ";
+      val_->PrintTo(os);
+    }
+    *os << ";";
+  }
+
+private:
+  unique_ptr<Expr> val_;
+};
+
+class ExprStmt : public Stmt {
+public:
+  ExprStmt(Expr* expr): expr_(expr) {}
+
+  void PrintTo(std::ostream* os) const override {
+    expr_->PrintTo(os);
+    *os << ";";
+  }
+
+private:
+  unique_ptr<Expr> expr_;
+};
+
+class BlockStmt : public Stmt {
+public:
+  BlockStmt(base::UniquePtrVector<Stmt>&& stmts): stmts_(std::forward<base::UniquePtrVector<Stmt>>(stmts)) {}
+
+  void PrintTo(std::ostream* os) const override {
+    *os << "{";
+    for (int i = 0; i < stmts_.Size(); i++) {
+      stmts_.At(i)->PrintTo(os);
+      *os << "\n";
+    }
+    *os << "}";
+  }
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(BlockStmt);
+  base::UniquePtrVector<Stmt> stmts_;
+};
+
 void Parse(const base::FileSet* fs, const base::File* file, const vector<lexer::Token>* tokens);
 
 } // namespace parser

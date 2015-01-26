@@ -685,4 +685,103 @@ TEST_F(ParserTest, ExprPrecedence) {
   EXPECT_EQ("(a ASSG (b OR (c AND (d BOR (e XOR (f BAND (g EQ (h LE (i ADD (j MUL k))))))))))", Str(expr.Get()));
 }
 
+TEST_F(ParserTest, VarDecl) {
+  MakeParser("java.lang.Integer foobar = 1");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseVarDecl(&stmt);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("java.lang.Integer IDENTIFIER = INTEGER", Str(stmt.Get()));
+}
+
+TEST_F(ParserTest, VarDeclBadIdentifier) {
+  MakeParser("java.lang.Integer int = 1");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseVarDecl(&stmt);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:18)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, VarDeclBadNoAssign) {
+  MakeParser("java.lang.Integer foo;");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseVarDecl(&stmt);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:21)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, VarDeclBadAssign) {
+  MakeParser("java.lang.Integer foo = ;");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseVarDecl(&stmt);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:24)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, ReturnStmtEmpty) {
+  MakeParser("return;");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseReturnStmt(&stmt);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("return;", Str(stmt.Get()));
+}
+
+TEST_F(ParserTest, ReturnStmtNoSemi) {
+  MakeParser("return");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseReturnStmt(&stmt);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedEOFError(0:5)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, ReturnStmtWithExprNoSemi) {
+  MakeParser("return 1");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseReturnStmt(&stmt);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedEOFError(0:7)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, ReturnStmtWithExpr) {
+  MakeParser("return 1;");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseReturnStmt(&stmt);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("return INTEGER;", Str(stmt.Get()));
+}
+
+TEST_F(ParserTest, ReturnStmtBadExpr) {
+  MakeParser("return (;);");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseReturnStmt(&stmt);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:8)\n", testing::PrintToString(stmt.Errors()));
+}
+
 } // namespace parser
