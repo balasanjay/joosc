@@ -367,7 +367,7 @@ public:
     *os << "{";
     for (int i = 0; i < stmts_.Size(); i++) {
       stmts_.At(i)->PrintTo(os);
-      *os << "\n";
+      // *os << "\n";
     }
     *os << "}";
   }

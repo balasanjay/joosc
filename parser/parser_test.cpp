@@ -784,4 +784,58 @@ TEST_F(ParserTest, ReturnStmtBadExpr) {
   EXPECT_EQ("UnexpectedTokenError(0:8)\n", testing::PrintToString(stmt.Errors()));
 }
 
+TEST_F(ParserTest, BlockStmtEmpty) {
+  MakeParser("{}");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseBlock(&stmt);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("{}", Str(stmt.Get()));
+}
+
+TEST_F(ParserTest, BlockStmtSemis) {
+  MakeParser("{;;;;;;;}");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseBlock(&stmt);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("{;;;;;;;}", Str(stmt.Get()));
+}
+
+TEST_F(ParserTest, BlockStmtNoSemi) {
+  MakeParser("{foo}");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseBlock(&stmt);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:4)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, BlockStmtNestedNoClose) {
+  MakeParser("{{{}}{;}");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseBlock(&stmt);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedEOFError(0:7)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, BlockStmtNested) {
+  MakeParser("{a;\n{\nb;\n}\n;\n}");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseBlock(&stmt);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("{a;{b;};}", Str(stmt.Get()));
+}
+
 } // namespace parser
