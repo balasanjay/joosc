@@ -888,4 +888,13 @@ TEST_F(ParserTest, IfStmtOutsideElse) {
   EXPECT_EQ("if(a){{if(b){c;}else{;}}}else{d;}", Str(stmt.Get()));
 }
 
+TEST_F(ParserTest, IfStmtFailBodyDecl) {
+  MakeParser("if(a) string b = 1;");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseIfStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+}
+
 } // namespace parser
