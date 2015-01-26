@@ -15,6 +15,9 @@ using lexer::COMMA;
 using lexer::DOT;
 using lexer::IDENTIFIER;
 using lexer::INTEGER;
+using lexer::K_ELSE;
+using lexer::K_FOR;
+using lexer::K_IF;
 using lexer::K_NEW;
 using lexer::K_RETURN;
 using lexer::K_THIS;
@@ -736,17 +739,13 @@ Parser Parser::ParseStmt(Result<Stmt>* out) const {
   }
 
   if (IsNext(K_RETURN)) {
-    Result<Stmt> retStmt;
-    Result<Expr> expr;
-    Parser after = ParseReturnStmt(&retStmt);
-    RETURN_IF_GOOD(after, retStmt.Release(), out);
-
-    ErrorList errors;
-    retStmt.ReleaseErrors(&errors);
-    return Fail(move(errors), out);
+    return ParseReturnStmt(out);
   }
 
-  // TODO: IfStatement.
+  if (IsNext(K_IF)) {
+    return ParseIfStmt(out);
+  }
+
   // TODO: ForStatement.
 
   {
@@ -864,6 +863,46 @@ Parser Parser::ParseBlock(Result<Stmt>* out) const {
   }
 
   return cur.Advance().Success(new BlockStmt(move(stmts)), out);
+}
+
+Parser Parser::ParseIfStmt(Result<Stmt>* out) const {
+  // IfStatement:
+  //   "if" "(" Expression ")" Statement ["else" Statement]
+  SHORT_CIRCUIT;
+
+  Result<Token> tokIf;
+  Result<Token> lparen;
+  Result<Expr> expr;
+  Result<Token> rparen;
+  Result<Stmt> stmt;
+
+  Parser after = (*this)
+    .ParseTokenIf(ExactType(K_IF), &tokIf)
+    .ParseTokenIf(ExactType(LPAREN), &lparen)
+    .ParseExpression(&expr)
+    .ParseTokenIf(ExactType(RPAREN), &rparen)
+    .ParseStmt(&stmt);
+  if (!after) {
+    ErrorList errors;
+    FirstOf(&errors, &tokIf, &lparen, &expr, &rparen, &stmt);
+    return Fail(move(errors), out);
+  }
+
+  if (!after.IsNext(K_ELSE)) {
+    return after.Success(new IfStmt(expr.Release(), stmt.Release(), new EmptyStmt()), out);
+  }
+
+  Result<Stmt> elseStmt;
+  Parser afterElse = after.Advance().ParseStmt(&elseStmt);
+  RETURN_IF_GOOD(
+      afterElse,
+      new IfStmt(expr.Release(), stmt.Release(), elseStmt.Release()),
+      out);
+
+  // Committed to having else, so fail.
+  ErrorList errors;
+  elseStmt.ReleaseErrors(&errors);
+  return Fail(move(errors), out);
 }
 
 void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {

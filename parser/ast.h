@@ -367,7 +367,7 @@ public:
     *os << "{";
     for (int i = 0; i < stmts_.Size(); i++) {
       stmts_.At(i)->PrintTo(os);
-      *os << "\n";
+      // *os << "\n";
     }
     *os << "}";
   }
@@ -375,6 +375,27 @@ public:
 private:
   DISALLOW_COPY_AND_ASSIGN(BlockStmt);
   base::UniquePtrVector<Stmt> stmts_;
+};
+
+class IfStmt : public Stmt {
+public:
+  IfStmt(Expr* cond, Stmt* trueBody, Stmt* falseBody): cond_(cond), trueBody_(trueBody), falseBody_(falseBody) {}
+
+  void PrintTo(std::ostream* os) const override {
+    *os << "if(";
+    cond_->PrintTo(os);
+    *os << "){";
+    trueBody_->PrintTo(os);
+    *os << "}else{";
+    falseBody_->PrintTo(os);
+    *os << "}";
+  }
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(IfStmt);
+  unique_ptr<Expr> cond_;
+  unique_ptr<Stmt> trueBody_;
+  unique_ptr<Stmt> falseBody_;
 };
 
 void Parse(const base::FileSet* fs, const base::File* file, const vector<lexer::Token>* tokens);
