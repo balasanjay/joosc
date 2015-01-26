@@ -18,9 +18,11 @@ using lexer::INTEGER;
 using lexer::K_NEW;
 using lexer::K_RETURN;
 using lexer::K_THIS;
+using lexer::LBRACE;
 using lexer::LBRACK;
 using lexer::LPAREN;
 using lexer::MUL;
+using lexer::RBRACE;
 using lexer::RBRACK;
 using lexer::RPAREN;
 using lexer::SEMI;
@@ -715,6 +717,53 @@ Parser Parser::ParseArgumentList(Result<ArgumentList>* out) const {
   return cur.Success(new ArgumentList(move(args)), out);
 }
 
+Parser Parser::ParseStmt(Result<Stmt>* out) const {
+  // Statement:
+  //   ";"
+  //   Block
+  //   ReturnStatement
+  //   IfStatement
+  //   ForStatement
+  //   Expression ";"
+  SHORT_CIRCUIT;
+
+  if (IsNext(SEMI)) {
+    return Advance().Success(new EmptyStmt(), out);
+  }
+
+  if (IsNext(LBRACE)) {
+    return ParseBlock(out);
+  }
+
+  if (IsNext(K_RETURN)) {
+    Result<Stmt> retStmt;
+    Result<Expr> expr;
+    Parser after = ParseReturnStmt(&retStmt);
+    RETURN_IF_GOOD(after, retStmt.Release(), out);
+
+    ErrorList errors;
+    retStmt.ReleaseErrors(&errors);
+    return Fail(move(errors), out);
+  }
+
+  // TODO: IfStatement.
+  // TODO: ForStatement.
+
+  {
+    Result<Expr> expr;
+    Result<Token> semi;
+    Parser after = (*this)
+      .ParseExpression(&expr)
+      .ParseTokenIf(ExactType(SEMI), &semi);
+    RETURN_IF_GOOD(after, new ExprStmt(expr.Release()), out);
+
+    // Fail on last case.
+    ErrorList errors;
+    FirstOf(&errors, &expr, &semi);
+    return Fail(move(errors), out);
+  }
+}
+
 Parser Parser::ParseVarDecl(Result<Stmt>* out) const {
   // LocalVariableDeclaration:
   //   Type Identifier "=" Expression
@@ -769,10 +818,58 @@ Parser Parser::ParseReturnStmt(Result<Stmt>* out) const {
   return Fail(move(errors), out);
 }
 
+Parser Parser::ParseBlock(Result<Stmt>* out) const {
+  // Block:
+  //   "{" {BlockStatement} "}"
+  // BlockStatement:
+  //   LocalVariableDeclaration ";"
+  //   Statement
+  SHORT_CIRCUIT;
+
+  UniquePtrVector<Stmt> stmts;
+  if (IsAtEnd()) {
+    return Fail(MakeUnexpectedEOFError(), out);
+  }
+  if (!IsNext(LBRACE)) {
+    return Fail(MakeUnexpectedTokenError(GetNext()), out);
+  }
+
+  Parser cur = Advance();
+  while (!cur.IsNext(RBRACE)) {
+    {
+      Result<Stmt> varDecl;
+      Result<Token> semi;
+      Parser next = cur
+        .ParseVarDecl(&varDecl)
+        .ParseTokenIf(ExactType(SEMI), &semi);
+      if (next) {
+        stmts.Append(varDecl.Release());
+        cur = next;
+        continue;
+      }
+    }
+
+    {
+      Result<Stmt> stmt;
+      Parser next = cur.ParseStmt(&stmt);
+      if (next) {
+        stmts.Append(stmt.Release());
+        cur = next;
+        continue;
+      }
+      ErrorList errors;
+      stmt.ReleaseErrors(&errors);
+      return Fail(move(errors), out);
+    }
+  }
+
+  return cur.Advance().Success(new BlockStmt(move(stmts)), out);
+}
+
 void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
   Parser parser(fs, file, tokens, 0);
-  Result<Expr> result;
-  parser.ParseExpression(&result);
+  Result<Stmt> result;
+  parser.ParseStmt(&result);
   if (result.IsSuccess()) {
     result.Get()->PrintTo(&std::cout);
     std::cout << '\n';

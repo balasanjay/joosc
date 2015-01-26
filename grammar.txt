@@ -55,7 +55,7 @@ ClassBodyDeclaration:
   ";"
 
 ConstructorDeclaration:
-  {Modifier} ConstructorDeclarator ConstructorBody
+  {Modifier} ConstructorDeclarator Block
 
 ConstructorDeclarator:
   Identifier  "(" [FormalParameterList] ")"
@@ -65,9 +65,6 @@ FormalParameterList:
 
 FormalParameter:
   Type Identifier
-
-ConstructorBody:
-  "{" [ExplicitConstructorInvocation] {BlockStatement} "}"
 
 // TODO: Factor these.
 FieldDeclaration:
@@ -97,7 +94,7 @@ AbstractMethodDeclaration:
   {Modifier} ResultType MethodDeclarator ";"
 
 Block:
-  "{" {BlockStatement} "}
+  "{" {BlockStatement} "}"
 
 BlockStatement:
   LocalVariableDeclaration ";"
