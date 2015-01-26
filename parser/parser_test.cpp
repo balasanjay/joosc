@@ -465,6 +465,17 @@ TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEnd) {
   EXPECT_EQ("TEST.f[INTEGER]", Str(primaryEnd.Get()));
 }
 
+TEST_F(ParserTest, PrimaryEndDoubleArrayAccess) {
+  MakeParser("[0][1]");
+  unique_ptr<Expr> primary(new TestExpr());
+  Result<Expr> primaryEnd;
+  Parser after = parser_->ParsePrimaryEnd(primary.release(), &primaryEnd);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(primaryEnd));
+  EXPECT_EQ("TEST[INTEGER]", Str(primaryEnd.Get()));
+}
+
 TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEndFail) {
   MakeParser(".f;");
   unique_ptr<Expr> primary(new TestExpr());
