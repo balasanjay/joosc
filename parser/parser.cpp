@@ -696,5 +696,6 @@ void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
 // boolean ops).
 // TODO: Weed out statements of the form "new PrimitiveType([ArgumentList])".
 // TODO: Handle parsing empty strings.
+// TODO: Weed expressions of the form "f()()()()...".
 
 } // namespace parser
