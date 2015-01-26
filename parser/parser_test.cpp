@@ -888,4 +888,28 @@ TEST_F(ParserTest, IfStmtOutsideElse) {
   EXPECT_EQ("if(a){{if(b){c;}else{;}}}else{d;}", Str(stmt.Get()));
 }
 
+TEST_F(ParserTest, ForInitDecl) {
+  MakeParser("int a = 1");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseForInit(&stmt);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+}
+
+TEST_F(ParserTest, ForInitAssign) {
+  MakeParser("a = 1");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseForInit(&stmt);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+}
+
+TEST_F(ParserTest, ForInitNewClass) {
+  MakeParser("new Foo(1)");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseForInit(&stmt);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+}
+
 } // namespace parser

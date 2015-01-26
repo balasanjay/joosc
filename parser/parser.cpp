@@ -919,6 +919,29 @@ Parser Parser::ParseIfStmt(Result<Stmt>* out) const {
   return after.Success(new IfStmt(expr.Release(), stmt.Release(), new EmptyStmt()), out);
 }
 
+Parser Parser::ParseForInit(Result<Stmt>* out) const {
+  // ForInit:
+  //   LocalVariableDeclaration
+  //   Expression
+  SHORT_CIRCUIT;
+
+  {
+    Result<Stmt> varDecl;
+    Parser after = ParseVarDecl(&varDecl);
+    RETURN_IF_GOOD(after, varDecl.Release(), out);
+  }
+
+  {
+    Result<Expr> expr;
+    Parser after = ParseExpression(&expr);
+    // Note: This ExprStmt didn't consume a semicolon!
+    RETURN_IF_GOOD(after, new ExprStmt(expr.Release()), out);
+    ErrorList errors;
+    expr.ReleaseErrors(&errors);
+    return Fail(move(errors), out);
+  }
+}
+
 void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
   Parser parser(fs, file, tokens, 0);
   Result<Stmt> result;
