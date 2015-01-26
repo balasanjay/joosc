@@ -37,13 +37,13 @@ Super:
   extends QualifiedName
 
 Interfaces:
-  implements QualifiedName {, QualifiedName}
+  "implements" QualifiedName {"," QualifiedName}
 
 InterfaceDeclaration:
   {Modifier} interface Identifier [ExtendsInterfaces] InterfaceBody
 
 ExtendsInterfaces:
-  extends QualifiedName {, QualifiedName}
+  "extends" QualifiedName {"," QualifiedName}
 
 ClassBody:
   "{" {ClassBodyDeclaration} "}"
@@ -52,7 +52,7 @@ ClassBodyDeclaration:
   ConstructorDeclaration
   FieldDeclaration
   MethodDeclaration
-  ;
+  ";"
 
 ConstructorDeclaration:
   {Modifier} ConstructorDeclarator ConstructorBody
@@ -69,6 +69,7 @@ FormalParameter:
 ConstructorBody:
   "{" [ExplicitConstructorInvocation] {BlockStatement} "}"
 
+// TODO: Factor these.
 FieldDeclaration:
   {Modifier} Type Identifier ["=" Expression] ";"
 
@@ -99,29 +100,11 @@ Block:
   "{" {BlockStatement} "}
 
 BlockStatement:
-  LocalVariableDeclarationStatement
+  LocalVariableDeclaration ";"
   Statement
 
 LocalVariableDeclaration:
   Type Identifier "=" Expression
-
-LocalVariableDeclarationStatement:
-  LocalVariableDeclaration ";"
-
-Statement:
-  StatementWithoutTrailingSubstatement
-  IfThenStatement
-  IfThenElseStatement
-  ForStatement
-
-StatementWithoutTrailingSubstatement:
-  Block
-  ";"
-  ExpressionStatement
-  ReturnStatement
-
-ExpressionStatement:
-  Expression ";"
 
 Primary:
   "new" SingleType NewEnd
@@ -231,30 +214,23 @@ CastExpression:
 ReturnStatement:
   "return" [Expression] ";"
 
-IfThenStatement:
-  "if" "(" Expression ")" Statement
-
-IfThenElseStatement:
-  "if" "(" Expression ")" StatementNoShortIf "else" Statement
-
-IfThenElseStatementNoShortIf:
-  "if" "(" Expression ")" StatementNoShortIf "else" StatementNoShortIf
-
-StatementNoShortIf:
-  StatementWithoutTrailingSubstatement
-  IfThenElseStatementNoShortIf
-  ForStatementNoShortIf
-
 ForStatement:
   "for" "(" [ForInit] ";" [Expression] ";" [ForUpdate] ")" Statement
 
-ForStatementNoShortIf:
-  "for" "(" [ForInit] ";" [Expression] ";" [ForUpdate] ")" StatementNoShortIf
-
 ForInit:
-  Expression
   LocalVariableDeclaration
+  Expression
 
 ForUpdate:
   Expression
 
+IfStatement:
+  "if" "(" Expression ")" Statement ["else" Statement]
+
+Statement:
+  ";"
+  Block
+  ReturnStatement
+  IfStatement
+  ForStatement
+  Expression ";"

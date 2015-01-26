@@ -160,6 +160,10 @@ struct Parser {
     return !IsAtEnd() && GetNext().type == type;
   }
 
+  bool IsNext(std::function<bool(lexer::Token)> pred) const {
+    return !IsAtEnd() && pred(GetNext());
+  }
+
   Parser Advance(int i = 1) const {
     return Parser(fs_, file_, tokens_, index_ + i, failed_);
   }
