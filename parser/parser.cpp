@@ -1,5 +1,6 @@
 #include "base/unique_ptr_vector.h"
 #include "lexer/lexer.h"
+#include "parser/assignment_visitor.h"
 #include "parser/ast.h"
 #include "parser/parser_internal.h"
 #include "parser/print_visitor.h"
@@ -1017,19 +1018,36 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   return next.Fail(move(errors), out);
 }
 
+void Weed(const FileSet* fs, Stmt* stmt, ErrorList* out) {
+  AssignmentVisitor assignmentChecker(fs, out);
+  stmt->Accept(&assignmentChecker);
+  if (out->IsFatal()) {
+    return;
+  }
+
+  // More weeding required.
+}
+
 void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
   Parser parser(fs, file, tokens, 0);
   Result<Stmt> result;
   parser.ParseStmt(&result);
-  if (result.IsSuccess()) {
-    PrintVisitor printer = PrintVisitor::Compact(&std::cout);
-    result.Get()->Accept(&printer);
-    std::cout << '\n';
-  } else {
+  if (!result.IsSuccess()) {
     result.Errors().PrintTo(&std::cout, base::OutputOptions::kUserOutput);
+    return;
   }
-}
 
+  ErrorList errors;
+  Weed(fs, result.Get(), &errors);
+  if (errors.IsFatal()) {
+    errors.PrintTo(&std::cout, base::OutputOptions::kUserOutput);
+    return;
+  }
+
+  PrintVisitor printer = PrintVisitor::Compact(&std::cout);
+  result.Get()->Accept(&printer);
+  std::cout << '\n';
+}
 
 // TODO: in for-loop initializers, for-loop incrementors, and top-level
 // statements, we must ensure that they are either assignment, method
