@@ -2,9 +2,12 @@
 #define PARSER_AST_H
 
 #include "lexer/lexer.h"
+#include "parser/visitor.h"
 #include <iostream>
 
 namespace parser {
+
+#define ACCEPT_VISITOR(type) void Accept(Visitor* visitor) const override { visitor->Visit##type(this); }
 
 class QualifiedName final {
 public:
@@ -14,166 +17,14 @@ public:
     *os << name_;
   }
 
+  const string& Name() const { return name_; }
+
 private:
   DISALLOW_COPY_AND_ASSIGN(QualifiedName);
 
   vector<lexer::Token> tokens_; // [IDENTIFIER, DOT, IDENTIFIER, DOT, IDENTIFIER]
   vector<string> parts_; // ["java", "lang", "String"]
   string name_; // "java.lang.String"
-};
-
-class Expr {
-public:
-  virtual ~Expr() = default;
-
-  virtual void PrintTo(std::ostream* os) const = 0;
-
-protected:
-  Expr() = default;
-
-private:
-  DISALLOW_COPY_AND_ASSIGN(Expr);
-};
-
-class ArgumentList final {
-  public:
-    ArgumentList(base::UniquePtrVector<Expr>&& args) : args_(std::forward<base::UniquePtrVector<Expr>>(args)) {}
-    ~ArgumentList() = default;
-    ArgumentList(ArgumentList&&) = default;
-
-    void PrintTo(std::ostream* os) const {
-      for (int i = 0; i < args_.Size(); ++i) {
-        if (i > 0) {
-          *os << ", ";
-        }
-        args_.At(i)->PrintTo(os);
-      }
-    }
-
-  private:
-    DISALLOW_COPY_AND_ASSIGN(ArgumentList);
-
-    base::UniquePtrVector<Expr> args_;
-};
-
-class NameExpr : public Expr {
-  public:
-    NameExpr(QualifiedName* name) : name_(name) {}
-
-    void PrintTo(std::ostream* os) const override {
-      name_->PrintTo(os);
-    }
-
-  private:
-    unique_ptr<QualifiedName> name_;
-};
-
-class BinExpr : public Expr {
-public:
-  BinExpr(Expr* lhs, lexer::Token op, Expr* rhs) : op_(op), lhs_(lhs), rhs_(rhs) {
-    assert(lhs != nullptr);
-    assert(op.TypeInfo().IsBinOp());
-    assert(rhs != nullptr);
-  }
-
-  void PrintTo(std::ostream* os) const override {
-    *os << '(';
-    lhs_->PrintTo(os);
-    *os << ' ' << op_.TypeInfo() << ' ';
-    rhs_->PrintTo(os);
-    *os << ')';
-  }
-
-private:
-  lexer::Token op_;
-
-  unique_ptr<Expr> lhs_;
-  unique_ptr<Expr> rhs_;
-};
-
-class UnaryExpr : public Expr {
-public:
-  UnaryExpr(lexer::Token op, Expr* rhs) : op_(op), rhs_(rhs) {
-    assert(op.TypeInfo().IsUnaryOp());
-    assert(rhs != nullptr);
-  }
-
-  void PrintTo(std::ostream* os) const override {
-    *os << '(' << op_.TypeInfo() << ' ';
-    rhs_->PrintTo(os);
-    *os << ')';
-  }
-
-private:
-  lexer::Token op_;
-  unique_ptr<Expr> rhs_;
-};
-
-class LitExpr : public Expr {
-public :
-  LitExpr(lexer::Token token) : token_(token) {}
-
-  void PrintTo(std::ostream* os) const override {
-    *os << token_.TypeInfo();
-  }
-
-private:
-  lexer::Token token_;
-};
-
-class ThisExpr : public Expr {
-public :
-  void PrintTo(std::ostream* os) const override {
-    *os << "this";
-  }
-private:
-};
-
-class ArrayIndexExpr : public Expr {
-  public:
-    ArrayIndexExpr(Expr* base, Expr* index) : base_(base), index_(index) {}
-
-    void PrintTo(std::ostream* os) const override {
-      base_->PrintTo(os);
-      *os << '[';
-      index_->PrintTo(os);
-      *os << ']';
-    }
-
-  private:
-    unique_ptr<Expr> base_;
-    unique_ptr<Expr> index_;
-};
-
-class FieldDerefExpr : public Expr {
-  public:
-    FieldDerefExpr(Expr* base, const string& fieldname, lexer::Token token) : base_(base), fieldname_(fieldname), token_(token) {}
-
-    void PrintTo(std::ostream* os) const override {
-      base_->PrintTo(os);
-      *os << '.' << fieldname_;
-    }
-
-  private:
-    unique_ptr<Expr> base_;
-    string fieldname_;
-    lexer::Token token_;
-};
-
-class CallExpr : public Expr {
-  public:
-    CallExpr(Expr* base, ArgumentList* args) : base_(base), args_(args) {}
-
-  void PrintTo(std::ostream* os) const override {
-    base_->PrintTo(os);
-    *os << '(';
-    args_->PrintTo(os);
-    *os << ')';
-  }
-
-  private:
-    unique_ptr<Expr> base_;
-    unique_ptr<ArgumentList> args_;
 };
 
 class Type {
@@ -197,6 +48,8 @@ public:
     *os << token_.TypeInfo();
   }
 
+  lexer::Token GetToken() const { return token_; }
+
 private:
   DISALLOW_COPY_AND_ASSIGN(PrimitiveType);
 
@@ -210,6 +63,8 @@ public:
   void PrintTo(std::ostream* os) const override {
     name_->PrintTo(os);
   }
+
+  const QualifiedName* Name() const { return name_.get(); }
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ReferenceType);
@@ -227,22 +82,165 @@ public:
     *os << '>';
   }
 
+  const Type* ElemType() const { return elemtype_.get(); }
+
 private:
   DISALLOW_COPY_AND_ASSIGN(ArrayType);
 
   unique_ptr<Type> elemtype_;
 };
 
+
+class Expr {
+public:
+  virtual ~Expr() = default;
+
+  virtual void Accept(Visitor* visitor) const = 0;
+
+protected:
+  Expr() = default;
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(Expr);
+};
+
+class ArgumentList final {
+  public:
+    ArgumentList(base::UniquePtrVector<Expr>&& args) : args_(std::forward<base::UniquePtrVector<Expr>>(args)) {}
+    ~ArgumentList() = default;
+    ArgumentList(ArgumentList&&) = default;
+
+    void Accept(Visitor* visitor) const { visitor->VisitArgumentList(this); }
+
+    const base::UniquePtrVector<Expr>& Args() const { return args_; }
+
+  private:
+    DISALLOW_COPY_AND_ASSIGN(ArgumentList);
+
+    base::UniquePtrVector<Expr> args_;
+};
+
+
+
+class NameExpr : public Expr {
+  public:
+    NameExpr(QualifiedName* name) : name_(name) {}
+
+    ACCEPT_VISITOR(NameExpr);
+
+    const QualifiedName* Name() const { return name_.get(); }
+
+  private:
+    unique_ptr<QualifiedName> name_;
+};
+
+class BinExpr : public Expr {
+public:
+  BinExpr(Expr* lhs, lexer::Token op, Expr* rhs) : op_(op), lhs_(lhs), rhs_(rhs) {
+    assert(lhs != nullptr);
+    assert(op.TypeInfo().IsBinOp());
+    assert(rhs != nullptr);
+  }
+
+  ACCEPT_VISITOR(BinExpr);
+
+  const Expr* Lhs() const { return lhs_.get(); }
+  const Expr* Rhs() const { return rhs_.get(); }
+  const lexer::Token Op() const { return op_; }
+
+private:
+  lexer::Token op_;
+
+  unique_ptr<Expr> lhs_;
+  unique_ptr<Expr> rhs_;
+};
+
+class UnaryExpr : public Expr {
+public:
+  UnaryExpr(lexer::Token op, Expr* rhs) : op_(op), rhs_(rhs) {
+    assert(op.TypeInfo().IsUnaryOp());
+    assert(rhs != nullptr);
+  }
+
+  ACCEPT_VISITOR(UnaryExpr);
+
+  const lexer::Token Op() const { return op_; }
+  const Expr* Rhs() const { return rhs_.get(); }
+
+private:
+  lexer::Token op_;
+  unique_ptr<Expr> rhs_;
+};
+
+class LitExpr : public Expr {
+public :
+  LitExpr(lexer::Token token) : token_(token) {}
+
+  ACCEPT_VISITOR(LitExpr);
+
+  lexer::Token GetToken() const { return token_; }
+
+private:
+  lexer::Token token_;
+};
+
+class ThisExpr : public Expr {
+public :
+  ACCEPT_VISITOR(ThisExpr);
+};
+
+class ArrayIndexExpr : public Expr {
+  public:
+    ArrayIndexExpr(Expr* base, Expr* index) : base_(base), index_(index) {}
+
+    ACCEPT_VISITOR(ArrayIndexExpr);
+
+    const Expr* Base() const { return base_.get(); }
+    const Expr* Index() const { return index_.get(); }
+
+  private:
+    unique_ptr<Expr> base_;
+    unique_ptr<Expr> index_;
+};
+
+class FieldDerefExpr : public Expr {
+  public:
+    FieldDerefExpr(Expr* base, const string& fieldname, lexer::Token token) : base_(base), fieldname_(fieldname), token_(token) {}
+
+    ACCEPT_VISITOR(FieldDerefExpr);
+
+    const Expr* Base() const { return base_.get(); }
+    const string& FieldName() const { return fieldname_; }
+
+  private:
+    unique_ptr<Expr> base_;
+    string fieldname_;
+    lexer::Token token_;
+};
+
+class CallExpr : public Expr {
+  public:
+    CallExpr(Expr* base, ArgumentList* args) : base_(base), args_(args) {}
+
+    ACCEPT_VISITOR(CallExpr);
+
+    const Expr* Base() const { return base_.get(); }
+    const ArgumentList* Args() const { return args_.get(); }
+
+  private:
+    unique_ptr<Expr> base_;
+    unique_ptr<ArgumentList> args_;
+};
+
 class CastExpr : public Expr {
   public:
     CastExpr(Type* type, Expr* expr) : type_(type), expr_(expr) {}
-    void PrintTo(std::ostream* os) const override {
-      *os << "cast<" ;
-      type_->PrintTo(os);
-      *os << ">(";
-      expr_->PrintTo(os);
-      *os << ')';
-    }
+
+    ACCEPT_VISITOR(CastExpr);
+
+    const Type* GetType() const { return type_.get(); }
+    const Expr* GetExpr() const { return expr_.get(); }
+
   private:
     DISALLOW_COPY_AND_ASSIGN(CastExpr);
 
@@ -254,13 +252,10 @@ class NewClassExpr : public Expr {
 public:
   NewClassExpr(Type* type, ArgumentList* args) : type_(type), args_(args) {}
 
-  void PrintTo(std::ostream* os) const override {
-    *os << "new<";
-    type_->PrintTo(os);
-    *os << ">(";
-    args_->PrintTo(os);
-    *os << ")";
-  }
+  ACCEPT_VISITOR(NewClassExpr);
+
+  const Type* GetType() const { return type_.get(); }
+  const ArgumentList* Args() const { return args_.get(); }
 
 private:
   DISALLOW_COPY_AND_ASSIGN(NewClassExpr);
@@ -273,16 +268,10 @@ class NewArrayExpr : public Expr {
 public:
   NewArrayExpr(Type* type, Expr* expr) : type_(type), expr_(expr) {}
 
-  void PrintTo(std::ostream* os) const override {
-    *os << "new<array<";
-    type_->PrintTo(os);
+  ACCEPT_VISITOR(NewArrayExpr);
 
-    *os << ">>(";
-    if (expr_ != nullptr) {
-      expr_->PrintTo(os);
-    }
-    *os << ")";
-  }
+  const Type* GetType() const { return type_.get(); }
+  const Expr* GetExpr() const { return expr_.get(); }
 
 private:
   DISALLOW_COPY_AND_ASSIGN(NewArrayExpr);
@@ -295,7 +284,7 @@ class Stmt {
 public:
   virtual ~Stmt() = default;
 
-  virtual void PrintTo(std::ostream* os) const = 0;
+  virtual void Accept(Visitor* visitor) const = 0;
 
 protected:
   Stmt() = default;
@@ -308,20 +297,22 @@ class EmptyStmt : public Stmt {
 public:
   EmptyStmt() = default;
 
-  void PrintTo(std::ostream* os) const override {
-    *os << ";";
-  }
+  ACCEPT_VISITOR(EmptyStmt);
 };
 
 class LocalDeclStmt : public Stmt {
 public:
   LocalDeclStmt(Type* type, lexer::Token ident, Expr* val): type_(type), ident_(ident), val_(val) {}
 
-  void PrintTo(std::ostream* os) const override {
-    type_->PrintTo(os);
-    *os << " " << ident_.TypeInfo() << " = ";
-    val_->PrintTo(os);
-  }
+  ACCEPT_VISITOR(LocalDeclStmt);
+
+  const Type* GetType() const { return type_.get(); }
+  lexer::Token Ident() const { return ident_; }
+  const Expr* GetExpr() const { return val_.get(); }
+
+
+
+  // TODO: get the identifier as a string.
 
 private:
   unique_ptr<Type> type_;
@@ -331,29 +322,23 @@ private:
 
 class ReturnStmt : public Stmt {
 public:
-  ReturnStmt(Expr* val): val_(val) {}
+  ReturnStmt(Expr* expr): expr_(expr) {}
 
-  void PrintTo(std::ostream* os) const override {
-    *os << "return";
-    if (val_ != nullptr) {
-      *os << " ";
-      val_->PrintTo(os);
-    }
-    *os << ";";
-  }
+  ACCEPT_VISITOR(ReturnStmt);
+
+  const Expr* GetExpr() const { return expr_.get(); }
 
 private:
-  unique_ptr<Expr> val_;
+  unique_ptr<Expr> expr_;
 };
 
 class ExprStmt : public Stmt {
 public:
   ExprStmt(Expr* expr): expr_(expr) {}
 
-  void PrintTo(std::ostream* os) const override {
-    expr_->PrintTo(os);
-    *os << ";";
-  }
+  ACCEPT_VISITOR(ExprStmt);
+
+  const Expr* GetExpr() const { return expr_.get(); }
 
 private:
   unique_ptr<Expr> expr_;
@@ -363,14 +348,9 @@ class BlockStmt : public Stmt {
 public:
   BlockStmt(base::UniquePtrVector<Stmt>&& stmts): stmts_(std::forward<base::UniquePtrVector<Stmt>>(stmts)) {}
 
-  void PrintTo(std::ostream* os) const override {
-    *os << "{";
-    for (int i = 0; i < stmts_.Size(); i++) {
-      stmts_.At(i)->PrintTo(os);
-      // *os << "\n";
-    }
-    *os << "}";
-  }
+  ACCEPT_VISITOR(BlockStmt);
+
+  const base::UniquePtrVector<Stmt>& Stmts() const { return stmts_; }
 
 private:
   DISALLOW_COPY_AND_ASSIGN(BlockStmt);
@@ -381,18 +361,15 @@ class IfStmt : public Stmt {
 public:
   IfStmt(Expr* cond, Stmt* trueBody, Stmt* falseBody): cond_(cond), trueBody_(trueBody), falseBody_(falseBody) {}
 
-  void PrintTo(std::ostream* os) const override {
-    *os << "if(";
-    cond_->PrintTo(os);
-    *os << "){";
-    trueBody_->PrintTo(os);
-    *os << "}else{";
-    falseBody_->PrintTo(os);
-    *os << "}";
-  }
+  ACCEPT_VISITOR(IfStmt);
+
+  const Expr* Cond() const { return cond_.get(); }
+  const Stmt* TrueBody() const { return trueBody_.get(); }
+  const Stmt* FalseBody() const { return falseBody_.get(); }
 
 private:
   DISALLOW_COPY_AND_ASSIGN(IfStmt);
+
   unique_ptr<Expr> cond_;
   unique_ptr<Stmt> trueBody_;
   unique_ptr<Stmt> falseBody_;
@@ -402,30 +379,23 @@ class ForStmt : public Stmt {
 public:
   ForStmt(Stmt* init, Expr* cond, Expr* update, Stmt* body): init_(init), cond_(cond), update_(update), body_(body) {}
 
-  void PrintTo(std::ostream* os) const override {
-    *os << "for(";
-    init_->PrintTo(os);
-    // Stmt prints semicolon.
-    if (cond_ != nullptr) {
-      cond_->PrintTo(os);
-    }
-    *os << ";";
-    if (update_ != nullptr) {
-      update_->PrintTo(os);
-    }
-    *os << "){";
-    body_->PrintTo(os);
-    *os << "}";
-  }
+  ACCEPT_VISITOR(ForStmt);
+
+  const Stmt* Init() const { return init_.get(); }
+  const Expr* Cond() const { return cond_.get(); }
+  const Expr* Update() const { return update_.get(); }
+  const Stmt* Body() const { return body_.get(); }
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ForStmt);
+
   unique_ptr<Stmt> init_; // May be EmptyStmt.
   unique_ptr<Expr> cond_; // May be nullptr.
   unique_ptr<Expr> update_; // May be nullptr.
   unique_ptr<Stmt> body_; // May be EmptyStmt.
 };
 
+#undef ACCEPT_VISITOR
 
 void Parse(const base::FileSet* fs, const base::File* file, const vector<lexer::Token>* tokens);
 

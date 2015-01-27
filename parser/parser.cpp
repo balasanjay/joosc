@@ -2,6 +2,7 @@
 #include "lexer/lexer.h"
 #include "parser/ast.h"
 #include "parser/parser_internal.h"
+#include "parser/print_visitor.h"
 
 using base::Error;
 using base::ErrorList;
@@ -950,9 +951,9 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   // TODO: Make emptystmt not print anything.
 
   // Parse optional for initializer.
-  Stmt* forInit = nullptr;
+  unique_ptr<Stmt> forInit;
   if (next.IsNext(SEMI)) {
-    forInit = new EmptyStmt();
+    forInit.reset(new EmptyStmt());
     next = next.Advance();
   } else {
     Result<Stmt> stmt;
@@ -965,12 +966,12 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
       FirstOf(&errors, &stmt, &semi);
       return next.Fail(move(errors), out);
     }
-    forInit = stmt.Release();
+    forInit.reset(stmt.Release());
     next = afterInit;
   }
 
   // Parse optional for condition.
-  Expr* forCond = nullptr;
+  unique_ptr<Expr> forCond = nullptr;
   if (next.IsNext(SEMI)) {
     next = next.Advance();
   } else {
@@ -984,12 +985,12 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
       FirstOf(&errors, &cond, &semi);
       return next.Fail(move(errors), out);
     }
-    forCond = cond.Release();
+    forCond.reset(cond.Release());
     next = afterCond;
   }
 
   // Parse optional for update.
-  Expr* forUpdate = nullptr;
+  unique_ptr<Expr> forUpdate;
   if (!next.IsNext(RPAREN)) {
     Result<Expr> update;
     Parser afterUpdate = next.ParseExpression(&update);
@@ -998,7 +999,7 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
       update.ReleaseErrors(&errors);
       return next.Fail(move(errors), out);
     }
-    forUpdate = update.Release();
+    forUpdate.reset(update.Release());
     next = afterUpdate;
   }
 
@@ -1008,7 +1009,8 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   Parser after = next
     .ParseTokenIf(ExactType(RPAREN), &rparen)
     .ParseStmt(&body);
-  RETURN_IF_GOOD(after, new ForStmt(forInit, forCond, forUpdate, body.Release()), out);
+  RETURN_IF_GOOD(after, new ForStmt(
+        forInit.release(), forCond.release(), forUpdate.release(), body.Release()), out);
 
   ErrorList errors;
   FirstOf(&errors, &rparen, &body);
@@ -1020,7 +1022,8 @@ void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
   Result<Stmt> result;
   parser.ParseStmt(&result);
   if (result.IsSuccess()) {
-    result.Get()->PrintTo(&std::cout);
+    PrintVisitor printer = PrintVisitor::Compact(&std::cout);
+    result.Get()->Accept(&printer);
     std::cout << '\n';
   } else {
     result.Errors().PrintTo(&std::cout, base::OutputOptions::kUserOutput);
