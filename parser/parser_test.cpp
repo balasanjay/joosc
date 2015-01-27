@@ -905,6 +905,36 @@ TEST_F(ParserTest, IfStmtFailBodyDecl) {
   EXPECT_FALSE(b(stmt));
 }
 
+TEST_F(ParserTest, IfStmtIfIfElseElse) {
+  MakeParser("if(a)if(b)foo();else bar();else baz();");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseIfStmt(&stmt);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("if(a){if(b){foo();}else{bar();}}else{baz();}", Str(stmt.Get()));
+}
+
+TEST_F(ParserTest, IfStmtElseIf) {
+  MakeParser("if(a)foo();else if(b)bar();");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseIfStmt(&stmt);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("if(a){foo();}else{if(b){bar();}else{;}}", Str(stmt.Get()));
+}
+
+TEST_F(ParserTest, IfStmtElseIfElse) {
+  MakeParser("if(a)foo();else if(b)bar();else baz();");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseIfStmt(&stmt);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("if(a){foo();}else{if(b){bar();}else{baz();}}", Str(stmt.Get()));
+}
+
 TEST_F(ParserTest, ForInitDecl) {
   MakeParser("int a = 1");
   Result<Stmt> stmt;

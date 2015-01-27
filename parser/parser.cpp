@@ -1022,7 +1022,7 @@ void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
   Result<Stmt> result;
   parser.ParseStmt(&result);
   if (result.IsSuccess()) {
-    PrintVisitor printer = PrintVisitor::Compact(&std::cout);
+    PrintVisitor printer = PrintVisitor::Pretty(&std::cout);
     result.Get()->Accept(&printer);
     std::cout << '\n';
   } else {
