@@ -9,6 +9,8 @@ using base::FileSet;
 
 namespace parser {
 
+#define IS_CONST_PTR(type, arg) (dynamic_cast<const type*>(arg) != nullptr)
+
 Error* MakeInvalidAssignmentLhs(const FileSet* fs, Token token) {
   return MakeSimplePosRangeError(fs, token.pos, "InvalidLHS", "Invalid left-hand-side of assignment.");
 }
@@ -19,9 +21,9 @@ REC_VISIT_DEFN(AssignmentVisitor, BinExpr, expr){
   }
 
   const Expr* lhs = expr->Lhs();
-  if (dynamic_cast<const FieldDerefExpr*>(lhs) == nullptr &&
-      dynamic_cast<const ArrayIndexExpr*>(lhs) == nullptr &&
-      dynamic_cast<const NameExpr*>(lhs) == nullptr) {
+  if (!IS_CONST_PTR(FieldDerefExpr, lhs) &&
+      !IS_CONST_PTR(ArrayIndexExpr, lhs) &&
+      !IS_CONST_PTR(NameExpr, lhs)) {
     errors_->Append(MakeInvalidAssignmentLhs(fs_, expr->Op()));
     return false;
   }
