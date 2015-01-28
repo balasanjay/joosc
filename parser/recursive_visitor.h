@@ -23,7 +23,7 @@ namespace parser {
 
 class RecursiveVisitor : public Visitor {
 public:
-  virtual ~RecursiveVisitor() = default;
+  virtual ~RecursiveVisitor() {}
 
   // Override Visitor's Expr visitors.
   VISIT_DECL(ArrayIndexExpr, expr) final;
