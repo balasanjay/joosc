@@ -9,7 +9,7 @@ using base::FileSet;
 namespace parser {
 
 #define SHORT_CIRCUIT_CHILD(type, var) {\
-  if (!Visit##type##impl(var)) { \
+  if (!Visit##type##Impl(var)) { \
     return; \
   } \
 }
