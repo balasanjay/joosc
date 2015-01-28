@@ -1,5 +1,6 @@
 #include "base/macros.h"
-#include "parser/assignment_visitor.h"
+#include "parser/ast.h"
+#include "parser/call_visitor.h"
 
 using lexer::Token;
 using base::Error;
@@ -13,7 +14,7 @@ Error* MakeInvalidCallError(const FileSet* fs, Token token) {
       "InvalidCallError", "Cannot call non-method.");
 }
 
-REC_VISIT_DEFN(AssignmentVisitor, CallExpr, expr){
+REC_VISIT_DEFN(CallVisitor, CallExpr, expr){
   const Expr* base = expr->Base();
 
   if (!IS_CONST_PTR(FieldDerefExpr, base) &&

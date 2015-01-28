@@ -1,5 +1,7 @@
 #include "base/macros.h"
-#include "parser/call_visitor.h"
+#include "lexer/lexer.h"
+#include "parser/assignment_visitor.h"
+#include "parser/ast.h"
 
 using lexer::ASSG;
 using lexer::Token;

@@ -1024,7 +1024,7 @@ void Weed(const FileSet* fs, Stmt* stmt, ErrorList* out) {
   stmt->Accept(&assignmentChecker);
 
   CallVisitor callChecker(fs, out);
-  stmt->Accept(&callVisitor);
+  stmt->Accept(&callChecker);
 
   // More weeding required.
 }
