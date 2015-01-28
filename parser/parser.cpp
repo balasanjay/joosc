@@ -1,6 +1,8 @@
 #include "base/unique_ptr_vector.h"
 #include "lexer/lexer.h"
+#include "parser/assignment_visitor.h"
 #include "parser/ast.h"
+#include "parser/call_visitor.h"
 #include "parser/parser_internal.h"
 #include "parser/print_visitor.h"
 
@@ -687,7 +689,7 @@ Parser Parser::ParsePrimaryEndNoArrayAccess(Expr* base, Result<Expr>* out) const
       return Fail(move(errors), out);
     }
 
-    Expr* call = new CallExpr(base, args.Release());
+    Expr* call = new CallExpr(base, *lparen.Get(), args.Release());
     Result<Expr> nested;
     Parser afterEnd = after.ParsePrimaryEnd(call, &nested);
     RETURN_IF_GOOD(afterEnd, nested.Release(), out);
@@ -1159,19 +1161,36 @@ Parser Parser::ParseParamList(Result<ParamList>* out) const {
 }
 
 
+void Weed(const FileSet* fs, MemberDecl* decl, ErrorList* out) {
+  AssignmentVisitor assignmentChecker(fs, out);
+  decl->Accept(&assignmentChecker);
+
+  CallVisitor callChecker(fs, out);
+  decl->Accept(&callChecker);
+
+  // More weeding required.
+}
+
 void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
   Parser parser(fs, file, tokens, 0);
   Result<MemberDecl> result;
   parser.ParseMemberDecl(&result);
-  if (result.IsSuccess()) {
-    PrintVisitor printer = PrintVisitor::Compact(&std::cout);
-    result.Get()->Accept(&printer);
-    std::cout << '\n';
-  } else {
+  if (!result.IsSuccess()) {
     result.Errors().PrintTo(&std::cout, base::OutputOptions::kUserOutput);
+    return;
   }
-}
 
+  ErrorList errors;
+  Weed(fs, result.Get(), &errors);
+  if (errors.IsFatal()) {
+    errors.PrintTo(&std::cout, base::OutputOptions::kUserOutput);
+    return;
+  }
+
+  PrintVisitor printer = PrintVisitor::Pretty(&std::cout);
+  result.Get()->Accept(&printer);
+  std::cout << '\n';
+}
 
 // TODO: in for-loop initializers, for-loop incrementors, and top-level
 // statements, we must ensure that they are either assignment, method
