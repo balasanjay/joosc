@@ -26,29 +26,29 @@ public:
   virtual ~RecursiveVisitor() = default;
 
   // Override Visitor's Expr visitors.
-  VISIT(ArrayIndexExpr, expr) final;
-  VISIT(BinExpr, expr) final;
-  VISIT(CallExpr, expr) final;
-  VISIT(CastExpr, expr) final;
-  VISIT(FieldDerefExpr, expr) final;
-  VISIT(LitExpr, expr) final;
-  VISIT(NameExpr, expr) final;
-  VISIT(NewArrayExpr, expr) final;
-  VISIT(NewClassExpr, expr) final;
-  VISIT(ThisExpr,) final;
-  VISIT(UnaryExpr, expr) final;
+  VISIT_DECL(ArrayIndexExpr, expr) final;
+  VISIT_DECL(BinExpr, expr) final;
+  VISIT_DECL(CallExpr, expr) final;
+  VISIT_DECL(CastExpr, expr) final;
+  VISIT_DECL(FieldDerefExpr, expr) final;
+  VISIT_DECL(LitExpr, expr) final;
+  VISIT_DECL(NameExpr, expr) final;
+  VISIT_DECL(NewArrayExpr, expr) final;
+  VISIT_DECL(NewClassExpr, expr) final;
+  VISIT_DECL(ThisExpr,) final;
+  VISIT_DECL(UnaryExpr, expr) final;
 
   // Override Visitor's Stmt visitors.
-  VISIT(BlockStmt, stmt) final;
-  VISIT(EmptyStmt,) final;
-  VISIT(ExprStmt, stmt) final;
-  VISIT(LocalDeclStmt, stmt) final;
-  VISIT(ReturnStmt, stmt) final;
-  VISIT(IfStmt, stmt) final;
-  VISIT(ForStmt, stmt) final;
+  VISIT_DECL(BlockStmt, stmt) final;
+  VISIT_DECL(EmptyStmt,) final;
+  VISIT_DECL(ExprStmt, stmt) final;
+  VISIT_DECL(LocalDeclStmt, stmt) final;
+  VISIT_DECL(ReturnStmt, stmt) final;
+  VISIT_DECL(IfStmt, stmt) final;
+  VISIT_DECL(ForStmt, stmt) final;
 
   // Override Visitor's other visitors.
-  VISIT(ArgumentList, args) final;
+  VISIT_DECL(ArgumentList, args) final;
 
 
 #define RECURSIVE_VISITOR_IMPL(type) \
@@ -83,6 +83,11 @@ public:
 protected:
   RecursiveVisitor() = default;
 };
+
+#define REC_VISIT_DECL(type, var) \
+  bool Visit##type##Impl(const type* var) override
+#define REC_VISIT_DEFN(cls, type, var) \
+  bool cls::Visit##type##Impl(const type* var)
 
 } // namespace parser
 
