@@ -397,6 +397,115 @@ private:
   unique_ptr<Stmt> body_; // May be EmptyStmt.
 };
 
+class ModifierList {
+public:
+  ModifierList(): mods_(int(lexer::NUM_MODIFIERS), lexer::Token(lexer::K_NULL, base::PosRange(0, 0, 0))) {}
+
+  void PrintTo(std::ostream* os) const  {
+    for (int i = 0; i < lexer::NUM_MODIFIERS; ++i) {
+      if (!HasModifier((lexer::Modifier)i)) {
+        continue;
+      }
+      *os << mods_[i].TypeInfo() << ' ';
+    }
+  }
+
+
+  bool HasModifier(lexer::Modifier m) const {
+    return mods_[m].TypeInfo().IsModifier();
+  }
+
+  bool AddModifier(lexer::Token t) {
+    if (!t.TypeInfo().IsModifier()) {
+      return false;
+    }
+    lexer::Modifier m = t.TypeInfo().GetModifier();
+    if (HasModifier(m)) {
+      return false;
+    }
+    mods_[m] = t;
+    return true;
+  }
+
+private:
+  //static lexer::Token emptyToken;
+  vector<lexer::Token> mods_;
+};
+
+class MemberDecl {
+public:
+  MemberDecl(ModifierList* mods, Type* type, lexer::Token ident): mods_(mods), type_(type), ident_(ident) {}
+
+  virtual void Accept(Visitor* visitor) const = 0;
+
+  const ModifierList* Mods() const { return mods_.get(); }
+  const Type* GetType() const { return type_.get(); }
+  const lexer::Token& Ident() const { return ident_; }
+
+private:
+  unique_ptr<ModifierList> mods_;
+  unique_ptr<Type> type_;
+  lexer::Token ident_;
+};
+
+class FieldDecl : public MemberDecl {
+public:
+  FieldDecl(ModifierList* mods, Type* type, lexer::Token ident, Expr* val): MemberDecl(mods, type, ident), val_(val) {}
+
+  ACCEPT_VISITOR(FieldDecl);
+
+  const Expr* Val() const { return val_.get(); }
+
+private:
+  unique_ptr<Expr> val_; // Might be nullptr.
+};
+
+class MethodDecl : public MemberDecl {
+public:
+  MethodDecl(ModifierList* mods, Type* type, lexer::Token ident, ParamList* params, Stmt* body): MemberDecl(mods, type, ident), params_(params), body_(body) {}
+
+  ACCEPT_VISITOR(MethodDecl);
+
+  const ParamList* Params() const { return params_.get(); }
+  const Stmt* Body() const { return body_.get(); }
+
+private:
+  unique_ptr<ParamList> params_;
+  unique_ptr<Stmt> body_;
+};
+
+class Param final {
+public:
+  Param(Type* type, lexer::Token ident): type_(type), ident_(ident) {}
+
+  void Accept(Visitor* visitor) const { visitor->VisitParam(this); }
+
+  const Type* GetType() const { return type_.get(); }
+  const lexer::Token& Ident() const { return ident_; }
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(Param);
+
+  unique_ptr<Type> type_;
+  lexer::Token ident_;
+};
+
+class ParamList final {
+public:
+  ParamList(base::UniquePtrVector<Param>&& params): params_(std::forward<base::UniquePtrVector<Param>>(params)) {}
+  ~ParamList() = default;
+  ParamList(ParamList&&) = default;
+
+  void Accept(Visitor* visitor) const { visitor->VisitParamList(this); }
+
+  const base::UniquePtrVector<Param>& Params() const { return params_; }
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(ParamList);
+
+  base::UniquePtrVector<Param> params_;
+};
+
 #undef ACCEPT_VISITOR
 
 void Parse(const base::FileSet* fs, const base::File* file, const vector<lexer::Token>* tokens);

@@ -110,4 +110,28 @@ VISIT_DEFN(RecursiveVisitor, ArgumentList, args) {
   }
 }
 
+VISIT_DEFN(RecursiveVisitor, ParamList, params) {
+  SHORT_CIRCUIT_CHILD(ParamList, params);
+  for (int i = 0; i < params->Params().Size(); ++i) {
+    params->Params().At(i)->Accept(this);
+  }
+}
+
+VISIT_DEFN(RecursiveVisitor, Param, param) {
+  SHORT_CIRCUIT_CHILD(Param, param);
+}
+
+VISIT_DEFN(RecursiveVisitor, FieldDecl, field) {
+  SHORT_CIRCUIT_CHILD(FieldDecl, field);
+  if (field->Val() != nullptr) {
+    field->Val()->Accept(this);
+  }
+}
+
+VISIT_DEFN(RecursiveVisitor, MethodDecl, meth) {
+  SHORT_CIRCUIT_CHILD(MethodDecl, meth);
+  meth->Params()->Accept(this);
+  meth->Body()->Accept(this);
+}
+
 } // namespace parser

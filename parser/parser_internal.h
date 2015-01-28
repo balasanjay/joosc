@@ -148,6 +148,11 @@ struct Parser {
   Parser ParseForInit(internal::Result<Stmt>* out) const;
   Parser ParseForStmt(internal::Result<Stmt>* out) const;
 
+  // Class parsers.
+  Parser ParseModifierList(internal::Result<ModifierList>* out) const;
+  Parser ParseMemberDecl(internal::Result<MemberDecl>* out) const;
+  Parser ParseParamList(internal::Result<ParamList>* out) const;
+
   bool IsAtEnd() const {
     return failed_ || (uint)index_ >= tokens_->size();
   }
@@ -163,6 +168,7 @@ struct Parser {
 
  private:
   base::Error* MakeUnexpectedTokenError(lexer::Token token) const;
+  base::Error* MakeDuplicateModifierError(lexer::Token token) const;
   base::Error* MakeUnexpectedEOFError() const;
 
   bool IsNext(lexer::TokenType type) const {

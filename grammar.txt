@@ -23,7 +23,10 @@ TypeDeclaration:
   ";"
 
 ClassDeclaration:
-  {Modifier} class Identifier [Super] [Interfaces] ClassBody
+  ModifierList "class" Identifier [Super] [Interfaces] ClassBody
+
+ModifierList:
+  {Modifier}
 
 Modifier:
   public
@@ -34,13 +37,13 @@ Modifier:
   native
 
 Super:
-  extends QualifiedName
+  "extends" QualifiedName
 
 Interfaces:
   "implements" QualifiedName {"," QualifiedName}
 
 InterfaceDeclaration:
-  {Modifier} interface Identifier [ExtendsInterfaces] InterfaceBody
+  ModifierList "interface" Identifier [ExtendsInterfaces] ClassBody
 
 ExtendsInterfaces:
   "extends" QualifiedName {"," QualifiedName}
@@ -50,48 +53,31 @@ ClassBody:
 
 ClassBodyDeclaration:
   ConstructorDeclaration
-  FieldDeclaration
-  MethodDeclaration
+  MethodOrFieldDecl
   ";"
 
 ConstructorDeclaration:
-  {Modifier} ConstructorDeclarator Block
+  ModifierList ConstructorDeclarator Block
 
 ConstructorDeclarator:
-  Identifier  "(" [FormalParameterList] ")"
+  Identifier  "(" FormalParameterList ")"
 
 FormalParameterList:
-  FormalParamater {, FormalParameter}
+  [FormalParameter {, FormalParameter}]
 
 FormalParameter:
   Type Identifier
 
-// TODO: Factor these.
-FieldDeclaration:
-  {Modifier} Type Identifier ["=" Expression] ";"
+MethodOrFieldDecl:
+  ModifierList Type Identifier MethodOrFieldDeclEnd
 
-MethodDeclaration:
-  {Modifier} ResultType MethodDeclarator MethodBody
-
-MethodDeclarator:
-  Identifier "(" [FormalParameterList] ")
-
-ResultType:
-  Type
-  void
+MethodOrFieldDeclEnd:
+  "(" FormalParameterList ")" MethodBody
+  ["=" Expression] ";"
 
 MethodBody:
   Block
   ";"
-
-InterfaceBody:
-  "{" {InterfaceMemberDeclaration} "}"
-
-InterfaceMemberDeclaration:
-  AbstractMethodDeclaration
-
-AbstractMethodDeclaration:
-  {Modifier} ResultType MethodDeclarator ";"
 
 Block:
   "{" {BlockStatement} "}"
@@ -141,6 +127,7 @@ PrimitiveType:
   "int"
   "char"
   "boolean"
+  "void" // Lol weed me please.
 
 ArrayAccess:
   QualifiedName [ Expression ]
