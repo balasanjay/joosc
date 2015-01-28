@@ -41,7 +41,7 @@ VISIT_DEFN(RecursiveVisitor, LitExpr, expr) {
   SHORT_CIRCUIT_CHILD(LitExpr, expr);
 }
 VISIT_DEFN(RecursiveVisitor, NameExpr, expr) {
-  SHORT_CIRCUIT_CHILD(CastExpr, expr);
+  SHORT_CIRCUIT_CHILD(NameExpr, expr);
 }
 VISIT_DEFN(RecursiveVisitor, NewArrayExpr, expr) {
   SHORT_CIRCUIT_CHILD(NewArrayExpr, expr);
