@@ -146,7 +146,7 @@ public:
 
   const Expr* Lhs() const { return lhs_.get(); }
   const Expr* Rhs() const { return rhs_.get(); }
-  const lexer::Token Op() const { return op_; }
+  lexer::Token Op() const { return op_; }
 
 private:
   lexer::Token op_;
@@ -164,7 +164,7 @@ public:
 
   ACCEPT_VISITOR(UnaryExpr);
 
-  const lexer::Token Op() const { return op_; }
+  lexer::Token Op() const { return op_; }
   const Expr* Rhs() const { return rhs_.get(); }
 
 private:
@@ -428,50 +428,7 @@ public:
   }
 
 private:
-  //static lexer::Token emptyToken;
   vector<lexer::Token> mods_;
-};
-
-class MemberDecl {
-public:
-  MemberDecl(ModifierList* mods, Type* type, lexer::Token ident): mods_(mods), type_(type), ident_(ident) {}
-
-  virtual void Accept(Visitor* visitor) const = 0;
-
-  const ModifierList* Mods() const { return mods_.get(); }
-  const Type* GetType() const { return type_.get(); }
-  const lexer::Token& Ident() const { return ident_; }
-
-private:
-  unique_ptr<ModifierList> mods_;
-  unique_ptr<Type> type_;
-  lexer::Token ident_;
-};
-
-class FieldDecl : public MemberDecl {
-public:
-  FieldDecl(ModifierList* mods, Type* type, lexer::Token ident, Expr* val): MemberDecl(mods, type, ident), val_(val) {}
-
-  ACCEPT_VISITOR(FieldDecl);
-
-  const Expr* Val() const { return val_.get(); }
-
-private:
-  unique_ptr<Expr> val_; // Might be nullptr.
-};
-
-class MethodDecl : public MemberDecl {
-public:
-  MethodDecl(ModifierList* mods, Type* type, lexer::Token ident, ParamList* params, Stmt* body): MemberDecl(mods, type, ident), params_(params), body_(body) {}
-
-  ACCEPT_VISITOR(MethodDecl);
-
-  const ParamList* Params() const { return params_.get(); }
-  const Stmt* Body() const { return body_.get(); }
-
-private:
-  unique_ptr<ParamList> params_;
-  unique_ptr<Stmt> body_;
 };
 
 class Param final {
@@ -481,7 +438,7 @@ public:
   void Accept(Visitor* visitor) const { visitor->VisitParam(this); }
 
   const Type* GetType() const { return type_.get(); }
-  const lexer::Token& Ident() const { return ident_; }
+  lexer::Token Ident() const { return ident_; }
 
 private:
   DISALLOW_COPY_AND_ASSIGN(Param);
@@ -505,6 +462,49 @@ private:
 
   base::UniquePtrVector<Param> params_;
 };
+
+class MemberDecl {
+public:
+  MemberDecl(ModifierList&& mods, Type* type, lexer::Token ident): mods_(std::forward<ModifierList>(mods)), type_(type), ident_(ident) {}
+
+  virtual void Accept(Visitor* visitor) const = 0;
+
+  const ModifierList& Mods() const { return mods_; }
+  const Type* GetType() const { return type_.get(); }
+  lexer::Token Ident() const { return ident_; }
+
+private:
+  ModifierList mods_;
+  unique_ptr<Type> type_;
+  lexer::Token ident_;
+};
+
+class FieldDecl : public MemberDecl {
+public:
+  FieldDecl(ModifierList&& mods, Type* type, lexer::Token ident, Expr* val): MemberDecl(std::forward<ModifierList>(mods), type, ident), val_(val) {}
+
+  ACCEPT_VISITOR(FieldDecl);
+
+  const Expr* Val() const { return val_.get(); }
+
+private:
+  unique_ptr<Expr> val_; // Might be nullptr.
+};
+
+class MethodDecl : public MemberDecl {
+public:
+  MethodDecl(ModifierList&& mods, Type* type, lexer::Token ident, ParamList&& params, Stmt* body): MemberDecl(std::forward<ModifierList>(mods), type, ident), params_(std::forward<ParamList>(params)), body_(body) {}
+
+  ACCEPT_VISITOR(MethodDecl);
+
+  const ParamList& Params() const { return params_; }
+  const Stmt* Body() const { return body_.get(); }
+
+private:
+  ParamList params_;
+  unique_ptr<Stmt> body_;
+};
+
 
 #undef ACCEPT_VISITOR
 
