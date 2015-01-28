@@ -169,6 +169,7 @@ struct Parser {
  private:
   base::Error* MakeUnexpectedTokenError(lexer::Token token) const;
   base::Error* MakeDuplicateModifierError(lexer::Token token) const;
+  base::Error* MakeParamRequiresNameError(lexer::Token token) const;
   base::Error* MakeUnexpectedEOFError() const;
 
   bool IsNext(lexer::TokenType type) const {

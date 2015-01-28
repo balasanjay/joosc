@@ -1066,6 +1066,62 @@ TEST_F(ParserTest, ForStmtPropagateErrorFromBody) {
   EXPECT_EQ("UnexpectedTokenError(0:9)\n", testing::PrintToString(stmt.Errors()));
 }
 
+TEST_F(ParserTest, ParamListBasic) {
+  MakeParser("int a, String b, a.b.c.d.e foo");
+  Result<ParamList> params;
+  Parser after = parser_->ParseParamList(&params);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(params));
+  EXPECT_EQ("K_INT IDENTIFIER,String IDENTIFIER,a.b.c.d.e IDENTIFIER", Str(params.Get()));
+}
+
+TEST_F(ParserTest, ParamListOne) {
+  MakeParser("int a");
+  Result<ParamList> params;
+  Parser after = parser_->ParseParamList(&params);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(params));
+  EXPECT_EQ("K_INT IDENTIFIER", Str(params.Get()));
+}
+
+TEST_F(ParserTest, ParamListEmpty) {
+  MakeParser(")");
+  Result<ParamList> params;
+  Parser after = parser_->ParseParamList(&params);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(params));
+  EXPECT_EQ("", Str(params.Get()));
+}
+
+TEST_F(ParserTest, ParamListNoParamName) {
+  MakeParser("int");
+  Result<ParamList> params;
+  Parser after = parser_->ParseParamList(&params);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(params));
+  EXPECT_EQ("ParamRequiresNameError(0:0-3)\n", testing::PrintToString(params.Errors()));
+}
+
+TEST_F(ParserTest, ParamListHangingComma) {
+  MakeParser("int foo,)");
+  Result<ParamList> params;
+  Parser after = parser_->ParseParamList(&params);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(params));
+  EXPECT_EQ("UnexpectedTokenError(0:8)\n", testing::PrintToString(params.Errors()));
+}
+
+TEST_F(ParserTest, ParamListHangingCommaEOF) {
+  MakeParser("int foo,");
+  Result<ParamList> params;
+  Parser after = parser_->ParseParamList(&params);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(params));
+  EXPECT_EQ("UnexpectedEOFError(0:7)\n", testing::PrintToString(params.Errors()));
+}
+
+
+
 TEST_F(ParserTest, AssignmentVisitorName) {
   MakeParser("a = 1;");
   Result<Stmt> stmt;
