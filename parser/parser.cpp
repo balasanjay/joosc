@@ -210,6 +210,10 @@ Error* Parser::MakeDuplicateModifierError(Token token) const {
   return MakeSimplePosRangeError(fs_, token.pos, "DuplicateModifierError", "Duplicate modifier.");
 }
 
+Error* Parser::MakeParamRequiresNameError(Token token) const {
+  return MakeSimplePosRangeError(fs_, token.pos, "ParamRequiresNameError", "A parameter requires a type and a name.");
+}
+
 Error* Parser::MakeUnexpectedEOFError() const {
   // TODO: say what you expected instead.
   // TODO: this will crash on an empty file.
@@ -1143,34 +1147,51 @@ Parser Parser::ParseParamList(Result<ParamList>* out) const {
 
   UniquePtrVector<Param> params;
   Parser cur = *this;
-  Parser afterComma = *this;
+  bool firstParam = true;
   while (true) {
     Result<Type> type;
     Result<Token> ident;
-    Parser next = afterComma
-      .ParseType(&type)
-      .ParseTokenIf(ExactType(IDENTIFIER), &ident);
-    if (!next) {
-      return cur.Success(new ParamList(move(params)), out);
+    Parser afterType = cur.ParseType(&type);
+    if (!afterType) {
+      // If can't parse type then return empty param list.
+      if (firstParam) {
+        break;
+      }
+      // Bad token or EOF after a comma.
+      ErrorList errors;
+      type.ReleaseErrors(&errors);
+      return cur.Fail(move(errors), out);
     }
-    cur = next;
+    firstParam = false;
+
+    Parser afterIdent = afterType
+      .ParseTokenIf(ExactType(IDENTIFIER), &ident);
+    if (!afterIdent) {
+      // Committed to getting identifier.
+      return afterType.Fail(MakeParamRequiresNameError(cur.GetNext()), out);
+    }
+    cur = afterIdent;
     params.Append(new Param(type.Release(), *ident.Get()));
 
-    Result<Token> comma;
-    afterComma = next.ParseTokenIf(ExactType(COMMA), &comma);
+    if (cur.IsNext(COMMA)) {
+      cur = cur.Advance();
+    } else {
+      break;
+    }
   }
+  return cur.Success(new ParamList(move(params)), out);
 }
 
 // TODO: move Weed function to weeder package.
-void Weed(const FileSet* fs, MemberDecl* decl, ErrorList* out) {
+void Weed(const FileSet* fs, MemberDecl* ast, ErrorList* out) {
   weeder::AssignmentVisitor assignmentChecker(fs, out);
-  decl->Accept(&assignmentChecker);
+  ast->Accept(&assignmentChecker);
 
   weeder::CallVisitor callChecker(fs, out);
-  decl->Accept(&callChecker);
+  ast->Accept(&callChecker);
 
   weeder::TypeVisitor typeChecker(fs, out);
-  decl->Accept(&typeChecker);
+  ast->Accept(&typeChecker);
 
   // More weeding required.
 }
