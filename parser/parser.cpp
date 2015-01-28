@@ -1,10 +1,10 @@
 #include "base/unique_ptr_vector.h"
 #include "lexer/lexer.h"
-#include "parser/assignment_visitor.h"
 #include "parser/ast.h"
-#include "parser/call_visitor.h"
 #include "parser/parser_internal.h"
 #include "parser/print_visitor.h"
+#include "weeder/assignment_visitor.h"
+#include "weeder/call_visitor.h"
 
 using base::Error;
 using base::ErrorList;
@@ -1019,11 +1019,12 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   return next.Fail(move(errors), out);
 }
 
+// TODO: move Weed function to weeder package.
 void Weed(const FileSet* fs, Stmt* stmt, ErrorList* out) {
-  AssignmentVisitor assignmentChecker(fs, out);
+  weeder::AssignmentVisitor assignmentChecker(fs, out);
   stmt->Accept(&assignmentChecker);
 
-  CallVisitor callChecker(fs, out);
+  weeder::CallVisitor callChecker(fs, out);
   stmt->Accept(&callChecker);
 
   // More weeding required.

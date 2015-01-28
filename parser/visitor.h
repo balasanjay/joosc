@@ -59,8 +59,10 @@ protected:
   Visitor() = default;
 };
 
-#define VISIT_DECL(type, var) void Visit##type(const type* var) override
-#define VISIT_DEFN(cls, type, var) void cls::Visit##type(const type* var)
+#define VISIT_DECL(type, var) \
+  void Visit##type(const parser::type* var) override
+#define VISIT_DEFN(cls, type, var) \
+  void cls::Visit##type(const parser::type* var)
 
 } // namespace parser
 
