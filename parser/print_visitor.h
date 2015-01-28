@@ -163,6 +163,43 @@ public:
     }
   }
 
+  VISIT(ParamList, params) {
+    for (int i = 0; i < params->Params().Size(); ++i) {
+      if (i > 0) {
+        *os_ << ',' << space_;
+      }
+      params->Params().At(i)->Accept(this);
+    }
+  }
+
+  VISIT(Param, param) {
+    param->GetType()->PrintTo(os_);
+    *os_ << ' ' << param->Ident().TypeInfo();
+  }
+
+  VISIT(FieldDecl, field) {
+    field->Mods()->PrintTo(os_);
+    field->GetType()->PrintTo(os_);
+    *os_ << ' ';
+    *os_ << field->Ident().TypeInfo();
+    if (field->Val() != nullptr) {
+      *os_ << space_ << '=' << space_;
+      field->Val()->Accept(this);
+    }
+    *os_ << ';';
+  }
+
+  VISIT(MethodDecl, meth) {
+    meth->Mods()->PrintTo(os_);
+    meth->GetType()->PrintTo(os_);
+    *os_ << ' ';
+    *os_ << meth->Ident().TypeInfo();
+    *os_ << '(';
+    meth->Params()->Accept(this);
+    *os_ << ')';
+    meth->Body()->Accept(this);
+  }
+
 private:
   PrintVisitor(std::ostream* os, int depth, const string& newline, const string& tab, const string& space) : Visitor(), os_(os), depth_(depth), newline_(newline), tab_(tab), space_(space) {}
 
