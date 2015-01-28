@@ -1,12 +1,15 @@
 #include "base/macros.h"
 #include "parser/ast.h"
-#include "parser/call_visitor.h"
+#include "weeder/call_visitor.h"
 
-using lexer::Token;
 using base::Error;
 using base::FileSet;
+using lexer::Token;
+using parser::Expr;
+using parser::FieldDerefExpr;
+using parser::NameExpr;
 
-namespace parser {
+namespace weeder {
 
 Error* MakeInvalidCallError(const FileSet* fs, Token token) {
   return MakeSimplePosRangeError(
@@ -26,4 +29,4 @@ REC_VISIT_DEFN(CallVisitor, CallExpr, expr){
   return true;
 }
 
-} // namespace parser
+} // namespace weeder

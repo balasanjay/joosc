@@ -1,16 +1,15 @@
-#ifndef PARSER_ASSIGNMENT_VISITOR_H
-#define PARSER_ASSIGNMENT_VISITOR_H
+#ifndef WEEDER_ASSIGNMENT_VISITOR_H
+#define WEEDER_ASSIGNMENT_VISITOR_H
 
 #include "base/fileset.h"
 #include "base/errorlist.h"
 #include "parser/recursive_visitor.h"
 
-// TODO: this needs to be moved to weeder.
-namespace parser {
+namespace weeder {
 
 // AssignmentVisitor checks that the left-hand-side of an assignment is one of
 // NameExpr, FieldDerefExpr, or ArrayIndexExpr.
-class AssignmentVisitor : public RecursiveVisitor {
+class AssignmentVisitor : public parser::RecursiveVisitor {
 public:
   AssignmentVisitor(const base::FileSet* fs, base::ErrorList* errors) : fs_(fs), errors_(errors) {}
 
@@ -21,6 +20,6 @@ private:
   base::ErrorList* errors_;
 };
 
-} // namespace parser
+} // namespace weeder
 
 #endif
