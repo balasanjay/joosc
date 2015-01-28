@@ -14,6 +14,8 @@ class AssignmentVisitor : public RecursiveVisitor {
 public:
   AssignmentVisitor(const base::FileSet* fs, base::ErrorList* errors) : fs_(fs), errors_(errors) {}
 
+  REC_VISIT_DECL(BinExpr, expr);
+
 private:
   const base::FileSet* fs_;
   base::ErrorList* errors_;

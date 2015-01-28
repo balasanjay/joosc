@@ -1,4 +1,4 @@
-#include "parser/recursive_visitor.cpp"
+#include "parser/recursive_visitor.h"
 #include "parser/ast.h"
 #include "parser/print_visitor.h"
 
