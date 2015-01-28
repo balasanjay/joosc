@@ -93,9 +93,9 @@ protected:
 };
 
 #define REC_VISIT_DECL(type, var) \
-  bool Visit##type##Impl(const type* var) override
+  bool Visit##type##Impl(const parser::type* var) override
 #define REC_VISIT_DEFN(cls, type, var) \
-  bool cls::Visit##type##Impl(const type* var)
+  bool cls::Visit##type##Impl(const parser::type* var)
 
 } // namespace parser
 

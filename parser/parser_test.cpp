@@ -1,6 +1,4 @@
 #include "lexer/lexer.h"
-#include "parser/assignment_visitor.h"
-#include "parser/call_visitor.h"
 #include "parser/parser_internal.h"
 #include "parser/print_visitor.h"
 #include "third_party/gtest/gtest.h"
@@ -907,6 +905,36 @@ TEST_F(ParserTest, IfStmtFailBodyDecl) {
   EXPECT_FALSE(b(stmt));
 }
 
+TEST_F(ParserTest, IfStmtIfIfElseElse) {
+  MakeParser("if(a)if(b)foo();else bar();else baz();");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseIfStmt(&stmt);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("if(a){if(b){foo();}else{bar();}}else{baz();}", Str(stmt.Get()));
+}
+
+TEST_F(ParserTest, IfStmtElseIf) {
+  MakeParser("if(a)foo();else if(b)bar();");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseIfStmt(&stmt);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("if(a){foo();}else{if(b){bar();}else{;}}", Str(stmt.Get()));
+}
+
+TEST_F(ParserTest, IfStmtElseIfElse) {
+  MakeParser("if(a)foo();else if(b)bar();else baz();");
+
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseIfStmt(&stmt);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("if(a){foo();}else{if(b){bar();}else{baz();}}", Str(stmt.Get()));
+}
+
 TEST_F(ParserTest, ForInitDecl) {
   MakeParser("int a = 1");
   Result<Stmt> stmt;
@@ -1199,92 +1227,6 @@ TEST_F(ParserTest, MethodDeclParamsBlock) {
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
   EXPECT_EQ("K_PUBLIC K_INT IDENTIFIER(K_INT IDENTIFIER,array<String> IDENTIFIER){foo;}", Str(decl.Get()));
-}
-
-TEST_F(ParserTest, AssignmentVisitorName) {
-  MakeParser("a = 1;");
-  Result<Stmt> stmt;
-  ASSERT_TRUE(b(parser_->ParseStmt(&stmt)));
-
-  ErrorList errors;
-  AssignmentVisitor visitor(fs_.get(), &errors);
-  stmt.Get()->Accept(&visitor);
-
-  EXPECT_FALSE(errors.IsFatal());
-}
-
-TEST_F(ParserTest, AssignmentVisitorFieldDeref) {
-  MakeParser("this.f = 1;");
-  Result<Stmt> stmt;
-  ASSERT_TRUE(b(parser_->ParseStmt(&stmt)));
-
-  ErrorList errors;
-  AssignmentVisitor visitor(fs_.get(), &errors);
-  stmt.Get()->Accept(&visitor);
-
-  EXPECT_FALSE(errors.IsFatal());
-}
-
-TEST_F(ParserTest, AssignmentVisitorArrayIndex) {
-  MakeParser("a[0] = 1;");
-  Result<Stmt> stmt;
-  ASSERT_TRUE(b(parser_->ParseStmt(&stmt)));
-
-  ErrorList errors;
-  AssignmentVisitor visitor(fs_.get(), &errors);
-  stmt.Get()->Accept(&visitor);
-
-  EXPECT_FALSE(errors.IsFatal());
-}
-
-TEST_F(ParserTest, AssignmentVisitorFail) {
-  MakeParser("a() = 1;");
-  Result<Stmt> stmt;
-  ASSERT_TRUE(b(parser_->ParseStmt(&stmt)));
-
-  ErrorList errors;
-  AssignmentVisitor visitor(fs_.get(), &errors);
-  stmt.Get()->Accept(&visitor);
-
-  EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("InvalidLHSError(0:4)\n", testing::PrintToString(errors));
-}
-
-TEST_F(ParserTest, CallVisitorName) {
-  MakeParser("a(1);");
-  Result<Stmt> stmt;
-  ASSERT_TRUE(b(parser_->ParseStmt(&stmt)));
-
-  ErrorList errors;
-  CallVisitor visitor(fs_.get(), &errors);
-  stmt.Get()->Accept(&visitor);
-
-  EXPECT_FALSE(errors.IsFatal());
-}
-
-TEST_F(ParserTest, CallVisitorFieldDeref) {
-  MakeParser("this.a(1);");
-  Result<Stmt> stmt;
-  ASSERT_TRUE(b(parser_->ParseStmt(&stmt)));
-
-  ErrorList errors;
-  CallVisitor visitor(fs_.get(), &errors);
-  stmt.Get()->Accept(&visitor);
-
-  EXPECT_FALSE(errors.IsFatal());
-}
-
-TEST_F(ParserTest, CallVisitorFail) {
-  MakeParser("a()();");
-  Result<Stmt> stmt;
-  ASSERT_TRUE(b(parser_->ParseStmt(&stmt)));
-
-  ErrorList errors;
-  CallVisitor visitor(fs_.get(), &errors);
-  stmt.Get()->Accept(&visitor);
-
-  EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("InvalidCallError(0:3)\n", testing::PrintToString(errors));
 }
 
 } // namespace parser

@@ -1,14 +1,19 @@
 #include "base/macros.h"
 #include "lexer/lexer.h"
-#include "parser/assignment_visitor.h"
 #include "parser/ast.h"
+#include "weeder/assignment_visitor.h"
 
-using lexer::ASSG;
-using lexer::Token;
 using base::Error;
 using base::FileSet;
+using lexer::ASSG;
+using lexer::Token;
+using parser::ArrayIndexExpr;
+using parser::BinExpr;
+using parser::Expr;
+using parser::FieldDerefExpr;
+using parser::NameExpr;
 
-namespace parser {
+namespace weeder {
 
 Error* MakeInvalidLHSError(const FileSet* fs, Token token) {
   return MakeSimplePosRangeError(
@@ -32,4 +37,4 @@ REC_VISIT_DEFN(AssignmentVisitor, BinExpr, expr){
   return true;
 }
 
-} // namespace parser
+} // namespace weeder

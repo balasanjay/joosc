@@ -1,16 +1,15 @@
-#ifndef PARSER_CALL_VISITOR_H
-#define PARSER_CALL_VISITOR_H
+#ifndef WEEDER_CALL_VISITOR_H
+#define WEEDER_CALL_VISITOR_H
 
 #include "base/fileset.h"
 #include "base/errorlist.h"
 #include "parser/recursive_visitor.h"
 
-// TODO: this needs to be moved to weeder.
-namespace parser {
+namespace weeder {
 
 // CallVisitor checks that the left-hand-side of a method call is one of
 // NameExpr, or FieldDerefExpr.
-class CallVisitor : public RecursiveVisitor {
+class CallVisitor : public parser::RecursiveVisitor {
 public:
   CallVisitor(const base::FileSet* fs, base::ErrorList* errors) : fs_(fs), errors_(errors) {}
 
@@ -21,6 +20,6 @@ private:
   base::ErrorList* errors_;
 };
 
-} // namespace parser
+} // namespace weeder
 
 #endif
