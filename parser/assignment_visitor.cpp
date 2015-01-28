@@ -1,6 +1,5 @@
-#include "parser/assignment_visitor.h"
-#include "parser/ast.h"
-#include "parser/print_visitor.h"
+#include "base/macros.h"
+#include "parser/call_visitor.h"
 
 using lexer::ASSG;
 using lexer::Token;
@@ -9,10 +8,10 @@ using base::FileSet;
 
 namespace parser {
 
-#define IS_CONST_PTR(type, arg) (dynamic_cast<const type*>(arg) != nullptr)
-
-Error* MakeInvalidAssignmentLhs(const FileSet* fs, Token token) {
-  return MakeSimplePosRangeError(fs, token.pos, "InvalidLHS", "Invalid left-hand-side of assignment.");
+Error* MakeInvalidLHSError(const FileSet* fs, Token token) {
+  return MakeSimplePosRangeError(
+      fs, token.pos,
+      "InvalidLHSError", "Invalid left-hand-side of assignment.");
 }
 
 REC_VISIT_DEFN(AssignmentVisitor, BinExpr, expr){
@@ -24,7 +23,7 @@ REC_VISIT_DEFN(AssignmentVisitor, BinExpr, expr){
   if (!IS_CONST_PTR(FieldDerefExpr, lhs) &&
       !IS_CONST_PTR(ArrayIndexExpr, lhs) &&
       !IS_CONST_PTR(NameExpr, lhs)) {
-    errors_->Append(MakeInvalidAssignmentLhs(fs_, expr->Op()));
+    errors_->Append(MakeInvalidLHSError(fs_, expr->Op()));
     return false;
   }
 

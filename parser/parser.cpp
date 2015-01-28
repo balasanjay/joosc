@@ -2,6 +2,7 @@
 #include "lexer/lexer.h"
 #include "parser/assignment_visitor.h"
 #include "parser/ast.h"
+#include "parser/call_visitor.h"
 #include "parser/parser_internal.h"
 #include "parser/print_visitor.h"
 
@@ -681,7 +682,7 @@ Parser Parser::ParsePrimaryEndNoArrayAccess(Expr* base, Result<Expr>* out) const
       return Fail(move(errors), out);
     }
 
-    Expr* call = new CallExpr(base, args.Release());
+    Expr* call = new CallExpr(base, *lparen.Get(), args.Release());
     Result<Expr> nested;
     Parser afterEnd = after.ParsePrimaryEnd(call, &nested);
     RETURN_IF_GOOD(afterEnd, nested.Release(), out);
@@ -1021,9 +1022,9 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
 void Weed(const FileSet* fs, Stmt* stmt, ErrorList* out) {
   AssignmentVisitor assignmentChecker(fs, out);
   stmt->Accept(&assignmentChecker);
-  if (out->IsFatal()) {
-    return;
-  }
+
+  CallVisitor callChecker(fs, out);
+  stmt->Accept(&callVisitor);
 
   // More weeding required.
 }

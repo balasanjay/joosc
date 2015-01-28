@@ -220,15 +220,17 @@ class FieldDerefExpr : public Expr {
 
 class CallExpr : public Expr {
   public:
-    CallExpr(Expr* base, ArgumentList* args) : base_(base), args_(args) {}
+    CallExpr(Expr* base, lexer::Token lparen, ArgumentList* args) : base_(base), lparen_(lparen), args_(args) {}
 
     ACCEPT_VISITOR(CallExpr);
 
     const Expr* Base() const { return base_.get(); }
+    lexer::Token Lparen() const { return lparen_; }
     const ArgumentList* Args() const { return args_.get(); }
 
   private:
     unique_ptr<Expr> base_;
+    lexer::Token lparen_;
     unique_ptr<ArgumentList> args_;
 };
 
