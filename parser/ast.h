@@ -468,8 +468,6 @@ public:
   MemberDecl(ModifierList&& mods, Type* type, lexer::Token ident): mods_(std::forward<ModifierList>(mods)), type_(type), ident_(ident) {}
   virtual ~MemberDecl() = default;
 
-  virtual ~MemberDecl() = default;
-
   virtual void Accept(Visitor* visitor) const = 0;
 
   const ModifierList& Mods() const { return mods_; }
