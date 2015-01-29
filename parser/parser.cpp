@@ -1099,6 +1099,7 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
     Parser afterBody = afterParams;
     if (afterParams.IsNext(SEMI)) {
       bodyPtr.reset(new EmptyStmt());
+      afterBody = afterParams.Advance();
     } else {
       Result<Stmt> body;
       afterBody = afterParams.ParseBlock(&body);
@@ -1110,7 +1111,7 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
       bodyPtr.reset(body.Release());
     }
 
-    return afterBody.Advance().Success(
+    return afterBody.Success(
         new MethodDecl(std::move(*mods.Get()), type.Release(), *ident.Get(), std::move(*params.Get()), bodyPtr.release()),
         out);
   }
