@@ -1191,16 +1191,16 @@ Parser Parser::ParseParamList(Result<ParamList>* out) const {
 }
 
 Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
-  //TypeDeclaration:
-  //  ClassDeclaration
-  //  InterfaceDeclaration
-  //  ";"
-  //ClassDeclaration:
-  //  ModifierList "class" Identifier ["extends" QualifiedName] ["implements" Interfaces] ClassBody
-  //InterfaceDeclaration:
-  //  ModifierList "interface" Identifier ["extends" Interfaces] ClassBody
-  //Interfaces:
-  //  QualifiedName {"," QualifiedName}
+  // TypeDeclaration:
+  //   ClassDeclaration
+  //   InterfaceDeclaration
+  //   ";"
+  // ClassDeclaration:
+  //   ModifierList "class" Identifier ["extends" QualifiedName] ["implements" Interfaces] ClassBody
+  // InterfaceDeclaration:
+  //   ModifierList "interface" Identifier ["extends" Interfaces] ClassBody
+  // Interfaces:
+  //   QualifiedName {"," QualifiedName}
 
   SHORT_CIRCUIT;
 
@@ -1221,14 +1221,9 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
     return Fail(MakeUnexpectedTokenError(afterMods.GetNext()), out);
   }
 
-  bool isClass = true;
-  Result<Token> typeToken;
-
-  Parser afterType = afterMods.ParseTokenIf(ExactType(K_CLASS), &typeToken);
-  if (!afterType) {
-    afterType = afterMods.ParseTokenIf(ExactType(K_INTERFACE), &typeToken);
-    isClass = false;
-  }
+  Token typeToken = afterMods.GetNext();
+  Parser afterType = afterMods.Advance();
+  bool isClass = (typeToken.type == K_CLASS);
 
   Result<Token> ident;
   Parser afterIdent = afterType.ParseTokenIf(ExactType(IDENTIFIER), &ident);
@@ -1245,7 +1240,7 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
     Result<QualifiedName> superName;
 
     afterSuper = afterIdent
-      .Advance()
+      .Advance() // Advancing past 'extends'.
       .ParseQualifiedName(&superName);
 
     if (!afterSuper) {
