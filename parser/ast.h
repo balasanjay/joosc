@@ -465,42 +465,59 @@ private:
 
 class MemberDecl {
 public:
-  MemberDecl(ModifierList&& mods, Type* type, lexer::Token ident): mods_(std::forward<ModifierList>(mods)), type_(type), ident_(ident) {}
+  MemberDecl(ModifierList&& mods, lexer::Token ident): mods_(std::forward<ModifierList>(mods)), ident_(ident) {}
 
   virtual void Accept(Visitor* visitor) const = 0;
 
   const ModifierList& Mods() const { return mods_; }
-  const Type* GetType() const { return type_.get(); }
   lexer::Token Ident() const { return ident_; }
 
 private:
   ModifierList mods_;
-  unique_ptr<Type> type_;
   lexer::Token ident_;
 };
 
-class FieldDecl : public MemberDecl {
+class ConstructorDecl : public MemberDecl {
 public:
-  FieldDecl(ModifierList&& mods, Type* type, lexer::Token ident, Expr* val): MemberDecl(std::forward<ModifierList>(mods), type, ident), val_(val) {}
+  ConstructorDecl(ModifierList&& mods, lexer::Token ident, ParamList&& params, Stmt* body): MemberDecl(std::forward<ModifierList>(mods), ident), params_(std::forward<ParamList>(params)), body_(body) {}
 
-  ACCEPT_VISITOR(FieldDecl);
-
-  const Expr* Val() const { return val_.get(); }
-
-private:
-  unique_ptr<Expr> val_; // Might be nullptr.
-};
-
-class MethodDecl : public MemberDecl {
-public:
-  MethodDecl(ModifierList&& mods, Type* type, lexer::Token ident, ParamList&& params, Stmt* body): MemberDecl(std::forward<ModifierList>(mods), type, ident), params_(std::forward<ParamList>(params)), body_(body) {}
-
-  ACCEPT_VISITOR(MethodDecl);
+  ACCEPT_VISITOR(ConstructorDecl);
 
   const ParamList& Params() const { return params_; }
   const Stmt* Body() const { return body_.get(); }
 
 private:
+  ModifierList mods_;
+  ParamList params_;
+  unique_ptr<Stmt> body_;
+};
+
+class FieldDecl : public MemberDecl {
+public:
+  FieldDecl(ModifierList&& mods, Type* type, lexer::Token ident, Expr* val): MemberDecl(std::forward<ModifierList>(mods), ident), type_(type), val_(val) {}
+
+  ACCEPT_VISITOR(FieldDecl);
+
+  const Type* GetType() const { return type_.get(); }
+  const Expr* Val() const { return val_.get(); }
+
+private:
+  unique_ptr<Type> type_;
+  unique_ptr<Expr> val_; // Might be nullptr.
+};
+
+class MethodDecl : public MemberDecl {
+public:
+  MethodDecl(ModifierList&& mods, Type* type, lexer::Token ident, ParamList&& params, Stmt* body): MemberDecl(std::forward<ModifierList>(mods), ident), type_(type), params_(std::forward<ParamList>(params)), body_(body) {}
+
+  ACCEPT_VISITOR(MethodDecl);
+
+  const Type* GetType() const { return type_.get(); }
+  const ParamList& Params() const { return params_; }
+  const Stmt* Body() const { return body_.get(); }
+
+private:
+  unique_ptr<Type> type_;
   ParamList params_;
   unique_ptr<Stmt> body_;
 };
