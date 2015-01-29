@@ -97,30 +97,30 @@ Error* MakeClassMethodNativeNotStaticError(const FileSet* fs, Token token) {
 }
 
 inline void VerifyNoneOf(
-    const FileSet*, const ModifierList*, ErrorList*,
+    const FileSet*, const ModifierList&, ErrorList*,
     std::function<Error*(const FileSet*, Token)>) {
   // Base-case for 0 modifiers, meant to be empty.
 }
 
 template <typename... T>
 inline void VerifyNoneOf(
-    const FileSet* fs, const ModifierList* mods, ErrorList* out,
+    const FileSet* fs, const ModifierList& mods, ErrorList* out,
     std::function<Error*(const FileSet*, Token)> error_maker,
     Modifier disallowed, T... othermodifiers) {
-  if (mods->HasModifier(disallowed)) {
-    out->Append(error_maker(fs, mods->GetModifierToken(disallowed)));
+  if (mods.HasModifier(disallowed)) {
+    out->Append(error_maker(fs, mods.GetModifierToken(disallowed)));
   }
 
   VerifyNoneOf(fs, mods, out, error_maker, othermodifiers...);
 }
 
-void VerifyNoConflictingAccessMods(const FileSet* fs, const ModifierList* mods, ErrorList* out) {
-  if (!mods->HasModifier(PUBLIC) || !mods->HasModifier(PROTECTED)) {
+void VerifyNoConflictingAccessMods(const FileSet* fs, const ModifierList& mods, ErrorList* out) {
+  if (!mods.HasModifier(PUBLIC) || !mods.HasModifier(PROTECTED)) {
     return;
   }
 
-  out->Append(MakeConflictingAccessModError(fs, mods->GetModifierToken(PUBLIC)));
-  out->Append(MakeConflictingAccessModError(fs, mods->GetModifierToken(PROTECTED)));
+  out->Append(MakeConflictingAccessModError(fs, mods.GetModifierToken(PUBLIC)));
+  out->Append(MakeConflictingAccessModError(fs, mods.GetModifierToken(PROTECTED)));
 }
 
 } // namespace
@@ -139,38 +139,38 @@ REC_VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
   // Cannot be both public and protected.
   VerifyNoConflictingAccessMods(fs_, decl->Mods(), errors_);
 
-  const ModifierList* mods = decl->Mods();
+  const ModifierList& mods = decl->Mods();
 
   // A method has a body if and only if it is neither abstract nor native.
   {
     if (IS_CONST_PTR(EmptyStmt, decl->Body())) {
       // Has an empty body; this implies it must be either abstract or native.
-      if (!mods->HasModifier(ABSTRACT) && !mods->HasModifier(NATIVE)) {
+      if (!mods.HasModifier(ABSTRACT) && !mods.HasModifier(NATIVE)) {
         errors_->Append(MakeClassMethodEmptyError(fs_, decl->Ident()));
       }
     } else {
       // Has a non-empty body; this implies it must not be abstract or native.
-      if (mods->HasModifier(ABSTRACT) || mods->HasModifier(NATIVE)) {
+      if (mods.HasModifier(ABSTRACT) || mods.HasModifier(NATIVE)) {
         errors_->Append(MakeClassMethodNotEmptyError(fs_, decl->Ident()));
       }
     }
   }
 
   // An abstract method cannot be static or final.
-  if (mods->HasModifier(ABSTRACT)) {
+  if (mods.HasModifier(ABSTRACT)) {
     VerifyNoneOf(
         fs_, mods, errors_, MakeClassMethodAbstractModifierError,
         STATIC, FINAL);
   }
 
   // A static method cannot be final.
-  if (mods->HasModifier(STATIC) && mods->HasModifier(FINAL)) {
-    errors_->Append(MakeClassMethodStaticFinalError(fs_, mods->GetModifierToken(FINAL)));
+  if (mods.HasModifier(STATIC) && mods.HasModifier(FINAL)) {
+    errors_->Append(MakeClassMethodStaticFinalError(fs_, mods.GetModifierToken(FINAL)));
   }
 
   // A native method must be static.
-  if (mods->HasModifier(NATIVE) && !mods->HasModifier(STATIC)) {
-    errors_->Append(MakeClassMethodNativeNotStaticError(fs_, mods->GetModifierToken(NATIVE)));
+  if (mods.HasModifier(NATIVE) && !mods.HasModifier(STATIC)) {
+    errors_->Append(MakeClassMethodNativeNotStaticError(fs_, mods.GetModifierToken(NATIVE)));
   }
 
   return false;
