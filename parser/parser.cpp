@@ -1213,7 +1213,7 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
     return Fail(move(errors), out);
   }
 
-  if (IsAtEnd()) {
+  if (afterMods.IsAtEnd()) {
     return afterMods.Fail(MakeUnexpectedEOFError(), out);
   }
 
