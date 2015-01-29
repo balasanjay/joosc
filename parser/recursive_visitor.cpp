@@ -134,4 +134,18 @@ VISIT_DEFN(RecursiveVisitor, MethodDecl, meth) {
   meth->Body()->Accept(this);
 }
 
+VISIT_DEFN(RecursiveVisitor, ClassDecl, type) {
+  SHORT_CIRCUIT_CHILD(ClassDecl, type);
+  for (int i = 0; i < type->Members().Size(); ++i) {
+    type->Members().At(i)->Accept(this);
+  }
+}
+
+VISIT_DEFN(RecursiveVisitor, InterfaceDecl, type) {
+  SHORT_CIRCUIT_CHILD(InterfaceDecl, type);
+  for (int i = 0; i < type->Members().Size(); ++i) {
+    type->Members().At(i)->Accept(this);
+  }
+}
+
 } // namespace parser

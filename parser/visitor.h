@@ -28,6 +28,8 @@ class ParamList;
 class Param;
 class FieldDecl;
 class MethodDecl;
+class ClassDecl;
+class InterfaceDecl;
 
 class Visitor {
 public:
@@ -60,6 +62,8 @@ public:
   ABSTRACT_VISIT(ParamList);
   ABSTRACT_VISIT(FieldDecl);
   ABSTRACT_VISIT(MethodDecl);
+  ABSTRACT_VISIT(ClassDecl);
+  ABSTRACT_VISIT(InterfaceDecl);
 
 #undef ABSTRACT_VISIT
 
