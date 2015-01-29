@@ -3,6 +3,7 @@
 
 using base::ErrorList;
 using parser::MemberDecl;
+using parser::TypeDecl;
 using parser::internal::Result;
 
 namespace weeder {
@@ -219,6 +220,106 @@ TEST_F(ModifierVisitorTest, InterfaceMethodOk) {
   decl.Get()->Accept(&visitor);
 
   EXPECT_FALSE(errors.IsFatal());
+}
+
+TEST_F(ModifierVisitorTest, ClassBadModifiers) {
+  MakeParser("protected static native class Foo{}");
+  Result<TypeDecl> decl;
+  ASSERT_FALSE(parser_->ParseTypeDecl(&decl).Failed());
+
+  ErrorList errors;
+  ModifierVisitor visitor(fs_.get(), &errors);
+  decl.Get()->Accept(&visitor);
+
+  string expected =
+"ClassModifierError(0:0-9)\n"
+"ClassModifierError(0:10-16)\n"
+"ClassModifierError(0:17-23)\n";
+
+  EXPECT_TRUE(errors.IsFatal());
+  EXPECT_EQ(expected, testing::PrintToString(errors));
+}
+
+TEST_F(ModifierVisitorTest, ClassBadAbstractFinal) {
+  MakeParser("abstract final class Foo{}");
+  Result<TypeDecl> decl;
+  ASSERT_FALSE(parser_->ParseTypeDecl(&decl).Failed());
+
+  ErrorList errors;
+  ModifierVisitor visitor(fs_.get(), &errors);
+  decl.Get()->Accept(&visitor);
+
+  EXPECT_TRUE(errors.IsFatal());
+  EXPECT_EQ("AbstractFinalClass(0:21-24)\n", testing::PrintToString(errors));
+}
+
+TEST_F(ModifierVisitorTest, ClassOk) {
+  MakeParser("public class Foo{}");
+  Result<TypeDecl> decl;
+  ASSERT_FALSE(parser_->ParseTypeDecl(&decl).Failed());
+
+  ErrorList errors;
+  ModifierVisitor visitor(fs_.get(), &errors);
+  decl.Get()->Accept(&visitor);
+
+  EXPECT_FALSE(errors.IsFatal());
+}
+
+TEST_F(ModifierVisitorTest, InterfaceBadModifiers) {
+  MakeParser("protected static final native interface Foo{}");
+  Result<TypeDecl> decl;
+  ASSERT_FALSE(parser_->ParseTypeDecl(&decl).Failed());
+
+  ErrorList errors;
+  ModifierVisitor visitor(fs_.get(), &errors);
+  decl.Get()->Accept(&visitor);
+
+  string expected =
+"InterfaceModifierError(0:0-9)\n"
+"InterfaceModifierError(0:10-16)\n"
+"InterfaceModifierError(0:17-22)\n"
+"InterfaceModifierError(0:23-29)\n";
+
+  EXPECT_TRUE(errors.IsFatal());
+  EXPECT_EQ(expected, testing::PrintToString(errors));
+}
+
+TEST_F(ModifierVisitorTest, InterfaceOk) {
+  MakeParser("public interface Foo{}");
+  Result<TypeDecl> decl;
+  ASSERT_FALSE(parser_->ParseTypeDecl(&decl).Failed());
+
+  ErrorList errors;
+  ModifierVisitor visitor(fs_.get(), &errors);
+  decl.Get()->Accept(&visitor);
+
+  EXPECT_FALSE(errors.IsFatal());
+}
+
+TEST_F(ModifierVisitorTest, RecursionInterfaceOk) {
+  MakeParser("public interface Foo { void foo(){} }");
+  Result<TypeDecl> decl;
+  ASSERT_FALSE(parser_->ParseTypeDecl(&decl).Failed());
+
+  ErrorList errors;
+  ModifierVisitor visitor(fs_.get(), &errors);
+  decl.Get()->Accept(&visitor);
+
+  EXPECT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InterfaceMethodImplError(0:28-31)\n", testing::PrintToString(errors));
+}
+
+TEST_F(ModifierVisitorTest, RecursionClassOk) {
+  MakeParser("public class Foo { void foo(); }");
+  Result<TypeDecl> decl;
+  ASSERT_FALSE(parser_->ParseTypeDecl(&decl).Failed());
+
+  ErrorList errors;
+  ModifierVisitor visitor(fs_.get(), &errors);
+  decl.Get()->Accept(&visitor);
+
+  EXPECT_TRUE(errors.IsFatal());
+  EXPECT_EQ("ClassMethodEmptyError(0:24-27)\n", testing::PrintToString(errors));
 }
 
 } // namespace weeder
