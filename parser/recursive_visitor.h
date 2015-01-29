@@ -53,6 +53,7 @@ public:
   VISIT_DECL(Param, args) final;
   VISIT_DECL(FieldDecl, args) final;
   VISIT_DECL(MethodDecl, args) final;
+  VISIT_DECL(ConstructorDecl, args) final;
   VISIT_DECL(ClassDecl, args) final;
   VISIT_DECL(InterfaceDecl, args) final;
   VISIT_DECL(ImportDecl, args) final;
@@ -86,6 +87,7 @@ public:
   RECURSIVE_VISITOR_IMPL(ArgumentList);
   RECURSIVE_VISITOR_IMPL(ParamList);
   RECURSIVE_VISITOR_IMPL(Param);
+  RECURSIVE_VISITOR_IMPL(ConstructorDecl);
   RECURSIVE_VISITOR_IMPL(FieldDecl);
   RECURSIVE_VISITOR_IMPL(MethodDecl);
   RECURSIVE_VISITOR_IMPL(ClassDecl);

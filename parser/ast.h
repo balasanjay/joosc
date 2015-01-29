@@ -472,49 +472,68 @@ private:
 
 class MemberDecl {
 public:
-  MemberDecl(ModifierList&& mods, Type* type, lexer::Token ident): mods_(std::forward<ModifierList>(mods)), type_(type), ident_(ident) {}
+  MemberDecl(ModifierList&& mods, lexer::Token ident): mods_(std::forward<ModifierList>(mods)), ident_(ident) {}
   virtual ~MemberDecl() = default;
 
   virtual void Accept(Visitor* visitor) const = 0;
 
   const ModifierList& Mods() const { return mods_; }
-  const Type* GetType() const { return type_.get(); }
   lexer::Token Ident() const { return ident_; }
 
 private:
   DISALLOW_COPY_AND_ASSIGN(MemberDecl);
 
   ModifierList mods_;
-  unique_ptr<Type> type_;
   lexer::Token ident_;
+};
+
+class ConstructorDecl : public MemberDecl {
+public:
+  ConstructorDecl(ModifierList&& mods, lexer::Token ident, ParamList&& params, Stmt* body): MemberDecl(std::forward<ModifierList>(mods), ident), params_(std::forward<ParamList>(params)), body_(body) {}
+
+  ACCEPT_VISITOR(ConstructorDecl);
+
+  const ParamList& Params() const { return params_; }
+  const Stmt* Body() const { return body_.get(); }
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(ConstructorDecl);
+
+  ModifierList mods_;
+  ParamList params_;
+  unique_ptr<Stmt> body_;
 };
 
 class FieldDecl : public MemberDecl {
 public:
-  FieldDecl(ModifierList&& mods, Type* type, lexer::Token ident, Expr* val): MemberDecl(std::forward<ModifierList>(mods), type, ident), val_(val) {}
+  FieldDecl(ModifierList&& mods, Type* type, lexer::Token ident, Expr* val): MemberDecl(std::forward<ModifierList>(mods), ident), type_(type), val_(val) {}
 
   ACCEPT_VISITOR(FieldDecl);
 
+  const Type* GetType() const { return type_.get(); }
   const Expr* Val() const { return val_.get(); }
 
 private:
   DISALLOW_COPY_AND_ASSIGN(FieldDecl);
 
+  unique_ptr<Type> type_;
   unique_ptr<Expr> val_; // Might be nullptr.
 };
 
 class MethodDecl : public MemberDecl {
 public:
-  MethodDecl(ModifierList&& mods, Type* type, lexer::Token ident, ParamList&& params, Stmt* body): MemberDecl(std::forward<ModifierList>(mods), type, ident), params_(std::forward<ParamList>(params)), body_(body) {}
+  MethodDecl(ModifierList&& mods, Type* type, lexer::Token ident, ParamList&& params, Stmt* body): MemberDecl(std::forward<ModifierList>(mods), ident), type_(type), params_(std::forward<ParamList>(params)), body_(body) {}
 
   ACCEPT_VISITOR(MethodDecl);
 
+  const Type* GetType() const { return type_.get(); }
   const ParamList& Params() const { return params_; }
   const Stmt* Body() const { return body_.get(); }
 
 private:
   DISALLOW_COPY_AND_ASSIGN(MethodDecl);
 
+  unique_ptr<Type> type_;
   ParamList params_;
   unique_ptr<Stmt> body_;
 };

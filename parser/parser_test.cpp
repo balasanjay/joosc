@@ -1229,6 +1229,33 @@ TEST_F(ParserTest, MethodDeclParamsBlock) {
   EXPECT_EQ("K_PUBLIC K_INT IDENTIFIER(K_INT IDENTIFIER,array<String> IDENTIFIER){foo;}", Str(decl.Get()));
 }
 
+TEST_F(ParserTest, MethodConstDeclNoBody) {
+  MakeParser("foo();");
+  Result<MemberDecl> decl;
+  Parser after = parser_->ParseMemberDecl(&decl);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(decl));
+  EXPECT_EQ("IDENTIFIER();", Str(decl.Get()));
+}
+
+TEST_F(ParserTest, MethodConstDeclBody) {
+  MakeParser("foo() { a; }");
+  Result<MemberDecl> decl;
+  Parser after = parser_->ParseMemberDecl(&decl);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(decl));
+  EXPECT_EQ("IDENTIFIER(){a;}", Str(decl.Get()));
+}
+
+TEST_F(ParserTest, MethodConstDeclMembers) {
+  MakeParser("foo(int a, int b) {}");
+  Result<MemberDecl> decl;
+  Parser after = parser_->ParseMemberDecl(&decl);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(decl));
+  EXPECT_EQ("IDENTIFIER(K_INT IDENTIFIER,K_INT IDENTIFIER){}", Str(decl.Get()));
+}
+
 TEST_F(ParserTest, TypeDeclBadModifierList) {
   MakeParser("public public");
   Result<TypeDecl> decl;
