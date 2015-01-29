@@ -28,6 +28,7 @@ class ParamList;
 class Param;
 class FieldDecl;
 class MethodDecl;
+class ConstructorDecl;
 class ClassDecl;
 class InterfaceDecl;
 
@@ -62,6 +63,7 @@ public:
   ABSTRACT_VISIT(ParamList);
   ABSTRACT_VISIT(FieldDecl);
   ABSTRACT_VISIT(MethodDecl);
+  ABSTRACT_VISIT(ConstructorDecl);
   ABSTRACT_VISIT(ClassDecl);
   ABSTRACT_VISIT(InterfaceDecl);
 

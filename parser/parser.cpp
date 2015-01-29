@@ -1072,15 +1072,28 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
   // MethodBody:
   //   Block
   //   ";"
+  // ConstructorDeclaration:
+  //   ModifierList ConstructorDeclarator Block
+  // ConstructorDeclarator:
+  //   Identifier  "(" FormalParameterList ")"
   SHORT_CIRCUIT;
 
   Result<ModifierList> mods;
+  Parser afterMods = ParseModifierList(&mods);
+
+  // Check if constructor - look two tokens ahead.
+  bool isConstructor = afterMods.IsNext(IDENTIFIER) &&
+                       afterMods.Advance().IsNext(LPAREN);
+
   Result<Type> type;
   Result<Token> ident;
-  Parser afterCommon = (*this)
-    .ParseModifierList(&mods)
-    .ParseType(&type)
-    .ParseTokenIf(ExactType(IDENTIFIER), &ident);
+  Parser afterType = afterMods;
+
+  // Parse type if not a constructor.
+  if (!isConstructor) {
+    afterType = afterMods.ParseType(&type);
+  }
+  Parser afterCommon = afterType.ParseTokenIf(ExactType(IDENTIFIER), &ident);
   if (!afterCommon) {
     ErrorList errors;
     FirstOf(&errors, &mods, &type, &ident);
@@ -1117,9 +1130,15 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
       bodyPtr.reset(body.Release());
     }
 
-    return afterBody.Success(
-        new MethodDecl(std::move(*mods.Get()), type.Release(), *ident.Get(), std::move(*params.Get()), bodyPtr.release()),
-        out);
+    if (isConstructor) {
+      return afterBody.Success(
+          new ConstructorDecl(std::move(*mods.Get()), *ident.Get(), std::move(*params.Get()), bodyPtr.release()),
+          out);
+    } else {
+      return afterBody.Success(
+          new MethodDecl(std::move(*mods.Get()), type.Release(), *ident.Get(), std::move(*params.Get()), bodyPtr.release()),
+          out);
+    }
   }
 
   // Parse field.
