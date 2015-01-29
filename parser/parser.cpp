@@ -1131,11 +1131,11 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
     }
 
     if (isConstructor) {
-      return afterBody.Advance().Success(
+      return afterBody.Success(
           new ConstructorDecl(std::move(*mods.Get()), *ident.Get(), std::move(*params.Get()), bodyPtr.release()),
           out);
     } else {
-      return afterBody.Advance().Success(
+      return afterBody.Success(
           new MethodDecl(std::move(*mods.Get()), type.Release(), *ident.Get(), std::move(*params.Get()), bodyPtr.release()),
           out);
     }
