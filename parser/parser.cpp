@@ -20,9 +20,13 @@ using lexer::COMMA;
 using lexer::DOT;
 using lexer::IDENTIFIER;
 using lexer::INTEGER;
+using lexer::K_CLASS;
 using lexer::K_ELSE;
+using lexer::K_EXTENDS;
 using lexer::K_FOR;
 using lexer::K_IF;
+using lexer::K_IMPLEMENTS;
+using lexer::K_INTERFACE;
 using lexer::K_NEW;
 using lexer::K_RETURN;
 using lexer::K_THIS;
@@ -1186,8 +1190,143 @@ Parser Parser::ParseParamList(Result<ParamList>* out) const {
   return cur.Success(new ParamList(move(params)), out);
 }
 
+Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
+  //TypeDeclaration:
+  //  ClassDeclaration
+  //  InterfaceDeclaration
+  //  ";"
+  //ClassDeclaration:
+  //  ModifierList "class" Identifier ["extends" QualifiedName] ["implements" Interfaces] ClassBody
+  //InterfaceDeclaration:
+  //  ModifierList "interface" Identifier ["extends" Interfaces] ClassBody
+  //Interfaces:
+  //  QualifiedName {"," QualifiedName}
+
+  SHORT_CIRCUIT;
+
+  Result<ModifierList> mods;
+  Parser afterMods = (*this)
+    .ParseModifierList(&mods);
+  if (!afterMods) {
+    ErrorList errors;
+    mods.ReleaseErrors(&errors);
+    return Fail(move(errors), out);
+  }
+
+  if (IsAtEnd()) {
+    return afterMods.Fail(MakeUnexpectedEOFError(), out);
+  }
+
+  if (!afterMods.IsNext(K_CLASS) && !afterMods.IsNext(K_INTERFACE)) {
+    return Fail(MakeUnexpectedTokenError(afterMods.GetNext()), out);
+  }
+
+  bool isClass = true;
+  Result<Token> typeToken;
+
+  Parser afterType = afterMods.ParseTokenIf(ExactType(K_CLASS), &typeToken);
+  if (!afterType) {
+    afterType = afterMods.ParseTokenIf(ExactType(K_INTERFACE), &typeToken);
+    isClass = false;
+  }
+
+  Result<Token> ident;
+  Parser afterIdent = afterType.ParseTokenIf(ExactType(IDENTIFIER), &ident);
+
+  if (!afterIdent) {
+    ErrorList errors;
+    ident.ReleaseErrors(&errors);
+    return Fail(move(errors), out);
+  }
+
+  Parser afterSuper = afterIdent;
+  unique_ptr<ReferenceType> super(nullptr);
+  if (isClass && afterIdent.IsNext(K_EXTENDS)) {
+    Result<QualifiedName> superName;
+
+    afterSuper = afterIdent
+      .Advance()
+      .ParseQualifiedName(&superName);
+
+    if (!afterSuper) {
+      ErrorList errors;
+      superName.ReleaseErrors(&errors);
+      return Fail(move(errors), out);
+    }
+
+    super.reset(new ReferenceType(superName.Release()));
+  }
+
+  Parser afterInterfaces = afterSuper;
+  UniquePtrVector<ReferenceType> interfaces;
+
+  if ((isClass && afterSuper.IsNext(K_IMPLEMENTS)) || afterSuper.IsNext(K_EXTENDS)) {
+    afterInterfaces = afterInterfaces.Advance();
+
+    while (true) {
+      Result<QualifiedName> name;
+      Parser afterName = afterInterfaces.ParseQualifiedName(&name);
+      if (!afterName) {
+        // Bad token or EOF after a comma.
+        ErrorList errors;
+        name.ReleaseErrors(&errors);
+        return afterInterfaces.Fail(move(errors), out);
+      }
+
+      afterInterfaces = afterName;
+      interfaces.Append(new ReferenceType(name.Release()));
+
+      if (afterInterfaces.IsNext(COMMA)) {
+        afterInterfaces = afterInterfaces.Advance();
+      } else {
+        break;
+      }
+    }
+  }
+
+  Result<Token> lbrace;
+  Parser afterBrace = afterInterfaces.ParseTokenIf(ExactType(LBRACE), &lbrace);
+  if (!afterBrace) {
+    ErrorList errors;
+    lbrace.ReleaseErrors(&errors);
+    return afterInterfaces.Fail(move(errors), out);
+  }
+
+  UniquePtrVector<MemberDecl> members;
+
+  Parser afterBody = afterBrace;
+  while (!afterBody.IsNext(RBRACE)) {
+    if (afterBody.IsNext(SEMI)) {
+      afterBody = afterBody.Advance();
+      continue;
+    }
+
+    Result<MemberDecl> member;
+    Parser afterMember = afterBody.ParseMemberDecl(&member);
+
+    if (!afterMember) {
+      ErrorList errors;
+      member.ReleaseErrors(&errors);
+      return afterBody.Fail(move(errors), out);
+    }
+
+    members.Append(member.Release());
+    afterBody = afterMember;
+  }
+
+  TypeDecl* type = nullptr;
+
+  if (isClass) {
+    type = new ClassDecl(move(*mods.Release()), *ident.Get(), move(interfaces), move(members), super.release());
+  } else {
+    type = new InterfaceDecl(move(*mods.Release()), *ident.Get(), move(interfaces), move(members));
+  }
+
+  return afterBody.Advance().Success(type, out);
+}
+
 // TODO: move Weed function to weeder package.
-void Weed(const FileSet* fs, MemberDecl* ast, ErrorList* out) {
+void Weed(const FileSet* fs, TypeDecl* ast, ErrorList* out) {
   weeder::AssignmentVisitor assignmentChecker(fs, out);
   ast->Accept(&assignmentChecker);
 
@@ -1197,7 +1336,7 @@ void Weed(const FileSet* fs, MemberDecl* ast, ErrorList* out) {
   weeder::TypeVisitor typeChecker(fs, out);
   ast->Accept(&typeChecker);
 
-  weeder::ClassModifierVisitor modifierChecker(fs, out);
+  weeder::ModifierVisitor modifierChecker(fs, out);
   ast->Accept(&modifierChecker);
 
   // More weeding required.
@@ -1205,8 +1344,8 @@ void Weed(const FileSet* fs, MemberDecl* ast, ErrorList* out) {
 
 void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
   Parser parser(fs, file, tokens, 0);
-  Result<MemberDecl> result;
-  parser.ParseMemberDecl(&result);
+  Result<TypeDecl> result;
+  parser.ParseTypeDecl(&result);
   if (!result.IsSuccess()) {
     result.Errors().PrintTo(&std::cout, base::OutputOptions::kUserOutput);
     return;
@@ -1224,6 +1363,7 @@ void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
   std::cout << '\n';
 }
 
+// TODO: Compilation unit should check for ";" in place of a TypeDeclaration.
 // TODO: in for-loop initializers, for-loop incrementors, and top-level
 // statements, we must ensure that they are either assignment, method
 // invocation, or class creation, not other types of expressions (like
