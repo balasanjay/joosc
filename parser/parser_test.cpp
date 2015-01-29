@@ -1475,4 +1475,49 @@ TEST_F(ParserTest, CompUnitSuccess) {
   EXPECT_EQ("package foo;import bar.baz.*;K_PUBLIC class IDENTIFIER {}", Str(unit.Get()));
 }
 
+TEST_F(ParserTest, CompUnitOnlyPackageSuccess) {
+  MakeParser("package foo;");
+  Result<CompUnit> unit;
+  Parser after = parser_->ParseCompUnit(&unit);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(unit));
+  EXPECT_EQ("package foo;", Str(unit.Get()));
+}
+
+TEST_F(ParserTest, CompUnitOnlyImportSuccess) {
+  MakeParser("import foo;");
+  Result<CompUnit> unit;
+  Parser after = parser_->ParseCompUnit(&unit);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(unit));
+  EXPECT_EQ("import foo;", Str(unit.Get()));
+}
+
+TEST_F(ParserTest, CompUnitOnlyTypeSuccess) {
+  MakeParser("class Foo{}");
+  Result<CompUnit> unit;
+  Parser after = parser_->ParseCompUnit(&unit);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(unit));
+  EXPECT_EQ("class IDENTIFIER {}", Str(unit.Get()));
+}
+
+TEST_F(ParserTest, CompUnitOnlySemiSuccess) {
+  MakeParser(";");
+  Result<CompUnit> unit;
+  Parser after = parser_->ParseCompUnit(&unit);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(unit));
+  EXPECT_EQ("", Str(unit.Get()));
+}
+
+TEST_F(ParserTest, CompUnitManySemisSuccess) {
+  MakeParser("package foo;;;;;;;;;;;;;;import bar.baz.*;;;;;;;;;;;public class foo{};;;;;;;");
+  Result<CompUnit> unit;
+  Parser after = parser_->ParseCompUnit(&unit);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(unit));
+  EXPECT_EQ("package foo;import bar.baz.*;K_PUBLIC class IDENTIFIER {}", Str(unit.Get()));
+}
+
 } // namespace parser
