@@ -6,6 +6,7 @@
 #include "weeder/assignment_visitor.h"
 #include "weeder/call_visitor.h"
 #include "weeder/type_visitor.h"
+#include "weeder/modifier_visitor.h"
 
 using base::Error;
 using base::ErrorList;
@@ -1192,6 +1193,9 @@ void Weed(const FileSet* fs, MemberDecl* ast, ErrorList* out) {
 
   weeder::TypeVisitor typeChecker(fs, out);
   ast->Accept(&typeChecker);
+
+  weeder::ClassModifierVisitor modifierChecker(fs, out);
+  ast->Accept(&modifierChecker);
 
   // More weeding required.
 }
