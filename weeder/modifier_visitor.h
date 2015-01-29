@@ -15,6 +15,9 @@ class ModifierVisitor : public parser::RecursiveVisitor {
 public:
   ModifierVisitor(const base::FileSet* fs, base::ErrorList* errors) : fs_(fs), errors_(errors) {}
 
+  REC_VISIT_DECL(ClassDecl, decl);
+  REC_VISIT_DECL(InterfaceDecl, decl);
+
   // TODO: wire this up once we have ClassDecl and InterfaceDecl.
 
 private:

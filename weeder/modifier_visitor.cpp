@@ -196,4 +196,18 @@ REC_VISIT_DEFN(InterfaceModifierVisitor, MethodDecl, decl) {
   return false;
 }
 
+REC_VISIT_DEFN(ModifierVisitor, ClassDecl, decl) {
+  // TODO: implement class modifier checks.
+  ClassModifierVisitor visitor(fs_, errors_);
+  decl->Accept(&visitor);
+  return false;
+}
+
+REC_VISIT_DEFN(ModifierVisitor, InterfaceDecl, decl) {
+  // TODO: implement interface modifier checks.
+  InterfaceModifierVisitor visitor(fs_, errors_);
+  decl->Accept(&visitor);
+  return false;
+}
+
 } // namespace weeder
