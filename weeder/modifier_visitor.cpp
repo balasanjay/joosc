@@ -108,7 +108,7 @@ Error* MakeAbstractFinalClassError(const FileSet* fs, Token token) {
   return MakeSimplePosRangeError(
       fs, token.pos,
       "AbstractFinalClass",
-      "A class cannot be abstract and final.");
+      "A class cannot be both abstract and final.");
 }
 
 Error* MakeInterfaceModifierError(const FileSet* fs, Token token) {
