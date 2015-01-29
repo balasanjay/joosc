@@ -252,16 +252,18 @@ class CastExpr : public Expr {
 
 class NewClassExpr : public Expr {
 public:
-  NewClassExpr(Type* type, ArgumentList* args) : type_(type), args_(args) {}
+  NewClassExpr(lexer::Token newTok, Type* type, ArgumentList* args) : newTok_(newTok), type_(type), args_(args) {}
 
   ACCEPT_VISITOR(NewClassExpr);
 
+  lexer::Token NewToken() const { return newTok_; }
   const Type* GetType() const { return type_.get(); }
   const ArgumentList* Args() const { return args_.get(); }
 
 private:
   DISALLOW_COPY_AND_ASSIGN(NewClassExpr);
 
+  lexer::Token newTok_;
   unique_ptr<Type> type_;
   unique_ptr<ArgumentList> args_;
 };
@@ -425,6 +427,11 @@ public:
     }
     mods_[m] = t;
     return true;
+  }
+
+  lexer::Token GetModifierToken(lexer::Modifier m) const {
+    assert(HasModifier(m));
+    return mods_[m];
   }
 
 private:
