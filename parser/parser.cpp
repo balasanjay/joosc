@@ -1312,9 +1312,9 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
   TypeDecl* type = nullptr;
 
   if (isClass) {
-    type = new ClassDecl(move(*mods.Release()), *ident.Get(), move(interfaces), move(members), super.release());
+    type = new ClassDecl(move(*mods.Get()), *ident.Get(), move(interfaces), move(members), super.release());
   } else {
-    type = new InterfaceDecl(move(*mods.Release()), *ident.Get(), move(interfaces), move(members));
+    type = new InterfaceDecl(move(*mods.Get()), *ident.Get(), move(interfaces), move(members));
   }
 
   return afterBody.Advance().Success(type, out);
