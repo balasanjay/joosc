@@ -178,7 +178,7 @@ public:
   }
 
   VISIT_DECL(FieldDecl, field) {
-    field->Mods()->PrintTo(os_);
+    field->Mods().PrintTo(os_);
     field->GetType()->PrintTo(os_);
     *os_ << ' ';
     *os_ << field->Ident().TypeInfo();
@@ -190,12 +190,12 @@ public:
   }
 
   VISIT_DECL(MethodDecl, meth) {
-    meth->Mods()->PrintTo(os_);
+    meth->Mods().PrintTo(os_);
     meth->GetType()->PrintTo(os_);
     *os_ << ' ';
     *os_ << meth->Ident().TypeInfo();
     *os_ << '(';
-    meth->Params()->Accept(this);
+    meth->Params().Accept(this);
     *os_ << ')';
     meth->Body()->Accept(this);
   }

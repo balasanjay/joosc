@@ -130,7 +130,7 @@ VISIT_DEFN(RecursiveVisitor, FieldDecl, field) {
 
 VISIT_DEFN(RecursiveVisitor, MethodDecl, meth) {
   SHORT_CIRCUIT_CHILD(MethodDecl, meth);
-  meth->Params()->Accept(this);
+  meth->Params().Accept(this);
   meth->Body()->Accept(this);
 }
 
