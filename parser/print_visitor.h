@@ -200,6 +200,56 @@ public:
     meth->Body()->Accept(this);
   }
 
+  VISIT_DECL(ClassDecl, type) {
+    type->Mods().PrintTo(os_);
+    *os_ << "class ";
+    *os_ << type->Ident().TypeInfo();
+    if (type->Super() != nullptr) {
+      *os_ << " extends ";
+      type->Super()->PrintTo(os_);
+    }
+    for (int i = 0; i < type->Interfaces().Size(); ++i) {
+      if (i == 0) {
+        *os_ << " implements ";
+      } else {
+        *os_ << ',' << space_;
+      }
+      type->Interfaces().At(i)->PrintTo(os_);
+    }
+    *os_ << " {" << newline_;
+    PrintVisitor nested = Indent();
+    for (int i = 0; i < type->Members().Size(); ++i) {
+      PutIndent(depth_ + 1);
+      type->Members().At(i)->Accept(&nested);
+      *os_ << newline_;
+    }
+    PutIndent(depth_);
+    *os_ << '}';
+  }
+
+  VISIT_DECL(InterfaceDecl, type) {
+    type->Mods().PrintTo(os_);
+    *os_ << "interface ";
+    *os_ << type->Ident().TypeInfo();
+    for (int i = 0; i < type->Interfaces().Size(); ++i) {
+      if (i == 0) {
+        *os_ << " extends ";
+      } else {
+        *os_ << ',' << space_;
+      }
+      type->Interfaces().At(i)->PrintTo(os_);
+    }
+    *os_ << " {" << newline_;
+    PrintVisitor nested = Indent();
+    for (int i = 0; i < type->Members().Size(); ++i) {
+      PutIndent(depth_ + 1);
+      type->Members().At(i)->Accept(&nested);
+      *os_ << newline_;
+    }
+    PutIndent(depth_);
+    *os_ << '}';
+  }
+
 private:
   PrintVisitor(std::ostream* os, int depth, const string& newline, const string& tab, const string& space) : Visitor(), os_(os), depth_(depth), newline_(newline), tab_(tab), space_(space) {}
 

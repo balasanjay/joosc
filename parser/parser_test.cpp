@@ -1229,4 +1229,123 @@ TEST_F(ParserTest, MethodDeclParamsBlock) {
   EXPECT_EQ("K_PUBLIC K_INT IDENTIFIER(K_INT IDENTIFIER,array<String> IDENTIFIER){foo;}", Str(decl.Get()));
 }
 
+TEST_F(ParserTest, TypeDeclBadModifierList) {
+  MakeParser("public public");
+  Result<TypeDecl> decl;
+  Parser after = parser_->ParseTypeDecl(&decl);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(decl));
+  EXPECT_EQ("DuplicateModifierError(0:7-13)\n", testing::PrintToString(decl.Errors()));
+}
+
+TEST_F(ParserTest, TypeDeclEOFAfterMods) {
+  MakeParser("public");
+  Result<TypeDecl> decl;
+  Parser after = parser_->ParseTypeDecl(&decl);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(decl));
+  EXPECT_EQ("UnexpectedEOFError(0:5)\n", testing::PrintToString(decl.Errors()));
+}
+
+TEST_F(ParserTest, TypeDeclNoType) {
+  MakeParser("public 3");
+  Result<TypeDecl> decl;
+  Parser after = parser_->ParseTypeDecl(&decl);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(decl));
+  EXPECT_EQ("UnexpectedTokenError(0:7)\n", testing::PrintToString(decl.Errors()));
+}
+
+TEST_F(ParserTest, TypeDeclNoIdent) {
+  MakeParser("public class 3");
+  Result<TypeDecl> decl;
+  Parser after = parser_->ParseTypeDecl(&decl);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(decl));
+  EXPECT_EQ("UnexpectedTokenError(0:13)\n", testing::PrintToString(decl.Errors()));
+}
+
+TEST_F(ParserTest, TypeDeclClassBadSuper) {
+  MakeParser("public class Foo extends 123");
+  Result<TypeDecl> decl;
+  Parser after = parser_->ParseTypeDecl(&decl);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(decl));
+  EXPECT_EQ("UnexpectedTokenError(0:25)\n", testing::PrintToString(decl.Errors()));
+}
+
+TEST_F(ParserTest, TypeDeclClassBadImplements) {
+  MakeParser("public class Foo extends Bar implements 123");
+  Result<TypeDecl> decl;
+  Parser after = parser_->ParseTypeDecl(&decl);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(decl));
+  EXPECT_EQ("UnexpectedTokenError(0:40)\n", testing::PrintToString(decl.Errors()));
+}
+
+TEST_F(ParserTest, TypeDeclClassBadImplementsList) {
+  MakeParser("public class Foo extends Bar implements Baz, 123");
+  Result<TypeDecl> decl;
+  Parser after = parser_->ParseTypeDecl(&decl);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(decl));
+  EXPECT_EQ("UnexpectedTokenError(0:45)\n", testing::PrintToString(decl.Errors()));
+}
+
+TEST_F(ParserTest, TypeDeclClassNoLBrace) {
+  MakeParser("public class Foo extends Bar implements Baz, Buh (");
+  Result<TypeDecl> decl;
+  Parser after = parser_->ParseTypeDecl(&decl);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(decl));
+  EXPECT_EQ("UnexpectedTokenError(0:49)\n", testing::PrintToString(decl.Errors()));
+}
+
+TEST_F(ParserTest, TypeDeclClassBadMember) {
+  MakeParser("public class Foo extends Bar implements Baz, Buh {3;}");
+  Result<TypeDecl> decl;
+  Parser after = parser_->ParseTypeDecl(&decl);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(decl));
+  EXPECT_EQ("UnexpectedTokenError(0:50)\n", testing::PrintToString(decl.Errors()));
+}
+
+TEST_F(ParserTest, TypeDeclClassManySemis) {
+  MakeParser("public class Foo extends Bar implements Baz, Buh {;;;;;;;int i = 0;}");
+  Result<TypeDecl> decl;
+  Parser after = parser_->ParseTypeDecl(&decl);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(decl));
+  EXPECT_TRUE(after.IsAtEnd());
+  EXPECT_EQ("K_PUBLIC class IDENTIFIER extends Bar implements Baz,Buh {K_INT IDENTIFIER=INTEGER;}", Str(decl.Get()));
+}
+
+TEST_F(ParserTest, TypeDeclInterfaceBadExtends) {
+  MakeParser("public interface Foo extends 123");
+  Result<TypeDecl> decl;
+  Parser after = parser_->ParseTypeDecl(&decl);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(decl));
+  EXPECT_EQ("UnexpectedTokenError(0:29)\n", testing::PrintToString(decl.Errors()));
+}
+
+TEST_F(ParserTest, TypeDeclInterfaceBadExtendsList) {
+  MakeParser("public interface Foo extends Bar, 123");
+  Result<TypeDecl> decl;
+  Parser after = parser_->ParseTypeDecl(&decl);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(decl));
+  EXPECT_EQ("UnexpectedTokenError(0:34)\n", testing::PrintToString(decl.Errors()));
+}
+
+TEST_F(ParserTest, TypeDeclInterfaceManySemis) {
+  MakeParser("public interface Foo extends Bar, Baz, Buh {;;;;;;;int i = 0;}");
+  Result<TypeDecl> decl;
+  Parser after = parser_->ParseTypeDecl(&decl);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(decl));
+  EXPECT_TRUE(after.IsAtEnd());
+  EXPECT_EQ("K_PUBLIC interface IDENTIFIER extends Bar,Baz,Buh {K_INT IDENTIFIER=INTEGER;}", Str(decl.Get()));
+}
+
 } // namespace parser

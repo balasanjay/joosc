@@ -152,6 +152,7 @@ struct Parser {
   Parser ParseModifierList(internal::Result<ModifierList>* out) const;
   Parser ParseMemberDecl(internal::Result<MemberDecl>* out) const;
   Parser ParseParamList(internal::Result<ParamList>* out) const;
+  Parser ParseTypeDecl(internal::Result<TypeDecl>* out) const;
 
   bool IsAtEnd() const {
     return failed_ || (uint)index_ >= tokens_->size();
