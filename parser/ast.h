@@ -482,6 +482,8 @@ public:
   lexer::Token Ident() const { return ident_; }
 
 private:
+  DISALLOW_COPY_AND_ASSIGN(MemberDecl);
+
   ModifierList mods_;
   unique_ptr<Type> type_;
   lexer::Token ident_;
@@ -496,6 +498,8 @@ public:
   const Expr* Val() const { return val_.get(); }
 
 private:
+  DISALLOW_COPY_AND_ASSIGN(FieldDecl);
+
   unique_ptr<Expr> val_; // Might be nullptr.
 };
 
@@ -509,6 +513,8 @@ public:
   const Stmt* Body() const { return body_.get(); }
 
 private:
+  DISALLOW_COPY_AND_ASSIGN(MethodDecl);
+
   ParamList params_;
   unique_ptr<Stmt> body_;
 };
@@ -526,6 +532,8 @@ public:
   const base::UniquePtrVector<MemberDecl>& Members() const { return members_; }
 
 private:
+  DISALLOW_COPY_AND_ASSIGN(TypeDecl);
+
   ModifierList mods_;
   lexer::Token ident_;
   base::UniquePtrVector<ReferenceType> interfaces_;
@@ -541,6 +549,8 @@ public:
   const ReferenceType* Super() const { return super_.get(); }
 
 private:
+  DISALLOW_COPY_AND_ASSIGN(ClassDecl);
+
   unique_ptr<ReferenceType> super_; // Might be nullptr.
 };
 
@@ -550,8 +560,42 @@ public:
   InterfaceDecl(ModifierList&& mods, lexer::Token ident, base::UniquePtrVector<ReferenceType>&& interfaces, base::UniquePtrVector<MemberDecl>&& members): TypeDecl(std::forward<ModifierList>(mods), ident, std::forward<base::UniquePtrVector<ReferenceType>>(interfaces), std::forward<base::UniquePtrVector<MemberDecl>>(members)) {}
 
   ACCEPT_VISITOR(InterfaceDecl);
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(InterfaceDecl);
 };
 
+class ImportDecl final {
+public:
+  ImportDecl(ReferenceType* name, bool isWildCard) : name_(name), isWildCard_(isWildCard) {}
+
+  void Accept(Visitor* visitor) const { visitor->VisitImportDecl(this); }
+
+  const ReferenceType* Name() const { return name_.get(); }
+  bool IsWildCard() const { return isWildCard_; }
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(ImportDecl);
+
+  unique_ptr<ReferenceType> name_; // Will not be nullptr.
+  bool isWildCard_;
+};
+
+class CompUnit final {
+public:
+  CompUnit(ReferenceType* package, base::UniquePtrVector<ImportDecl>&& imports, base::UniquePtrVector<TypeDecl>&& types): package_(package), imports_(std::forward<base::UniquePtrVector<ImportDecl>>(imports)), types_(std::forward<base::UniquePtrVector<TypeDecl>>(types)) {}
+
+  void Accept(Visitor* visitor) const { visitor->VisitCompUnit(this); }
+
+  const ReferenceType* Package() const { return package_.get(); }
+  const base::UniquePtrVector<ImportDecl>& Imports() const { return imports_; }
+  const base::UniquePtrVector<TypeDecl>& Types() const { return types_; }
+
+private:
+  unique_ptr<ReferenceType> package_; // Might be nullptr.
+  base::UniquePtrVector<ImportDecl> imports_;
+  base::UniquePtrVector<TypeDecl> types_;
+};
 
 #undef ACCEPT_VISITOR
 

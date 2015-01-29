@@ -2,20 +2,13 @@ CompilationUnit:
   [PackageDeclaration] {ImportDeclaration} [TypeDeclaration]
 
 PackageDeclaration:
-  package QualifiedName ;
+  "package" QualifiedName ";"
 
 QualifiedName:
   Identifier {"." Identifier}
 
 ImportDeclaration:
-  SingleTypeImportDeclaration
-  TypeImportOnDemandDeclaration
-
-SingleTypeImportDeclaration:
-  import QualifiedName ";"
-
-TypeImportOnDemandDeclaration:
-  import QualifiedName ".*;"
+  "import" QualifiedName [".*"] ";"
 
 TypeDeclaration:
   ClassDeclaration

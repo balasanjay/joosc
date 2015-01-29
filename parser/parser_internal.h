@@ -154,6 +154,13 @@ struct Parser {
   Parser ParseParamList(internal::Result<ParamList>* out) const;
   Parser ParseTypeDecl(internal::Result<TypeDecl>* out) const;
 
+  // Compilation unit parsers.
+  Parser ParseCompUnit(internal::Result<CompUnit>* out) const;
+  Parser ParseImportDecl(internal::Result<ImportDecl>* out) const;
+
+  // Helper methods.
+  Parser EatSemis() const;
+
   bool IsAtEnd() const {
     return failed_ || (uint)index_ >= tokens_->size();
   }

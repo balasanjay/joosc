@@ -55,7 +55,8 @@ public:
   VISIT_DECL(MethodDecl, args) final;
   VISIT_DECL(ClassDecl, args) final;
   VISIT_DECL(InterfaceDecl, args) final;
-
+  VISIT_DECL(ImportDecl, args) final;
+  VISIT_DECL(CompUnit, args) final;
 
 #define RECURSIVE_VISITOR_IMPL(type) \
   virtual bool Visit##type##Impl(const type*) { return true; }
@@ -89,6 +90,8 @@ public:
   RECURSIVE_VISITOR_IMPL(MethodDecl);
   RECURSIVE_VISITOR_IMPL(ClassDecl);
   RECURSIVE_VISITOR_IMPL(InterfaceDecl);
+  RECURSIVE_VISITOR_IMPL(ImportDecl);
+  RECURSIVE_VISITOR_IMPL(CompUnit);
 
 #undef RECURSIVE_VISITOR_IMPL
 
