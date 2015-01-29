@@ -429,6 +429,11 @@ public:
     return true;
   }
 
+  lexer::Token GetModifierToken(lexer::Modifier m) const {
+    assert(HasModifier(m));
+    return mods_[m];
+  }
+
 private:
   vector<lexer::Token> mods_;
 };
