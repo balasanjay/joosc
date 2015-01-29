@@ -1048,7 +1048,7 @@ Parser Parser::ParseModifierList(Result<ModifierList>* out) const {
     Result<Token> tok;
     Parser next = cur.ParseTokenIf(IsModifier(), &tok);
     if (!next) {
-      return cur.Success(new ModifierList(ml), out);
+      return cur.Success(new ModifierList(move(ml)), out);
     }
     if (!ml.AddModifier(*tok.Get())) {
       return cur.Fail(MakeDuplicateModifierError(*tok.Get()), out);
