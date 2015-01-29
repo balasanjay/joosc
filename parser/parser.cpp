@@ -26,8 +26,10 @@ using lexer::K_EXTENDS;
 using lexer::K_FOR;
 using lexer::K_IF;
 using lexer::K_IMPLEMENTS;
+using lexer::K_IMPORT;
 using lexer::K_INTERFACE;
 using lexer::K_NEW;
+using lexer::K_PACKAGE;
 using lexer::K_RETURN;
 using lexer::K_THIS;
 using lexer::LBRACE;
@@ -205,6 +207,15 @@ QualifiedName* MakeQualifiedName(const File *file, const vector<Token>& tokens) 
 }
 
 } // namespace
+
+Parser Parser::EatSemis() const {
+  SHORT_CIRCUIT;
+  Parser cur = *this;
+  while (cur.IsNext(SEMI)) {
+    cur = cur.Advance();
+  }
+  return cur;
+}
 
 Error* Parser::MakeUnexpectedTokenError(Token token) const {
   // TODO: say what you expected instead.
@@ -1339,8 +1350,141 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
   return afterBody.Advance().Success(type, out);
 }
 
+Parser Parser::ParseImportDecl(Result<ImportDecl>* out) const {
+  // ImportDeclaration:
+  //   "import" QualifiedName [".*"] ";"
+
+  SHORT_CIRCUIT;
+
+  vector<Token> tokens;
+  bool isWildCard = false;
+
+  Result<Token> import;
+  Result<Token> ident;
+  Parser cur = (*this)
+    .ParseTokenIf(ExactType(K_IMPORT), &import)
+    .ParseTokenIf(ExactType(IDENTIFIER), &ident);
+
+  if (!cur) {
+    ErrorList errors;
+    FirstOf(&errors, &import, &ident);
+    return Fail(move(errors), out);
+  }
+  tokens.push_back(*ident.Get());
+
+  while (cur.IsNext(DOT)) {
+    Token dot = cur.GetNext();
+    // Advancing past dot.
+    Parser next = cur.Advance();
+    if (next.IsNext(MUL)) {
+      // Advancing past *.
+      cur = next.Advance();
+      isWildCard = true;
+      break;
+    }
+
+    Result<Token> nextIdent;
+    next = next.ParseTokenIf(ExactType(IDENTIFIER), &nextIdent);
+    if (!next) {
+      ErrorList errors;
+      nextIdent.ReleaseErrors(&errors);
+      return Fail(move(errors), out);
+    }
+
+    tokens.push_back(dot);
+    tokens.push_back(*nextIdent.Get());
+    cur = next;
+  }
+
+  Result<Token> semi;
+  Parser afterSemi = cur.ParseTokenIf(ExactType(SEMI), &semi);
+
+  if (!afterSemi) {
+    ErrorList errors;
+    semi.ReleaseErrors(&errors);
+    return Fail(move(errors), out);
+  }
+
+  return afterSemi.Success(new ImportDecl(new ReferenceType(MakeQualifiedName(GetFile(), tokens)), isWildCard), out);
+}
+
+Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
+  // CompilationUnit:
+  //   [PackageDeclaration] {ImportDeclaration} {TypeDeclaration}
+  // PackageDeclaration:
+  //   "package" QualifiedName ";"
+  // QualifiedName:
+  //   Identifier {"." Identifier}
+  // ImportDeclaration:
+  //   "import" QualifiedName [".*"] ";"
+
+  SHORT_CIRCUIT;
+
+  UniquePtrVector<ImportDecl> imports;
+  UniquePtrVector<TypeDecl> types;
+
+  if (IsAtEnd()) {
+    return Success(new CompUnit(nullptr, move(imports), move(types)), out);
+  }
+
+  unique_ptr<ReferenceType> packageName(nullptr);
+  Parser afterPackage = *this;
+  if (IsNext(K_PACKAGE)) {
+    Result<Token> package;
+    Result<QualifiedName> name;
+    Result<Token> semi;
+
+    afterPackage = (*this)
+      .ParseTokenIf(ExactType(K_PACKAGE), &package)
+      .ParseQualifiedName(&name)
+      .ParseTokenIf(ExactType(SEMI), &semi);
+
+    if (!afterPackage) {
+      ErrorList errors;
+      FirstOf(&errors, &package, &name, &semi);
+      return Fail(move(errors), out);
+    }
+
+    packageName.reset(new ReferenceType(name.Release()));
+  }
+
+  Parser afterImports = afterPackage.EatSemis();
+  while (afterImports.IsNext(K_IMPORT)) {
+    Result<ImportDecl> import;
+    afterImports = afterImports
+      .ParseImportDecl(&import)
+      .EatSemis();
+
+    if (!afterImports) {
+      ErrorList errors;
+      import.ReleaseErrors(&errors);
+      return Fail(move(errors), out);
+    }
+
+    imports.Append(import.Release());
+  }
+
+  Parser afterTypes = afterImports;
+  while (!afterTypes.IsAtEnd()) {
+    Result<TypeDecl> type;
+    afterTypes = afterTypes
+      .ParseTypeDecl(&type)
+      .EatSemis();
+
+    if (!afterTypes) {
+      ErrorList errors;
+      type.ReleaseErrors(&errors);
+      return Fail(move(errors), out);
+    }
+
+    types.Append(type.Release());
+  }
+
+  return afterTypes.Success(new CompUnit(packageName.release(), move(imports), move(types)), out);
+}
+
 // TODO: move Weed function to weeder package.
-void Weed(const FileSet* fs, TypeDecl* ast, ErrorList* out) {
+void Weed(const FileSet* fs, CompUnit* ast, ErrorList* out) {
   weeder::AssignmentVisitor assignmentChecker(fs, out);
   ast->Accept(&assignmentChecker);
 
@@ -1358,8 +1502,8 @@ void Weed(const FileSet* fs, TypeDecl* ast, ErrorList* out) {
 
 void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
   Parser parser(fs, file, tokens, 0);
-  Result<TypeDecl> result;
-  parser.ParseTypeDecl(&result);
+  Result<CompUnit> result;
+  parser.ParseCompUnit(&result);
   if (!result.IsSuccess()) {
     result.Errors().PrintTo(&std::cout, base::OutputOptions::kUserOutput);
     return;
@@ -1377,14 +1521,12 @@ void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
   std::cout << '\n';
 }
 
-// TODO: Compilation unit should check for ";" in place of a TypeDeclaration.
 // TODO: in for-loop initializers, for-loop incrementors, and top-level
 // statements, we must ensure that they are either assignment, method
 // invocation, or class creation, not other types of expressions (like
 // boolean ops).
 // TODO: Weed out statements of the form "new PrimitiveType([ArgumentList])".
 // TODO: Handle parsing empty strings.
-// TODO: Weed expressions of the form "f()()()()...".
 // TODO: Weed out void primitive type for all but method decls.
 // TODO: Weed: interface can't contain constructor.
 // TODO: Weed: class can't contain abstract method decls.

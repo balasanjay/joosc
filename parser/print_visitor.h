@@ -259,6 +259,34 @@ public:
     *os_ << '}';
   }
 
+  VISIT_DECL(ImportDecl, import) {
+    *os_ << "import ";
+    import->Name()->PrintTo(os_);
+    *os_ << " ;";
+  }
+
+  VISIT_DECL(CompUnit, unit) {
+    if (unit->Package() != nullptr) {
+      *os_ << "package ";
+      unit->Package()->PrintTo(os_);
+      *os_ << ";" << newline_;
+    }
+
+    for (int i = 0; i < unit->Imports().Size(); ++i) {
+      *os_ << "import ";
+      unit->Imports().At(i)->Name()->PrintTo(os_);
+      if (unit->Imports().At(i)->IsWildCard()) {
+        *os_ << ".*";
+      }
+      *os_ << ";" << newline_;
+    }
+
+    for (int i = 0; i < unit->Types().Size(); ++i) {
+      unit->Types().At(i)->Accept(this);
+      *os_ << newline_;
+    }
+  }
+
 private:
   PrintVisitor(std::ostream* os, int depth, const string& newline, const string& tab, const string& space) : Visitor(), os_(os), depth_(depth), newline_(newline), tab_(tab), space_(space) {}
 
