@@ -1355,8 +1355,10 @@ Parser Parser::ParseImportDecl(Result<ImportDecl>* out) const {
 
   while (cur.IsNext(DOT)) {
     Token dot = cur.GetNext();
+    // Advancing past dot.
     Parser next = cur.Advance();
     if (next.IsNext(MUL)) {
+      // Advancing past *.
       cur = next.Advance();
       isWildCard = true;
       break;
@@ -1383,6 +1385,7 @@ Parser Parser::ParseImportDecl(Result<ImportDecl>* out) const {
     return Fail(MakeUnexpectedTokenError(cur.GetNext()), out);
   }
 
+  // Advancing past semi.
   cur = cur.Advance();
 
   return cur.Success(new ImportDecl(new ReferenceType(MakeQualifiedName(GetFile(), tokens)), isWildCard), out);

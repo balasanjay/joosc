@@ -1348,4 +1348,104 @@ TEST_F(ParserTest, TypeDeclInterfaceManySemis) {
   EXPECT_EQ("K_PUBLIC interface IDENTIFIER extends Bar,Baz,Buh {K_INT IDENTIFIER=INTEGER;}", Str(decl.Get()));
 }
 
+TEST_F(ParserTest, CompUnitEmptyFile) {
+  MakeParser("");
+  Result<CompUnit> unit;
+  Parser after = parser_->ParseCompUnit(&unit);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(unit));
+  EXPECT_TRUE(after.IsAtEnd());
+  EXPECT_EQ("", Str(unit.Get()));
+}
+
+TEST_F(ParserTest, CompUnitBadPackage) {
+  MakeParser("package 1;");
+  Result<CompUnit> unit;
+  Parser after = parser_->ParseCompUnit(&unit);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(unit));
+  EXPECT_EQ("UnexpectedTokenError(0:8)\n", testing::PrintToString(unit.Errors()));
+}
+
+TEST_F(ParserTest, CompUnitBadImport) {
+  MakeParser("package foo; import 1");
+  Result<CompUnit> unit;
+  Parser after = parser_->ParseCompUnit(&unit);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(unit));
+  EXPECT_EQ("UnexpectedTokenError(0:20)\n", testing::PrintToString(unit.Errors()));
+}
+
+TEST_F(ParserTest, CompUnitBadImports) {
+  MakeParser("package foo; import bar; import 1");
+  Result<CompUnit> unit;
+  Parser after = parser_->ParseCompUnit(&unit);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(unit));
+  EXPECT_EQ("UnexpectedTokenError(0:32)\n", testing::PrintToString(unit.Errors()));
+}
+
+TEST_F(ParserTest, CompUnitBadImportTooManyStars) {
+  MakeParser("package foo; import bar.*.*;");
+  Result<CompUnit> unit;
+  Parser after = parser_->ParseCompUnit(&unit);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(unit));
+  EXPECT_EQ("UnexpectedTokenError(0:25)\n", testing::PrintToString(unit.Errors()));
+}
+
+TEST_F(ParserTest, CompUnitBadImportBadIdentAfterDot) {
+  MakeParser("package foo; import bar.baz.1;");
+  Result<CompUnit> unit;
+  Parser after = parser_->ParseCompUnit(&unit);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(unit));
+  EXPECT_EQ("UnexpectedTokenError(0:28)\n", testing::PrintToString(unit.Errors()));
+}
+
+TEST_F(ParserTest, CompUnitBadImportEOF) {
+  MakeParser("package foo; import bar.baz");
+  Result<CompUnit> unit;
+  Parser after = parser_->ParseCompUnit(&unit);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(unit));
+  EXPECT_EQ("UnexpectedEOFError(0:26)\n", testing::PrintToString(unit.Errors()));
+}
+
+TEST_F(ParserTest, CompUnitBadImportNoSemi) {
+  MakeParser("package foo; import bar.baz,");
+  Result<CompUnit> unit;
+  Parser after = parser_->ParseCompUnit(&unit);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(unit));
+  EXPECT_EQ("UnexpectedTokenError(0:27)\n", testing::PrintToString(unit.Errors()));
+}
+
+TEST_F(ParserTest, CompUnitBadType) {
+  MakeParser("package foo; import bar.baz; public int i;");
+  Result<CompUnit> unit;
+  Parser after = parser_->ParseCompUnit(&unit);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(unit));
+  EXPECT_EQ("UnexpectedTokenError(0:36)\n", testing::PrintToString(unit.Errors()));
+}
+
+TEST_F(ParserTest, CompUnitExtraTokens) {
+  MakeParser("package foo; import bar.baz; public class foo{} i");
+  Result<CompUnit> unit;
+  Parser after = parser_->ParseCompUnit(&unit);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(unit));
+  EXPECT_EQ("UnexpectedTokenError(0:48)\n", testing::PrintToString(unit.Errors()));
+}
+
+TEST_F(ParserTest, CompUnitSuccess) {
+  MakeParser("package foo; import bar.baz.*; public class foo{}");
+  Result<CompUnit> unit;
+  Parser after = parser_->ParseCompUnit(&unit);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(unit));
+  EXPECT_EQ("package foo;import bar.baz.*;K_PUBLIC class IDENTIFIER {}", Str(unit.Get()));
+}
+
 } // namespace parser
