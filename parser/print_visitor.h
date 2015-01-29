@@ -191,7 +191,6 @@ public:
 
   VISIT_DECL(ConstructorDecl, meth) {
     meth->Mods().PrintTo(os_);
-    *os_ << ' ';
     *os_ << meth->Ident().TypeInfo();
     *os_ << '(';
     meth->Params().Accept(this);
