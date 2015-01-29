@@ -29,6 +29,8 @@ class Param;
 class FieldDecl;
 class MethodDecl;
 class ConstructorDecl;
+class ClassDecl;
+class InterfaceDecl;
 
 class Visitor {
 public:
@@ -62,6 +64,8 @@ public:
   ABSTRACT_VISIT(FieldDecl);
   ABSTRACT_VISIT(MethodDecl);
   ABSTRACT_VISIT(ConstructorDecl);
+  ABSTRACT_VISIT(ClassDecl);
+  ABSTRACT_VISIT(InterfaceDecl);
 
 #undef ABSTRACT_VISIT
 

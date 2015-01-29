@@ -252,16 +252,18 @@ class CastExpr : public Expr {
 
 class NewClassExpr : public Expr {
 public:
-  NewClassExpr(Type* type, ArgumentList* args) : type_(type), args_(args) {}
+  NewClassExpr(lexer::Token newTok, Type* type, ArgumentList* args) : newTok_(newTok), type_(type), args_(args) {}
 
   ACCEPT_VISITOR(NewClassExpr);
 
+  lexer::Token NewToken() const { return newTok_; }
   const Type* GetType() const { return type_.get(); }
   const ArgumentList* Args() const { return args_.get(); }
 
 private:
   DISALLOW_COPY_AND_ASSIGN(NewClassExpr);
 
+  lexer::Token newTok_;
   unique_ptr<Type> type_;
   unique_ptr<ArgumentList> args_;
 };
@@ -427,6 +429,11 @@ public:
     return true;
   }
 
+  lexer::Token GetModifierToken(lexer::Modifier m) const {
+    assert(HasModifier(m));
+    return mods_[m];
+  }
+
 private:
   vector<lexer::Token> mods_;
 };
@@ -466,6 +473,7 @@ private:
 class MemberDecl {
 public:
   MemberDecl(ModifierList&& mods, lexer::Token ident): mods_(std::forward<ModifierList>(mods)), ident_(ident) {}
+  virtual ~MemberDecl() = default;
 
   virtual void Accept(Visitor* visitor) const = 0;
 
@@ -520,6 +528,45 @@ private:
   unique_ptr<Type> type_;
   ParamList params_;
   unique_ptr<Stmt> body_;
+};
+
+class TypeDecl {
+public:
+  TypeDecl(ModifierList&& mods, lexer::Token ident, base::UniquePtrVector<ReferenceType>&& interfaces, base::UniquePtrVector<MemberDecl>&& members): mods_(std::forward<ModifierList>(mods)), ident_(ident), interfaces_(std::forward<base::UniquePtrVector<ReferenceType>>(interfaces)), members_(std::forward<base::UniquePtrVector<MemberDecl>>(members)) {}
+  virtual ~TypeDecl() = default;
+
+  virtual void Accept(Visitor* visitor) const = 0;
+
+  const ModifierList& Mods() const { return mods_; }
+  lexer::Token Ident() const { return ident_; }
+  const base::UniquePtrVector<ReferenceType>& Interfaces() const { return interfaces_; }
+  const base::UniquePtrVector<MemberDecl>& Members() const { return members_; }
+
+private:
+  ModifierList mods_;
+  lexer::Token ident_;
+  base::UniquePtrVector<ReferenceType> interfaces_;
+  base::UniquePtrVector<MemberDecl> members_;
+};
+
+class ClassDecl : public TypeDecl {
+public:
+  ClassDecl(ModifierList&& mods, lexer::Token ident, base::UniquePtrVector<ReferenceType>&& interfaces, base::UniquePtrVector<MemberDecl>&& members, ReferenceType* super): TypeDecl(std::forward<ModifierList>(mods), ident, std::forward<base::UniquePtrVector<ReferenceType>>(interfaces), std::forward<base::UniquePtrVector<MemberDecl>>(members)), super_(super) {}
+
+  ACCEPT_VISITOR(ClassDecl);
+
+  const ReferenceType* Super() const { return super_.get(); }
+
+private:
+  unique_ptr<ReferenceType> super_; // Might be nullptr.
+};
+
+
+class InterfaceDecl : public TypeDecl {
+public:
+  InterfaceDecl(ModifierList&& mods, lexer::Token ident, base::UniquePtrVector<ReferenceType>&& interfaces, base::UniquePtrVector<MemberDecl>&& members): TypeDecl(std::forward<ModifierList>(mods), ident, std::forward<base::UniquePtrVector<ReferenceType>>(interfaces), std::forward<base::UniquePtrVector<MemberDecl>>(members)) {}
+
+  ACCEPT_VISITOR(InterfaceDecl);
 };
 
 

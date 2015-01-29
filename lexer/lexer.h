@@ -121,7 +121,9 @@ struct TokenTypeInfo {
 
   static TokenTypeInfo FromTokenType(TokenType type);
 
-  TokenTypeInfo(const TokenTypeInfo& other) = default;
+  // NOTE: do not replace this with "= default", it triggers some weird codegen
+  // bug on linux.student.cs.
+  TokenTypeInfo(const TokenTypeInfo& other) : type_(other.type_), kind_(other.kind_), precedence_(other.precedence_), mod_(other.mod_), repr_(other.repr_), value_(other.value_) {  }
 
   TokenTypeInfo Keyword() const {
     TokenTypeInfo ret = *this;

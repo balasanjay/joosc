@@ -23,7 +23,7 @@ TypeDeclaration:
   ";"
 
 ClassDeclaration:
-  ModifierList "class" Identifier [Super] [Interfaces] ClassBody
+  ModifierList "class" Identifier ["extends" QualifiedName] ["implements" Interfaces] ClassBody
 
 ModifierList:
   {Modifier}
@@ -36,17 +36,11 @@ Modifier:
   static
   native
 
-Super:
-  "extends" QualifiedName
-
 Interfaces:
-  "implements" QualifiedName {"," QualifiedName}
+  QualifiedName {"," QualifiedName}
 
 InterfaceDeclaration:
-  ModifierList "interface" Identifier [ExtendsInterfaces] ClassBody
-
-ExtendsInterfaces:
-  "extends" QualifiedName {"," QualifiedName}
+  ModifierList "interface" Identifier ["extends" Interfaces] ClassBody
 
 ClassBody:
   "{" {ClassBodyDeclaration} "}"
