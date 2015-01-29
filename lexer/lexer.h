@@ -99,18 +99,29 @@ enum TokenType {
   NUM_TOKEN_TYPES,  // Not a valid token type.
 };
 
+enum Modifier {
+  PUBLIC,
+  PROTECTED,
+  ABSTRACT,
+  STATIC,
+  FINAL,
+  NATIVE,
+  NUM_MODIFIERS
+};
+
 struct TokenTypeInfo {
   static TokenTypeInfo New(TokenType type, string repr, string value) {
     TokenTypeInfo t;
     t.type_ = type;
     t.repr_ = repr;
     t.value_ = value;
+    t.mod_ = lexer::NUM_MODIFIERS;
     return t;
   }
 
   static TokenTypeInfo FromTokenType(TokenType type);
 
-  TokenTypeInfo(const TokenTypeInfo& other) : type_(other.type_), kind_(other.kind_), precedence_(other.precedence_), repr_(other.repr_), value_(other.value_) {  }
+  TokenTypeInfo(const TokenTypeInfo& other) = default;
 
   TokenTypeInfo Keyword() const {
     TokenTypeInfo ret = *this;
@@ -163,6 +174,13 @@ struct TokenTypeInfo {
     return ret;
   }
 
+  TokenTypeInfo MakeModifier(Modifier m) const {
+    TokenTypeInfo ret = *this;
+    ret.kind_ = Kind(ret.kind_ | MODIFIER);
+    ret.mod_ = m;
+    return ret;
+  }
+
   TokenType Type() const { return type_; }
   bool IsSupported() const { return (kind_ & SUPPORTED) == SUPPORTED; }
   bool IsKeyword() const { return (kind_ & KEYWORD) == KEYWORD; }
@@ -172,6 +190,11 @@ struct TokenTypeInfo {
   bool IsLiteral() const { return (kind_ & LITERAL) == LITERAL; }
   bool IsSymbol() const { return (kind_ & SYMBOL) == SYMBOL; }
   bool IsSkippable() const { return (kind_ & SKIPPABLE) == SKIPPABLE; }
+  bool IsModifier() const { return (kind_ & MODIFIER) == MODIFIER; }
+  Modifier GetModifier() const {
+    assert(IsModifier());
+    return mod_;
+  }
 
   int BinOpPrec() const {
     assert(IsBinOp());
@@ -191,6 +214,7 @@ private:
     LITERAL = 1 << 5,
     SYMBOL = 1 << 6,
     SKIPPABLE = 1 << 7,
+    MODIFIER = 1 << 8,
   };
 
   friend std::ostream& operator<<(std::ostream& out, const TokenTypeInfo& t);
@@ -200,6 +224,7 @@ private:
   TokenType type_ = NUM_TOKEN_TYPES;
   Kind kind_ = SUPPORTED;
   int precedence_ = -1; // Only valid if kind_ == BIN_OP.
+  Modifier mod_ = NUM_MODIFIERS;
   string repr_ = "";
   string value_ = "";
 };

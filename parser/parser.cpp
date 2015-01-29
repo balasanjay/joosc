@@ -116,6 +116,9 @@ struct IsLiteral {
 struct IsPrimitive {
   bool operator()(const Token& t) { return t.TypeInfo().IsPrimitive(); }
 };
+struct IsModifier {
+  bool operator()(const Token& t) { return t.TypeInfo().IsModifier(); }
+};
 
 
 Expr* FixPrecedence(UniquePtrVector<Expr>&& owned_exprs, const vector<Token>& ops) {
@@ -200,6 +203,14 @@ QualifiedName* MakeQualifiedName(const File *file, const vector<Token>& tokens) 
 Error* Parser::MakeUnexpectedTokenError(Token token) const {
   // TODO: say what you expected instead.
   return MakeSimplePosRangeError(fs_, Pos(token.pos.fileid, token.pos.begin), "UnexpectedTokenError", "Unexpected token.");
+}
+
+Error* Parser::MakeDuplicateModifierError(Token token) const {
+  return MakeSimplePosRangeError(fs_, token.pos, "DuplicateModifierError", "Duplicate modifier.");
+}
+
+Error* Parser::MakeParamRequiresNameError(Token token) const {
+  return MakeSimplePosRangeError(fs_, token.pos, "ParamRequiresNameError", "A parameter requires a type and a name.");
 }
 
 Error* Parser::MakeUnexpectedEOFError() const {
@@ -1019,21 +1030,177 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   return next.Fail(move(errors), out);
 }
 
+Parser Parser::ParseModifierList(Result<ModifierList>* out) const {
+  // ModifierList:
+  //   {Modifier}
+  // Modifier:
+  //   public
+  //   protected
+  //   abstract
+  //   final
+  //   static
+  //   native
+  SHORT_CIRCUIT;
+
+  ModifierList ml;
+  Parser cur = *this;
+  while (true) {
+    Result<Token> tok;
+    Parser next = cur.ParseTokenIf(IsModifier(), &tok);
+    if (!next) {
+      return cur.Success(new ModifierList(move(ml)), out);
+    }
+    if (!ml.AddModifier(*tok.Get())) {
+      return cur.Fail(MakeDuplicateModifierError(*tok.Get()), out);
+    }
+    cur = next;
+  }
+}
+
+Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
+  // MethodOrFieldDecl:
+  //   ModifierList Type Identifier MethodOrFieldDeclEnd
+  // MethodOrFieldDeclEnd:
+  //   "(" [FormalParameterList] ")" MethodBody
+  //   ["=" Expression] ";"
+  // MethodBody:
+  //   Block
+  //   ";"
+  SHORT_CIRCUIT;
+
+  Result<ModifierList> mods;
+  Result<Type> type;
+  Result<Token> ident;
+  Parser afterCommon = (*this)
+    .ParseModifierList(&mods)
+    .ParseType(&type)
+    .ParseTokenIf(ExactType(IDENTIFIER), &ident);
+  if (!afterCommon) {
+    ErrorList errors;
+    FirstOf(&errors, &mods, &type, &ident);
+    return Fail(move(errors), out);
+  }
+
+  // Parse method.
+  if (afterCommon.IsNext(LPAREN)) {
+    Result<ParamList> params;
+    Result<Token> rparen;
+    Parser afterParams = afterCommon.Advance()
+      .ParseParamList(&params)
+      .ParseTokenIf(ExactType(RPAREN), &rparen);
+
+    if (!afterParams) {
+      ErrorList errors;
+      FirstOf(&errors, &params, &rparen);
+      return afterCommon.Fail(move(errors), out);
+    }
+
+    unique_ptr<Stmt> bodyPtr(nullptr);
+    Parser afterBody = afterParams;
+    if (afterParams.IsNext(SEMI)) {
+      bodyPtr.reset(new EmptyStmt());
+      afterBody = afterParams.Advance();
+    } else {
+      Result<Stmt> body;
+      afterBody = afterParams.ParseBlock(&body);
+      if (!afterBody) {
+        ErrorList errors;
+        body.ReleaseErrors(&errors);
+        return afterParams.Fail(move(errors), out);
+      }
+      bodyPtr.reset(body.Release());
+    }
+
+    return afterBody.Success(
+        new MethodDecl(std::move(*mods.Get()), type.Release(), *ident.Get(), std::move(*params.Get()), bodyPtr.release()),
+        out);
+  }
+
+  // Parse field.
+  if (afterCommon.IsNext(SEMI)) {
+    return afterCommon.Advance().Success(
+        new FieldDecl(std::move(*mods.Get()), type.Release(), *ident.Get(), nullptr), out);
+  }
+
+  Result<Token> eq;
+  Result<Expr> val;
+  Result<Token> semi;
+  Parser afterVal = afterCommon
+    .ParseTokenIf(ExactType(ASSG), &eq)
+    .ParseExpression(&val)
+    .ParseTokenIf(ExactType(SEMI), &semi);
+
+  RETURN_IF_GOOD(
+      afterVal,
+      new FieldDecl(std::move(*mods.Get()), type.Release(), *ident.Get(), val.Release()),
+      out);
+
+  ErrorList errors;
+  FirstOf(&errors, &eq, &val, &semi);
+  return afterCommon.Fail(move(errors), out);
+}
+
+Parser Parser::ParseParamList(Result<ParamList>* out) const {
+  // FormalParameterList:
+  //   [FormalParameter {, FormalParameter}]
+  // FormalParameter:
+  //   Type Identifier
+  SHORT_CIRCUIT;
+
+  UniquePtrVector<Param> params;
+  Parser cur = *this;
+  bool firstParam = true;
+  while (true) {
+    Result<Type> type;
+    Result<Token> ident;
+    Parser afterType = cur.ParseType(&type);
+    if (!afterType) {
+      // If can't parse type then return empty param list.
+      if (firstParam) {
+        break;
+      }
+      // Bad token or EOF after a comma.
+      ErrorList errors;
+      type.ReleaseErrors(&errors);
+      return cur.Fail(move(errors), out);
+    }
+    firstParam = false;
+
+    Parser afterIdent = afterType
+      .ParseTokenIf(ExactType(IDENTIFIER), &ident);
+    if (!afterIdent) {
+      // Committed to getting identifier.
+      return afterType.Fail(MakeParamRequiresNameError(cur.GetNext()), out);
+    }
+    cur = afterIdent;
+    params.Append(new Param(type.Release(), *ident.Get()));
+
+    if (cur.IsNext(COMMA)) {
+      cur = cur.Advance();
+    } else {
+      break;
+    }
+  }
+
+  return cur.Success(new ParamList(move(params)), out);
+}
+
+
 // TODO: move Weed function to weeder package.
-void Weed(const FileSet* fs, Stmt* stmt, ErrorList* out) {
+void Weed(const FileSet* fs, MemberDecl* ast, ErrorList* out) {
   weeder::AssignmentVisitor assignmentChecker(fs, out);
-  stmt->Accept(&assignmentChecker);
+  ast->Accept(&assignmentChecker);
 
   weeder::CallVisitor callChecker(fs, out);
-  stmt->Accept(&callChecker);
+  ast->Accept(&callChecker);
 
   // More weeding required.
 }
 
 void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
   Parser parser(fs, file, tokens, 0);
-  Result<Stmt> result;
-  parser.ParseStmt(&result);
+  Result<MemberDecl> result;
+  parser.ParseMemberDecl(&result);
   if (!result.IsSuccess()) {
     result.Errors().PrintTo(&std::cout, base::OutputOptions::kUserOutput);
     return;
@@ -1058,5 +1225,8 @@ void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
 // TODO: Weed out statements of the form "new PrimitiveType([ArgumentList])".
 // TODO: Handle parsing empty strings.
 // TODO: Weed expressions of the form "f()()()()...".
+// TODO: Weed out void primitive type for all but method decls.
+// TODO: Weed: interface can't contain constructor.
+// TODO: Weed: class can't contain abstract method decls.
 
 } // namespace parser

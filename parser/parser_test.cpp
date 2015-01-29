@@ -1094,4 +1094,139 @@ TEST_F(ParserTest, ForStmtPropagateErrorFromBody) {
   EXPECT_EQ("UnexpectedTokenError(0:9)\n", testing::PrintToString(stmt.Errors()));
 }
 
+TEST_F(ParserTest, ParamListBasic) {
+  MakeParser("int a, String b, a.b.c.d.e foo");
+  Result<ParamList> params;
+  Parser after = parser_->ParseParamList(&params);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(params));
+  EXPECT_EQ("K_INT IDENTIFIER,String IDENTIFIER,a.b.c.d.e IDENTIFIER", Str(params.Get()));
+}
+
+TEST_F(ParserTest, ParamListOne) {
+  MakeParser("int a");
+  Result<ParamList> params;
+  Parser after = parser_->ParseParamList(&params);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(params));
+  EXPECT_EQ("K_INT IDENTIFIER", Str(params.Get()));
+}
+
+TEST_F(ParserTest, ParamListEmpty) {
+  MakeParser(")");
+  Result<ParamList> params;
+  Parser after = parser_->ParseParamList(&params);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(params));
+  EXPECT_EQ("", Str(params.Get()));
+}
+
+TEST_F(ParserTest, ParamListNoParamName) {
+  MakeParser("int");
+  Result<ParamList> params;
+  Parser after = parser_->ParseParamList(&params);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(params));
+  EXPECT_EQ("ParamRequiresNameError(0:0-3)\n", testing::PrintToString(params.Errors()));
+}
+
+TEST_F(ParserTest, ParamListHangingComma) {
+  MakeParser("int foo,)");
+  Result<ParamList> params;
+  Parser after = parser_->ParseParamList(&params);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(params));
+  EXPECT_EQ("UnexpectedTokenError(0:8)\n", testing::PrintToString(params.Errors()));
+}
+
+TEST_F(ParserTest, ParamListHangingCommaEOF) {
+  MakeParser("int foo,");
+  Result<ParamList> params;
+  Parser after = parser_->ParseParamList(&params);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(params));
+  EXPECT_EQ("UnexpectedEOFError(0:7)\n", testing::PrintToString(params.Errors()));
+}
+
+TEST_F(ParserTest, FieldDeclSimple) {
+  MakeParser("int foo;");
+  Result<MemberDecl> decl;
+  Parser after = parser_->ParseMemberDecl(&decl);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(decl));
+  EXPECT_EQ("K_INT IDENTIFIER;", Str(decl.Get()));
+}
+
+TEST_F(ParserTest, FieldDeclModsOrdered) {
+  MakeParser("native public static abstract protected final int foo;");
+  Result<MemberDecl> decl;
+  Parser after = parser_->ParseMemberDecl(&decl);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(decl));
+  EXPECT_EQ("K_PUBLIC K_PROTECTED K_ABSTRACT K_STATIC K_FINAL K_NATIVE K_INT IDENTIFIER;", Str(decl.Get()));
+}
+
+TEST_F(ParserTest, FieldDeclWithAssign) {
+  MakeParser("int foo = 1;");
+  Result<MemberDecl> decl;
+  Parser after = parser_->ParseMemberDecl(&decl);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(decl));
+  EXPECT_EQ("K_INT IDENTIFIER=INTEGER;", Str(decl.Get()));
+}
+
+TEST_F(ParserTest, FieldDeclExprError) {
+  MakeParser("int foo = -1 +;");
+  Result<MemberDecl> decl;
+  Parser after = parser_->ParseMemberDecl(&decl);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(decl));
+  EXPECT_EQ("UnexpectedTokenError(0:14)\n", testing::PrintToString(decl.Errors()));
+}
+
+TEST_F(ParserTest, FieldDeclJustEq) {
+  MakeParser("int foo =;");
+  Result<MemberDecl> decl;
+  Parser after = parser_->ParseMemberDecl(&decl);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(decl));
+  EXPECT_EQ("UnexpectedTokenError(0:9)\n", testing::PrintToString(decl.Errors()));
+}
+
+TEST_F(ParserTest, FieldDeclBadBlock) {
+  MakeParser("int foo{}");
+  Result<MemberDecl> decl;
+  Parser after = parser_->ParseMemberDecl(&decl);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(decl));
+  EXPECT_EQ("UnexpectedTokenError(0:7)\n", testing::PrintToString(decl.Errors()));
+}
+
+TEST_F(ParserTest, FieldDeclNoSemi) {
+  MakeParser("int foo = 1}");
+  Result<MemberDecl> decl;
+  Parser after = parser_->ParseMemberDecl(&decl);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(decl));
+  EXPECT_EQ("UnexpectedTokenError(0:11)\n", testing::PrintToString(decl.Errors()));
+}
+
+TEST_F(ParserTest, MethodDeclNoBody) {
+  MakeParser("int foo();");
+  Result<MemberDecl> decl;
+  Parser after = parser_->ParseMemberDecl(&decl);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(decl));
+  EXPECT_EQ("K_INT IDENTIFIER();", Str(decl.Get()));
+}
+
+TEST_F(ParserTest, MethodDeclParamsBlock) {
+  MakeParser("public int main(int argc, String[] argv) {foo;}");
+  Result<MemberDecl> decl;
+  Parser after = parser_->ParseMemberDecl(&decl);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(decl));
+  EXPECT_EQ("K_PUBLIC K_INT IDENTIFIER(K_INT IDENTIFIER,array<String> IDENTIFIER){foo;}", Str(decl.Get()));
+}
+
 } // namespace parser

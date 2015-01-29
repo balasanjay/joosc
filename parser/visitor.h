@@ -24,6 +24,10 @@ class IfStmt;
 class ForStmt;
 
 class ArgumentList;
+class ParamList;
+class Param;
+class FieldDecl;
+class MethodDecl;
 
 class Visitor {
 public:
@@ -52,6 +56,10 @@ public:
   ABSTRACT_VISIT(ForStmt);
 
   ABSTRACT_VISIT(ArgumentList);
+  ABSTRACT_VISIT(Param);
+  ABSTRACT_VISIT(ParamList);
+  ABSTRACT_VISIT(FieldDecl);
+  ABSTRACT_VISIT(MethodDecl);
 
 #undef ABSTRACT_VISIT
 

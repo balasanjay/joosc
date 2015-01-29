@@ -49,6 +49,10 @@ public:
 
   // Override Visitor's other visitors.
   VISIT_DECL(ArgumentList, args) final;
+  VISIT_DECL(ParamList, args) final;
+  VISIT_DECL(Param, args) final;
+  VISIT_DECL(FieldDecl, args) final;
+  VISIT_DECL(MethodDecl, args) final;
 
 
 #define RECURSIVE_VISITOR_IMPL(type) \
@@ -77,6 +81,10 @@ public:
 
   // Declare other *Impl methods.
   RECURSIVE_VISITOR_IMPL(ArgumentList);
+  RECURSIVE_VISITOR_IMPL(ParamList);
+  RECURSIVE_VISITOR_IMPL(Param);
+  RECURSIVE_VISITOR_IMPL(FieldDecl);
+  RECURSIVE_VISITOR_IMPL(MethodDecl);
 
 #undef RECURSIVE_VISITOR_IMPL
 
