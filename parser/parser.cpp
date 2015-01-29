@@ -5,6 +5,7 @@
 #include "parser/print_visitor.h"
 #include "weeder/assignment_visitor.h"
 #include "weeder/call_visitor.h"
+#include "weeder/type_visitor.h"
 
 using base::Error;
 using base::ErrorList;
@@ -514,7 +515,7 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
       return Fail(move(errors), out);
     }
 
-    Expr* newExpr = new NewClassExpr(type.Release(), args.Release());
+    Expr* newExpr = new NewClassExpr(*newTok.Get(), type.Release(), args.Release());
     Result<Expr> nested;
     Parser afterEnd = afterCall.ParsePrimaryEnd(newExpr, &nested);
     RETURN_IF_GOOD(afterEnd, nested.Release(), out);
@@ -1181,10 +1182,8 @@ Parser Parser::ParseParamList(Result<ParamList>* out) const {
       break;
     }
   }
-
   return cur.Success(new ParamList(move(params)), out);
 }
-
 
 // TODO: move Weed function to weeder package.
 void Weed(const FileSet* fs, MemberDecl* ast, ErrorList* out) {
@@ -1193,6 +1192,9 @@ void Weed(const FileSet* fs, MemberDecl* ast, ErrorList* out) {
 
   weeder::CallVisitor callChecker(fs, out);
   ast->Accept(&callChecker);
+
+  weeder::TypeVisitor typeChecker(fs, out);
+  ast->Accept(&typeChecker);
 
   // More weeding required.
 }
