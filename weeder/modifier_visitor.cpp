@@ -71,7 +71,7 @@ Error* MakeClassMethodNotEmptyError(const FileSet* fs, Token token) {
   return MakeSimplePosRangeError(
       fs, token.pos,
       "ClassMethodNotEmptyError",
-      "A native or static method must not have a body.");
+      "A native or abstract method must not have a body.");
 }
 
 Error* MakeClassMethodAbstractModifierError(const FileSet* fs, Token token) {
