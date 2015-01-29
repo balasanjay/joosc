@@ -96,6 +96,29 @@ Error* MakeClassMethodNativeNotStaticError(const FileSet* fs, Token token) {
       "A native method must be static.");
 }
 
+Error* MakeClassModifierError(const FileSet* fs, Token token) {
+  assert(token.TypeInfo().IsModifier());
+  return MakeSimplePosRangeError(
+      fs, token.pos,
+      "ClassModifierError",
+      "A class cannot be " + token.TypeInfo().Value() + ".");
+}
+
+Error* MakeAbstractFinalClassError(const FileSet* fs, Token token) {
+  return MakeSimplePosRangeError(
+      fs, token.pos,
+      "AbstractFinalClass",
+      "A class cannot be both abstract and final.");
+}
+
+Error* MakeInterfaceModifierError(const FileSet* fs, Token token) {
+  assert(token.TypeInfo().IsModifier());
+  return MakeSimplePosRangeError(
+      fs, token.pos,
+      "InterfaceModifierError",
+      "An interface cannot be " + token.TypeInfo().Value() + ".");
+}
+
 inline void VerifyNoneOf(
     const FileSet*, const ModifierList&, ErrorList*,
     std::function<Error*(const FileSet*, Token)>) {
@@ -193,6 +216,33 @@ REC_VISIT_DEFN(InterfaceModifierVisitor, MethodDecl, decl) {
     errors_->Append(MakeInterfaceMethodImplError(fs_, decl->Ident()));
   }
 
+  return false;
+}
+
+REC_VISIT_DEFN(ModifierVisitor, ClassDecl, decl) {
+  // A class cannot be protected, static, or native.
+  VerifyNoneOf(
+      fs_, decl->Mods(), errors_, MakeClassModifierError,
+      PROTECTED, STATIC, NATIVE);
+
+  // A class cannot be both abstract and final.
+  if (decl->Mods().HasModifier(ABSTRACT) && decl->Mods().HasModifier(FINAL)) {
+    errors_->Append(MakeAbstractFinalClassError(fs_, decl->Ident()));
+  }
+
+  ClassModifierVisitor visitor(fs_, errors_);
+  decl->Accept(&visitor);
+  return false;
+}
+
+REC_VISIT_DEFN(ModifierVisitor, InterfaceDecl, decl) {
+  // An interface cannot be protected, static, final, or native.
+  VerifyNoneOf(
+      fs_, decl->Mods(), errors_, MakeInterfaceModifierError,
+      PROTECTED, STATIC, FINAL, NATIVE);
+
+  InterfaceModifierVisitor visitor(fs_, errors_);
+  decl->Accept(&visitor);
   return false;
 }
 

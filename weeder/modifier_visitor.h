@@ -15,7 +15,8 @@ class ModifierVisitor : public parser::RecursiveVisitor {
 public:
   ModifierVisitor(const base::FileSet* fs, base::ErrorList* errors) : fs_(fs), errors_(errors) {}
 
-  // TODO: wire this up once we have ClassDecl and InterfaceDecl.
+  REC_VISIT_DECL(ClassDecl, decl);
+  REC_VISIT_DECL(InterfaceDecl, decl);
 
 private:
   const base::FileSet* fs_;
@@ -28,8 +29,8 @@ private:
 //   3) A static method cannot be final.
 //   4) A native method must be static.
 //   5) No field can be final, abstract, or native.
-//   6) TODO: A class cannot be static, native, or protected.
-//   7) TODO: A class cannot be both abstract and final.
+//   6) A class cannot be protected, static, or native.
+//   7) A class cannot be both abstract and final.
 class ClassModifierVisitor : public parser::RecursiveVisitor {
 public:
   ClassModifierVisitor(const base::FileSet* fs, base::ErrorList* errors) : fs_(fs), errors_(errors) {}
@@ -46,7 +47,7 @@ private:
 //   1) An interface cannot contain fields or (TODO) constructors.
 //   2) An interface method cannot be static, final, native, or protected.
 //   3) An interface method cannot have a body.
-//   4) TODO: An interface cannot be native, static, protected or final.
+//   4) An interface cannot be protected, static, final, or native.
 class InterfaceModifierVisitor : public parser::RecursiveVisitor {
 public:
   InterfaceModifierVisitor(const base::FileSet* fs, base::ErrorList* errors) : fs_(fs), errors_(errors) {}

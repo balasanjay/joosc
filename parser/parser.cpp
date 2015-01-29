@@ -1331,7 +1331,7 @@ void Weed(const FileSet* fs, TypeDecl* ast, ErrorList* out) {
   weeder::TypeVisitor typeChecker(fs, out);
   ast->Accept(&typeChecker);
 
-  weeder::ClassModifierVisitor modifierChecker(fs, out);
+  weeder::ModifierVisitor modifierChecker(fs, out);
   ast->Accept(&modifierChecker);
 
   // More weeding required.
