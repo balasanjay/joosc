@@ -1044,15 +1044,15 @@ Parser Parser::ParseModifierList(Result<ModifierList>* out) const {
   //   native
   SHORT_CIRCUIT;
 
-  unique_ptr<ModifierList> ml(new ModifierList());
+  ModifierList ml;
   Parser cur = *this;
   while (true) {
     Result<Token> tok;
     Parser next = cur.ParseTokenIf(IsModifier(), &tok);
     if (!next) {
-      return cur.Success(ml.release(), out);
+      return cur.Success(new ModifierList(ml), out);
     }
-    if (!ml->AddModifier(*tok.Get())) {
+    if (!ml.AddModifier(*tok.Get())) {
       return cur.Fail(MakeDuplicateModifierError(*tok.Get()), out);
     }
     cur = next;
@@ -1098,11 +1098,12 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
     }
 
     unique_ptr<Stmt> bodyPtr(nullptr);
+    Parser afterBody = afterParams;
     if (afterParams.IsNext(SEMI)) {
       bodyPtr.reset(new EmptyStmt());
     } else {
       Result<Stmt> body;
-      Parser afterBody = afterParams.ParseBlock(&body);
+      afterBody = afterParams.ParseBlock(&body);
       if (!afterBody) {
         ErrorList errors;
         body.ReleaseErrors(&errors);
@@ -1111,32 +1112,33 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
       bodyPtr.reset(body.Release());
     }
 
-    return afterParams.Advance().Success(
-        new MethodDecl(mods.Release(), type.Release(), *ident.Get(), params.Release(), bodyPtr.release()),
+    return afterBody.Advance().Success(
+        new MethodDecl(std::move(*mods.Get()), type.Release(), *ident.Get(), std::move(*params.Get()), bodyPtr.release()),
         out);
   }
 
   // Parse field.
-  unique_ptr<Expr> valPtr(nullptr);
-  Parser afterOptVal = afterCommon;
-  if (afterCommon.IsNext(ASSG)) {
-    Result<Expr> val;
-    afterOptVal = afterCommon.Advance().ParseExpression(&val);
-    if (!afterOptVal) {
-      ErrorList errors;
-      val.ReleaseErrors(&errors);
-      return afterCommon.Advance().Fail(move(errors), out);
-    }
-    valPtr.reset(val.Release());
+  if (afterCommon.IsNext(SEMI)) {
+    return afterCommon.Advance().Success(
+        new FieldDecl(std::move(*mods.Get()), type.Release(), *ident.Get(), nullptr), out);
   }
 
+  Result<Token> eq;
+  Result<Expr> val;
   Result<Token> semi;
-  Parser afterSemi = afterOptVal.ParseTokenIf(ExactType(SEMI), &semi);
-  RETURN_IF_GOOD(afterSemi, new FieldDecl(mods.Release(), type.Release(), *ident.Get(), valPtr.release()), out);
+  Parser afterVal = afterCommon
+    .ParseTokenIf(ExactType(ASSG), &eq)
+    .ParseExpression(&val)
+    .ParseTokenIf(ExactType(SEMI), &semi);
+
+  RETURN_IF_GOOD(
+      afterVal,
+      new FieldDecl(std::move(*mods.Get()), type.Release(), *ident.Get(), val.Release()),
+      out);
 
   ErrorList errors;
-  semi.ReleaseErrors(&errors);
-  return afterOptVal.Fail(move(errors), out);
+  FirstOf(&errors, &eq, &val, &semi);
+  return afterCommon.Fail(move(errors), out);
 }
 
 Parser Parser::ParseParamList(Result<ParamList>* out) const {
