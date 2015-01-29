@@ -1396,18 +1396,16 @@ Parser Parser::ParseImportDecl(Result<ImportDecl>* out) const {
     cur = next;
   }
 
-  if (cur.IsAtEnd()) {
-    return cur.Fail(MakeUnexpectedEOFError(), out);
+  Result<Token> semi;
+  Parser afterSemi = cur.ParseTokenIf(ExactType(SEMI), &semi);
+
+  if (!afterSemi) {
+    ErrorList errors;
+    semi.ReleaseErrors(&errors);
+    return Fail(move(errors), out);
   }
 
-  if (!cur.IsNext(SEMI)) {
-    return Fail(MakeUnexpectedTokenError(cur.GetNext()), out);
-  }
-
-  // Advancing past semi.
-  cur = cur.Advance();
-
-  return cur.Success(new ImportDecl(new ReferenceType(MakeQualifiedName(GetFile(), tokens)), isWildCard), out);
+  return afterSemi.Success(new ImportDecl(new ReferenceType(MakeQualifiedName(GetFile(), tokens)), isWildCard), out);
 }
 
 Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
