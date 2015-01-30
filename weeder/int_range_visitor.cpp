@@ -31,7 +31,7 @@ void VerifyIsInRange(const string& strVal, Token token, bool isNegated, const ba
     intVal *= -1;
   }
 
-  if (intVal < INT_32_MIN || intVal > INT_32_MAX) {
+  if (intVal < INT_32_MIN || intVal > INT_32_MAX || !ss) {
     errors->Append(MakeInvalidIntRangeError(fs, token));
   }
 }

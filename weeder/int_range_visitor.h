@@ -8,7 +8,7 @@
 namespace weeder {
 
 // IntRangeVisitor checks that int literals are in range.
-// Ints must be within 32-bit signed two's complement.
+// Joos ints are signed 32-bit integers.
 class IntRangeVisitor: public parser::RecursiveVisitor {
 public:
   IntRangeVisitor(const base::FileSet* fs, base::ErrorList* errors) : fs_(fs), errors_(errors) {}
