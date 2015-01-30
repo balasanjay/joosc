@@ -81,6 +81,17 @@ class InvalidCharacterLitError : public base::PosRangeError {
   string Error() const override { return "Invalid character literal."; }
 };
 
+class UnsupportedTokenError : public base::PosRangeError {
+ public:
+  UnsupportedTokenError(const base::FileSet* fs, base::PosRange posrange)
+      : base::PosRangeError(fs, posrange) {}
+
+ protected:
+  string SimpleError() const override { return "UnsupportedTokenError"; }
+  string Error() const override { return "Unsupported token."; }
+};
+
+
 }  // namespace lexer
 
 #endif
