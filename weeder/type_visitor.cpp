@@ -32,8 +32,6 @@ using parser::Type;
 namespace weeder {
 namespace {
 
-
-
 /**
  * Accepts assignment expressions, CallExpr, NewClassExpr.
  */
