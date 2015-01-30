@@ -33,6 +33,8 @@ private:
 //   7) A class cannot be both abstract and final.
 //   8) A constructor cannot be abstract, static, final, or native.
 //   9) A constructor must have a body; i.e. it can't be ";".
+//   10) A class must be public.
+//   11) A member must be public or protected.
 class ClassModifierVisitor : public parser::RecursiveVisitor {
 public:
   ClassModifierVisitor(const base::FileSet* fs, base::ErrorList* errors) : fs_(fs), errors_(errors) {}
@@ -51,6 +53,8 @@ private:
 //   2) An interface method cannot be static, final, native, or protected.
 //   3) An interface method cannot have a body.
 //   4) An interface cannot be protected, static, final, or native.
+//   5) An interface must be public.
+//   6) An interface method must be public.
 class InterfaceModifierVisitor : public parser::RecursiveVisitor {
 public:
   InterfaceModifierVisitor(const base::FileSet* fs, base::ErrorList* errors) : fs_(fs), errors_(errors) {}
