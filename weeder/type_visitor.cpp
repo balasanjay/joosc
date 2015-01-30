@@ -32,44 +32,30 @@ using parser::Type;
 namespace weeder {
 namespace {
 
-/**
- * Accepts assignment expressions, CallExpr, NewClassExpr.
- */
+// Accepts assignment expressions, CallExpr, NewClassExpr.
 bool IsTopLevelExpr(const Expr* expr) {
   if (expr == nullptr) {
     return true;
   }
   if (IS_CONST_PTR(BinExpr, expr)) {
     const BinExpr* binExpr = dynamic_cast<const BinExpr*>(expr);
-    if (binExpr->Op().type == ASSG) {
-      return true;
-    }
-    return false;
-  } else if (IS_CONST_PTR(CallExpr, expr) ||
-             IS_CONST_PTR(NewClassExpr, expr)) {
-    return true;
+    return binExpr->Op().type == ASSG;
   }
-  return false;
+  return IS_CONST_PTR(CallExpr, expr) || IS_CONST_PTR(NewClassExpr, expr);
 }
 
-/**
- * Accepts EmptyStmt and what IsTopLevelExpr(Expr*) accepts
- * (assignment expressions, CallExpr, NewClassExpr).
- */
+// Accepts EmptyStmt and what IsTopLevelExpr(Expr*) accepts
+// (assignment expressions, CallExpr, NewClassExpr).
 bool IsTopLevelExpr(const Stmt* stmt) {
   if (IS_CONST_PTR(ExprStmt, stmt)) {
     const Expr* expr = dynamic_cast<const ExprStmt*>(stmt)->GetExpr();
     return IsTopLevelExpr(expr);
-  } else if (IS_CONST_PTR(EmptyStmt, stmt)) {
-    return true;
   }
-  return false;
+  return IS_CONST_PTR(EmptyStmt, stmt);
 }
 
-/**
- * Rejects ExprStmts that are not top level expressions.
- * Accepts all other Stmts.
- */
+// Rejects ExprStmts that are not top level expressions.
+// Accepts all other Stmts.
 bool IsTopLevelStmt(const Stmt* stmt) {
   // Only fail if it is an expr that is not top level.
   if (IS_CONST_PTR(ExprStmt, stmt)) {
@@ -102,7 +88,7 @@ Error* MakeInvalidInstanceOfType(const FileSet* fs, Token token) {
 Error* MakeInvalidTopLevelStatement(const FileSet* fs, Token token) {
   return MakeSimplePosRangeError(
       fs, token.pos,
-      "MakeInvalidTopLevelStatement",
+      "InvalidTopLevelStatement",
       "A top level statement can only be an assignment, a method call, or a class instantiation.");
 }
 } // namespace
@@ -197,16 +183,14 @@ REC_VISIT_DEFN(TypeVisitor, Param, param) {
 REC_VISIT_DEFN(TypeVisitor, ForStmt, stmt) {
   if (!IS_CONST_PTR(LocalDeclStmt, stmt->Init()) &&
       !IsTopLevelExpr(stmt->Init())) {
-    // TODO: Error
+    // TODO: Error.
     Token tok(K_VOID, Pos(0, 1));
     errors_->Append(MakeInvalidTopLevelStatement(fs_, tok));
-    return false;
   }
   if (!IsTopLevelExpr(stmt->Update())) {
-    // TODO: Error
+    // TODO: Error.
     Token tok(K_VOID, Pos(0, 1));
     errors_->Append(MakeInvalidTopLevelStatement(fs_, tok));
-    return false;
   }
   return true;
 }
@@ -214,10 +198,9 @@ REC_VISIT_DEFN(TypeVisitor, ForStmt, stmt) {
 REC_VISIT_DEFN(TypeVisitor, BlockStmt, block) {
   for (int i = 0; i < block->Stmts().Size(); ++i) {
     if (!IsTopLevelStmt(block->Stmts().At(i))) {
-      // TODO: Error
+      // TODO: Error.
       Token tok(K_VOID, Pos(0, 1));
       errors_->Append(MakeInvalidTopLevelStatement(fs_, tok));
-      return false;
     }
   }
   return true;

@@ -266,7 +266,7 @@ TEST_F(TypeVisitorTest, ForInitNotValid) {
   stmt.Get()->Accept(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("MakeInvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
+  EXPECT_EQ("InvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
 }
 
 TEST_F(TypeVisitorTest, ForInitNotArrayAccess) {
@@ -279,7 +279,7 @@ TEST_F(TypeVisitorTest, ForInitNotArrayAccess) {
   stmt.Get()->Accept(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("MakeInvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
+  EXPECT_EQ("InvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
 }
 
 TEST_F(TypeVisitorTest, ForInitNewClassAllowed) {
@@ -328,7 +328,7 @@ TEST_F(TypeVisitorTest, ForInitJustIdNotAllowed) {
   stmt.Get()->Accept(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("MakeInvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
+  EXPECT_EQ("InvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
 }
 
 TEST_F(TypeVisitorTest, DISABLED_ForInitParenedAssignmentDisallowed) {
@@ -341,11 +341,11 @@ TEST_F(TypeVisitorTest, DISABLED_ForInitParenedAssignmentDisallowed) {
   stmt.Get()->Accept(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("MakeInvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
+  EXPECT_EQ("InvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
 }
 
 TEST_F(TypeVisitorTest, BlockNotStmt) {
-  MakeParser("{int a = 1; a = 2; a;}");
+  MakeParser("{int a = 1; a = 2; a; b;}");
   Result<Stmt> stmt;
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
@@ -354,7 +354,7 @@ TEST_F(TypeVisitorTest, BlockNotStmt) {
   stmt.Get()->Accept(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("MakeInvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
+  EXPECT_EQ("InvalidTopLevelStatement(0:1)\nInvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
 }
 
 } // namespace weeder
