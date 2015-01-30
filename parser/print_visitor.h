@@ -244,7 +244,7 @@ public:
   VISIT_DECL(ClassDecl, type) {
     type->Mods().PrintTo(os_);
     *os_ << "class ";
-    *os_ << type->Ident().TypeInfo();
+    *os_ << type->NameToken().TypeInfo();
     if (type->Super() != nullptr) {
       *os_ << " extends ";
       type->Super()->PrintTo(os_);
@@ -271,7 +271,7 @@ public:
   VISIT_DECL(InterfaceDecl, type) {
     type->Mods().PrintTo(os_);
     *os_ << "interface ";
-    *os_ << type->Ident().TypeInfo();
+    *os_ << type->NameToken().TypeInfo();
     for (int i = 0; i < type->Interfaces().Size(); ++i) {
       if (i == 0) {
         *os_ << " extends ";

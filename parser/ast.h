@@ -608,13 +608,14 @@ private:
 
 class TypeDecl {
 public:
-  TypeDecl(ModifierList&& mods, lexer::Token ident, base::UniquePtrVector<ReferenceType>&& interfaces, base::UniquePtrVector<MemberDecl>&& members): mods_(std::forward<ModifierList>(mods)), ident_(ident), interfaces_(std::forward<base::UniquePtrVector<ReferenceType>>(interfaces)), members_(std::forward<base::UniquePtrVector<MemberDecl>>(members)) {}
+  TypeDecl(ModifierList&& mods, const string& name, lexer::Token nameToken, base::UniquePtrVector<ReferenceType>&& interfaces, base::UniquePtrVector<MemberDecl>&& members): mods_(std::forward<ModifierList>(mods)), name_(name), nameToken_(nameToken), interfaces_(std::forward<base::UniquePtrVector<ReferenceType>>(interfaces)), members_(std::forward<base::UniquePtrVector<MemberDecl>>(members)) {}
   virtual ~TypeDecl() = default;
 
   virtual void Accept(Visitor* visitor) const = 0;
 
   const ModifierList& Mods() const { return mods_; }
-  lexer::Token Ident() const { return ident_; }
+  const string& Name() const { return name_; }
+  lexer::Token NameToken() const { return nameToken_; }
   const base::UniquePtrVector<ReferenceType>& Interfaces() const { return interfaces_; }
   const base::UniquePtrVector<MemberDecl>& Members() const { return members_; }
 
@@ -622,14 +623,15 @@ private:
   DISALLOW_COPY_AND_ASSIGN(TypeDecl);
 
   ModifierList mods_;
-  lexer::Token ident_;
+  string name_;
+  lexer::Token nameToken_;
   base::UniquePtrVector<ReferenceType> interfaces_;
   base::UniquePtrVector<MemberDecl> members_;
 };
 
 class ClassDecl : public TypeDecl {
 public:
-  ClassDecl(ModifierList&& mods, lexer::Token ident, base::UniquePtrVector<ReferenceType>&& interfaces, base::UniquePtrVector<MemberDecl>&& members, ReferenceType* super): TypeDecl(std::forward<ModifierList>(mods), ident, std::forward<base::UniquePtrVector<ReferenceType>>(interfaces), std::forward<base::UniquePtrVector<MemberDecl>>(members)), super_(super) {}
+  ClassDecl(ModifierList&& mods, const string& name, lexer::Token nameToken, base::UniquePtrVector<ReferenceType>&& interfaces, base::UniquePtrVector<MemberDecl>&& members, ReferenceType* super): TypeDecl(std::forward<ModifierList>(mods), name, nameToken, std::forward<base::UniquePtrVector<ReferenceType>>(interfaces), std::forward<base::UniquePtrVector<MemberDecl>>(members)), super_(super) {}
 
   ACCEPT_VISITOR(ClassDecl);
 
@@ -644,7 +646,7 @@ private:
 
 class InterfaceDecl : public TypeDecl {
 public:
-  InterfaceDecl(ModifierList&& mods, lexer::Token ident, base::UniquePtrVector<ReferenceType>&& interfaces, base::UniquePtrVector<MemberDecl>&& members): TypeDecl(std::forward<ModifierList>(mods), ident, std::forward<base::UniquePtrVector<ReferenceType>>(interfaces), std::forward<base::UniquePtrVector<MemberDecl>>(members)) {}
+  InterfaceDecl(ModifierList&& mods, const string& name, lexer::Token nameToken, base::UniquePtrVector<ReferenceType>&& interfaces, base::UniquePtrVector<MemberDecl>&& members): TypeDecl(std::forward<ModifierList>(mods), name, nameToken, std::forward<base::UniquePtrVector<ReferenceType>>(interfaces), std::forward<base::UniquePtrVector<MemberDecl>>(members)) {}
 
   ACCEPT_VISITOR(InterfaceDecl);
 

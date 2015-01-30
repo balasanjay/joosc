@@ -285,9 +285,9 @@ vector<string> FailureFiles() {
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Cast_NoParenthesis.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Cast_NonstaticField.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Cast_ToMethodInvoke.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_ClassDeclaration_WrongFileName.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_ClassDeclaration_WrongFileName_Dot.foo.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_ClassDeclaration_WrongFileName_Suffix.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_ClassDeclaration_WrongFileName.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_ClassDeclaration_WrongFileName_Dot.foo.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_ClassDeclaration_WrongFileName_Suffix.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_ClassInstantiation_InstantiateSimpleType.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_ClassInstantiation_InstantiateSimpleValue.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Declarations_MultipleVars.java");
@@ -342,7 +342,7 @@ vector<string> FailureFiles() {
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Interface_MethodBody.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Interface_NoBody.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Interface_StaticMethod.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Interface_WrongFileName.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Interface_WrongFileName.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_JoosTypes_Double.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_JoosTypes_Float.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_JoosTypes_Long.java");
@@ -384,7 +384,7 @@ vector<string> FailureFiles() {
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_NonJoosConstructs_Continue.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_NonJoosConstructs_DoWhile.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_NonJoosConstructs_ExpressionSequence.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_NonJoosConstructs_MultipleTypesPrFile.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_NonJoosConstructs_MultipleTypesPrFile.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_NonJoosConstructs_NestedTypes.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_NonJoosConstructs_PrivateFields.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_NonJoosConstructs_PrivateMethods.java");
