@@ -287,6 +287,13 @@ public:
     }
   }
 
+  VISIT_DECL(Program, prog) {
+    // TODO: print the file name?
+    for (int i = 0; i < prog->CompUnits().Size(); ++i) {
+      prog->CompUnits().At(i)->Accept(this);
+    }
+  }
+
 private:
   PrintVisitor(std::ostream* os, int depth, const string& newline, const string& tab, const string& space) : Visitor(), os_(os), depth_(depth), newline_(newline), tab_(tab), space_(space) {}
 

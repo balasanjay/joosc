@@ -10,13 +10,15 @@ namespace weeder {
 class WeederTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    fs_.reset();
     parser_.reset();
+    tokens.clear();
+    fs_.reset();
   }
 
   virtual void TearDown() {
-    fs_.reset();
     parser_.reset();
+    tokens.clear();
+    fs_.reset();
   }
 
   void MakeParser(string s) {
@@ -30,8 +32,11 @@ class WeederTest : public ::testing::Test {
     fs_.reset(fs);
 
     // Lex tokens.
-    lexer::LexJoosFiles(fs, &tokens, &errors);
-    lexer::StripSkippableTokens(&tokens[0]);
+    vector<vector<lexer::Token>> alltokens;
+    lexer::LexJoosFiles(fs, &alltokens, &errors);
+
+    // Remote comments and whitespace.
+    lexer::StripSkippableTokens(alltokens, &tokens);
 
     // Make sure it worked.
     ASSERT_EQ(1u, tokens.size());
@@ -40,8 +45,8 @@ class WeederTest : public ::testing::Test {
     parser_.reset(new parser::Parser(fs, fs->Get(0), &tokens[0]));
   }
 
-  vector<vector<lexer::Token>> tokens;
   unique_ptr<base::FileSet> fs_;
+  vector<vector<lexer::Token>> tokens;
   unique_ptr<parser::Parser> parser_;
 };
 

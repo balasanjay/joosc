@@ -28,23 +28,27 @@ class ParserTest : public ::testing::Test {
   }
 
   void MakeParser(string s) {
-    ErrorList errors;
+    base::ErrorList errors;
 
     // Create file set.
-    FileSet* fs;
-    ASSERT_TRUE(
-        FileSet::Builder().AddStringFile("foo.joos", s).Build(&fs, &errors));
+    base::FileSet* fs;
+    ASSERT_TRUE(base::FileSet::Builder()
+        .AddStringFile("foo.joos", s)
+        .Build(&fs, &errors));
     fs_.reset(fs);
 
     // Lex tokens.
-    lexer::LexJoosFiles(fs, &tokens, &errors);
-    lexer::StripSkippableTokens(&tokens[0]);
+    vector<vector<lexer::Token>> alltokens;
+    lexer::LexJoosFiles(fs, &alltokens, &errors);
+
+    // Remove comments and whitespace.
+    lexer::StripSkippableTokens(alltokens, &tokens);
 
     // Make sure it worked.
     ASSERT_EQ(1u, tokens.size());
     ASSERT_FALSE(errors.IsFatal());
 
-    parser_.reset(new Parser(fs, fs->Get(0), &tokens[0]));
+    parser_.reset(new parser::Parser(fs, fs->Get(0), &tokens[0]));
   }
 
   vector<vector<Token>> tokens;
