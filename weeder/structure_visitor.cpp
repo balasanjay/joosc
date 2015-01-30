@@ -4,15 +4,15 @@
 #include "weeder/structure_visitor.h"
 
 using base::Error;
-using base::FileSet;
 using base::File;
+using base::FileSet;
 using lexer::ASSG;
 using lexer::Token;
 using parser::CompUnit;
-using parser::Program;
 using parser::Expr;
 using parser::FieldDerefExpr;
 using parser::NameExpr;
+using parser::Program;
 
 namespace weeder {
 namespace {
