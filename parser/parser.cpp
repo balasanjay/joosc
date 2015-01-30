@@ -505,7 +505,6 @@ Parser Parser::ParsePrimary(Result<Expr>* out) const {
   Parser afterEnds = afterBase.ParsePrimaryEnd(baseExpr, &baseWithEnds);
   RETURN_IF_GOOD(afterEnds, baseWithEnds.Release(), out);
 
-
   // If we couldn't parse the PrimaryEnd, then just use base; it's optional.
   return afterBase.Success(baseExpr, out);
 }
@@ -1584,5 +1583,7 @@ unique_ptr<Program> Parse(const FileSet* fs, const vector<vector<lexer::Token>>&
 // TODO: Handle parsing empty files.
 // TODO: The weeder must ensure that non-abstract classes cannot have abstract methods.
 // TODO: Weed out array indexing into 'this'; i.e. ("this[3]").
+// TODO: Weed out parens around assignment in blocks, for initializer, for update.
+// TODO: "Integer[] a;" gives strange error - should say requires initialization.
 
 } // namespace parser

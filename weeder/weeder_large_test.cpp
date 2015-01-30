@@ -311,9 +311,9 @@ vector<string> FailureFiles() {
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_For_DeclarationInUpdate.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_For_MultipleDeclarationsInInit.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_For_MultipleUpdates.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_For_NotAStatementInUpdate.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_For_PrimaryExpInInit.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_For_PrimaryExpInUpdate.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_For_NotAStatementInUpdate.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_For_PrimaryExpInInit.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_For_PrimaryExpInUpdate.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_For_StatementInInit.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Formals_Final.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Formals_Initializer_Constructor.java");
@@ -325,9 +325,9 @@ vector<string> FailureFiles() {
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Implements_SimpleTypeArray.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Implements_Value.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_IncDec_IncDecNotLvalue.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_IncDec_Parenthesized.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_IncDec_Parenthesized.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_InstanceInitializers.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_InstanceOf_Null.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_InstanceOf_Null.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_InstanceOf_Primitive.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_InstanceOf_Void.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_IntRange_MinusTooBigInt.java");
