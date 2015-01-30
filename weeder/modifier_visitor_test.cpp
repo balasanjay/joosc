@@ -11,6 +11,68 @@ namespace weeder {
 class ModifierVisitorTest : public WeederTest {
 };
 
+TEST_F(ModifierVisitorTest, ClassConstructorDeclConflicting) {
+  MakeParser("public protected x(){};");
+  Result<MemberDecl> decl;
+  ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
+
+  ErrorList errors;
+  ClassModifierVisitor visitor(fs_.get(), &errors);
+  decl.Get()->Accept(&visitor);
+
+  string expected =
+"ConflictingAccessModError(0:0-6)\n"
+"ConflictingAccessModError(0:7-16)\n";
+
+  EXPECT_TRUE(errors.IsFatal());
+  EXPECT_EQ(expected, testing::PrintToString(errors));
+}
+
+TEST_F(ModifierVisitorTest, ClassConstructorDeclDisallowed) {
+  MakeParser("abstract static final native x(){}");
+  Result<MemberDecl> decl;
+  ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
+
+  ErrorList errors;
+  ClassModifierVisitor visitor(fs_.get(), &errors);
+  decl.Get()->Accept(&visitor);
+
+  string expected =
+"ClassConstructorModifierError(0:0-8)\n"
+"ClassConstructorModifierError(0:9-15)\n"
+"ClassConstructorModifierError(0:16-21)\n"
+"ClassConstructorModifierError(0:22-28)\n";
+
+  EXPECT_TRUE(errors.IsFatal());
+  EXPECT_EQ(expected, testing::PrintToString(errors));
+}
+
+TEST_F(ModifierVisitorTest, ClassConstructorDeclInvalidEmpty) {
+  MakeParser("public x();");
+  Result<MemberDecl> decl;
+  ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
+
+  ErrorList errors;
+  ClassModifierVisitor visitor(fs_.get(), &errors);
+  decl.Get()->Accept(&visitor);
+
+  EXPECT_TRUE(errors.IsFatal());
+  EXPECT_EQ("ClassConstructorEmptyError(0:7)\n", testing::PrintToString(errors));
+}
+
+TEST_F(ModifierVisitorTest, ClassConstructorOk) {
+  MakeParser("public x() { int x = 1; }");
+  Result<MemberDecl> decl;
+  ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
+
+  ErrorList errors;
+  ClassModifierVisitor visitor(fs_.get(), &errors);
+  decl.Get()->Accept(&visitor);
+
+  EXPECT_FALSE(errors.IsFatal());
+}
+
+
 TEST_F(ModifierVisitorTest, ClassFieldDeclConflicting) {
   MakeParser("public protected int x = 1;");
   Result<MemberDecl> decl;
@@ -164,6 +226,20 @@ TEST_F(ModifierVisitorTest, ClassMethodOk) {
 
   EXPECT_FALSE(errors.IsFatal());
 }
+
+TEST_F(ModifierVisitorTest, InterfaceConstructorDeclFail) {
+  MakeParser("Foo(){}");
+  Result<MemberDecl> decl;
+  ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
+
+  ErrorList errors;
+  InterfaceModifierVisitor visitor(fs_.get(), &errors);
+  decl.Get()->Accept(&visitor);
+
+  EXPECT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InterfaceConstructorError(0:0-3)\n", testing::PrintToString(errors));
+}
+
 
 TEST_F(ModifierVisitorTest, InterfaceFieldDeclFail) {
   MakeParser("int x = 3;");
