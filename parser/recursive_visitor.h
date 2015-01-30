@@ -31,7 +31,11 @@ public:
   VISIT_DECL(CallExpr, expr) final;
   VISIT_DECL(CastExpr, expr) final;
   VISIT_DECL(FieldDerefExpr, expr) final;
-  VISIT_DECL(LitExpr, expr) final;
+  VISIT_DECL(BoolLitExpr, expr) final;
+  VISIT_DECL(StringLitExpr, expr) final;
+  VISIT_DECL(CharLitExpr, expr) final;
+  VISIT_DECL(IntLitExpr, expr) final;
+  VISIT_DECL(NullLitExpr, expr) final;
   VISIT_DECL(NameExpr, expr) final;
   VISIT_DECL(NewArrayExpr, expr) final;
   VISIT_DECL(NewClassExpr, expr) final;
@@ -68,7 +72,11 @@ public:
   RECURSIVE_VISITOR_IMPL(CallExpr);
   RECURSIVE_VISITOR_IMPL(CastExpr);
   RECURSIVE_VISITOR_IMPL(FieldDerefExpr);
-  RECURSIVE_VISITOR_IMPL(LitExpr);
+  RECURSIVE_VISITOR_IMPL(BoolLitExpr);
+  RECURSIVE_VISITOR_IMPL (StringLitExpr);
+  RECURSIVE_VISITOR_IMPL(CharLitExpr);
+  RECURSIVE_VISITOR_IMPL (IntLitExpr);
+  RECURSIVE_VISITOR_IMPL(NullLitExpr);
   RECURSIVE_VISITOR_IMPL(NameExpr);
   RECURSIVE_VISITOR_IMPL(NewArrayExpr);
   RECURSIVE_VISITOR_IMPL(NewClassExpr);

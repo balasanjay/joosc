@@ -12,6 +12,7 @@ using base::Pos;
 using base::UniquePtrVector;
 using lexer::ADD;
 using lexer::ASSG;
+using lexer::CHAR;
 using lexer::COMMA;
 using lexer::DOT;
 using lexer::IDENTIFIER;
@@ -19,15 +20,18 @@ using lexer::INTEGER;
 using lexer::K_CLASS;
 using lexer::K_ELSE;
 using lexer::K_EXTENDS;
+using lexer::K_FALSE;
 using lexer::K_FOR;
 using lexer::K_IF;
 using lexer::K_IMPLEMENTS;
 using lexer::K_IMPORT;
 using lexer::K_INTERFACE;
 using lexer::K_NEW;
+using lexer::K_NULL;
 using lexer::K_PACKAGE;
 using lexer::K_RETURN;
 using lexer::K_THIS;
+using lexer::K_TRUE;
 using lexer::LBRACE;
 using lexer::LBRACK;
 using lexer::LPAREN;
@@ -36,13 +40,13 @@ using lexer::RBRACE;
 using lexer::RBRACK;
 using lexer::RPAREN;
 using lexer::SEMI;
+using lexer::STRING;
 using lexer::Token;
 using lexer::TokenType;
 using parser::internal::ConvertError;
 using parser::internal::Result;
 using std::cerr;
 using std::move;
-using std::stringstream;
 
 struct repstr {
   repstr(int n, string str) : n_(n), str_(str) {}
@@ -580,10 +584,24 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
     return Fail(MakeUnexpectedEOFError(), out);
   }
 
-  {
-    Result<Token> litExpr;
-    Parser after = ParseTokenIf(IsLiteral(), &litExpr);
-    RETURN_IF_GOOD(after, new LitExpr(*litExpr.Get()), out);
+  if (IsNext(IsLiteral())) {
+    Token lit = GetNext();
+    Parser after = (*this).Advance();
+    switch (lit.type) {
+      case INTEGER:
+        return after.Success(new IntLitExpr(lit, TokenString(GetFile(), lit)), out);
+      case CHAR:
+        return after.Success(new CharLitExpr(lit), out);
+      case K_TRUE:
+      case K_FALSE:
+        return after.Success(new BoolLitExpr(lit), out);
+      case K_NULL:
+        return after.Success(new NullLitExpr(lit), out);
+      case STRING:
+        return after.Success(new StringLitExpr(lit), out);
+      default:
+        throw;
+    }
   }
 
   {
@@ -1506,6 +1524,7 @@ unique_ptr<Program> Parse(const FileSet* fs, const vector<vector<lexer::Token>>&
   return unique_ptr<Program>(new Program(move(units)));
 }
 
+// TODO: After we have types, need to ensure byte literals are within 8-bit signed two's complement.
 // TODO: in for-loop initializers, for-loop incrementors, and top-level
 // statements, we must ensure that they are either assignment, method
 // invocation, or class creation, not other types of expressions (like

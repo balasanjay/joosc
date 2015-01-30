@@ -279,7 +279,7 @@ vector<string> FailureFiles() {
   // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_ClassDeclaration_WrongFileName.java");
   // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_ClassDeclaration_WrongFileName_Dot.foo.java");
   // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_ClassDeclaration_WrongFileName_Suffix.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_ClassInstantiation_InstantiateSimpleType.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_ClassInstantiation_InstantiateSimpleType.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_ClassInstantiation_InstantiateSimpleValue.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Declarations_MultipleVars.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Declarations_MultipleVars_Fields.java");
@@ -321,11 +321,11 @@ vector<string> FailureFiles() {
   // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_InstanceOf_Null.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_InstanceOf_Primitive.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_InstanceOf_Void.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_IntRange_MinusTooBigInt.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_IntRange_PlusTooBigInt.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_IntRange_TooBigInt.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_IntRange_MinusTooBigInt.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_IntRange_PlusTooBigInt.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_IntRange_TooBigInt.java");
   // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_IntRange_TooBigIntNegated.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_IntRange_TooBigInt_InInitializer.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_IntRange_TooBigInt_InInitializer.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Interface_ConstructorAbstract.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Interface_ConstructorBody.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Interface_Field.java");
@@ -354,7 +354,7 @@ vector<string> FailureFiles() {
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_MultiArrayCreation_MissingDimension_4.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_MultiArrayCreation_NoType.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_MultiArrayTypes_Dimensions.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_NegIntTooLow.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_NegIntTooLow.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_NonJoosConstructs_AssignmentOperations_BitwiseAnd.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_NonJoosConstructs_AssignmentOperations_BitwiseOr.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_NonJoosConstructs_AssignmentOperations_BitwiseXOR.java");

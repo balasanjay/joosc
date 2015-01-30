@@ -57,7 +57,7 @@ const TokenTypeInfo kTokenTypeInfo[NUM_TOKEN_TYPES] = {
   NEW(K_IF, "if").Keyword(),
   NEW(K_PRIVATE, "private").Keyword().Unsupported(),
   NEW(K_THIS, "this").Keyword(),
-  NEW(K_BOOL, "bool").Keyword().Primitive(),
+  NEW(K_BOOL, "boolean").Keyword().Primitive(),
   NEW(K_DO, "do").Keyword().Unsupported(),
   NEW(K_IMPLEMENTS, "implements").Keyword(),
   NEW(K_PROTECTED, "protected").Keyword().MakeModifier(PROTECTED),
