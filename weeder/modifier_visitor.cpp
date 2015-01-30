@@ -335,12 +335,12 @@ REC_VISIT_DEFN(ModifierVisitor, ClassDecl, decl) {
       PROTECTED, STATIC, NATIVE);
 
   // Must be public.
-  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(), MakeClassNoAccessModError,
+  VerifyOneOf(fs_, decl->Mods(), errors_, decl->NameToken(), MakeClassNoAccessModError,
       PUBLIC);
 
   // A class cannot be both abstract and final.
   if (decl->Mods().HasModifier(ABSTRACT) && decl->Mods().HasModifier(FINAL)) {
-    errors_->Append(MakeAbstractFinalClassError(fs_, decl->Ident()));
+    errors_->Append(MakeAbstractFinalClassError(fs_, decl->NameToken()));
   }
 
   ClassModifierVisitor visitor(fs_, errors_);
@@ -355,7 +355,7 @@ REC_VISIT_DEFN(ModifierVisitor, InterfaceDecl, decl) {
       PROTECTED, STATIC, FINAL, NATIVE);
 
   // Must be public.
-  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(), MakeInterfaceNoAccessModError,
+  VerifyOneOf(fs_, decl->Mods(), errors_, decl->NameToken(), MakeInterfaceNoAccessModError,
       PUBLIC);
 
   InterfaceModifierVisitor visitor(fs_, errors_);
