@@ -37,8 +37,20 @@ VISIT_DEFN(RecursiveVisitor, FieldDerefExpr, expr) {
   SHORT_CIRCUIT_CHILD(FieldDerefExpr, expr);
   expr->Base()->Accept(this);
 }
-VISIT_DEFN(RecursiveVisitor, LitExpr, expr) {
-  SHORT_CIRCUIT_CHILD(LitExpr, expr);
+VISIT_DEFN(RecursiveVisitor, BoolLitExpr, expr) {
+  SHORT_CIRCUIT_CHILD(BoolLitExpr, expr);
+}
+VISIT_DEFN(RecursiveVisitor, CharLitExpr, expr) {
+  SHORT_CIRCUIT_CHILD(CharLitExpr, expr);
+}
+VISIT_DEFN(RecursiveVisitor, StringLitExpr, expr) {
+  SHORT_CIRCUIT_CHILD(StringLitExpr, expr);
+}
+VISIT_DEFN(RecursiveVisitor, NullLitExpr, expr) {
+  SHORT_CIRCUIT_CHILD(NullLitExpr, expr);
+}
+VISIT_DEFN(RecursiveVisitor, IntLitExpr, expr) {
+  SHORT_CIRCUIT_CHILD(IntLitExpr, expr);
 }
 VISIT_DEFN(RecursiveVisitor, NameExpr, expr) {
   SHORT_CIRCUIT_CHILD(NameExpr, expr);
@@ -59,6 +71,10 @@ VISIT_DEFN(RecursiveVisitor, ThisExpr, expr) {
 VISIT_DEFN(RecursiveVisitor, UnaryExpr, expr) {
   SHORT_CIRCUIT_CHILD(UnaryExpr, expr);
   expr->Rhs()->Accept(this);
+}
+VISIT_DEFN(RecursiveVisitor, InstanceOfExpr, expr) {
+  SHORT_CIRCUIT_CHILD(InstanceOfExpr, expr);
+  expr->Lhs()->Accept(this);
 }
 
 VISIT_DEFN(RecursiveVisitor, BlockStmt, stmt) {
@@ -100,6 +116,12 @@ VISIT_DEFN(RecursiveVisitor, ForStmt, stmt) {
   if (stmt->Update() != nullptr) {
     stmt->Update()->Accept(this);
   }
+  stmt->Body()->Accept(this);
+}
+
+VISIT_DEFN(RecursiveVisitor, WhileStmt, stmt) {
+  SHORT_CIRCUIT_CHILD(WhileStmt, stmt);
+  stmt->Cond()->Accept(this);
   stmt->Body()->Accept(this);
 }
 

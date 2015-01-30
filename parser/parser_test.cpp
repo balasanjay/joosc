@@ -620,6 +620,49 @@ TEST_F(ParserTest, CastExprFail) {
   EXPECT_EQ("UnexpectedTokenError(0:6)\n", testing::PrintToString(cast.Errors()));
 }
 
+TEST_F(ParserTest, InstanceOfRefType) {
+  MakeParser("a instanceof String");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseExpression(&expr);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(expr));
+  EXPECT_EQ("(a instanceof String)", Str(expr.Get()));
+}
+
+TEST_F(ParserTest, InstanceOfArray) {
+  MakeParser("a instanceof int[]");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseExpression(&expr);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(expr));
+  EXPECT_EQ("(a instanceof array<K_INT>)", Str(expr.Get()));
+}
+
+TEST_F(ParserTest, InstanceOfParens) {
+  MakeParser("a instanceof (String)");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseExpression(&expr);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(expr));
+  EXPECT_EQ("UnexpectedTokenError(0:13)\n", testing::PrintToString(expr.Errors()));
+}
+
+TEST_F(ParserTest, InstanceOfNull) {
+  MakeParser("a instanceof null");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseExpression(&expr);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(expr));
+  EXPECT_EQ("UnexpectedTokenError(0:13)\n", testing::PrintToString(expr.Errors()));
+}
+
+
 TEST_F(ParserTest, ExprUnaryFail) {
   MakeParser(";");
 
@@ -1096,6 +1139,78 @@ TEST_F(ParserTest, ForStmtPropagateErrorFromBody) {
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
   EXPECT_EQ("UnexpectedTokenError(0:9)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, WhileStmtNoWhile) {
+  MakeParser("asdf");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseWhileStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:0)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, WhileStmtNoLParen) {
+  MakeParser("while{");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseWhileStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:5)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, WhileStmtNoCond) {
+  MakeParser("while()");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseWhileStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:6)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, WhileStmtBadCond) {
+  MakeParser("while(;)");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseWhileStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:6)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, WhileStmtNoRParen) {
+  MakeParser("while(1}");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseWhileStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:7)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, WhileStmtNoBody) {
+  MakeParser("while(1)");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseWhileStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedEOFError(0:7)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, WhileStmtBadBody) {
+  MakeParser("while(1)class");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseWhileStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:8)\n", testing::PrintToString(stmt.Errors()));
+}
+
+TEST_F(ParserTest, WhileStmtSuccess) {
+  MakeParser("while(1){int i = 0;}");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseWhileStmt(&stmt);
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(stmt));
+  EXPECT_EQ("while(INTEGER){{K_INT IDENTIFIER=INTEGER;}}", Str(*stmt.Get()));
 }
 
 TEST_F(ParserTest, ParamListBasic) {

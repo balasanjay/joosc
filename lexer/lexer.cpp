@@ -57,7 +57,7 @@ const TokenTypeInfo kTokenTypeInfo[NUM_TOKEN_TYPES] = {
   NEW(K_IF, "if").Keyword(),
   NEW(K_PRIVATE, "private").Keyword().Unsupported(),
   NEW(K_THIS, "this").Keyword(),
-  NEW(K_BOOL, "bool").Keyword().Primitive(),
+  NEW(K_BOOL, "boolean").Keyword().Primitive(),
   NEW(K_DO, "do").Keyword().Unsupported(),
   NEW(K_IMPLEMENTS, "implements").Keyword(),
   NEW(K_PROTECTED, "protected").Keyword().MakeModifier(PROTECTED),
@@ -560,6 +560,19 @@ void StripSkippableTokens(const vector<vector<Token>>& tokens, vector<vector<Tok
     uint i = out->size();
     out->resize(i + 1);
     StripSkippableTokens(file_tokens, &out->at(i));
+  }
+}
+
+void FindUnsupportedTokens(const base::FileSet* fs, const vector<Token>& tokens, base::ErrorList* errors) {
+  for (const auto& tok: tokens) {
+    if (!tok.TypeInfo().IsSupported()) {
+      errors->Append(new UnsupportedTokenError(fs, tok.pos));
+    }
+  }
+}
+void FindUnsupportedTokens(const base::FileSet* fs, const vector<vector<Token>>& tokens, base::ErrorList* errors) {
+  for (const auto& file_tokens : tokens) {
+    FindUnsupportedTokens(fs, file_tokens, errors);
   }
 }
 

@@ -134,6 +134,22 @@ class NameExpr : public Expr {
     unique_ptr<QualifiedName> name_;
 };
 
+class InstanceOfExpr : public Expr {
+  public:
+    InstanceOfExpr(Expr* lhs, lexer::Token instanceof, Type* type) : lhs_(lhs), instanceof_(instanceof), type_(type) {}
+
+    ACCEPT_VISITOR(InstanceOfExpr);
+
+    const Expr* Lhs() const { return lhs_.get(); }
+    lexer::Token InstanceOf() const { return instanceof_; }
+    const Type* GetType() const { return type_.get(); }
+
+  private:
+    unique_ptr<Expr> lhs_;
+    lexer::Token instanceof_;
+    unique_ptr<Type> type_;
+};
+
 class BinExpr : public Expr {
 public:
   BinExpr(Expr* lhs, lexer::Token op, Expr* rhs) : op_(op), lhs_(lhs), rhs_(rhs) {
@@ -176,12 +192,50 @@ class LitExpr : public Expr {
 public :
   LitExpr(lexer::Token token) : token_(token) {}
 
-  ACCEPT_VISITOR(LitExpr);
-
   lexer::Token GetToken() const { return token_; }
 
 private:
   lexer::Token token_;
+};
+
+class BoolLitExpr : public LitExpr {
+public:
+  BoolLitExpr(lexer::Token token) : LitExpr(token) {}
+
+  ACCEPT_VISITOR(BoolLitExpr);
+};
+
+class IntLitExpr: public LitExpr {
+public:
+  IntLitExpr(lexer::Token token, const string& value) : LitExpr(token), value_(value) {}
+
+  ACCEPT_VISITOR(IntLitExpr);
+
+  const string& Value() const { return value_; }
+
+private:
+  string value_;
+};
+
+class StringLitExpr: public LitExpr {
+public:
+  StringLitExpr(lexer::Token token) : LitExpr(token) {}
+
+  ACCEPT_VISITOR(StringLitExpr);
+};
+
+class CharLitExpr: public LitExpr {
+public:
+  CharLitExpr(lexer::Token token) : LitExpr(token) {}
+
+  ACCEPT_VISITOR(CharLitExpr);
+};
+
+class NullLitExpr: public LitExpr {
+public:
+  NullLitExpr(lexer::Token token) : LitExpr(token) {}
+
+  ACCEPT_VISITOR(NullLitExpr);
 };
 
 class ThisExpr : public Expr {
@@ -394,6 +448,22 @@ private:
   unique_ptr<Stmt> init_; // May be EmptyStmt.
   unique_ptr<Expr> cond_; // May be nullptr.
   unique_ptr<Expr> update_; // May be nullptr.
+  unique_ptr<Stmt> body_; // May be EmptyStmt.
+};
+
+class WhileStmt: public Stmt {
+public:
+  WhileStmt(Expr* cond, Stmt* body): cond_(cond), body_(body) {}
+
+  ACCEPT_VISITOR(WhileStmt);
+
+  const Expr* Cond() const { return cond_.get(); }
+  const Stmt* Body() const { return body_.get(); }
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(WhileStmt);
+
+  unique_ptr<Expr> cond_;
   unique_ptr<Stmt> body_; // May be EmptyStmt.
 };
 

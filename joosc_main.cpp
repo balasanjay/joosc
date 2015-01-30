@@ -82,6 +82,15 @@ int main(int argc, char** argv) {
   vector<vector<Token>> filtered_tokens;
   StripSkippableTokens(tokens, &filtered_tokens);
 
+  // Look for unsupported tokens.
+  {
+    ErrorList errors;
+    FindUnsupportedTokens(fs, tokens, &errors);
+    if (PrintErrors(errors)) {
+      return ERROR;
+    }
+  }
+
   // Parse.
   unique_ptr<Program> program;
   {

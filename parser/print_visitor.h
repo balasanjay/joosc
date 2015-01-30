@@ -46,12 +46,36 @@ public:
     *os_ << ')';
   }
 
+  VISIT_DECL(InstanceOfExpr, expr) {
+    *os_ << '(';
+    expr->Lhs()->Accept(this);
+    *os_ << " instanceof ";
+    expr->GetType()->PrintTo(os_);
+    *os_ << ')';
+  }
+
   VISIT_DECL(FieldDerefExpr, expr) {
     expr->Base()->Accept(this);
     *os_ << '.' << expr->FieldName();
   }
 
-  VISIT_DECL(LitExpr, expr) {
+  VISIT_DECL(BoolLitExpr, expr) {
+    *os_ << expr->GetToken().TypeInfo();
+  }
+
+  VISIT_DECL(StringLitExpr, expr) {
+    *os_ << expr->GetToken().TypeInfo();
+  }
+
+  VISIT_DECL(CharLitExpr, expr) {
+    *os_ << expr->GetToken().TypeInfo();
+  }
+
+  VISIT_DECL(NullLitExpr, expr) {
+    *os_ << expr->GetToken().TypeInfo();
+  }
+
+  VISIT_DECL(IntLitExpr, expr) {
     *os_ << expr->GetToken().TypeInfo();
   }
 
@@ -149,6 +173,14 @@ public:
       *os_ << space_;
       stmt->Update()->Accept(this);
     }
+    *os_ << ')' << space_ << '{';
+    stmt->Body()->Accept(this);
+    *os_ << '}';
+  }
+
+  VISIT_DECL(WhileStmt, stmt) {
+    *os_ << "while" << space_ << '(';
+    stmt->Cond()->Accept(this);
     *os_ << ')' << space_ << '{';
     stmt->Body()->Accept(this);
     *os_ << '}';

@@ -8,12 +8,17 @@ class BinExpr;
 class CallExpr;
 class CastExpr;
 class FieldDerefExpr;
-class LitExpr;
+class BoolLitExpr;
+class StringLitExpr;
+class CharLitExpr;
+class IntLitExpr;
+class NullLitExpr;
 class NameExpr;
 class NewArrayExpr;
 class NewClassExpr;
 class ThisExpr;
 class UnaryExpr;
+class InstanceOfExpr;
 
 class BlockStmt;
 class EmptyStmt;
@@ -22,6 +27,7 @@ class LocalDeclStmt;
 class ReturnStmt;
 class IfStmt;
 class ForStmt;
+class WhileStmt;
 
 class ArgumentList;
 class ParamList;
@@ -46,12 +52,17 @@ public:
   ABSTRACT_VISIT(CallExpr);
   ABSTRACT_VISIT(CastExpr);
   ABSTRACT_VISIT(FieldDerefExpr);
-  ABSTRACT_VISIT(LitExpr);
+  ABSTRACT_VISIT(BoolLitExpr);
+  ABSTRACT_VISIT(StringLitExpr);
+  ABSTRACT_VISIT(CharLitExpr);
+  ABSTRACT_VISIT(IntLitExpr);
+  ABSTRACT_VISIT(NullLitExpr);
   ABSTRACT_VISIT(NameExpr);
   ABSTRACT_VISIT(NewArrayExpr);
   ABSTRACT_VISIT(NewClassExpr);
   ABSTRACT_VISIT(ThisExpr);
   ABSTRACT_VISIT(UnaryExpr);
+  ABSTRACT_VISIT(InstanceOfExpr);
 
   ABSTRACT_VISIT(BlockStmt);
   ABSTRACT_VISIT(EmptyStmt);
@@ -60,6 +71,7 @@ public:
   ABSTRACT_VISIT(ReturnStmt);
   ABSTRACT_VISIT(IfStmt);
   ABSTRACT_VISIT(ForStmt);
+  ABSTRACT_VISIT(WhileStmt);
 
   ABSTRACT_VISIT(ArgumentList);
   ABSTRACT_VISIT(Param);

@@ -2,7 +2,6 @@
 #define BASE_FILE_H
 
 #include <string>
-#include <sstream>
 #include <vector>
 #include <cassert>
 

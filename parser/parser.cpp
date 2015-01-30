@@ -12,6 +12,7 @@ using base::Pos;
 using base::UniquePtrVector;
 using lexer::ADD;
 using lexer::ASSG;
+using lexer::CHAR;
 using lexer::COMMA;
 using lexer::DOT;
 using lexer::IDENTIFIER;
@@ -19,15 +20,19 @@ using lexer::INTEGER;
 using lexer::K_CLASS;
 using lexer::K_ELSE;
 using lexer::K_EXTENDS;
+using lexer::K_FALSE;
 using lexer::K_FOR;
 using lexer::K_IF;
 using lexer::K_IMPLEMENTS;
 using lexer::K_IMPORT;
 using lexer::K_INTERFACE;
 using lexer::K_NEW;
+using lexer::K_NULL;
 using lexer::K_PACKAGE;
 using lexer::K_RETURN;
 using lexer::K_THIS;
+using lexer::K_TRUE;
+using lexer::K_WHILE;
 using lexer::LBRACE;
 using lexer::LBRACK;
 using lexer::LPAREN;
@@ -36,13 +41,13 @@ using lexer::RBRACE;
 using lexer::RBRACK;
 using lexer::RPAREN;
 using lexer::SEMI;
+using lexer::STRING;
 using lexer::Token;
 using lexer::TokenType;
 using parser::internal::ConvertError;
 using parser::internal::Result;
 using std::cerr;
 using std::move;
-using std::stringstream;
 
 struct repstr {
   repstr(int n, string str) : n_(n), str_(str) {}
@@ -384,16 +389,36 @@ Parser Parser::ParseExpression(Result<Expr>* out) const {
     Result<Token> binOp;
     Result<Expr> nextExpr;
 
-    Parser next = cur.ParseTokenIf(IsBinOp(), &binOp).ParseUnaryExpression(&nextExpr);
-
+    Parser next = cur.ParseTokenIf(IsBinOp(), &binOp);
     if (!next) {
       ErrorList errors;
-      FirstOf(&errors, &binOp, &nextExpr);
+      binOp.ReleaseErrors(&errors);
       return Fail(move(errors), out);
     }
 
-    operators.push_back(*binOp.Get());
-    exprs.Append(nextExpr.Release());
+    // Check if binop is instanceof.
+    if (binOp.Get()->type == lexer::K_INSTANCEOF) {
+      Result<Type> instanceOfType;
+      next = next.ParseType(&instanceOfType);
+      if (!next) {
+        ErrorList errors;
+        instanceOfType.ReleaseErrors(&errors);
+        return Fail(move(errors), out);
+      }
+      Expr* instanceOfLhs = exprs.ReleaseBack();
+      exprs.Append(new InstanceOfExpr(
+            instanceOfLhs, *binOp.Get(), instanceOfType.Release()));
+    } else {
+      next = next.ParseUnaryExpression(&nextExpr);
+      if (!next) {
+        ErrorList errors;
+        FirstOf(&errors, &binOp, &nextExpr);
+        return Fail(move(errors), out);
+      }
+
+      operators.push_back(*binOp.Get());
+      exprs.Append(nextExpr.Release());
+    }
     cur = next;
   }
 
@@ -580,10 +605,24 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
     return Fail(MakeUnexpectedEOFError(), out);
   }
 
-  {
-    Result<Token> litExpr;
-    Parser after = ParseTokenIf(IsLiteral(), &litExpr);
-    RETURN_IF_GOOD(after, new LitExpr(*litExpr.Get()), out);
+  if (IsNext(IsLiteral())) {
+    Token lit = GetNext();
+    Parser after = (*this).Advance();
+    switch (lit.type) {
+      case INTEGER:
+        return after.Success(new IntLitExpr(lit, TokenString(GetFile(), lit)), out);
+      case CHAR:
+        return after.Success(new CharLitExpr(lit), out);
+      case K_TRUE:
+      case K_FALSE:
+        return after.Success(new BoolLitExpr(lit), out);
+      case K_NULL:
+        return after.Success(new NullLitExpr(lit), out);
+      case STRING:
+        return after.Success(new StringLitExpr(lit), out);
+      default:
+        throw;
+    }
   }
 
   {
@@ -754,6 +793,7 @@ Parser Parser::ParseStmt(Result<Stmt>* out) const {
   //   ReturnStatement
   //   IfStatement
   //   ForStatement
+  //   WhileStatement
   //   Expression ";"
   SHORT_CIRCUIT;
 
@@ -775,6 +815,10 @@ Parser Parser::ParseStmt(Result<Stmt>* out) const {
 
   if (IsNext(K_FOR)) {
     return ParseForStmt(out);
+  }
+
+  if (IsNext(K_WHILE)) {
+    return ParseWhileStmt(out);
   }
 
   {
@@ -1041,6 +1085,32 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   ErrorList errors;
   FirstOf(&errors, &rparen, &body);
   return next.Fail(move(errors), out);
+}
+
+Parser Parser::ParseWhileStmt(internal::Result<Stmt>* out) const {
+  // WhileStatement:
+  //   "while" "(" Expression ")" Statement
+
+  SHORT_CIRCUIT;
+
+  Result<Token> whileTok;
+  Result<Token> lparen;
+  Result<Expr> cond;
+  Result<Token> rparen;
+  Result<Stmt> body;
+
+  Parser after = (*this)
+    .ParseTokenIf(ExactType(K_WHILE), &whileTok)
+    .ParseTokenIf(ExactType(LPAREN), &lparen)
+    .ParseExpression(&cond)
+    .ParseTokenIf(ExactType(RPAREN), &rparen)
+    .ParseStmt(&body);
+
+  RETURN_IF_GOOD(after, new WhileStmt(cond.Release(), body.Release()), out);
+
+  ErrorList errors;
+  FirstOf(&errors, &whileTok, &lparen, &cond, &rparen, &body);
+  return Fail(move(errors), out);
 }
 
 Parser Parser::ParseModifierList(Result<ModifierList>* out) const {
@@ -1506,6 +1576,7 @@ unique_ptr<Program> Parse(const FileSet* fs, const vector<vector<lexer::Token>>&
   return unique_ptr<Program>(new Program(move(units)));
 }
 
+// TODO: After we have types, need to ensure byte literals are within 8-bit signed two's complement.
 // TODO: in for-loop initializers, for-loop incrementors, and top-level
 // statements, we must ensure that they are either assignment, method
 // invocation, or class creation, not other types of expressions (like

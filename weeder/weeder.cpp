@@ -1,5 +1,6 @@
 #include "weeder/assignment_visitor.h"
 #include "weeder/call_visitor.h"
+#include "weeder/int_range_visitor.h"
 #include "weeder/modifier_visitor.h"
 #include "weeder/type_visitor.h"
 #include "weeder/weeder.h"
@@ -23,6 +24,8 @@ void WeedProgram(const FileSet* fs, const Program* prog, ErrorList* out) {
   ModifierVisitor modifierChecker(fs, out);
   prog->Accept(&modifierChecker);
 
+  IntRangeVisitor intRangeChecker(fs, out);
+  prog->Accept(&intRangeChecker);
   // More weeding required.
 }
 

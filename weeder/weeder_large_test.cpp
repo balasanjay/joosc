@@ -8,6 +8,7 @@ using base::ErrorList;
 using base::FileSet;
 using base::PosRange;
 using lexer::StripSkippableTokens;
+using lexer::FindUnsupportedTokens;
 using lexer::Token;
 using parser::Parse;
 using parser::Program;
@@ -31,6 +32,9 @@ TEST_P(CompilerSuccessTest, ShouldCompile) {
 
   vector<vector<Token>> filtered_tokens;
   StripSkippableTokens(tokens, &filtered_tokens);
+
+  FindUnsupportedTokens(fs, filtered_tokens, &errors);
+  ASSERT_TRUE(errors.Size() == 0);
 
   unique_ptr<Program> prog = Parse(fs, filtered_tokens, &errors);
   if (errors.Size() != 0) {
@@ -66,6 +70,11 @@ TEST_P(CompilerFailureTest, ShouldNotCompile) {
 
   vector<vector<Token>> filtered_tokens;
   StripSkippableTokens(tokens, &filtered_tokens);
+
+  FindUnsupportedTokens(fs, filtered_tokens, &errors);
+  if (errors.IsFatal()) {
+    return;
+  }
 
   unique_ptr<Program> prog = Parse(fs, filtered_tokens, &errors);
   if (errors.IsFatal()) {
