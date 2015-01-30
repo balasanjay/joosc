@@ -256,5 +256,106 @@ TEST_F(TypeVisitorTest, ParamNotOk) {
   EXPECT_EQ("InvalidVoidTypeError(0:9-13)\n", testing::PrintToString(errors));
 }
 
+TEST_F(TypeVisitorTest, ForInitNotValid) {
+  MakeParser("for(a + 1;;);");
+  Result<Stmt> stmt;
+  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+
+  ErrorList errors;
+  TypeVisitor visitor(fs_.get(), &errors);
+  stmt.Get()->Accept(&visitor);
+
+  EXPECT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
+}
+
+TEST_F(TypeVisitorTest, ForInitNotArrayAccess) {
+  MakeParser("for(a[1];;);");
+  Result<Stmt> stmt;
+  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+
+  ErrorList errors;
+  TypeVisitor visitor(fs_.get(), &errors);
+  stmt.Get()->Accept(&visitor);
+
+  EXPECT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
+}
+
+TEST_F(TypeVisitorTest, ForInitNewClassAllowed) {
+  MakeParser("for(new Foo(2);;);");
+  Result<Stmt> stmt;
+  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+
+  ErrorList errors;
+  TypeVisitor visitor(fs_.get(), &errors);
+  stmt.Get()->Accept(&visitor);
+
+  EXPECT_FALSE(errors.IsFatal());
+}
+
+TEST_F(TypeVisitorTest, ForInitMethodCallAllowed) {
+  MakeParser("for(a.b(2);;);");
+  Result<Stmt> stmt;
+  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+
+  ErrorList errors;
+  TypeVisitor visitor(fs_.get(), &errors);
+  stmt.Get()->Accept(&visitor);
+
+  EXPECT_FALSE(errors.IsFatal());
+}
+
+TEST_F(TypeVisitorTest, ForInitAssignmentAllowed) {
+  MakeParser("for(a = 1 + 2;;);");
+  Result<Stmt> stmt;
+  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+
+  ErrorList errors;
+  TypeVisitor visitor(fs_.get(), &errors);
+  stmt.Get()->Accept(&visitor);
+
+  EXPECT_FALSE(errors.IsFatal());
+}
+
+TEST_F(TypeVisitorTest, ForInitJustIdNotAllowed) {
+  MakeParser("for(a;;);");
+  Result<Stmt> stmt;
+  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+
+  ErrorList errors;
+  TypeVisitor visitor(fs_.get(), &errors);
+  stmt.Get()->Accept(&visitor);
+
+  EXPECT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
+}
+
+TEST_F(TypeVisitorTest, DISABLED_ForInitParenedAssignmentDisallowed) {
+  MakeParser("for((a = 1);;);");
+  Result<Stmt> stmt;
+  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+
+  ErrorList errors;
+  TypeVisitor visitor(fs_.get(), &errors);
+  stmt.Get()->Accept(&visitor);
+
+  EXPECT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
+}
+
+TEST_F(TypeVisitorTest, BlockNotStmt) {
+  MakeParser("{int a = 1; a = 2; a; b;}");
+  Result<Stmt> stmt;
+  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+
+  ErrorList errors;
+  TypeVisitor visitor(fs_.get(), &errors);
+  stmt.Get()->Accept(&visitor);
+
+  EXPECT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidTopLevelStatement(0:1)\nInvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
+}
+
 } // namespace weeder
 

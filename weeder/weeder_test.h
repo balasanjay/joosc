@@ -27,7 +27,7 @@ class WeederTest : public ::testing::Test {
     // Create file set.
     base::FileSet* fs;
     ASSERT_TRUE(base::FileSet::Builder()
-        .AddStringFile("foo.joos", s)
+        .AddStringFile("foo.java", s)
         .Build(&fs, &errors));
     fs_.reset(fs);
 

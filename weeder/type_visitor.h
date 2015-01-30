@@ -26,6 +26,9 @@ public:
   REC_VISIT_DECL(FieldDecl, decl);
   REC_VISIT_DECL(Param, param);
 
+  REC_VISIT_DECL(ForStmt, stmt);
+  REC_VISIT_DECL(BlockStmt, stmt);
+
 private:
   const base::FileSet* fs_;
   base::ErrorList* errors_;
