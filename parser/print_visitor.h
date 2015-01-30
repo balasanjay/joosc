@@ -154,6 +154,14 @@ public:
     *os_ << '}';
   }
 
+  VISIT_DECL(WhileStmt, stmt) {
+    *os_ << "while" << space_ << '(';
+    stmt->Cond()->Accept(this);
+    *os_ << ')' << space_ << '{';
+    stmt->Body()->Accept(this);
+    *os_ << '}';
+  }
+
   VISIT_DECL(ArgumentList, args) {
     for (int i = 0; i < args->Args().Size(); ++i) {
       if (i > 0) {

@@ -28,6 +28,7 @@ using lexer::K_NEW;
 using lexer::K_PACKAGE;
 using lexer::K_RETURN;
 using lexer::K_THIS;
+using lexer::K_WHILE;
 using lexer::LBRACE;
 using lexer::LBRACK;
 using lexer::LPAREN;
@@ -754,6 +755,7 @@ Parser Parser::ParseStmt(Result<Stmt>* out) const {
   //   ReturnStatement
   //   IfStatement
   //   ForStatement
+  //   WhileStatement
   //   Expression ";"
   SHORT_CIRCUIT;
 
@@ -775,6 +777,10 @@ Parser Parser::ParseStmt(Result<Stmt>* out) const {
 
   if (IsNext(K_FOR)) {
     return ParseForStmt(out);
+  }
+
+  if (IsNext(K_WHILE)) {
+    return ParseWhileStmt(out);
   }
 
   {
@@ -1041,6 +1047,32 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   ErrorList errors;
   FirstOf(&errors, &rparen, &body);
   return next.Fail(move(errors), out);
+}
+
+Parser Parser::ParseWhileStmt(internal::Result<Stmt>* out) const {
+  // WhileStatement:
+  //   "while" "(" Expression ")" Statement
+
+  SHORT_CIRCUIT;
+
+  Result<Token> whileTok;
+  Result<Token> lparen;
+  Result<Expr> cond;
+  Result<Token> rparen;
+  Result<Stmt> body;
+
+  Parser after = (*this)
+    .ParseTokenIf(ExactType(K_WHILE), &whileTok)
+    .ParseTokenIf(ExactType(LPAREN), &lparen)
+    .ParseExpression(&cond)
+    .ParseTokenIf(ExactType(RPAREN), &rparen)
+    .ParseStmt(&body);
+
+  RETURN_IF_GOOD(after, new WhileStmt(cond.Release(), body.Release()), out);
+
+  ErrorList errors;
+  FirstOf(&errors, &whileTok, &lparen, &cond, &rparen, &body);
+  return Fail(move(errors), out);
 }
 
 Parser Parser::ParseModifierList(Result<ModifierList>* out) const {

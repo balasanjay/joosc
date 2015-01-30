@@ -397,6 +397,22 @@ private:
   unique_ptr<Stmt> body_; // May be EmptyStmt.
 };
 
+class WhileStmt: public Stmt {
+public:
+  WhileStmt(Expr* cond, Stmt* body): cond_(cond), body_(body) {}
+
+  ACCEPT_VISITOR(WhileStmt);
+
+  const Expr* Cond() const { return cond_.get(); }
+  const Stmt* Body() const { return body_.get(); }
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(WhileStmt);
+
+  unique_ptr<Expr> cond_;
+  unique_ptr<Stmt> body_; // May be EmptyStmt.
+};
+
 class ModifierList {
 public:
   ModifierList(): mods_(int(lexer::NUM_MODIFIERS), lexer::Token(lexer::K_NULL, base::PosRange(0, 0, 0))) {}
