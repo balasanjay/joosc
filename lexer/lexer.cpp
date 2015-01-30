@@ -563,4 +563,17 @@ void StripSkippableTokens(const vector<vector<Token>>& tokens, vector<vector<Tok
   }
 }
 
+void FindUnsupportedTokens(const base::FileSet* fs, const vector<Token>& tokens, base::ErrorList* errors) {
+  for (const auto& tok: tokens) {
+    if (!tok.TypeInfo().IsSupported()) {
+      errors->Append(new UnsupportedTokenError(fs, tok.pos));
+    }
+  }
+}
+void FindUnsupportedTokens(const base::FileSet* fs, const vector<vector<Token>>& tokens, base::ErrorList* errors) {
+  for (const auto& file_tokens : tokens) {
+    FindUnsupportedTokens(fs, file_tokens, errors);
+  }
+}
+
 }  // namespace lexer

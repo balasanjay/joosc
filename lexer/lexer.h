@@ -253,6 +253,9 @@ void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
 void StripSkippableTokens(const vector<Token>& tokens, vector<Token>* out);
 void StripSkippableTokens(const vector<vector<Token>>& tokens, vector<vector<Token>>* out);
 
+void FindUnsupportedTokens(const base::FileSet* fs, const vector<Token>& tokens, base::ErrorList* errors);
+void FindUnsupportedTokens(const base::FileSet* fs, const vector<vector<Token>>& tokens, base::ErrorList* errors);
+
 }  // namespace lexer
 
 #endif

@@ -8,6 +8,7 @@ using base::ErrorList;
 using base::FileSet;
 using base::PosRange;
 using lexer::StripSkippableTokens;
+using lexer::FindUnsupportedTokens;
 using lexer::Token;
 using parser::Parse;
 using parser::Program;
@@ -31,6 +32,9 @@ TEST_P(CompilerSuccessTest, ShouldCompile) {
 
   vector<vector<Token>> filtered_tokens;
   StripSkippableTokens(tokens, &filtered_tokens);
+
+  FindUnsupportedTokens(fs, filtered_tokens, &errors);
+  ASSERT_TRUE(errors.Size() == 0);
 
   unique_ptr<Program> prog = Parse(fs, filtered_tokens, &errors);
   if (errors.Size() != 0) {
@@ -66,6 +70,11 @@ TEST_P(CompilerFailureTest, ShouldNotCompile) {
 
   vector<vector<Token>> filtered_tokens;
   StripSkippableTokens(tokens, &filtered_tokens);
+
+  FindUnsupportedTokens(fs, filtered_tokens, &errors);
+  if (errors.IsFatal()) {
+    return;
+  }
 
   unique_ptr<Program> prog = Parse(fs, filtered_tokens, &errors);
   if (errors.IsFatal()) {
@@ -232,16 +241,16 @@ vector<string> FailureFiles() {
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_Circularity_4_Rhoshaped.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_ClosestMatch_Array.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_ClosestMatch_Constructor_NoClosestMatch_This.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_IncDec_Final_ArrayLengthDec.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_IncDec_Final_ArrayLengthDec.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_IncDec_Final_ArrayLengthInc.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_IncDec_Final_PostDec.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_IncDec_Final_PostInc.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_IncDec_Final_PreDec.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_IncDec_Final_PreInc.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_IncDec_Final_PreDec.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_IncDec_Final_PreInc.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_IncDec_StringPostDec.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_IncDec_StringPostInc.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_IncDec_StringPreDec.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_IncDec_StringPreInc.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_IncDec_StringPreDec.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_IncDec_StringPreInc.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_MultiArrayCreation_Assign_1.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_MultiArrayCreation_Null.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_16_StaticThis_ArgumentToSuper.java");
