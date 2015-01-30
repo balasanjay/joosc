@@ -630,7 +630,7 @@ private:
 
 #undef ACCEPT_VISITOR
 
-unique_ptr<Program> Parse2(const base::FileSet* fs, const vector<vector<lexer::Token>>& tokens, base::ErrorList* out);
+unique_ptr<Program> Parse(const base::FileSet* fs, const vector<vector<lexer::Token>>& tokens, base::ErrorList* out);
 
 } // namespace parser
 

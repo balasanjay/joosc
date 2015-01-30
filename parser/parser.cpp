@@ -1479,7 +1479,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
   return afterTypes.Success(new CompUnit(packageName.release(), move(imports), move(types)), out);
 }
 
-unique_ptr<Program> Parse2(const FileSet* fs, const vector<vector<lexer::Token>>& tokens, ErrorList* error_out) {
+unique_ptr<Program> Parse(const FileSet* fs, const vector<vector<lexer::Token>>& tokens, ErrorList* error_out) {
   assert((uint)fs->Size() == tokens.size());
 
   UniquePtrVector<CompUnit> units;

@@ -12,7 +12,7 @@ using base::FileSet;
 using lexer::LexJoosFiles;
 using lexer::StripSkippableTokens;
 using lexer::Token;
-using parser::Parse2;
+using parser::Parse;
 using parser::PrintVisitor;
 using parser::Program;
 using std::cerr;
@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
   unique_ptr<Program> program;
   {
     ErrorList errors;
-    unique_ptr<Program> prog = Parse2(fs, filtered_tokens, &errors);
+    unique_ptr<Program> prog = Parse(fs, filtered_tokens, &errors);
     if (PrintErrors(errors)) {
       return ERROR;
     }
@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
 
   // Print out the AST.
   {
-    PrintVisitor printer = PrintVisitor::Pretty(&std::cout);
+    PrintVisitor printer = PrintVisitor::Pretty(&cout);
     program.get()->Accept(&printer);
   }
 
