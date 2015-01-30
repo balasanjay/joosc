@@ -314,8 +314,6 @@ public:
   lexer::Token Ident() const { return ident_; }
   const Expr* GetExpr() const { return val_.get(); }
 
-
-
   // TODO: get the identifier as a string.
 
 private:
