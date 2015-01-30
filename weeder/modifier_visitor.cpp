@@ -30,6 +30,13 @@ Error* MakeInterfaceFieldError(const FileSet* fs, Token token) {
       "An interface cannot contain any fields.");
 }
 
+Error* MakeInterfaceConstructorError(const FileSet* fs, Token token) {
+  return MakeSimplePosRangeError(
+      fs, token.pos,
+      "InterfaceConstructorError",
+      "An interface cannot contain a constructor.");
+}
+
 Error* MakeInterfaceMethodImplError(const FileSet* fs, Token token) {
   return MakeSimplePosRangeError(
       fs, token.pos,
@@ -119,6 +126,22 @@ Error* MakeInterfaceModifierError(const FileSet* fs, Token token) {
       "An interface cannot be " + token.TypeInfo().Value() + ".");
 }
 
+Error* MakeClassConstructorModifierError(const FileSet* fs, Token token) {
+  assert(token.TypeInfo().IsModifier());
+  return MakeSimplePosRangeError(
+      fs, token.pos,
+      "ClassConstructorModifierError",
+      "A class constructor cannot be " + token.TypeInfo().Value() + ".");
+}
+
+Error* MakeClassConstructorEmptyError(const FileSet* fs, Token token) {
+  return MakeSimplePosRangeError(
+      fs, token.pos,
+      "ClassConstructorEmptyError",
+      "A constructor cannot have an empty body.");
+}
+
+
 inline void VerifyNoneOf(
     const FileSet*, const ModifierList&, ErrorList*,
     std::function<Error*(const FileSet*, Token)>) {
@@ -147,6 +170,22 @@ void VerifyNoConflictingAccessMods(const FileSet* fs, const ModifierList& mods, 
 }
 
 } // namespace
+
+REC_VISIT_DEFN(ClassModifierVisitor, ConstructorDecl, decl) {
+  // Cannot be both public and protected.
+  VerifyNoConflictingAccessMods(fs_, decl->Mods(), errors_);
+
+  // A constructor cannot be abstract, static, final, or native.
+  VerifyNoneOf(fs_, decl->Mods(), errors_, MakeClassConstructorModifierError,
+      ABSTRACT, STATIC, FINAL, NATIVE);
+
+  // A constructor must have a body; i.e. it can't be ";".
+  if (IS_CONST_PTR(EmptyStmt, decl->Body())) {
+    errors_->Append(MakeClassConstructorEmptyError(fs_, decl->Ident()));
+  }
+
+  return false;
+}
 
 REC_VISIT_DEFN(ClassModifierVisitor, FieldDecl, decl) {
   // Cannot be both public and protected.
@@ -198,6 +237,13 @@ REC_VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
 
   return false;
 }
+
+REC_VISIT_DEFN(InterfaceModifierVisitor, ConstructorDecl, decl) {
+  // An interface cannot contain constructors.
+  errors_->Append(MakeInterfaceConstructorError(fs_, decl->Ident()));
+  return false;
+}
+
 
 REC_VISIT_DEFN(InterfaceModifierVisitor, FieldDecl, decl) {
   // An interface cannot contain fields.
