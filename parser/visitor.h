@@ -18,6 +18,7 @@ class NewArrayExpr;
 class NewClassExpr;
 class ThisExpr;
 class UnaryExpr;
+class InstanceOfExpr;
 
 class BlockStmt;
 class EmptyStmt;
@@ -26,6 +27,7 @@ class LocalDeclStmt;
 class ReturnStmt;
 class IfStmt;
 class ForStmt;
+class WhileStmt;
 
 class ArgumentList;
 class ParamList;
@@ -60,6 +62,7 @@ public:
   ABSTRACT_VISIT(NewClassExpr);
   ABSTRACT_VISIT(ThisExpr);
   ABSTRACT_VISIT(UnaryExpr);
+  ABSTRACT_VISIT(InstanceOfExpr);
 
   ABSTRACT_VISIT(BlockStmt);
   ABSTRACT_VISIT(EmptyStmt);
@@ -68,6 +71,7 @@ public:
   ABSTRACT_VISIT(ReturnStmt);
   ABSTRACT_VISIT(IfStmt);
   ABSTRACT_VISIT(ForStmt);
+  ABSTRACT_VISIT(WhileStmt);
 
   ABSTRACT_VISIT(ArgumentList);
   ABSTRACT_VISIT(Param);

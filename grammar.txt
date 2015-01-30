@@ -185,6 +185,9 @@ CastExpression:
 ReturnStatement:
   "return" [Expression] ";"
 
+WhileStatement:
+  "while" "(" Expression ")" Statement
+
 ForStatement:
   "for" "(" [ForInit] ";" [Expression] ";" [ForUpdate] ")" Statement
 
@@ -204,4 +207,5 @@ Statement:
   ReturnStatement
   IfStatement
   ForStatement
+  WhileStatement
   Expression ";"

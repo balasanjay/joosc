@@ -12,6 +12,7 @@ using parser::ArrayType;
 using parser::CastExpr;
 using parser::FieldDecl;
 using parser::LocalDeclStmt;
+using parser::NameExpr;
 using parser::NewArrayExpr;
 using parser::NewClassExpr;
 using parser::Param;
@@ -33,6 +34,13 @@ Error* MakeNewNonReferenceTypeError(const FileSet* fs, Token token) {
       fs, token.pos,
       "NewNonReferenceTypeError",
       "Can only instantiate non-array reference types.");
+}
+
+Error* MakeInvalidInstanceOfType(const FileSet* fs, Token token) {
+  return MakeSimplePosRangeError(
+      fs, token.pos,
+      "InvalidInstanceOfTypeError",
+      "Right-hand-side of 'instanceof' must be a reference type or an array.");
 }
 
 bool HasVoid(const Type* type, Token* out) {
@@ -66,6 +74,16 @@ REC_VISIT_DEFN(TypeVisitor, CastExpr, expr) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(expr->GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
+  }
+  return true;
+}
+
+REC_VISIT_DEFN(TypeVisitor, InstanceOfExpr, expr) {
+  Token voidTok(K_VOID, Pos(-1, -1));
+  if (HasVoid(expr->GetType(), &voidTok)) {
+    errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
+  } else if (IS_CONST_PTR(PrimitiveType, expr->GetType())) {
+    errors_->Append(MakeInvalidInstanceOfType(fs_, expr->InstanceOf()));
   }
   return true;
 }

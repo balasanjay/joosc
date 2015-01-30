@@ -91,6 +91,32 @@ TEST_F(TypeVisitorTest, CastNotOk) {
   EXPECT_EQ("InvalidVoidTypeError(0:1-5)\n", testing::PrintToString(errors));
 }
 
+TEST_F(TypeVisitorTest, InstanceOfPrimitive) {
+  MakeParser("a instanceof int;");
+  Result<Stmt> stmt;
+  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+
+  ErrorList errors;
+  TypeVisitor visitor(fs_.get(), &errors);
+  stmt.Get()->Accept(&visitor);
+
+  EXPECT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidInstanceOfTypeError(0:2-12)\n", testing::PrintToString(errors));
+}
+
+TEST_F(TypeVisitorTest, InstanceOfArray) {
+  MakeParser("a instanceof int[];");
+  Result<Stmt> stmt;
+  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+
+  ErrorList errors;
+  TypeVisitor visitor(fs_.get(), &errors);
+  stmt.Get()->Accept(&visitor);
+
+  EXPECT_FALSE(errors.IsFatal());
+}
+
+
 TEST_F(TypeVisitorTest, NewClassOk) {
   MakeParser("new String();");
   Result<Stmt> stmt;

@@ -41,6 +41,7 @@ public:
   VISIT_DECL(NewClassExpr, expr) final;
   VISIT_DECL(ThisExpr,) final;
   VISIT_DECL(UnaryExpr, expr) final;
+  VISIT_DECL(InstanceOfExpr, expr) final;
 
   // Override Visitor's Stmt visitors.
   VISIT_DECL(BlockStmt, stmt) final;
@@ -50,6 +51,7 @@ public:
   VISIT_DECL(ReturnStmt, stmt) final;
   VISIT_DECL(IfStmt, stmt) final;
   VISIT_DECL(ForStmt, stmt) final;
+  VISIT_DECL(WhileStmt, stmt) final;
 
   // Override Visitor's other visitors.
   VISIT_DECL(ArgumentList, args) final;
@@ -82,6 +84,7 @@ public:
   RECURSIVE_VISITOR_IMPL(NewClassExpr);
   RECURSIVE_VISITOR_IMPL(ThisExpr);
   RECURSIVE_VISITOR_IMPL(UnaryExpr);
+  RECURSIVE_VISITOR_IMPL(InstanceOfExpr);
 
   // Declare *Impl methods for Stmts.
   RECURSIVE_VISITOR_IMPL(BlockStmt);
@@ -91,6 +94,7 @@ public:
   RECURSIVE_VISITOR_IMPL(ReturnStmt);
   RECURSIVE_VISITOR_IMPL(IfStmt);
   RECURSIVE_VISITOR_IMPL(ForStmt);
+  RECURSIVE_VISITOR_IMPL(WhileStmt);
 
   // Declare other *Impl methods.
   RECURSIVE_VISITOR_IMPL(ArgumentList);

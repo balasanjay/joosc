@@ -72,6 +72,10 @@ VISIT_DEFN(RecursiveVisitor, UnaryExpr, expr) {
   SHORT_CIRCUIT_CHILD(UnaryExpr, expr);
   expr->Rhs()->Accept(this);
 }
+VISIT_DEFN(RecursiveVisitor, InstanceOfExpr, expr) {
+  SHORT_CIRCUIT_CHILD(InstanceOfExpr, expr);
+  expr->Lhs()->Accept(this);
+}
 
 VISIT_DEFN(RecursiveVisitor, BlockStmt, stmt) {
   SHORT_CIRCUIT_CHILD(BlockStmt, stmt);
@@ -112,6 +116,12 @@ VISIT_DEFN(RecursiveVisitor, ForStmt, stmt) {
   if (stmt->Update() != nullptr) {
     stmt->Update()->Accept(this);
   }
+  stmt->Body()->Accept(this);
+}
+
+VISIT_DEFN(RecursiveVisitor, WhileStmt, stmt) {
+  SHORT_CIRCUIT_CHILD(WhileStmt, stmt);
+  stmt->Cond()->Accept(this);
   stmt->Body()->Accept(this);
 }
 

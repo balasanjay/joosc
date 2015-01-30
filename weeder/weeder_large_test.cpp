@@ -164,7 +164,7 @@ vector<string> SuccessFiles() {
   files.push_back("third_party/cs444/assignment_testcases/a1/J1_finalclass.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/J1_finalclass2.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/J1_forAllwaysInit.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/J1_forAlwaysInitAsWhile.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/J1_forAlwaysInitAsWhile.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/J1_forMethodInit.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/J1_forMethodUpdate.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/J1_forMethodUpdate2.java");
