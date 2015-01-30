@@ -1527,10 +1527,8 @@ void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
 // statements, we must ensure that they are either assignment, method
 // invocation, or class creation, not other types of expressions (like
 // boolean ops).
-// TODO: Weed out statements of the form "new PrimitiveType([ArgumentList])".
-// TODO: Handle parsing empty strings.
-// TODO: Weed out void primitive type for all but method decls.
-// TODO: Weed: interface can't contain constructor.
-// TODO: Weed: class can't contain abstract method decls.
+// TODO: Handle parsing empty files.
+// TODO: Weed: class can't contain abstract method decls. (sjy: wat)
+// TODO: Weed out array indexing into 'this'; i.e. ("this[3]").
 
 } // namespace parser
