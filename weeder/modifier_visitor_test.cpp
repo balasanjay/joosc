@@ -29,7 +29,7 @@ TEST_F(ModifierVisitorTest, ClassConstructorDeclConflicting) {
 }
 
 TEST_F(ModifierVisitorTest, ClassConstructorDeclDisallowed) {
-  MakeParser("abstract static final native x(){}");
+  MakeParser("abstract static final native public x(){}");
   Result<MemberDecl> decl;
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
@@ -91,7 +91,7 @@ TEST_F(ModifierVisitorTest, ClassFieldDeclConflicting) {
 }
 
 TEST_F(ModifierVisitorTest, ClassFieldDeclDisallowed) {
-  MakeParser("abstract final native int x = 1;");
+  MakeParser("abstract final native public int x = 1;");
   Result<MemberDecl> decl;
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
@@ -164,7 +164,7 @@ TEST_F(ModifierVisitorTest, ClassMethodDeclInvalidBody) {
 }
 
 TEST_F(ModifierVisitorTest, ClassMethodAbstractStatic) {
-  MakeParser("abstract static int x();");
+  MakeParser("abstract static public int x();");
   Result<MemberDecl> decl;
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
@@ -177,7 +177,7 @@ TEST_F(ModifierVisitorTest, ClassMethodAbstractStatic) {
 }
 
 TEST_F(ModifierVisitorTest, ClassMethodAbstractFinal) {
-  MakeParser("abstract final int x();");
+  MakeParser("abstract final public int x();");
   Result<MemberDecl> decl;
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
@@ -190,7 +190,7 @@ TEST_F(ModifierVisitorTest, ClassMethodAbstractFinal) {
 }
 
 TEST_F(ModifierVisitorTest, ClassMethodStaticFinal) {
-  MakeParser("static final int x() {}");
+  MakeParser("static final public int x() {}");
   Result<MemberDecl> decl;
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
@@ -203,7 +203,7 @@ TEST_F(ModifierVisitorTest, ClassMethodStaticFinal) {
 }
 
 TEST_F(ModifierVisitorTest, ClassMethodNativeNotStatic) {
-  MakeParser("native int x();");
+  MakeParser("native public int x();");
   Result<MemberDecl> decl;
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
@@ -255,7 +255,7 @@ TEST_F(ModifierVisitorTest, InterfaceFieldDeclFail) {
 }
 
 TEST_F(ModifierVisitorTest, InterfaceMethodDisallowed) {
-  MakeParser("protected static final native int x();");
+  MakeParser("protected static final native public int x();");
   Result<MemberDecl> decl;
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
@@ -274,7 +274,7 @@ TEST_F(ModifierVisitorTest, InterfaceMethodDisallowed) {
 }
 
 TEST_F(ModifierVisitorTest, InterfaceMethodDeclInvalidBody) {
-  MakeParser("int x() {}");
+  MakeParser("public int x() {}");
   Result<MemberDecl> decl;
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
@@ -283,7 +283,7 @@ TEST_F(ModifierVisitorTest, InterfaceMethodDeclInvalidBody) {
   decl.Get()->Accept(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("InterfaceMethodImplError(0:4)\n", testing::PrintToString(errors));
+  EXPECT_EQ("InterfaceMethodImplError(0:11)\n", testing::PrintToString(errors));
 }
 
 TEST_F(ModifierVisitorTest, InterfaceMethodOk) {
@@ -299,7 +299,7 @@ TEST_F(ModifierVisitorTest, InterfaceMethodOk) {
 }
 
 TEST_F(ModifierVisitorTest, ClassBadModifiers) {
-  MakeParser("protected static native class Foo{}");
+  MakeParser("protected static native public class Foo{}");
   Result<TypeDecl> decl;
   ASSERT_FALSE(parser_->ParseTypeDecl(&decl).Failed());
 
@@ -317,7 +317,7 @@ TEST_F(ModifierVisitorTest, ClassBadModifiers) {
 }
 
 TEST_F(ModifierVisitorTest, ClassBadAbstractFinal) {
-  MakeParser("abstract final class Foo{}");
+  MakeParser("public abstract final class Foo{}");
   Result<TypeDecl> decl;
   ASSERT_FALSE(parser_->ParseTypeDecl(&decl).Failed());
 
@@ -326,7 +326,7 @@ TEST_F(ModifierVisitorTest, ClassBadAbstractFinal) {
   decl.Get()->Accept(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("AbstractFinalClass(0:21-24)\n", testing::PrintToString(errors));
+  EXPECT_EQ("AbstractFinalClass(0:28-31)\n", testing::PrintToString(errors));
 }
 
 TEST_F(ModifierVisitorTest, ClassOk) {
@@ -342,7 +342,7 @@ TEST_F(ModifierVisitorTest, ClassOk) {
 }
 
 TEST_F(ModifierVisitorTest, InterfaceBadModifiers) {
-  MakeParser("protected static final native interface Foo{}");
+  MakeParser("protected static final native public interface Foo{}");
   Result<TypeDecl> decl;
   ASSERT_FALSE(parser_->ParseTypeDecl(&decl).Failed());
 
@@ -373,7 +373,7 @@ TEST_F(ModifierVisitorTest, InterfaceOk) {
 }
 
 TEST_F(ModifierVisitorTest, RecursionInterfaceOk) {
-  MakeParser("public interface Foo { void foo(){} }");
+  MakeParser("public interface Foo { public void foo(){} }");
   Result<TypeDecl> decl;
   ASSERT_FALSE(parser_->ParseTypeDecl(&decl).Failed());
 
@@ -382,11 +382,11 @@ TEST_F(ModifierVisitorTest, RecursionInterfaceOk) {
   decl.Get()->Accept(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("InterfaceMethodImplError(0:28-31)\n", testing::PrintToString(errors));
+  EXPECT_EQ("InterfaceMethodImplError(0:35-38)\n", testing::PrintToString(errors));
 }
 
 TEST_F(ModifierVisitorTest, RecursionClassOk) {
-  MakeParser("public class Foo { void foo(); }");
+  MakeParser("public class Foo { public void foo(); }");
   Result<TypeDecl> decl;
   ASSERT_FALSE(parser_->ParseTypeDecl(&decl).Failed());
 
@@ -395,7 +395,7 @@ TEST_F(ModifierVisitorTest, RecursionClassOk) {
   decl.Get()->Accept(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("ClassMethodEmptyError(0:24-27)\n", testing::PrintToString(errors));
+  EXPECT_EQ("ClassMethodEmptyError(0:31-34)\n", testing::PrintToString(errors));
 }
 
 } // namespace weeder
