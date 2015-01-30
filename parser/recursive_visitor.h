@@ -47,6 +47,7 @@ public:
   VISIT_DECL(ReturnStmt, stmt) final;
   VISIT_DECL(IfStmt, stmt) final;
   VISIT_DECL(ForStmt, stmt) final;
+  VISIT_DECL(WhileStmt, stmt) final;
 
   // Override Visitor's other visitors.
   VISIT_DECL(ArgumentList, args) final;
@@ -85,6 +86,7 @@ public:
   RECURSIVE_VISITOR_IMPL(ReturnStmt);
   RECURSIVE_VISITOR_IMPL(IfStmt);
   RECURSIVE_VISITOR_IMPL(ForStmt);
+  RECURSIVE_VISITOR_IMPL(WhileStmt);
 
   // Declare other *Impl methods.
   RECURSIVE_VISITOR_IMPL(ArgumentList);

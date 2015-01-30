@@ -147,6 +147,7 @@ struct Parser {
   Parser ParseIfStmt(internal::Result<Stmt>* out) const;
   Parser ParseForInit(internal::Result<Stmt>* out) const;
   Parser ParseForStmt(internal::Result<Stmt>* out) const;
+  Parser ParseWhileStmt(internal::Result<Stmt>* out) const;
 
   // Class parsers.
   Parser ParseModifierList(internal::Result<ModifierList>* out) const;
