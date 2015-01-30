@@ -354,7 +354,7 @@ vector<string> FailureFiles() {
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Literals_Long.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Literals_Octal.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Locals_Final.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Methods_MissingAccessModifier.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Methods_MissingAccessModifier.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Methods_NonAbstractNoBody.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Methods_StaticFinal.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_MultiArrayCreation_Assign_2.java");
@@ -398,9 +398,9 @@ vector<string> FailureFiles() {
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_NonJoosConstructs_UnaryPlus.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_NonJoosConstructs_Unicode.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_NonJoosConstructs_Volatile.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_PackagePrivate_Class.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_PackagePrivate_Field.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_PackagePrivate_Method.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_PackagePrivate_Class.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_PackagePrivate_Field.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_PackagePrivate_Method.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_SuperThis_SuperAfterBlock.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_SuperThis_SuperAfterStatement.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_SuperThis_SuperInBlock.java");

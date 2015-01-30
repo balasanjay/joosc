@@ -59,6 +59,34 @@ Error* MakeConflictingAccessModError(const FileSet* fs, Token token) {
       "A declaration cannot have conflicting access modifiers.");
 }
 
+Error* MakeClassMemberNoAccessModError(const FileSet* fs, Token token) {
+  return MakeSimplePosRangeError(
+      fs, token.pos,
+      "ClassMemberNoAccessModError",
+      "A class member must be either public or protected.");
+}
+
+Error* MakeInterfaceMethodNoAccessModError(const FileSet* fs, Token token) {
+  return MakeSimplePosRangeError(
+      fs, token.pos,
+      "InterfaceMethodNoAccessModError",
+      "An interface member must be public.");
+}
+
+Error* MakeInterfaceNoAccessModError(const FileSet* fs, Token token) {
+  return MakeSimplePosRangeError(
+      fs, token.pos,
+      "InterfaceNoAccessModError",
+      "An interface must be public.");
+}
+
+Error* MakeClassNoAccessModError(const FileSet* fs, Token token) {
+  return MakeSimplePosRangeError(
+      fs, token.pos,
+      "ClassNoAccessModError",
+      "A class must be public.");
+}
+
 Error* MakeClassFieldModifierError(const FileSet* fs, Token token) {
   assert(token.TypeInfo().IsModifier());
   return MakeSimplePosRangeError(
@@ -160,6 +188,24 @@ inline void VerifyNoneOf(
   VerifyNoneOf(fs, mods, out, error_maker, othermodifiers...);
 }
 
+inline void VerifyOneOf(
+    const FileSet* fs, const ModifierList&, ErrorList* out, Token token,
+    std::function<Error*(const FileSet*, Token)> error_maker) {
+  out->Append(error_maker(fs, token));
+}
+
+template <typename... T>
+inline void VerifyOneOf(
+    const FileSet* fs, const ModifierList& mods, ErrorList* out, Token token,
+    std::function<Error*(const FileSet*, Token)> error_maker,
+    Modifier first, T... othermodifiers) {
+  if (mods.HasModifier(first)) {
+    return;
+  }
+
+  VerifyOneOf(fs, mods, out, token, error_maker, othermodifiers...);
+}
+
 void VerifyNoConflictingAccessMods(const FileSet* fs, const ModifierList& mods, ErrorList* out) {
   if (!mods.HasModifier(PUBLIC) || !mods.HasModifier(PROTECTED)) {
     return;
@@ -174,6 +220,10 @@ void VerifyNoConflictingAccessMods(const FileSet* fs, const ModifierList& mods, 
 REC_VISIT_DEFN(ClassModifierVisitor, ConstructorDecl, decl) {
   // Cannot be both public and protected.
   VerifyNoConflictingAccessMods(fs_, decl->Mods(), errors_);
+
+  // Must be at least one of public or protected.
+  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(), MakeClassMemberNoAccessModError,
+      PUBLIC, PROTECTED);
 
   // A constructor cannot be abstract, static, final, or native.
   VerifyNoneOf(fs_, decl->Mods(), errors_, MakeClassConstructorModifierError,
@@ -190,6 +240,11 @@ REC_VISIT_DEFN(ClassModifierVisitor, ConstructorDecl, decl) {
 REC_VISIT_DEFN(ClassModifierVisitor, FieldDecl, decl) {
   // Cannot be both public and protected.
   VerifyNoConflictingAccessMods(fs_, decl->Mods(), errors_);
+
+  // Must be at least one of public or protected.
+  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(), MakeClassMemberNoAccessModError,
+      PUBLIC, PROTECTED);
+
   // Can't be abstract, final, or native.
   VerifyNoneOf(
       fs_, decl->Mods(), errors_, MakeClassFieldModifierError,
@@ -200,6 +255,10 @@ REC_VISIT_DEFN(ClassModifierVisitor, FieldDecl, decl) {
 REC_VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
   // Cannot be both public and protected.
   VerifyNoConflictingAccessMods(fs_, decl->Mods(), errors_);
+
+  // Must be at least one of public or protected.
+  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(), MakeClassMemberNoAccessModError,
+      PUBLIC, PROTECTED);
 
   const ModifierList& mods = decl->Mods();
 
@@ -257,6 +316,10 @@ REC_VISIT_DEFN(InterfaceModifierVisitor, MethodDecl, decl) {
       fs_, decl->Mods(), errors_, MakeInterfaceMethodModifierError,
       PROTECTED, STATIC, FINAL, NATIVE);
 
+  // Must be public.
+  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(), MakeInterfaceMethodNoAccessModError,
+      PUBLIC);
+
   // An interface method cannot have a body.
   if (!IS_CONST_PTR(EmptyStmt, decl->Body())) {
     errors_->Append(MakeInterfaceMethodImplError(fs_, decl->Ident()));
@@ -270,6 +333,10 @@ REC_VISIT_DEFN(ModifierVisitor, ClassDecl, decl) {
   VerifyNoneOf(
       fs_, decl->Mods(), errors_, MakeClassModifierError,
       PROTECTED, STATIC, NATIVE);
+
+  // Must be public.
+  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(), MakeClassNoAccessModError,
+      PUBLIC);
 
   // A class cannot be both abstract and final.
   if (decl->Mods().HasModifier(ABSTRACT) && decl->Mods().HasModifier(FINAL)) {
@@ -286,6 +353,10 @@ REC_VISIT_DEFN(ModifierVisitor, InterfaceDecl, decl) {
   VerifyNoneOf(
       fs_, decl->Mods(), errors_, MakeInterfaceModifierError,
       PROTECTED, STATIC, FINAL, NATIVE);
+
+  // Must be public.
+  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(), MakeInterfaceNoAccessModError,
+      PUBLIC);
 
   InterfaceModifierVisitor visitor(fs_, errors_);
   decl->Accept(&visitor);
