@@ -30,6 +30,55 @@ using parser::Stmt;
 using parser::Type;
 
 namespace weeder {
+namespace {
+
+
+
+/**
+ * Accepts assignment expressions, CallExpr, NewClassExpr.
+ */
+bool IsTopLevelExpr(const Expr* expr) {
+  if (expr == nullptr) {
+    return true;
+  }
+  if (IS_CONST_PTR(BinExpr, expr)) {
+    const BinExpr* binExpr = dynamic_cast<const BinExpr*>(expr);
+    if (binExpr->Op().type == ASSG) {
+      return true;
+    }
+    return false;
+  } else if (IS_CONST_PTR(CallExpr, expr) ||
+             IS_CONST_PTR(NewClassExpr, expr)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Accepts EmptyStmt and what IsTopLevelExpr(Expr*) accepts
+ * (assignment expressions, CallExpr, NewClassExpr).
+ */
+bool IsTopLevelExpr(const Stmt* stmt) {
+  if (IS_CONST_PTR(ExprStmt, stmt)) {
+    const Expr* expr = dynamic_cast<const ExprStmt*>(stmt)->GetExpr();
+    return IsTopLevelExpr(expr);
+  } else if (IS_CONST_PTR(EmptyStmt, stmt)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Rejects ExprStmts that are not top level expressions.
+ * Accepts all other Stmts.
+ */
+bool IsTopLevelStmt(const Stmt* stmt) {
+  // Only fail if it is an expr that is not top level.
+  if (IS_CONST_PTR(ExprStmt, stmt)) {
+    return IsTopLevelExpr(stmt);
+  }
+  return true;
+}
 
 Error* MakeInvalidVoidTypeError(const FileSet* fs, Token token) {
   return MakeSimplePosRangeError(
@@ -58,6 +107,7 @@ Error* MakeInvalidTopLevelStatement(const FileSet* fs, Token token) {
       "MakeInvalidTopLevelStatement",
       "A top level statement can only be an assignment, a method call, or a class instantiation.");
 }
+} // namespace
 
 bool HasVoid(const Type* type, Token* out) {
   const Type* cur = type;
@@ -142,52 +192,6 @@ REC_VISIT_DEFN(TypeVisitor, Param, param) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(param->GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
-  }
-  return true;
-}
-
-/**
- * Accepts assignment expressions, CallExpr, NewClassExpr.
- */
-bool IsTopLevelExpr(const Expr* expr) {
-  if (expr == nullptr) {
-    return true;
-  }
-  if (IS_CONST_PTR(BinExpr, expr)) {
-    const BinExpr* binExpr = dynamic_cast<const BinExpr*>(expr);
-    if (binExpr->Op().type == ASSG) {
-      return true;
-    }
-    return false;
-  } else if (IS_CONST_PTR(CallExpr, expr) ||
-             IS_CONST_PTR(NewClassExpr, expr)) {
-    return true;
-  }
-  return false;
-}
-
-/**
- * Accepts EmptyStmt and what IsTopLevelExpr(Expr*) accepts
- * (assignment expressions, CallExpr, NewClassExpr).
- */
-bool IsTopLevelExpr(const Stmt* stmt) {
-  if (IS_CONST_PTR(ExprStmt, stmt)) {
-    const Expr* expr = dynamic_cast<const ExprStmt*>(stmt)->GetExpr();
-    return IsTopLevelExpr(expr);
-  } else if (IS_CONST_PTR(EmptyStmt, stmt)) {
-    return true;
-  }
-  return false;
-}
-
-/**
- * Rejects ExprStmts that are not top level expressions.
- * Accepts all other Stmts.
- */
-bool IsTopLevelStmt(const Stmt* stmt) {
-  // Only fail if it is an expr that is not top level.
-  if (IS_CONST_PTR(ExprStmt, stmt)) {
-    return IsTopLevelExpr(stmt);
   }
   return true;
 }
