@@ -546,19 +546,21 @@ void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
   }
 }
 
-void StripSkippableTokens(vector<Token>* tokens) {
-  if (tokens->empty()) {
-    return;
-  }
-
-  int i = 0;
-  for (auto& token : *tokens) {
+void StripSkippableTokens(const vector<Token>& tokens, vector<Token>* out) {
+  for (Token token : tokens) {
     if (token.TypeInfo().IsSkippable()) {
       continue;
     }
-    (*tokens)[i++] = token;
+    out->push_back(token);
   }
-  tokens->resize(i, *tokens->rbegin());
+}
+
+void StripSkippableTokens(const vector<vector<Token>>& tokens, vector<vector<Token>>* out) {
+  for (const auto& file_tokens : tokens) {
+    uint i = out->size();
+    out->resize(i + 1);
+    StripSkippableTokens(file_tokens, &out->at(i));
+  }
 }
 
 }  // namespace lexer

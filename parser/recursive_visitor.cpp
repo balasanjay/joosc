@@ -168,4 +168,11 @@ VISIT_DEFN(RecursiveVisitor, CompUnit, unit) {
   }
 }
 
+VISIT_DEFN(RecursiveVisitor, Program, prog) {
+  SHORT_CIRCUIT_CHILD(Program, prog);
+  for (int i = 0; i < prog->CompUnits().Size(); ++i) {
+    prog->CompUnits().At(i)->Accept(this);
+  }
+}
+
 } // namespace parser

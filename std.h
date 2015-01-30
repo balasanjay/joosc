@@ -20,8 +20,8 @@ typedef int64_t i64;
 using std::make_pair;
 using std::pair;
 using std::string;
-using std::vector;
 using std::unique_ptr;
+using std::vector;
 
 // Copied from Chromium.
 #define DISALLOW_COPY_AND_ASSIGN(TypeName) \

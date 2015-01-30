@@ -614,9 +614,23 @@ private:
   base::UniquePtrVector<TypeDecl> types_;
 };
 
+class Program final {
+public:
+  Program(base::UniquePtrVector<CompUnit>&& units) : units_(std::forward<base::UniquePtrVector<CompUnit>>(units)) {}
+
+  void Accept(Visitor* visitor) const { visitor->VisitProgram(this); }
+
+  const base::UniquePtrVector<CompUnit>& CompUnits() const { return units_; }
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(Program);
+
+  base::UniquePtrVector<CompUnit> units_;
+};
+
 #undef ACCEPT_VISITOR
 
-void Parse(const base::FileSet* fs, const base::File* file, const vector<lexer::Token>* tokens);
+unique_ptr<Program> Parse2(const base::FileSet* fs, const vector<vector<lexer::Token>>& tokens, base::ErrorList* out);
 
 } // namespace parser
 
