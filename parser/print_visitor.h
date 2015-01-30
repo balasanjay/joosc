@@ -59,7 +59,23 @@ public:
     *os_ << '.' << expr->FieldName();
   }
 
-  VISIT_DECL(LitExpr, expr) {
+  VISIT_DECL(BoolLitExpr, expr) {
+    *os_ << expr->GetToken().TypeInfo();
+  }
+
+  VISIT_DECL(StringLitExpr, expr) {
+    *os_ << expr->GetToken().TypeInfo();
+  }
+
+  VISIT_DECL(CharLitExpr, expr) {
+    *os_ << expr->GetToken().TypeInfo();
+  }
+
+  VISIT_DECL(NullLitExpr, expr) {
+    *os_ << expr->GetToken().TypeInfo();
+  }
+
+  VISIT_DECL(IntLitExpr, expr) {
     *os_ << expr->GetToken().TypeInfo();
   }
 

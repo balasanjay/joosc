@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <sstream>
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -20,6 +21,7 @@ typedef int64_t i64;
 using std::make_pair;
 using std::pair;
 using std::string;
+using std::stringstream;
 using std::unique_ptr;
 using std::vector;
 

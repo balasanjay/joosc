@@ -192,12 +192,50 @@ class LitExpr : public Expr {
 public :
   LitExpr(lexer::Token token) : token_(token) {}
 
-  ACCEPT_VISITOR(LitExpr);
-
   lexer::Token GetToken() const { return token_; }
 
 private:
   lexer::Token token_;
+};
+
+class BoolLitExpr : public LitExpr {
+public:
+  BoolLitExpr(lexer::Token token) : LitExpr(token) {}
+
+  ACCEPT_VISITOR(BoolLitExpr);
+};
+
+class IntLitExpr: public LitExpr {
+public:
+  IntLitExpr(lexer::Token token, const string& value) : LitExpr(token), value_(value) {}
+
+  ACCEPT_VISITOR(IntLitExpr);
+
+  const string& Value() const { return value_; }
+
+private:
+  string value_;
+};
+
+class StringLitExpr: public LitExpr {
+public:
+  StringLitExpr(lexer::Token token) : LitExpr(token) {}
+
+  ACCEPT_VISITOR(StringLitExpr);
+};
+
+class CharLitExpr: public LitExpr {
+public:
+  CharLitExpr(lexer::Token token) : LitExpr(token) {}
+
+  ACCEPT_VISITOR(CharLitExpr);
+};
+
+class NullLitExpr: public LitExpr {
+public:
+  NullLitExpr(lexer::Token token) : LitExpr(token) {}
+
+  ACCEPT_VISITOR(NullLitExpr);
 };
 
 class ThisExpr : public Expr {
