@@ -1,19 +1,26 @@
 #ifndef PARSER_PRINT_VISITOR_H
 #define PARSER_PRINT_VISITOR_H
 
+#include <algorithm>
 #include "parser/ast.h"
 #include "parser/visitor.h"
+
+using std::max;
 
 namespace parser {
 
 class PrintVisitor final : public Visitor {
 public:
   static PrintVisitor Pretty(std::ostream* os) {
-    return PrintVisitor(os, 0, "\n", "  ", " ");
+    return PrintVisitor(os, 0, "\n", "  ", " ", false);
   }
 
   static PrintVisitor Compact(std::ostream* os) {
-    return PrintVisitor(os, 0, "", "", "");
+    return PrintVisitor(os, 0, "", "", "", false);
+  }
+
+  static PrintVisitor Josh(std::ostream* os) {
+    return PrintVisitor(os, 0, "\n", " ", " ", true);
   }
 
   VISIT_DECL(ArrayIndexExpr, expr) {
@@ -113,7 +120,7 @@ public:
   }
 
   VISIT_DECL(BlockStmt, stmt) {
-    *os_ << "{" << newline_;
+    *os_ << "{" << RepStr(NumDelimiters(), newline_);
     PrintVisitor nested = Indent();
     const auto& stmts = stmt->Stmts();
     for (int i = 0; i < stmts.Size(); ++i) {
@@ -137,7 +144,7 @@ public:
 
   VISIT_DECL(LocalDeclStmt, stmt) {
     stmt->GetType()->PrintTo(os_);
-    *os_ << ' ' << stmt->Ident().TypeInfo() << space_ << '=' << space_;
+    *os_ << ' ' << stmt->Ident().TypeInfo() << RepStr(NumDelimiters(), space_) << '=' << RepStr(NumDelimiters(), space_);
     stmt->GetExpr()->Accept(this);
     *os_ << ';';
   }
@@ -152,36 +159,36 @@ public:
   }
 
   VISIT_DECL(IfStmt, stmt) {
-    *os_ << "if" << space_ << '(';
+    *os_ << "if" << RepStr(NumDelimiters(), space_) << '(';
     stmt->Cond()->Accept(this);
-    *os_ << ')' << space_ << '{';
+    *os_ << ')' << RepStr(NumDelimiters(), space_) << '{';
     stmt->TrueBody()->Accept(this);
-    *os_ << '}' << space_ << "else" << space_ << '{';
+    *os_ << '}' << RepStr(NumDelimiters(), space_) << "else" << RepStr(NumDelimiters(), space_) << '{';
     stmt->FalseBody()->Accept(this);
     *os_ << '}';
   }
 
   VISIT_DECL(ForStmt, stmt) {
-    *os_ << "for" << space_ << '(';
+    *os_ << "for" << RepStr(NumDelimiters(), space_) << '(';
     stmt->Init()->Accept(this);
     if (stmt->Cond() != nullptr) {
-      *os_ << space_;
+      *os_ << RepStr(NumDelimiters(), space_);
       stmt->Cond()->Accept(this);
     }
     *os_ << ';';
     if (stmt->Update() != nullptr) {
-      *os_ << space_;
+      *os_ << RepStr(NumDelimiters(), space_);
       stmt->Update()->Accept(this);
     }
-    *os_ << ')' << space_ << '{';
+    *os_ << ')' << RepStr(NumDelimiters(), space_) << '{';
     stmt->Body()->Accept(this);
     *os_ << '}';
   }
 
   VISIT_DECL(WhileStmt, stmt) {
-    *os_ << "while" << space_ << '(';
+    *os_ << "while" << RepStr(NumDelimiters(), space_) << '(';
     stmt->Cond()->Accept(this);
-    *os_ << ')' << space_ << '{';
+    *os_ << ')' << RepStr(NumDelimiters(), space_) << '{';
     stmt->Body()->Accept(this);
     *os_ << '}';
   }
@@ -189,7 +196,7 @@ public:
   VISIT_DECL(ArgumentList, args) {
     for (int i = 0; i < args->Args().Size(); ++i) {
       if (i > 0) {
-        *os_ << ',' << space_;
+        *os_ << ',' << RepStr(NumDelimiters(), space_);
       }
       args->Args().At(i)->Accept(this);
     }
@@ -198,7 +205,7 @@ public:
   VISIT_DECL(ParamList, params) {
     for (int i = 0; i < params->Params().Size(); ++i) {
       if (i > 0) {
-        *os_ << ',' << space_;
+        *os_ << ',' << RepStr(NumDelimiters(), space_);
       }
       params->Params().At(i)->Accept(this);
     }
@@ -215,7 +222,7 @@ public:
     *os_ << ' ';
     *os_ << field->Ident().TypeInfo();
     if (field->Val() != nullptr) {
-      *os_ << space_ << '=' << space_;
+      *os_ << RepStr(NumDelimiters(), space_) << '=' << RepStr(NumDelimiters(), space_);
       field->Val()->Accept(this);
     }
     *os_ << ';';
@@ -253,16 +260,16 @@ public:
       if (i == 0) {
         *os_ << " implements ";
       } else {
-        *os_ << ',' << space_;
+        *os_ << ',' << RepStr(NumDelimiters(), space_);
       }
       type->Interfaces().At(i)->PrintTo(os_);
     }
-    *os_ << " {" << newline_;
+    *os_ << " {" << RepStr(NumDelimiters(), newline_);
     PrintVisitor nested = Indent();
     for (int i = 0; i < type->Members().Size(); ++i) {
       PutIndent(depth_ + 1);
       type->Members().At(i)->Accept(&nested);
-      *os_ << newline_;
+      *os_ << RepStr(NumDelimiters(), newline_);
     }
     PutIndent(depth_);
     *os_ << '}';
@@ -276,16 +283,16 @@ public:
       if (i == 0) {
         *os_ << " extends ";
       } else {
-        *os_ << ',' << space_;
+        *os_ << ',' << RepStr(NumDelimiters(), space_);
       }
       type->Interfaces().At(i)->PrintTo(os_);
     }
-    *os_ << " {" << newline_;
+    *os_ << " {" << RepStr(NumDelimiters(), newline_);
     PrintVisitor nested = Indent();
     for (int i = 0; i < type->Members().Size(); ++i) {
       PutIndent(depth_ + 1);
       type->Members().At(i)->Accept(&nested);
-      *os_ << newline_;
+      *os_ << RepStr(NumDelimiters(), newline_);
     }
     PutIndent(depth_);
     *os_ << '}';
@@ -301,7 +308,7 @@ public:
     if (unit->Package() != nullptr) {
       *os_ << "package ";
       unit->Package()->PrintTo(os_);
-      *os_ << ";" << newline_;
+      *os_ << ";" << RepStr(NumDelimiters(), newline_);
     }
 
     for (int i = 0; i < unit->Imports().Size(); ++i) {
@@ -310,12 +317,12 @@ public:
       if (unit->Imports().At(i)->IsWildCard()) {
         *os_ << ".*";
       }
-      *os_ << ";" << newline_;
+      *os_ << ";" << RepStr(NumDelimiters(), newline_);
     }
 
     for (int i = 0; i < unit->Types().Size(); ++i) {
       unit->Types().At(i)->Accept(this);
-      *os_ << newline_;
+      *os_ << RepStr(NumDelimiters(), newline_);
     }
   }
 
@@ -327,16 +334,30 @@ public:
   }
 
 private:
-  PrintVisitor(std::ostream* os, int depth, const string& newline, const string& tab, const string& space) : Visitor(), os_(os), depth_(depth), newline_(newline), tab_(tab), space_(space) {}
+  PrintVisitor(std::ostream* os, int depth, const string& newline, const string& tab, const string& space, bool isJosh) : Visitor(), os_(os), depth_(depth), newline_(newline), tab_(tab), space_(space), isJosh_(isJosh) {}
 
   PrintVisitor Indent() const {
-    return PrintVisitor(os_, depth_ + 1, newline_, tab_, space_);
+    return PrintVisitor(os_, depth_ + 1, newline_, tab_, space_, isJosh_);
   }
 
   void PutIndent(int depth) {
-    for (int i = 0; i < depth; ++i) {
-      *os_ << tab_;
+    *os_ << RepStr(NumDelimiters(depth), tab_);
+  }
+
+  string RepStr(int num, const string& str) {
+    stringstream ss;
+    for (int i = 0; i < num; ++i) {
+      ss << str;
     }
+    return ss.str();
+  }
+
+  int NumDelimiters(int base = 0) {
+    if (!isJosh_) {
+      return base;
+    }
+
+    return max(1, base - 5 + rand() % 10);
   }
 
   std::ostream* os_;
@@ -344,9 +365,8 @@ private:
   string newline_;
   string tab_;
   string space_;
+  bool isJosh_;
 };
-
-
 
 } // namespace parser
 

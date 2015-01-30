@@ -41,6 +41,7 @@ bool PrintErrors(const ErrorList& errors) {
 }
 
 int main(int argc, char** argv) {
+  srand(time(0));
   const int ERROR = 42;
 
   if (argc != 2) {
@@ -113,7 +114,7 @@ int main(int argc, char** argv) {
 
   // Print out the AST.
   {
-    PrintVisitor printer = PrintVisitor::Pretty(&cout);
+    PrintVisitor printer = PrintVisitor::Josh(&cout);
     program.get()->Accept(&printer);
   }
 

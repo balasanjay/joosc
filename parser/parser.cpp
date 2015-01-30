@@ -49,39 +49,6 @@ using parser::internal::Result;
 using std::cerr;
 using std::move;
 
-struct repstr {
-  repstr(int n, string str) : n_(n), str_(str) {}
-  friend std::ostream& operator<<(std::ostream&, const repstr& r);
- private:
-  int n_;
-  string str_;
-};
-
-std::ostream& operator<<(std::ostream& os, const repstr& r) {
-  for (int i = 0; i < r.n_; ++i) {
-    os << r.str_;
-  }
-  return os;
-}
-
-struct ScopedPrint {
-  ScopedPrint(const string& construct, const string& destruct) : construct_(construct), destruct_(destruct) {
-    cerr << repstr(level_, "|  ") << construct_ << '\n';
-    ++level_;
-  }
-  ~ScopedPrint() {
-    --level_;
-    cerr << repstr(level_, "|  ") << destruct_ << '\n';
-  }
-
-private:
-  string construct_;
-  string destruct_;
-  static int level_;
-};
-
-int ScopedPrint::level_ = 0;
-
 #define RETURN_IF_ERR(check) {\
   if (!(check).IsSuccess()) { \
     return (check); \
@@ -100,7 +67,6 @@ int ScopedPrint::level_ = 0;
     return *this; \
   }\
 };\
-// ScopedPrint _scoped_print(string("Entering ") + __FUNCTION__, string("Leaving ") + __FUNCTION__)
 
 namespace parser {
 
