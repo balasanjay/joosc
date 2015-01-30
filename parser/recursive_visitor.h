@@ -37,6 +37,7 @@ public:
   VISIT_DECL(NewClassExpr, expr) final;
   VISIT_DECL(ThisExpr,) final;
   VISIT_DECL(UnaryExpr, expr) final;
+  VISIT_DECL(InstanceOfExpr, expr) final;
 
   // Override Visitor's Stmt visitors.
   VISIT_DECL(BlockStmt, stmt) final;
@@ -74,6 +75,7 @@ public:
   RECURSIVE_VISITOR_IMPL(NewClassExpr);
   RECURSIVE_VISITOR_IMPL(ThisExpr);
   RECURSIVE_VISITOR_IMPL(UnaryExpr);
+  RECURSIVE_VISITOR_IMPL(InstanceOfExpr);
 
   // Declare *Impl methods for Stmts.
   RECURSIVE_VISITOR_IMPL(BlockStmt);

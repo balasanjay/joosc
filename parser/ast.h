@@ -134,6 +134,22 @@ class NameExpr : public Expr {
     unique_ptr<QualifiedName> name_;
 };
 
+class InstanceOfExpr : public Expr {
+  public:
+    InstanceOfExpr(Expr* lhs, lexer::Token instanceof, Type* type) : lhs_(lhs), instanceof_(instanceof), type_(type) {}
+
+    ACCEPT_VISITOR(InstanceOfExpr);
+
+    const Expr* Lhs() const { return lhs_.get(); }
+    lexer::Token InstanceOf() const { return instanceof_; }
+    const Type* GetType() const { return type_.get(); }
+
+  private:
+    unique_ptr<Expr> lhs_;
+    lexer::Token instanceof_;
+    unique_ptr<Type> type_;
+};
+
 class BinExpr : public Expr {
 public:
   BinExpr(Expr* lhs, lexer::Token op, Expr* rhs) : op_(op), lhs_(lhs), rhs_(rhs) {

@@ -46,6 +46,14 @@ public:
     *os_ << ')';
   }
 
+  VISIT_DECL(InstanceOfExpr, expr) {
+    *os_ << '(';
+    expr->Lhs()->Accept(this);
+    *os_ << " instanceof ";
+    expr->GetType()->PrintTo(os_);
+    *os_ << ')';
+  }
+
   VISIT_DECL(FieldDerefExpr, expr) {
     expr->Base()->Accept(this);
     *os_ << '.' << expr->FieldName();

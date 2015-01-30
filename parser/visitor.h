@@ -14,6 +14,7 @@ class NewArrayExpr;
 class NewClassExpr;
 class ThisExpr;
 class UnaryExpr;
+class InstanceOfExpr;
 
 class BlockStmt;
 class EmptyStmt;
@@ -52,6 +53,7 @@ public:
   ABSTRACT_VISIT(NewClassExpr);
   ABSTRACT_VISIT(ThisExpr);
   ABSTRACT_VISIT(UnaryExpr);
+  ABSTRACT_VISIT(InstanceOfExpr);
 
   ABSTRACT_VISIT(BlockStmt);
   ABSTRACT_VISIT(EmptyStmt);
