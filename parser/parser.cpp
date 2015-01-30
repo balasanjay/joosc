@@ -3,10 +3,6 @@
 #include "parser/ast.h"
 #include "parser/parser_internal.h"
 #include "parser/print_visitor.h"
-#include "weeder/assignment_visitor.h"
-#include "weeder/call_visitor.h"
-#include "weeder/type_visitor.h"
-#include "weeder/modifier_visitor.h"
 
 using base::Error;
 using base::ErrorList;
@@ -1483,42 +1479,31 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
   return afterTypes.Success(new CompUnit(packageName.release(), move(imports), move(types)), out);
 }
 
-// TODO: move Weed function to weeder package.
-void Weed(const FileSet* fs, CompUnit* ast, ErrorList* out) {
-  weeder::AssignmentVisitor assignmentChecker(fs, out);
-  ast->Accept(&assignmentChecker);
+unique_ptr<Program> Parse(const FileSet* fs, const vector<vector<lexer::Token>>& tokens, ErrorList* error_out) {
+  assert((uint)fs->Size() == tokens.size());
 
-  weeder::CallVisitor callChecker(fs, out);
-  ast->Accept(&callChecker);
+  UniquePtrVector<CompUnit> units;
+  bool failed = false;
 
-  weeder::TypeVisitor typeChecker(fs, out);
-  ast->Accept(&typeChecker);
+  for (int i = 0; i < fs->Size(); ++i) {
+    const File* file = fs->Get(i);
+    const vector<Token>& filetoks = tokens[i];
+    Result<CompUnit> unit;
 
-  weeder::ModifierVisitor modifierChecker(fs, out);
-  ast->Accept(&modifierChecker);
+    Parser parser(fs, file, &filetoks, 0);
+    parser.ParseCompUnit(&unit);
 
-  // More weeding required.
-}
+    // Move all errors and warnings to the output list.
+    unit.ReleaseErrors(error_out);
 
-void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
-  Parser parser(fs, file, tokens, 0);
-  Result<CompUnit> result;
-  parser.ParseCompUnit(&result);
-  if (!result.IsSuccess()) {
-    result.Errors().PrintTo(&std::cout, base::OutputOptions::kUserOutput);
-    return;
+    if (unit) {
+      units.Append(unit.Release());
+    } else {
+      failed = true;
+    }
   }
 
-  ErrorList errors;
-  Weed(fs, result.Get(), &errors);
-  if (errors.IsFatal()) {
-    errors.PrintTo(&std::cout, base::OutputOptions::kUserOutput);
-    return;
-  }
-
-  PrintVisitor printer = PrintVisitor::Pretty(&std::cout);
-  result.Get()->Accept(&printer);
-  std::cout << '\n';
+  return unique_ptr<Program>(new Program(move(units)));
 }
 
 // TODO: in for-loop initializers, for-loop incrementors, and top-level

@@ -250,8 +250,8 @@ struct Token {
 void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
                   base::ErrorList* errors_out);
 
-void StripSkippableTokens(vector<Token>* tokens);
-
+void StripSkippableTokens(const vector<Token>& tokens, vector<Token>* out);
+void StripSkippableTokens(const vector<vector<Token>>& tokens, vector<vector<Token>>* out);
 
 }  // namespace lexer
 

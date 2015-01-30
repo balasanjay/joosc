@@ -33,6 +33,7 @@ class ClassDecl;
 class InterfaceDecl;
 class ImportDecl;
 class CompUnit;
+class Program;
 
 class Visitor {
 public:
@@ -70,6 +71,7 @@ public:
   ABSTRACT_VISIT(InterfaceDecl);
   ABSTRACT_VISIT(ImportDecl);
   ABSTRACT_VISIT(CompUnit);
+  ABSTRACT_VISIT(Program);
 
 #undef ABSTRACT_VISIT
 
