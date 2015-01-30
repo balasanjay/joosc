@@ -134,6 +134,8 @@ void PrintRangePtr(std::ostream* out, const File* file, const PosRange& pos) {
       *out << '^';
     } else if (pos.begin < i && i < pos.end) {
       *out << '~';
+    } else if (file->At(i) == '\t') {
+      *out << '\t';
     } else {
       *out << ' ';
     }
