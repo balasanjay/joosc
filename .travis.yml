@@ -1,4 +1,3 @@
 language: cpp
 compiler: clang
-install: apt-get install valgrind
-script: "make && ./test && valgrind --error-exitcode=1 --leak-check=full ./test"
+script: "make && ./test"
