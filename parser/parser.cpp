@@ -1526,7 +1526,7 @@ void Parse(const FileSet* fs, const File* file, const vector<Token>* tokens) {
 // invocation, or class creation, not other types of expressions (like
 // boolean ops).
 // TODO: Handle parsing empty files.
-// TODO: Weed: class can't contain abstract method decls. (sjy: wat)
+// TODO: The weeder must ensure that non-abstract classes cannot have abstract methods.
 // TODO: Weed out array indexing into 'this'; i.e. ("this[3]").
 
 } // namespace parser
