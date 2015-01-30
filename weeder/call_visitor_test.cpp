@@ -34,6 +34,19 @@ TEST_F(CallVisitorTest, FieldDeref) {
   EXPECT_FALSE(errors.IsFatal());
 }
 
+TEST_F(CallVisitorTest, ThisFail) {
+  MakeParser("this();");
+  Result<Stmt> stmt;
+  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+
+  ErrorList errors;
+  CallVisitor visitor(fs_.get(), &errors);
+  stmt.Get()->Accept(&visitor);
+
+  EXPECT_TRUE(errors.IsFatal());
+  EXPECT_EQ("ExplicitThisCallError(0:4)\n", testing::PrintToString(errors));
+}
+
 TEST_F(CallVisitorTest, Fail) {
   MakeParser("a()();");
   Result<Stmt> stmt;
