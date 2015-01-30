@@ -60,6 +60,10 @@ VISIT_DEFN(RecursiveVisitor, UnaryExpr, expr) {
   SHORT_CIRCUIT_CHILD(UnaryExpr, expr);
   expr->Rhs()->Accept(this);
 }
+VISIT_DEFN(RecursiveVisitor, InstanceOfExpr, expr) {
+  SHORT_CIRCUIT_CHILD(InstanceOfExpr, expr);
+  expr->Lhs()->Accept(this);
+}
 
 VISIT_DEFN(RecursiveVisitor, BlockStmt, stmt) {
   SHORT_CIRCUIT_CHILD(BlockStmt, stmt);

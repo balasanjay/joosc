@@ -31,6 +31,12 @@ public:
     vec_.push_back(t);
   }
 
+  T* ReleaseBack() {
+    T* t = vec_.at(Size() - 1);
+    vec_.pop_back();
+    return t;
+  }
+
   // Releases ownership of all contained elements; appends elements to provided vector.
   void Release(vector<T*>* out) {
     for (uint i = 0; i < vec_.size(); ++i) {

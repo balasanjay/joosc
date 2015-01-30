@@ -620,6 +620,49 @@ TEST_F(ParserTest, CastExprFail) {
   EXPECT_EQ("UnexpectedTokenError(0:6)\n", testing::PrintToString(cast.Errors()));
 }
 
+TEST_F(ParserTest, InstanceOfRefType) {
+  MakeParser("a instanceof String");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseExpression(&expr);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(expr));
+  EXPECT_EQ("(a instanceof String)", Str(expr.Get()));
+}
+
+TEST_F(ParserTest, InstanceOfArray) {
+  MakeParser("a instanceof int[]");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseExpression(&expr);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(expr));
+  EXPECT_EQ("(a instanceof array<K_INT>)", Str(expr.Get()));
+}
+
+TEST_F(ParserTest, InstanceOfParens) {
+  MakeParser("a instanceof (String)");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseExpression(&expr);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(expr));
+  EXPECT_EQ("UnexpectedTokenError(0:13)\n", testing::PrintToString(expr.Errors()));
+}
+
+TEST_F(ParserTest, InstanceOfNull) {
+  MakeParser("a instanceof null");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseExpression(&expr);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(expr));
+  EXPECT_EQ("UnexpectedTokenError(0:13)\n", testing::PrintToString(expr.Errors()));
+}
+
+
 TEST_F(ParserTest, ExprUnaryFail) {
   MakeParser(";");
 
