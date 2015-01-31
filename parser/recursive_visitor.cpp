@@ -65,6 +65,10 @@ VISIT_DEFN(RecursiveVisitor, NewClassExpr, expr) {
   SHORT_CIRCUIT_CHILD(NewClassExpr, expr);
   expr->Args()->Accept(this);
 }
+VISIT_DEFN(RecursiveVisitor, ParenExpr, expr) {
+  SHORT_CIRCUIT_CHILD(ParenExpr, expr);
+  expr->Nested()->Accept(this);
+}
 VISIT_DEFN(RecursiveVisitor, ThisExpr, expr) {
   SHORT_CIRCUIT_CHILD(ThisExpr, expr);
 }

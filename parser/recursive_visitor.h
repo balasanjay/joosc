@@ -39,6 +39,7 @@ public:
   VISIT_DECL(NameExpr, expr) final;
   VISIT_DECL(NewArrayExpr, expr) final;
   VISIT_DECL(NewClassExpr, expr) final;
+  VISIT_DECL(ParenExpr, expr) final;
   VISIT_DECL(ThisExpr,) final;
   VISIT_DECL(UnaryExpr, expr) final;
   VISIT_DECL(InstanceOfExpr, expr) final;
@@ -83,6 +84,7 @@ public:
   RECURSIVE_VISITOR_IMPL(NewArrayExpr);
   RECURSIVE_VISITOR_IMPL(NewClassExpr);
   RECURSIVE_VISITOR_IMPL(ThisExpr);
+  RECURSIVE_VISITOR_IMPL(ParenExpr);
   RECURSIVE_VISITOR_IMPL(UnaryExpr);
   RECURSIVE_VISITOR_IMPL(InstanceOfExpr);
 
