@@ -128,6 +128,7 @@ struct Parser {
 
   // Expression parsers.
   Parser ParseExpression(internal::Result<Expr>*) const;
+  Parser ParseParenExpression(internal::Result<Expr>*) const;
   Parser ParseUnaryExpression(internal::Result<Expr>*) const;
   Parser ParseCastExpression(internal::Result<Expr>* out) const;
   Parser ParsePrimary(internal::Result<Expr>* out) const;

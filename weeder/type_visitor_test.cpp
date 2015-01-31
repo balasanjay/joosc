@@ -331,7 +331,7 @@ TEST_F(TypeVisitorTest, ForInitJustIdNotAllowed) {
   EXPECT_EQ("InvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
 }
 
-TEST_F(TypeVisitorTest, DISABLED_ForInitParenedAssignmentDisallowed) {
+TEST_F(TypeVisitorTest, ForInitAssignmentInParensDisallowed) {
   MakeParser("for((a = 1);;);");
   Result<Stmt> stmt;
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
