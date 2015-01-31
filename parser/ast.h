@@ -120,8 +120,6 @@ class ArgumentList final {
     base::UniquePtrVector<Expr> args_;
 };
 
-
-
 class NameExpr : public Expr {
   public:
     NameExpr(QualifiedName* name) : name_(name) {}
@@ -148,6 +146,20 @@ class InstanceOfExpr : public Expr {
     unique_ptr<Expr> lhs_;
     lexer::Token instanceof_;
     unique_ptr<Type> type_;
+};
+
+class ParenExpr: public Expr {
+public:
+  ParenExpr(Expr* nested) : nested_(nested) {
+    assert(nested_ != nullptr);
+  }
+
+  ACCEPT_VISITOR(ParenExpr);
+
+  const Expr* Nested() const { return nested_.get(); }
+
+private:
+  unique_ptr<Expr> nested_;
 };
 
 class BinExpr : public Expr {

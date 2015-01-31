@@ -16,6 +16,7 @@ class NullLitExpr;
 class NameExpr;
 class NewArrayExpr;
 class NewClassExpr;
+class ParenExpr;
 class ThisExpr;
 class UnaryExpr;
 class InstanceOfExpr;
@@ -61,6 +62,7 @@ public:
   ABSTRACT_VISIT(NewArrayExpr);
   ABSTRACT_VISIT(NewClassExpr);
   ABSTRACT_VISIT(ThisExpr);
+  ABSTRACT_VISIT(ParenExpr);
   ABSTRACT_VISIT(UnaryExpr);
   ABSTRACT_VISIT(InstanceOfExpr);
 

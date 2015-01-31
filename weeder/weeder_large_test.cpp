@@ -333,7 +333,7 @@ vector<string> FailureFiles() {
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_IntRange_MinusTooBigInt.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_IntRange_PlusTooBigInt.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_IntRange_TooBigInt.java");
-  // files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_IntRange_TooBigIntNegated.java");
+  files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_IntRange_TooBigIntNegated.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_IntRange_TooBigInt_InInitializer.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Interface_ConstructorAbstract.java");
   files.push_back("third_party/cs444/assignment_testcases/a1/Je_1_Interface_ConstructorBody.java");

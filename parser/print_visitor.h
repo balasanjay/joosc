@@ -109,6 +109,12 @@ public:
     *os_ << ")";
   }
 
+  VISIT_DECL(ParenExpr, expr) {
+    *os_ << "(";
+    expr->Nested()->Accept(this);
+    *os_ << ")";
+  }
+
   VISIT_DECL(ThisExpr,) {
     *os_ << "this";
   }
