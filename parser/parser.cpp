@@ -639,7 +639,7 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
       .ParseTokenIf(ExactType(LPAREN), &lparen)
       .ParseExpression(&expr)
       .ParseTokenIf(ExactType(RPAREN), &rparen);
-    RETURN_IF_GOOD(after, expr.Release(), out);
+    RETURN_IF_GOOD(after, new ParenExpr(expr.Release()), out);
 
     ErrorList errors;
     FirstOf(&errors, &lparen, &expr, &rparen);

@@ -42,13 +42,13 @@ CORE_SOURCES := ${filter-out ${MAIN_SOURCES},${FULL_SOURCES}}
 FULL_OBJECTS := ${call TO_BUILD_DIR,${FULL_SOURCES:.cpp=.o}}
 CORE_OBJECTS := ${call TO_BUILD_DIR,${CORE_SOURCES:.cpp=.o}}
 
-.PHONY: default all clean format
+.PHONY: default all clean format dist
 
 default: ${DEFAULT_BUILD_TARGETS}
 all: ${TARGETS}
 
 clean:
-	rm -rf ${BUILD_ROOT} ${TARGETS};
+	rm -rf ${BUILD_ROOT} ${TARGETS} submit.zip;
 
 # Compile.
 ${FULL_OBJECTS}: ${BUILD_DIR}/%.o: ./%.cpp
@@ -88,3 +88,6 @@ NON_TEST_OBJECTS := ${filter-out ${TEST_OBJECTS},${CORE_OBJECTS}}
 
 ${TARGETS}: %: ${call TO_BUILD_DIR,%_main.o} ${NON_TEST_OBJECTS}
 test: ${call TO_BUILD_DIR,test_main.o} ${CORE_OBJECTS}
+
+dist: clean
+	zip -r submit.zip . -x '*.git*' -x '*.build*' -x '*third_party/cs444*'

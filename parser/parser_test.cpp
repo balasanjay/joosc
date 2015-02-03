@@ -275,7 +275,7 @@ TEST_F(ParserTest, ArgumentListNestedExpr) {
   Parser after = parser_->ParseArgumentList(&args);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(args));
-  EXPECT_EQ("a,(INTEGER ADD b)", Str(args.Get()));
+  EXPECT_EQ("a,((INTEGER ADD b))", Str(args.Get()));
 }
 
 TEST_F(ParserTest, ArgumentListBadExpr) {
@@ -336,7 +336,7 @@ TEST_F(ParserTest, PrimaryBaseParens) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(primary));
-  EXPECT_EQ("INTEGER", Str(primary.Get()));
+  EXPECT_EQ("(INTEGER)", Str(primary.Get()));
 }
 
 TEST_F(ParserTest, PrimaryBaseParensExprFail) {
