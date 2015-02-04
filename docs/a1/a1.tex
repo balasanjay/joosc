@@ -167,10 +167,47 @@ have no contradictions, and that members are either public or protected.
 
 \section{Challenges}
 \subsection{Memory Management}
+C++ has no garbage collection, and we wanted to free all resources that we
+allocated in a safe manner. While it may seem that a compiler could just
+continually allocate memory and never free it, we've found that having
+deterministic ownership semantics helps make code cleaner and easier to
+machine-verify using a tool like `valgrind'. We accomplished this by pervasive
+use of C++11's \verb+unique_ptr+ class. \verb+unique_ptr+ makes use of C++'s
+RAII paradigm to automatically release memory when leaving a scope. Since this
+was a new codebase, and we started using this from the beginning, this
+presented none of the usual usability challenges associated with
+\verb+unique_ptr+ and allowed us to remain free of memory leaks.
+
 \subsection{Precedence and Associativity}
+When removing left-recursion from the grammar, the productions for binary
+operators became highly recursive. That is to say, in order to parse the number
+`3' as an integer literal, it would make around many recursive calls through
+the precedence hierarchy. Also, we couldn't find an easy way to give the binary
+operators their proper associativity.
+
+We solved this in the parser by simply accepting repeating sequences of binary
+operator, expression pairs (after an initial expression). We then applied
+Knuth's famous Shunting Yard algorithm to properly assign appropriate
+precedence and associativity to all binary operators. This was both efficient
+and correct.
+
 \subsection{Integer range checking}
+We treat a negative integer literal as a unary minus operator followed by a
+positive integer literal. This was challenging when checking that a integer
+literal was in range, because negative numbers have a slightly larger range
+than positive integers. This challenge was exacerbated by the fact that
+initially our parser initially only considered parentheses for precedence
+purposes, but did not represent them in the AST. This meant that the AST would
+represent the expression `$-(214783648)$' equivalently to `$-214783648$'.
+However, the former should not be allowed in Joos, because the number inside
+the parentheses is outside the range of a positive integer literal. We fixed
+this by adding an explicit intermediate AST node for parenthesized expressions.
+This allowed the weeder to differentiate the two examples above, and emit an
+error as appropriate.
 
 \section{Testing}
+\subsection{Unit tests}
+\subsection{Integration tests}
 
 \end{document}
 
