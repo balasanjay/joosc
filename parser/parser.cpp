@@ -1551,5 +1551,7 @@ unique_ptr<Program> Parse(const FileSet* fs, const vector<vector<lexer::Token>>&
 // TODO: Weed out array indexing into 'this'; i.e. ("this[3]").
 // TODO: Weed out parens around assignment in blocks, for initializer, for update.
 // TODO: "Integer[] a;" gives strange error - should say requires initialization.
+// TODO: Fix cast expression parsing. '(gee)-d' should be a subtraction, not a
+// cast.
 
 } // namespace parser
