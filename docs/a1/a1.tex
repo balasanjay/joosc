@@ -78,11 +78,11 @@ a keyword.
 \subsection{Parser}
 We hand-wrote a recursive descent parser for Joos. We had two interesting
 classes here, Parser and Result. Parser is immutable and contains a reference
-to a stream of token and an index into that stream. Parser has methods that
+to a stream of tokens and an index into that stream. Parser has methods that
 parse productions in our grammar and return a new Parser. Instances of the
 Result class are produced from Parser methods, and contain AST nodes. Both
 Parser and Result have a notion of an error state, allowing chained parsing
-method-calls to short-circuit on failure. This design allows easy chaining of
+method calls to short-circuit on failure. This design allows easy chaining of
 parsers to build higher-level parsers. For instance, here is a snippet from the
 parsing of the `while' statement.
 \begin{lstlisting}[language=c++]
@@ -100,7 +100,7 @@ Parser after = (*this)
   .ParseStmt(&body);
 \end{lstlisting}
 
-We also have a function that will propogate errors correctly from such a
+We also have a function that will propagate errors correctly from such a
 chained statement. It will take the first non-empty ErrorList as the overall
 error from parsing the while statement.
 \begin{lstlisting}[language=c++]
@@ -147,8 +147,8 @@ addition to our base Visitor, we also have a subclass named RecursiveVisitor
 that automatically recurses through the entire AST. Visitors that only need to
 examine particular nodes in the AST (method calls, for instance) must only
 override the required methods, and the RecursiveVisitor will take care of
-reaching every node.To continue our running example, here is the pretty-printer
-implementation for the while statement.
+reaching every node. To continue our running example, here is the
+pretty-printer implementation for the while statement.
 \begin{lstlisting}[language=c++]
 VISIT_DECL(WhileStmt, stmt) {
   *os_ << "while" << space_ << '(';
@@ -163,7 +163,8 @@ VISIT_DECL(WhileStmt, stmt) {
 The weeder consists of a series of Visitor implementations. We have
 implementations that check various restrictions of the Joos language that were
 difficult to enforce in the parser. For example, we check that modifier lists
-have no contradictions, and that members are either public or protected.
+have no contradictions, and that members are either public or protected, and
+not both.
 
 \section{Challenges}
 \subsection{Memory Management}
