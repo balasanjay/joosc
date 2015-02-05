@@ -315,8 +315,8 @@ class CastExpr : public Expr {
 
   ACCEPT_VISITOR(CastExpr);
 
-  const Type* GetType() const { return type_.get(); }
-  const Expr* GetExpr() const { return expr_.get(); }
+  GETTER(Type, GetType, *type_);
+  GETTER(Expr, GetExpr, *expr_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CastExpr);

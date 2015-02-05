@@ -40,9 +40,9 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(CastExpr, expr) {
     *os_ << "cast<";
-    expr->GetType()->PrintTo(os_);
+    expr->GetType().PrintTo(os_);
     *os_ << ">(";
-    expr->GetExpr()->Accept(this);
+    expr->GetExpr().Accept(this);
     *os_ << ')';
   }
 

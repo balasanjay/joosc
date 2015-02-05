@@ -91,6 +91,7 @@ Error* MakeInvalidTopLevelStatement(const FileSet* fs, Token token) {
 }  // namespace
 
 bool HasVoid(const Type* type, Token* out) {
+  // TODO: Take reference.
   const Type* cur = type;
 
   while (true) {
@@ -119,7 +120,7 @@ bool HasVoid(const Type* type, Token* out) {
 
 REC_VISIT_DEFN(TypeVisitor, CastExpr, expr) {
   Token voidTok(K_VOID, Pos(-1, -1));
-  if (HasVoid(expr->GetType(), &voidTok)) {
+  if (HasVoid(&expr->GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
   }
   return true;

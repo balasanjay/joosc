@@ -32,7 +32,7 @@ VISIT_DEFN(RecursiveVisitor, CallExpr, expr) {
 }
 VISIT_DEFN(RecursiveVisitor, CastExpr, expr) {
   SHORT_CIRCUIT_CHILD(CastExpr, expr);
-  expr->GetExpr()->Accept(this);
+  expr->GetExpr().Accept(this);
 }
 VISIT_DEFN(RecursiveVisitor, FieldDerefExpr, expr) {
   SHORT_CIRCUIT_CHILD(FieldDerefExpr, expr);
