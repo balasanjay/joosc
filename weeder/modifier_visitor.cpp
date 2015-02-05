@@ -202,7 +202,7 @@ REC_VISIT_DEFN(ClassModifierVisitor, ConstructorDecl, decl) {
                ABSTRACT, STATIC, FINAL, NATIVE);
 
   // A constructor must have a body; i.e. it can't be ";".
-  if (IS_CONST_PTR(EmptyStmt, decl->Body())) {
+  if (IS_CONST_REF(EmptyStmt, decl->Body())) {
     errors_->Append(MakeClassConstructorEmptyError(fs_, decl->Ident()));
   }
 

@@ -217,7 +217,7 @@ class PrintVisitor final : public Visitor {
     *os_ << '(';
     meth->Params().Accept(this);
     *os_ << ')';
-    meth->Body()->Accept(this);
+    meth->Body().Accept(this);
   }
 
   VISIT_DECL(MethodDecl, meth) {

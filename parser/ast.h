@@ -558,7 +558,7 @@ class ParamList final {
 
   void Accept(Visitor* visitor) const { visitor->VisitParamList(this); }
 
-  const base::UniquePtrVector<Param>& Params() const { return params_; }
+  GETTER(base::UniquePtrVector<Param>, Params, params_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ParamList);
@@ -574,7 +574,7 @@ class MemberDecl {
 
   virtual void Accept(Visitor* visitor) const = 0;
 
-  const ModifierList& Mods() const { return mods_; }
+  GETTER(ModifierList, Mods, mods_);
   lexer::Token Ident() const { return ident_; }
 
  private:
@@ -594,8 +594,8 @@ class ConstructorDecl : public MemberDecl {
 
   ACCEPT_VISITOR(ConstructorDecl);
 
-  const ParamList& Params() const { return params_; }
-  const Stmt* Body() const { return body_.get(); }
+  GETTER(ParamList, Params, params_);
+  GETTER(Stmt, Body, *body_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ConstructorDecl);
