@@ -13,6 +13,9 @@ namespace parser {
 #define GETTER(type, name, expr) \
   const type& name() const { return expr; }
 
+#define TEMP_GETTER(type, name, expr) \
+  const type& name##temp() const { return expr; }
+
 class QualifiedName final {
  public:
   QualifiedName(const vector<lexer::Token>& tokens, const vector<string>& parts,
@@ -144,11 +147,13 @@ class InstanceOfExpr : public Expr {
 
   ACCEPT_VISITOR(InstanceOfExpr);
 
-  const Expr* Lhs() const { return lhs_.get(); }
+  GETTER(Expr, Lhs, *lhs_);
   lexer::Token InstanceOf() const { return instanceof_; }
-  const Type* GetType() const { return type_.get(); }
+  GETTER(Type, GetType, *type_);
 
  private:
+  DISALLOW_COPY_AND_ASSIGN(InstanceOfExpr);
+
   unique_ptr<Expr> lhs_;
   lexer::Token instanceof_;
   unique_ptr<Type> type_;

@@ -48,9 +48,9 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(InstanceOfExpr, expr) {
     *os_ << '(';
-    expr->Lhs()->Accept(this);
+    expr->Lhs().Accept(this);
     *os_ << " instanceof ";
-    expr->GetType()->PrintTo(os_);
+    expr->GetType().PrintTo(os_);
     *os_ << ')';
   }
 
