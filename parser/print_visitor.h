@@ -143,11 +143,11 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(IfStmt, stmt) {
     *os_ << "if" << space_ << '(';
-    stmt->Cond()->Accept(this);
+    stmt->Cond().Accept(this);
     *os_ << ')' << space_ << '{';
-    stmt->TrueBody()->Accept(this);
+    stmt->TrueBody().Accept(this);
     *os_ << '}' << space_ << "else" << space_ << '{';
-    stmt->FalseBody()->Accept(this);
+    stmt->FalseBody().Accept(this);
     *os_ << '}';
   }
 

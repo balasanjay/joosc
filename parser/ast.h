@@ -430,7 +430,7 @@ class BlockStmt : public Stmt {
 
   ACCEPT_VISITOR(BlockStmt);
 
-  const base::UniquePtrVector<Stmt>& Stmts() const { return stmts_; }
+  GETTER(base::UniquePtrVector<Stmt>, Stmts, stmts_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BlockStmt);
@@ -444,9 +444,9 @@ class IfStmt : public Stmt {
 
   ACCEPT_VISITOR(IfStmt);
 
-  const Expr* Cond() const { return cond_.get(); }
-  const Stmt* TrueBody() const { return trueBody_.get(); }
-  const Stmt* FalseBody() const { return falseBody_.get(); }
+  GETTER(Expr, Cond, *cond_);
+  GETTER(Stmt, TrueBody, *trueBody_);
+  GETTER(Stmt, FalseBody, *falseBody_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(IfStmt);

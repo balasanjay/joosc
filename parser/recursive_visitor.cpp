@@ -108,9 +108,9 @@ VISIT_DEFN(RecursiveVisitor, ReturnStmt, stmt) {
 }
 VISIT_DEFN(RecursiveVisitor, IfStmt, stmt) {
   SHORT_CIRCUIT_CHILD(IfStmt, stmt);
-  stmt->Cond()->Accept(this);
-  stmt->TrueBody()->Accept(this);
-  stmt->FalseBody()->Accept(this);
+  stmt->Cond().Accept(this);
+  stmt->TrueBody().Accept(this);
+  stmt->FalseBody().Accept(this);
 }
 VISIT_DEFN(RecursiveVisitor, ForStmt, stmt) {
   SHORT_CIRCUIT_CHILD(ForStmt, stmt);
