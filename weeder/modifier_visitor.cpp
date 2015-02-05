@@ -235,7 +235,7 @@ REC_VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
 
   // A method has a body if and only if it is neither abstract nor native.
   {
-    if (IS_CONST_PTR(EmptyStmt, decl->Body())) {
+    if (IS_CONST_REF(EmptyStmt, decl->Body())) {
       // Has an empty body; this implies it must be either abstract or native.
       if (!mods.HasModifier(ABSTRACT) && !mods.HasModifier(NATIVE)) {
         errors_->Append(MakeClassMethodEmptyError(fs_, decl->Ident()));
@@ -291,7 +291,7 @@ REC_VISIT_DEFN(InterfaceModifierVisitor, MethodDecl, decl) {
               MakeInterfaceMethodNoAccessModError, PUBLIC);
 
   // An interface method cannot have a body.
-  if (!IS_CONST_PTR(EmptyStmt, decl->Body())) {
+  if (!IS_CONST_REF(EmptyStmt, decl->Body())) {
     errors_->Append(MakeInterfaceMethodImplError(fs_, decl->Ident()));
   }
 

@@ -635,9 +635,9 @@ class MethodDecl : public MemberDecl {
 
   ACCEPT_VISITOR(MethodDecl);
 
-  const Type* GetType() const { return type_.get(); }
-  const ParamList& Params() const { return params_; }
-  const Stmt* Body() const { return body_.get(); }
+  GETTER(Type, GetType, *type_);
+  GETTER(ParamList, Params, params_);
+  GETTER(Stmt, Body, *body_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MethodDecl);

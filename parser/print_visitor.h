@@ -222,13 +222,13 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(MethodDecl, meth) {
     meth->Mods().PrintTo(os_);
-    meth->GetType()->PrintTo(os_);
+    meth->GetType().PrintTo(os_);
     *os_ << ' ';
     *os_ << meth->Ident().TypeInfo();
     *os_ << '(';
     meth->Params().Accept(this);
     *os_ << ')';
-    meth->Body()->Accept(this);
+    meth->Body().Accept(this);
   }
 
   VISIT_DECL(ClassDecl, type) {
