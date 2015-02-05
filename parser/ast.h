@@ -539,7 +539,7 @@ class Param final {
 
   void Accept(Visitor* visitor) const { visitor->VisitParam(this); }
 
-  const Type* GetType() const { return type_.get(); }
+  GETTER(Type, GetType, *type_);
   lexer::Token Ident() const { return ident_; }
 
  private:

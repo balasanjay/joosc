@@ -195,7 +195,7 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(Param, param) {
-    param->GetType()->PrintTo(os_);
+    param->GetType().PrintTo(os_);
     *os_ << ' ' << param->Ident().TypeInfo();
   }
 
