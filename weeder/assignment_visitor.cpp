@@ -25,9 +25,9 @@ REC_VISIT_DEFN(AssignmentVisitor, BinExpr, expr) {
     return true;
   }
 
-  const Expr* lhs = expr->Lhs();
-  if (!IS_CONST_PTR(FieldDerefExpr, lhs) &&
-      !IS_CONST_PTR(ArrayIndexExpr, lhs) && !IS_CONST_PTR(NameExpr, lhs)) {
+  const Expr& lhs = expr->Lhs();
+  if (!IS_CONST_REF(FieldDerefExpr, lhs) &&
+      !IS_CONST_REF(ArrayIndexExpr, lhs) && !IS_CONST_REF(NameExpr, lhs)) {
     errors_->Append(MakeInvalidLHSError(fs_, expr->Op()));
     return false;
   }

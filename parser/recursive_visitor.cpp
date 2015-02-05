@@ -22,8 +22,8 @@ VISIT_DEFN(RecursiveVisitor, ArrayIndexExpr, expr) {
 }
 VISIT_DEFN(RecursiveVisitor, BinExpr, expr) {
   SHORT_CIRCUIT_CHILD(BinExpr, expr)
-  expr->Lhs()->Accept(this);
-  expr->Rhs()->Accept(this);
+  expr->Lhs().Accept(this);
+  expr->Rhs().Accept(this);
 }
 VISIT_DEFN(RecursiveVisitor, CallExpr, expr) {
   SHORT_CIRCUIT_CHILD(CallExpr, expr);

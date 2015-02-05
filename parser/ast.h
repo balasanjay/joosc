@@ -179,13 +179,12 @@ class BinExpr : public Expr {
 
   ACCEPT_VISITOR(BinExpr);
 
-  const Expr* Lhs() const { return lhs_.get(); }
-  const Expr* Rhs() const { return rhs_.get(); }
+  GETTER(Expr, Lhs, *lhs_);
+  GETTER(Expr, Rhs, *rhs_);
   lexer::Token Op() const { return op_; }
 
  private:
   lexer::Token op_;
-
   unique_ptr<Expr> lhs_;
   unique_ptr<Expr> rhs_;
 };

@@ -25,9 +25,9 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(BinExpr, expr) {
     *os_ << '(';
-    expr->Lhs()->Accept(this);
+    expr->Lhs().Accept(this);
     *os_ << ' ' << expr->Op().TypeInfo() << ' ';
-    expr->Rhs()->Accept(this);
+    expr->Rhs().Accept(this);
     *os_ << ')';
   }
 
