@@ -757,7 +757,7 @@ class Program final {
 
   void Accept(Visitor* visitor) const { visitor->VisitProgram(this); }
 
-  const base::UniquePtrVector<CompUnit>& CompUnits() const { return units_; }
+  GETTER(base::UniquePtrVector<CompUnit>, CompUnits, units_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Program);
