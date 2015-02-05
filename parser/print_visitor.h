@@ -134,7 +134,8 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(LocalDeclStmt, stmt) {
     stmt->GetType()->PrintTo(os_);
-    *os_ << ' ' << stmt->Ident().TypeInfo() << RepStr(NumDelimiters(), space_) << '=' << RepStr(NumDelimiters(), space_);
+    *os_ << ' ' << stmt->Ident().TypeInfo() << RepStr(NumDelimiters(), space_)
+         << '=' << RepStr(NumDelimiters(), space_);
     stmt->GetExpr()->Accept(this);
     *os_ << ';';
   }
@@ -153,7 +154,8 @@ class PrintVisitor final : public Visitor {
     stmt->Cond()->Accept(this);
     *os_ << ')' << RepStr(NumDelimiters(), space_) << '{';
     stmt->TrueBody()->Accept(this);
-    *os_ << '}' << RepStr(NumDelimiters(), space_) << "else" << RepStr(NumDelimiters(), space_) << '{';
+    *os_ << '}' << RepStr(NumDelimiters(), space_) << "else"
+         << RepStr(NumDelimiters(), space_) << '{';
     stmt->FalseBody()->Accept(this);
     *os_ << '}';
   }
@@ -212,7 +214,8 @@ class PrintVisitor final : public Visitor {
     *os_ << ' ';
     *os_ << field->Ident().TypeInfo();
     if (field->Val() != nullptr) {
-      *os_ << RepStr(NumDelimiters(), space_) << '=' << RepStr(NumDelimiters(), space_);
+      *os_ << RepStr(NumDelimiters(), space_) << '='
+           << RepStr(NumDelimiters(), space_);
       field->Val()->Accept(this);
     }
     *os_ << ';';
@@ -323,16 +326,22 @@ class PrintVisitor final : public Visitor {
     }
   }
 
-private:
-  PrintVisitor(std::ostream* os, int depth, const string& newline, const string& tab, const string& space, bool isJosh) : Visitor(), os_(os), depth_(depth), newline_(newline), tab_(tab), space_(space), isJosh_(isJosh) {}
+ private:
+  PrintVisitor(std::ostream* os, int depth, const string& newline,
+               const string& tab, const string& space, bool isJosh)
+      : Visitor(),
+        os_(os),
+        depth_(depth),
+        newline_(newline),
+        tab_(tab),
+        space_(space),
+        isJosh_(isJosh) {}
 
   PrintVisitor Indent() const {
     return PrintVisitor(os_, depth_ + 1, newline_, tab_, space_, isJosh_);
   }
 
-  void PutIndent(int depth) {
-    *os_ << RepStr(NumDelimiters(depth), tab_);
-  }
+  void PutIndent(int depth) { *os_ << RepStr(NumDelimiters(depth), tab_); }
 
   string RepStr(int num, const string& str) {
     stringstream ss;
