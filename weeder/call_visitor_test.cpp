@@ -7,8 +7,7 @@ using parser::internal::Result;
 
 namespace weeder {
 
-class CallVisitorTest : public WeederTest {
-};
+class CallVisitorTest : public WeederTest {};
 
 TEST_F(CallVisitorTest, Name) {
   MakeParser("a(1);");
@@ -60,4 +59,4 @@ TEST_F(CallVisitorTest, Fail) {
   EXPECT_EQ("InvalidCallError(0:3)\n", testing::PrintToString(errors));
 }
 
-} // namespace weeder
+}  // namespace weeder

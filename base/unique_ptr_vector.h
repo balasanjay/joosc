@@ -5,7 +5,7 @@ namespace base {
 
 template <typename T>
 class UniquePtrVector {
-public:
+ public:
   UniquePtrVector() = default;
   UniquePtrVector(UniquePtrVector&&) = default;
   virtual ~UniquePtrVector() {
@@ -17,19 +17,13 @@ public:
   UniquePtrVector& operator=(UniquePtrVector&&) = default;
 
   // Returns the number of elements in the vector.
-  int Size() const {
-    return (int)vec_.size();
-  }
+  int Size() const { return (int)vec_.size(); }
 
   // Returns the i-th element of the vector; the vector retains ownership.
-  T* At(int i) const {
-    return vec_.at(i);
-  }
+  T* At(int i) const { return vec_.at(i); }
 
   // Adds t to the vector; takes ownership of t.
-  void Append(T* t) {
-    vec_.push_back(t);
-  }
+  void Append(T* t) { vec_.push_back(t); }
 
   T* ReleaseBack() {
     T* t = vec_.at(Size() - 1);
@@ -37,7 +31,8 @@ public:
     return t;
   }
 
-  // Releases ownership of all contained elements; appends elements to provided vector.
+  // Releases ownership of all contained elements; appends elements to provided
+  // vector.
   void Release(vector<T*>* out) {
     for (uint i = 0; i < vec_.size(); ++i) {
       out->push_back(vec_.at(i));
@@ -45,12 +40,12 @@ public:
     vec_.clear();
   }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(UniquePtrVector);
 
   vector<T*> vec_;
 };
 
-} // namespace base
+}  // namespace base
 
 #endif

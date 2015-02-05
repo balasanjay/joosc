@@ -10,16 +10,17 @@ namespace weeder {
 // AssignmentVisitor checks that the left-hand-side of an assignment is one of
 // NameExpr, FieldDerefExpr, or ArrayIndexExpr.
 class AssignmentVisitor : public parser::RecursiveVisitor {
-public:
-  AssignmentVisitor(const base::FileSet* fs, base::ErrorList* errors) : fs_(fs), errors_(errors) {}
+ public:
+  AssignmentVisitor(const base::FileSet* fs, base::ErrorList* errors)
+      : fs_(fs), errors_(errors) {}
 
   REC_VISIT_DECL(BinExpr, expr);
 
-private:
+ private:
   const base::FileSet* fs_;
   base::ErrorList* errors_;
 };
 
-} // namespace weeder
+}  // namespace weeder
 
 #endif

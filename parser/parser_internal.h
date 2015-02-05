@@ -12,18 +12,14 @@ namespace internal {
 
 template <typename T>
 class Result final {
-public:
+ public:
   Result() = default;
   Result(Result&& other) = default;
   Result& operator=(Result&& other) = default;
 
-  explicit operator bool() const {
-    return IsSuccess();
-  }
+  explicit operator bool() const { return IsSuccess(); }
 
-  bool IsSuccess() const {
-    return !errors_.IsFatal();
-  }
+  bool IsSuccess() const { return !errors_.IsFatal(); }
 
   T* Get() const {
     if (!IsSuccess()) {
@@ -47,18 +43,15 @@ public:
     }
   }
 
-  const base::ErrorList& Errors() const {
-    return errors_;
-  }
+  const base::ErrorList& Errors() const { return errors_; }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(Result);
 
   Result(T* data) : success_(true), data_(data) {}
-  Result(base::Error* err) {
-    errors_.Append(err);
-  }
-  Result(base::ErrorList&& errors) : success_(false), errors_(std::forward<base::ErrorList>(errors)) {}
+  Result(base::Error* err) { errors_.Append(err); }
+  Result(base::ErrorList&& errors)
+      : success_(false), errors_(std::forward<base::ErrorList>(errors)) {}
 
   template <typename U>
   friend Result<U> MakeSuccess(U* t);
@@ -109,16 +102,17 @@ Result<U> ConvertError(Result<T>&& r) {
   return Result<U>(std::move(r.errors_));
 }
 
-} // namespace internal
+}  // namespace internal
 
 struct Parser {
-  Parser(const base::FileSet* fs, const base::File* file, const vector<lexer::Token>* tokens, int index = 0, bool failed = false) : fs_(fs), file_(file), tokens_(tokens), index_(index), failed_(failed) {}
+  Parser(const base::FileSet* fs, const base::File* file,
+         const vector<lexer::Token>* tokens, int index = 0, bool failed = false)
+      : fs_(fs), file_(file), tokens_(tokens), index_(index), failed_(failed) {}
 
-  explicit operator bool() const {
-    return !failed_;
-  }
+  explicit operator bool() const { return !failed_; }
 
-  Parser ParseTokenIf(std::function<bool(lexer::Token)> pred, internal::Result<lexer::Token>* out) const;
+  Parser ParseTokenIf(std::function<bool(lexer::Token)> pred,
+                      internal::Result<lexer::Token>* out) const;
 
   // Type-related parsers.
   Parser ParseQualifiedName(internal::Result<QualifiedName>* out) const;
@@ -135,7 +129,8 @@ struct Parser {
   Parser ParseNewExpression(internal::Result<Expr>* out) const;
   Parser ParsePrimaryBase(internal::Result<Expr>* out) const;
   Parser ParsePrimaryEnd(Expr* base, internal::Result<Expr>* out) const;
-  Parser ParsePrimaryEndNoArrayAccess(Expr* base, internal::Result<Expr>* out) const;
+  Parser ParsePrimaryEndNoArrayAccess(Expr* base,
+                                      internal::Result<Expr>* out) const;
 
   // Other parsers.
   Parser ParseArgumentList(internal::Result<ArgumentList>*) const;
@@ -163,13 +158,9 @@ struct Parser {
   // Helper methods.
   Parser EatSemis() const;
 
-  bool IsAtEnd() const {
-    return failed_ || (uint)index_ >= tokens_->size();
-  }
+  bool IsAtEnd() const { return failed_ || (uint)index_ >= tokens_->size(); }
 
-  bool Failed() const {
-    return failed_;
-  }
+  bool Failed() const { return failed_; }
 
   lexer::Token GetNext() const {
     assert(!IsAtEnd());
@@ -226,6 +217,6 @@ struct Parser {
   bool failed_ = false;
 };
 
-} // namespace parser
+}  // namespace parser
 
 #endif

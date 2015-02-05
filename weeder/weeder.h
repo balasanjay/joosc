@@ -7,8 +7,9 @@
 
 namespace weeder {
 
-void WeedProgram(const base::FileSet* fs, const parser::Program* prog, base::ErrorList* out);
+void WeedProgram(const base::FileSet* fs, const parser::Program* prog,
+                 base::ErrorList* out);
 
-} // namespace weeder
+}  // namespace weeder
 
 #endif

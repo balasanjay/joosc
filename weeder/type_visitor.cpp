@@ -66,32 +66,29 @@ bool IsTopLevelStmt(const Stmt* stmt) {
 
 Error* MakeInvalidVoidTypeError(const FileSet* fs, Token token) {
   return MakeSimplePosRangeError(
-      fs, token.pos,
-      "InvalidVoidTypeError",
+      fs, token.pos, "InvalidVoidTypeError",
       "'void' is only valid as the return type of a method.");
 }
 
 Error* MakeNewNonReferenceTypeError(const FileSet* fs, Token token) {
   return MakeSimplePosRangeError(
-      fs, token.pos,
-      "NewNonReferenceTypeError",
+      fs, token.pos, "NewNonReferenceTypeError",
       "Can only instantiate non-array reference types.");
 }
 
 Error* MakeInvalidInstanceOfType(const FileSet* fs, Token token) {
   return MakeSimplePosRangeError(
-      fs, token.pos,
-      "InvalidInstanceOfTypeError",
+      fs, token.pos, "InvalidInstanceOfTypeError",
       "Right-hand-side of 'instanceof' must be a reference type or an array.");
 }
 
 Error* MakeInvalidTopLevelStatement(const FileSet* fs, Token token) {
-  return MakeSimplePosRangeError(
-      fs, token.pos,
-      "InvalidTopLevelStatement",
-      "A top level statement can only be an assignment, a method call, or a class instantiation.");
+  return MakeSimplePosRangeError(fs, token.pos, "InvalidTopLevelStatement",
+                                 "A top level statement can only be an "
+                                 "assignment, a method call, or a class "
+                                 "instantiation.");
 }
-} // namespace
+}  // namespace
 
 bool HasVoid(const Type* type, Token* out) {
   const Type* cur = type;
@@ -206,4 +203,4 @@ REC_VISIT_DEFN(TypeVisitor, BlockStmt, block) {
   return true;
 }
 
-} // namespace weeder
+}  // namespace weeder

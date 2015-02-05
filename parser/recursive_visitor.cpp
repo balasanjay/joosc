@@ -8,11 +8,12 @@ using base::FileSet;
 
 namespace parser {
 
-#define SHORT_CIRCUIT_CHILD(type, var) {\
-  if (!Visit##type##Impl(var)) { \
-    return; \
-  } \
-}
+#define SHORT_CIRCUIT_CHILD(type, var) \
+  {                                    \
+    if (!Visit##type##Impl(var)) {     \
+      return;                          \
+    }                                  \
+  }
 
 VISIT_DEFN(RecursiveVisitor, ArrayIndexExpr, expr) {
   SHORT_CIRCUIT_CHILD(ArrayIndexExpr, expr)
@@ -201,4 +202,4 @@ VISIT_DEFN(RecursiveVisitor, Program, prog) {
   }
 }
 
-} // namespace parser
+}  // namespace parser

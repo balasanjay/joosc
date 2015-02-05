@@ -32,9 +32,8 @@ class ParserTest : public ::testing::Test {
 
     // Create file set.
     base::FileSet* fs;
-    ASSERT_TRUE(base::FileSet::Builder()
-        .AddStringFile("foo.joos", s)
-        .Build(&fs, &errors));
+    ASSERT_TRUE(base::FileSet::Builder().AddStringFile("foo.joos", s).Build(
+        &fs, &errors));
     fs_.reset(fs);
 
     // Lex tokens.
@@ -92,7 +91,8 @@ TEST_F(ParserTest, QualifiedNameNoLeadingIdent) {
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(name));
-  EXPECT_EQ("UnexpectedTokenError(0:0)\n", testing::PrintToString(name.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:0)\n",
+            testing::PrintToString(name.Errors()));
 }
 
 TEST_F(ParserTest, QualifiedNameSingleIdent) {
@@ -130,7 +130,8 @@ TEST_F(ParserTest, QualifiedNameTrailingDot) {
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(name));
   EXPECT_TRUE(name.Errors().IsFatal());
-  EXPECT_EQ("UnexpectedEOFError(0:11)\n", testing::PrintToString(name.Errors()));
+  EXPECT_EQ("UnexpectedEOFError(0:11)\n",
+            testing::PrintToString(name.Errors()));
 }
 
 TEST_F(ParserTest, SingleTypePrimitive) {
@@ -181,7 +182,8 @@ TEST_F(ParserTest, SingleTypeBothFail) {
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(type));
   EXPECT_TRUE(type.Errors().IsFatal());
-  EXPECT_EQ("UnexpectedTokenError(0:0)\n", testing::PrintToString(type.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:0)\n",
+            testing::PrintToString(type.Errors()));
 }
 
 TEST_F(ParserTest, TypeNonArray) {
@@ -206,7 +208,8 @@ TEST_F(ParserTest, TypeFail) {
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(type));
   EXPECT_TRUE(type.Errors().IsFatal());
-  EXPECT_EQ("UnexpectedTokenError(0:0)\n", testing::PrintToString(type.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:0)\n",
+            testing::PrintToString(type.Errors()));
 }
 
 TEST_F(ParserTest, TypeArray) {
@@ -231,7 +234,8 @@ TEST_F(ParserTest, TypeArrayFail) {
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(type));
   EXPECT_TRUE(type.Errors().IsFatal());
-  EXPECT_EQ("UnexpectedTokenError(0:4)\n", testing::PrintToString(type.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:4)\n",
+            testing::PrintToString(type.Errors()));
 }
 
 TEST_F(ParserTest, ArgumentListNone) {
@@ -284,7 +288,8 @@ TEST_F(ParserTest, ArgumentListBadExpr) {
   Parser after = parser_->ParseArgumentList(&args);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(args));
-  EXPECT_EQ("UnexpectedTokenError(0:3)\n", testing::PrintToString(args.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:3)\n",
+            testing::PrintToString(args.Errors()));
 }
 
 TEST_F(ParserTest, ArgumentListStartingComma) {
@@ -306,7 +311,8 @@ TEST_F(ParserTest, DISABLED_PrimaryBaseShortCircuit) {
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(primary));
-  EXPECT_EQ("UnexpectedEOFError(0:0)\n", testing::PrintToString(primary.Errors()));
+  EXPECT_EQ("UnexpectedEOFError(0:0)\n",
+            testing::PrintToString(primary.Errors()));
 }
 
 TEST_F(ParserTest, PrimaryBaseLit) {
@@ -346,7 +352,8 @@ TEST_F(ParserTest, PrimaryBaseParensExprFail) {
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(primary));
-  EXPECT_EQ("UnexpectedTokenError(0:1)\n", testing::PrintToString(primary.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:1)\n",
+            testing::PrintToString(primary.Errors()));
 }
 
 TEST_F(ParserTest, PrimaryBaseParensNoClosing) {
@@ -356,7 +363,8 @@ TEST_F(ParserTest, PrimaryBaseParensNoClosing) {
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(primary));
-  EXPECT_EQ("UnexpectedTokenError(0:2)\n", testing::PrintToString(primary.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:2)\n",
+            testing::PrintToString(primary.Errors()));
 }
 
 TEST_F(ParserTest, PrimaryBaseQualifiedName) {
@@ -376,7 +384,8 @@ TEST_F(ParserTest, PrimaryBaseQualifiedNameFail) {
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(primary));
-  EXPECT_EQ("UnexpectedTokenError(0:4)\n", testing::PrintToString(primary.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:4)\n",
+            testing::PrintToString(primary.Errors()));
 }
 
 TEST_F(ParserTest, PrimaryBaseAbort) {
@@ -386,7 +395,8 @@ TEST_F(ParserTest, PrimaryBaseAbort) {
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(primary));
-  EXPECT_EQ("UnexpectedTokenError(0:0)\n", testing::PrintToString(primary.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:0)\n",
+            testing::PrintToString(primary.Errors()));
 }
 
 TEST_F(ParserTest, PrimaryEndFailedArrayAccess) {
@@ -397,7 +407,8 @@ TEST_F(ParserTest, PrimaryEndFailedArrayAccess) {
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(primaryEnd));
-  EXPECT_EQ("UnexpectedTokenError(0:1)\n", testing::PrintToString(primaryEnd.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:1)\n",
+            testing::PrintToString(primaryEnd.Errors()));
 }
 
 TEST_F(ParserTest, PrimaryEndArrayAccessWithField) {
@@ -437,40 +448,47 @@ TEST_F(ParserTest, DISABLED_PrimaryEndNoArrayShortCircuit) {
   MakeParser("");
   unique_ptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
-  Parser after = parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
+  Parser after =
+      parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(primaryEnd));
-  EXPECT_EQ("UnexpectedEOFError(0:0)\n", testing::PrintToString(primaryEnd.Errors()));
+  EXPECT_EQ("UnexpectedEOFError(0:0)\n",
+            testing::PrintToString(primaryEnd.Errors()));
 }
 
 TEST_F(ParserTest, PrimaryEndNoArrayUnexpectedToken) {
   MakeParser(";");
   unique_ptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
-  Parser after = parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
+  Parser after =
+      parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(primaryEnd));
-  EXPECT_EQ("UnexpectedTokenError(0:0)\n", testing::PrintToString(primaryEnd.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:0)\n",
+            testing::PrintToString(primaryEnd.Errors()));
 }
 
 TEST_F(ParserTest, PrimaryEndNoArrayFieldFail) {
   MakeParser(".;");
   unique_ptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
-  Parser after = parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
+  Parser after =
+      parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(primaryEnd));
-  EXPECT_EQ("UnexpectedTokenError(0:1)\n", testing::PrintToString(primaryEnd.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:1)\n",
+            testing::PrintToString(primaryEnd.Errors()));
 }
 
 TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEnd) {
   MakeParser(".f[0]");
   unique_ptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
-  Parser after = parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
+  Parser after =
+      parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(primaryEnd));
@@ -492,7 +510,8 @@ TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEndFail) {
   MakeParser(".f;");
   unique_ptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
-  Parser after = parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
+  Parser after =
+      parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(primaryEnd));
@@ -503,18 +522,21 @@ TEST_F(ParserTest, PrimaryEndNoArrayMethodFail) {
   MakeParser("(;)");
   unique_ptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
-  Parser after = parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
+  Parser after =
+      parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(primaryEnd));
-  EXPECT_EQ("UnexpectedTokenError(0:1)\n", testing::PrintToString(primaryEnd.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:1)\n",
+            testing::PrintToString(primaryEnd.Errors()));
 }
 
 TEST_F(ParserTest, PrimaryEndNoArrayMethodWithEnd) {
   MakeParser("().f");
   unique_ptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
-  Parser after = parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
+  Parser after =
+      parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(primaryEnd));
@@ -525,7 +547,8 @@ TEST_F(ParserTest, PrimaryEndNoArrayMethodWithEndFail) {
   MakeParser("();");
   unique_ptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
-  Parser after = parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
+  Parser after =
+      parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(primaryEnd));
@@ -540,7 +563,8 @@ TEST_F(ParserTest, DISABLED_UnaryEmptyShortCircuit) {
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(unary));
-  EXPECT_EQ("UnexpectedEOFError(0:0)\n", testing::PrintToString(unary.Errors()));
+  EXPECT_EQ("UnexpectedEOFError(0:0)\n",
+            testing::PrintToString(unary.Errors()));
 }
 
 TEST_F(ParserTest, UnaryIsUnary) {
@@ -562,7 +586,8 @@ TEST_F(ParserTest, UnaryOpFail) {
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(unary));
-  EXPECT_EQ("UnexpectedTokenError(0:1)\n", testing::PrintToString(unary.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:1)\n",
+            testing::PrintToString(unary.Errors()));
 }
 
 TEST_F(ParserTest, UnaryIsCast) {
@@ -606,7 +631,8 @@ TEST_F(ParserTest, CastTypeFail) {
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(cast));
-  EXPECT_EQ("UnexpectedTokenError(0:1)\n", testing::PrintToString(cast.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:1)\n",
+            testing::PrintToString(cast.Errors()));
 }
 
 TEST_F(ParserTest, CastExprFail) {
@@ -617,7 +643,8 @@ TEST_F(ParserTest, CastExprFail) {
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(cast));
-  EXPECT_EQ("UnexpectedTokenError(0:6)\n", testing::PrintToString(cast.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:6)\n",
+            testing::PrintToString(cast.Errors()));
 }
 
 TEST_F(ParserTest, InstanceOfRefType) {
@@ -649,7 +676,8 @@ TEST_F(ParserTest, InstanceOfParens) {
   Parser after = parser_->ParseExpression(&expr);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(expr));
-  EXPECT_EQ("UnexpectedTokenError(0:13)\n", testing::PrintToString(expr.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:13)\n",
+            testing::PrintToString(expr.Errors()));
 }
 
 TEST_F(ParserTest, InstanceOfNull) {
@@ -659,9 +687,9 @@ TEST_F(ParserTest, InstanceOfNull) {
   Parser after = parser_->ParseExpression(&expr);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(expr));
-  EXPECT_EQ("UnexpectedTokenError(0:13)\n", testing::PrintToString(expr.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:13)\n",
+            testing::PrintToString(expr.Errors()));
 }
-
 
 TEST_F(ParserTest, ExprUnaryFail) {
   MakeParser(";");
@@ -671,7 +699,8 @@ TEST_F(ParserTest, ExprUnaryFail) {
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(expr));
-  EXPECT_EQ("UnexpectedTokenError(0:0)\n", testing::PrintToString(expr.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:0)\n",
+            testing::PrintToString(expr.Errors()));
 }
 
 TEST_F(ParserTest, ExprOnlyUnary) {
@@ -693,7 +722,8 @@ TEST_F(ParserTest, ExprUnaryBinFail) {
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(expr));
-  EXPECT_EQ("UnexpectedTokenError(0:3)\n", testing::PrintToString(expr.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:3)\n",
+            testing::PrintToString(expr.Errors()));
 }
 
 TEST_F(ParserTest, ExprLeftAssoc) {
@@ -737,7 +767,10 @@ TEST_F(ParserTest, ExprPrecedence) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(expr));
-  EXPECT_EQ("(a ASSG (b OR (c AND (d BOR (e XOR (f BAND (g EQ (h LE (i ADD (j MUL k))))))))))", Str(expr.Get()));
+  EXPECT_EQ(
+      "(a ASSG (b OR (c AND (d BOR (e XOR (f BAND (g EQ (h LE (i ADD (j MUL "
+      "k))))))))))",
+      Str(expr.Get()));
 }
 
 TEST_F(ParserTest, VarDecl) {
@@ -759,7 +792,8 @@ TEST_F(ParserTest, VarDeclBadIdentifier) {
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:18)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:18)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, VarDeclBadNoAssign) {
@@ -770,7 +804,8 @@ TEST_F(ParserTest, VarDeclBadNoAssign) {
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:21)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:21)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, VarDeclBadAssign) {
@@ -781,7 +816,8 @@ TEST_F(ParserTest, VarDeclBadAssign) {
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:24)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:24)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, ReturnStmtEmpty) {
@@ -836,7 +872,8 @@ TEST_F(ParserTest, ReturnStmtBadExpr) {
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:8)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:8)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, BlockStmtEmpty) {
@@ -869,7 +906,8 @@ TEST_F(ParserTest, BlockStmtNoSemi) {
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:4)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:4)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, BlockStmtNestedNoClose) {
@@ -1012,7 +1050,8 @@ TEST_F(ParserTest, ForInitNoIf) {
   Parser after = parser_->ParseForInit(&stmt);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:0)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:0)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, ForStmtEmpty) {
@@ -1048,7 +1087,8 @@ TEST_F(ParserTest, ForStmtBadCond) {
   Parser after = parser_->ParseForStmt(&stmt);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:8)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:8)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, ForStmtBadInit) {
@@ -1057,7 +1097,8 @@ TEST_F(ParserTest, ForStmtBadInit) {
   Parser after = parser_->ParseForStmt(&stmt);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:4)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:4)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, ForStmtTooManyStatements) {
@@ -1066,7 +1107,8 @@ TEST_F(ParserTest, ForStmtTooManyStatements) {
   Parser after = parser_->ParseForStmt(&stmt);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:6)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:6)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, ForStmtUnclosed) {
@@ -1075,7 +1117,8 @@ TEST_F(ParserTest, ForStmtUnclosed) {
   Parser after = parser_->ParseForStmt(&stmt);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:6)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:6)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, ForStmtTooFewStmts) {
@@ -1084,7 +1127,8 @@ TEST_F(ParserTest, ForStmtTooFewStmts) {
   Parser after = parser_->ParseForStmt(&stmt);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:5)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:5)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, ForStmtNoStmts) {
@@ -1093,7 +1137,8 @@ TEST_F(ParserTest, ForStmtNoStmts) {
   Parser after = parser_->ParseForStmt(&stmt);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:4)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:4)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, ForStmtNoParen) {
@@ -1102,7 +1147,8 @@ TEST_F(ParserTest, ForStmtNoParen) {
   Parser after = parser_->ParseForStmt(&stmt);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:3)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:3)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, ForStmtPropagateErrorFromInit) {
@@ -1111,7 +1157,8 @@ TEST_F(ParserTest, ForStmtPropagateErrorFromInit) {
   Parser after = parser_->ParseForStmt(&stmt);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:6)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:6)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, ForStmtPropagateErrorFromCond) {
@@ -1120,7 +1167,8 @@ TEST_F(ParserTest, ForStmtPropagateErrorFromCond) {
   Parser after = parser_->ParseForStmt(&stmt);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:7)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:7)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, ForStmtPropagateErrorFromUpdate) {
@@ -1129,7 +1177,8 @@ TEST_F(ParserTest, ForStmtPropagateErrorFromUpdate) {
   Parser after = parser_->ParseForStmt(&stmt);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:8)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:8)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, ForStmtPropagateErrorFromBody) {
@@ -1138,7 +1187,8 @@ TEST_F(ParserTest, ForStmtPropagateErrorFromBody) {
   Parser after = parser_->ParseForStmt(&stmt);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:9)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:9)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, WhileStmtNoWhile) {
@@ -1147,7 +1197,8 @@ TEST_F(ParserTest, WhileStmtNoWhile) {
   Parser after = parser_->ParseWhileStmt(&stmt);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:0)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:0)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, WhileStmtNoLParen) {
@@ -1156,7 +1207,8 @@ TEST_F(ParserTest, WhileStmtNoLParen) {
   Parser after = parser_->ParseWhileStmt(&stmt);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:5)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:5)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, WhileStmtNoCond) {
@@ -1165,7 +1217,8 @@ TEST_F(ParserTest, WhileStmtNoCond) {
   Parser after = parser_->ParseWhileStmt(&stmt);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:6)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:6)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, WhileStmtBadCond) {
@@ -1174,7 +1227,8 @@ TEST_F(ParserTest, WhileStmtBadCond) {
   Parser after = parser_->ParseWhileStmt(&stmt);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:6)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:6)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, WhileStmtNoRParen) {
@@ -1183,7 +1237,8 @@ TEST_F(ParserTest, WhileStmtNoRParen) {
   Parser after = parser_->ParseWhileStmt(&stmt);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:7)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:7)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, WhileStmtNoBody) {
@@ -1201,7 +1256,8 @@ TEST_F(ParserTest, WhileStmtBadBody) {
   Parser after = parser_->ParseWhileStmt(&stmt);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(stmt));
-  EXPECT_EQ("UnexpectedTokenError(0:8)\n", testing::PrintToString(stmt.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:8)\n",
+            testing::PrintToString(stmt.Errors()));
 }
 
 TEST_F(ParserTest, WhileStmtSuccess) {
@@ -1219,7 +1275,8 @@ TEST_F(ParserTest, ParamListBasic) {
   Parser after = parser_->ParseParamList(&params);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(params));
-  EXPECT_EQ("K_INT IDENTIFIER,String IDENTIFIER,a.b.c.d.e IDENTIFIER", Str(params.Get()));
+  EXPECT_EQ("K_INT IDENTIFIER,String IDENTIFIER,a.b.c.d.e IDENTIFIER",
+            Str(params.Get()));
 }
 
 TEST_F(ParserTest, ParamListOne) {
@@ -1246,7 +1303,8 @@ TEST_F(ParserTest, ParamListNoParamName) {
   Parser after = parser_->ParseParamList(&params);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(params));
-  EXPECT_EQ("ParamRequiresNameError(0:0-3)\n", testing::PrintToString(params.Errors()));
+  EXPECT_EQ("ParamRequiresNameError(0:0-3)\n",
+            testing::PrintToString(params.Errors()));
 }
 
 TEST_F(ParserTest, ParamListHangingComma) {
@@ -1255,7 +1313,8 @@ TEST_F(ParserTest, ParamListHangingComma) {
   Parser after = parser_->ParseParamList(&params);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(params));
-  EXPECT_EQ("UnexpectedTokenError(0:8)\n", testing::PrintToString(params.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:8)\n",
+            testing::PrintToString(params.Errors()));
 }
 
 TEST_F(ParserTest, ParamListHangingCommaEOF) {
@@ -1264,7 +1323,8 @@ TEST_F(ParserTest, ParamListHangingCommaEOF) {
   Parser after = parser_->ParseParamList(&params);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(params));
-  EXPECT_EQ("UnexpectedEOFError(0:7)\n", testing::PrintToString(params.Errors()));
+  EXPECT_EQ("UnexpectedEOFError(0:7)\n",
+            testing::PrintToString(params.Errors()));
 }
 
 TEST_F(ParserTest, FieldDeclSimple) {
@@ -1282,7 +1342,10 @@ TEST_F(ParserTest, FieldDeclModsOrdered) {
   Parser after = parser_->ParseMemberDecl(&decl);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
-  EXPECT_EQ("K_PUBLIC K_PROTECTED K_ABSTRACT K_STATIC K_FINAL K_NATIVE K_INT IDENTIFIER;", Str(decl.Get()));
+  EXPECT_EQ(
+      "K_PUBLIC K_PROTECTED K_ABSTRACT K_STATIC K_FINAL K_NATIVE K_INT "
+      "IDENTIFIER;",
+      Str(decl.Get()));
 }
 
 TEST_F(ParserTest, FieldDeclWithAssign) {
@@ -1300,7 +1363,8 @@ TEST_F(ParserTest, FieldDeclExprError) {
   Parser after = parser_->ParseMemberDecl(&decl);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(decl));
-  EXPECT_EQ("UnexpectedTokenError(0:14)\n", testing::PrintToString(decl.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:14)\n",
+            testing::PrintToString(decl.Errors()));
 }
 
 TEST_F(ParserTest, FieldDeclJustEq) {
@@ -1309,7 +1373,8 @@ TEST_F(ParserTest, FieldDeclJustEq) {
   Parser after = parser_->ParseMemberDecl(&decl);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(decl));
-  EXPECT_EQ("UnexpectedTokenError(0:9)\n", testing::PrintToString(decl.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:9)\n",
+            testing::PrintToString(decl.Errors()));
 }
 
 TEST_F(ParserTest, FieldDeclBadBlock) {
@@ -1318,7 +1383,8 @@ TEST_F(ParserTest, FieldDeclBadBlock) {
   Parser after = parser_->ParseMemberDecl(&decl);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(decl));
-  EXPECT_EQ("UnexpectedTokenError(0:7)\n", testing::PrintToString(decl.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:7)\n",
+            testing::PrintToString(decl.Errors()));
 }
 
 TEST_F(ParserTest, FieldDeclNoSemi) {
@@ -1327,7 +1393,8 @@ TEST_F(ParserTest, FieldDeclNoSemi) {
   Parser after = parser_->ParseMemberDecl(&decl);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(decl));
-  EXPECT_EQ("UnexpectedTokenError(0:11)\n", testing::PrintToString(decl.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:11)\n",
+            testing::PrintToString(decl.Errors()));
 }
 
 TEST_F(ParserTest, MethodDeclNoBody) {
@@ -1345,7 +1412,10 @@ TEST_F(ParserTest, MethodDeclParamsBlock) {
   Parser after = parser_->ParseMemberDecl(&decl);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
-  EXPECT_EQ("K_PUBLIC K_INT IDENTIFIER(K_INT IDENTIFIER,array<String> IDENTIFIER){foo;}", Str(decl.Get()));
+  EXPECT_EQ(
+      "K_PUBLIC K_INT IDENTIFIER(K_INT IDENTIFIER,array<String> "
+      "IDENTIFIER){foo;}",
+      Str(decl.Get()));
 }
 
 TEST_F(ParserTest, MethodConstDeclNoBody) {
@@ -1381,7 +1451,8 @@ TEST_F(ParserTest, TypeDeclBadModifierList) {
   Parser after = parser_->ParseTypeDecl(&decl);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(decl));
-  EXPECT_EQ("DuplicateModifierError(0:7-13)\n", testing::PrintToString(decl.Errors()));
+  EXPECT_EQ("DuplicateModifierError(0:7-13)\n",
+            testing::PrintToString(decl.Errors()));
 }
 
 TEST_F(ParserTest, TypeDeclEOFAfterMods) {
@@ -1399,7 +1470,8 @@ TEST_F(ParserTest, TypeDeclNoType) {
   Parser after = parser_->ParseTypeDecl(&decl);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(decl));
-  EXPECT_EQ("UnexpectedTokenError(0:7)\n", testing::PrintToString(decl.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:7)\n",
+            testing::PrintToString(decl.Errors()));
 }
 
 TEST_F(ParserTest, TypeDeclNoIdent) {
@@ -1408,7 +1480,8 @@ TEST_F(ParserTest, TypeDeclNoIdent) {
   Parser after = parser_->ParseTypeDecl(&decl);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(decl));
-  EXPECT_EQ("UnexpectedTokenError(0:13)\n", testing::PrintToString(decl.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:13)\n",
+            testing::PrintToString(decl.Errors()));
 }
 
 TEST_F(ParserTest, TypeDeclClassBadSuper) {
@@ -1417,7 +1490,8 @@ TEST_F(ParserTest, TypeDeclClassBadSuper) {
   Parser after = parser_->ParseTypeDecl(&decl);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(decl));
-  EXPECT_EQ("UnexpectedTokenError(0:25)\n", testing::PrintToString(decl.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:25)\n",
+            testing::PrintToString(decl.Errors()));
 }
 
 TEST_F(ParserTest, TypeDeclClassBadImplements) {
@@ -1426,7 +1500,8 @@ TEST_F(ParserTest, TypeDeclClassBadImplements) {
   Parser after = parser_->ParseTypeDecl(&decl);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(decl));
-  EXPECT_EQ("UnexpectedTokenError(0:40)\n", testing::PrintToString(decl.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:40)\n",
+            testing::PrintToString(decl.Errors()));
 }
 
 TEST_F(ParserTest, TypeDeclClassBadImplementsList) {
@@ -1435,7 +1510,8 @@ TEST_F(ParserTest, TypeDeclClassBadImplementsList) {
   Parser after = parser_->ParseTypeDecl(&decl);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(decl));
-  EXPECT_EQ("UnexpectedTokenError(0:45)\n", testing::PrintToString(decl.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:45)\n",
+            testing::PrintToString(decl.Errors()));
 }
 
 TEST_F(ParserTest, TypeDeclClassNoLBrace) {
@@ -1444,7 +1520,8 @@ TEST_F(ParserTest, TypeDeclClassNoLBrace) {
   Parser after = parser_->ParseTypeDecl(&decl);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(decl));
-  EXPECT_EQ("UnexpectedTokenError(0:49)\n", testing::PrintToString(decl.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:49)\n",
+            testing::PrintToString(decl.Errors()));
 }
 
 TEST_F(ParserTest, TypeDeclClassBadMember) {
@@ -1453,17 +1530,22 @@ TEST_F(ParserTest, TypeDeclClassBadMember) {
   Parser after = parser_->ParseTypeDecl(&decl);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(decl));
-  EXPECT_EQ("UnexpectedTokenError(0:50)\n", testing::PrintToString(decl.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:50)\n",
+            testing::PrintToString(decl.Errors()));
 }
 
 TEST_F(ParserTest, TypeDeclClassManySemis) {
-  MakeParser("public class Foo extends Bar implements Baz, Buh {;;;;;;;int i = 0;}");
+  MakeParser(
+      "public class Foo extends Bar implements Baz, Buh {;;;;;;;int i = 0;}");
   Result<TypeDecl> decl;
   Parser after = parser_->ParseTypeDecl(&decl);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
   EXPECT_TRUE(after.IsAtEnd());
-  EXPECT_EQ("K_PUBLIC class IDENTIFIER extends Bar implements Baz,Buh {K_INT IDENTIFIER=INTEGER;}", Str(decl.Get()));
+  EXPECT_EQ(
+      "K_PUBLIC class IDENTIFIER extends Bar implements Baz,Buh {K_INT "
+      "IDENTIFIER=INTEGER;}",
+      Str(decl.Get()));
 }
 
 TEST_F(ParserTest, TypeDeclInterfaceBadExtends) {
@@ -1472,7 +1554,8 @@ TEST_F(ParserTest, TypeDeclInterfaceBadExtends) {
   Parser after = parser_->ParseTypeDecl(&decl);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(decl));
-  EXPECT_EQ("UnexpectedTokenError(0:29)\n", testing::PrintToString(decl.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:29)\n",
+            testing::PrintToString(decl.Errors()));
 }
 
 TEST_F(ParserTest, TypeDeclInterfaceBadExtendsList) {
@@ -1481,7 +1564,8 @@ TEST_F(ParserTest, TypeDeclInterfaceBadExtendsList) {
   Parser after = parser_->ParseTypeDecl(&decl);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(decl));
-  EXPECT_EQ("UnexpectedTokenError(0:34)\n", testing::PrintToString(decl.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:34)\n",
+            testing::PrintToString(decl.Errors()));
 }
 
 TEST_F(ParserTest, TypeDeclInterfaceManySemis) {
@@ -1491,7 +1575,10 @@ TEST_F(ParserTest, TypeDeclInterfaceManySemis) {
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
   EXPECT_TRUE(after.IsAtEnd());
-  EXPECT_EQ("K_PUBLIC interface IDENTIFIER extends Bar,Baz,Buh {K_INT IDENTIFIER=INTEGER;}", Str(decl.Get()));
+  EXPECT_EQ(
+      "K_PUBLIC interface IDENTIFIER extends Bar,Baz,Buh {K_INT "
+      "IDENTIFIER=INTEGER;}",
+      Str(decl.Get()));
 }
 
 TEST_F(ParserTest, CompUnitEmptyFile) {
@@ -1510,7 +1597,8 @@ TEST_F(ParserTest, CompUnitBadPackage) {
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(unit));
-  EXPECT_EQ("UnexpectedTokenError(0:8)\n", testing::PrintToString(unit.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:8)\n",
+            testing::PrintToString(unit.Errors()));
 }
 
 TEST_F(ParserTest, CompUnitBadImport) {
@@ -1519,7 +1607,8 @@ TEST_F(ParserTest, CompUnitBadImport) {
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(unit));
-  EXPECT_EQ("UnexpectedTokenError(0:20)\n", testing::PrintToString(unit.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:20)\n",
+            testing::PrintToString(unit.Errors()));
 }
 
 TEST_F(ParserTest, CompUnitBadImports) {
@@ -1528,7 +1617,8 @@ TEST_F(ParserTest, CompUnitBadImports) {
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(unit));
-  EXPECT_EQ("UnexpectedTokenError(0:32)\n", testing::PrintToString(unit.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:32)\n",
+            testing::PrintToString(unit.Errors()));
 }
 
 TEST_F(ParserTest, CompUnitBadImportTooManyStars) {
@@ -1537,7 +1627,8 @@ TEST_F(ParserTest, CompUnitBadImportTooManyStars) {
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(unit));
-  EXPECT_EQ("UnexpectedTokenError(0:25)\n", testing::PrintToString(unit.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:25)\n",
+            testing::PrintToString(unit.Errors()));
 }
 
 TEST_F(ParserTest, CompUnitBadImportBadIdentAfterDot) {
@@ -1546,7 +1637,8 @@ TEST_F(ParserTest, CompUnitBadImportBadIdentAfterDot) {
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(unit));
-  EXPECT_EQ("UnexpectedTokenError(0:28)\n", testing::PrintToString(unit.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:28)\n",
+            testing::PrintToString(unit.Errors()));
 }
 
 TEST_F(ParserTest, CompUnitBadImportEOF) {
@@ -1555,7 +1647,8 @@ TEST_F(ParserTest, CompUnitBadImportEOF) {
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(unit));
-  EXPECT_EQ("UnexpectedEOFError(0:26)\n", testing::PrintToString(unit.Errors()));
+  EXPECT_EQ("UnexpectedEOFError(0:26)\n",
+            testing::PrintToString(unit.Errors()));
 }
 
 TEST_F(ParserTest, CompUnitBadImportNoSemi) {
@@ -1564,7 +1657,8 @@ TEST_F(ParserTest, CompUnitBadImportNoSemi) {
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(unit));
-  EXPECT_EQ("UnexpectedTokenError(0:27)\n", testing::PrintToString(unit.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:27)\n",
+            testing::PrintToString(unit.Errors()));
 }
 
 TEST_F(ParserTest, CompUnitBadType) {
@@ -1573,7 +1667,8 @@ TEST_F(ParserTest, CompUnitBadType) {
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(unit));
-  EXPECT_EQ("UnexpectedTokenError(0:36)\n", testing::PrintToString(unit.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:36)\n",
+            testing::PrintToString(unit.Errors()));
 }
 
 TEST_F(ParserTest, CompUnitExtraTokens) {
@@ -1582,7 +1677,8 @@ TEST_F(ParserTest, CompUnitExtraTokens) {
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(unit));
-  EXPECT_EQ("UnexpectedTokenError(0:48)\n", testing::PrintToString(unit.Errors()));
+  EXPECT_EQ("UnexpectedTokenError(0:48)\n",
+            testing::PrintToString(unit.Errors()));
 }
 
 TEST_F(ParserTest, CompUnitSuccess) {
@@ -1591,7 +1687,8 @@ TEST_F(ParserTest, CompUnitSuccess) {
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(unit));
-  EXPECT_EQ("package foo;import bar.baz.*;K_PUBLIC class IDENTIFIER {}", Str(unit.Get()));
+  EXPECT_EQ("package foo;import bar.baz.*;K_PUBLIC class IDENTIFIER {}",
+            Str(unit.Get()));
 }
 
 TEST_F(ParserTest, CompUnitOnlyPackageSuccess) {
@@ -1631,12 +1728,15 @@ TEST_F(ParserTest, CompUnitOnlySemiSuccess) {
 }
 
 TEST_F(ParserTest, CompUnitManySemisSuccess) {
-  MakeParser("package foo;;;;;;;;;;;;;;import bar.baz.*;;;;;;;;;;;public class foo{};;;;;;;");
+  MakeParser(
+      "package foo;;;;;;;;;;;;;;import bar.baz.*;;;;;;;;;;;public class "
+      "foo{};;;;;;;");
   Result<CompUnit> unit;
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(unit));
-  EXPECT_EQ("package foo;import bar.baz.*;K_PUBLIC class IDENTIFIER {}", Str(unit.Get()));
+  EXPECT_EQ("package foo;import bar.baz.*;K_PUBLIC class IDENTIFIER {}",
+            Str(unit.Get()));
 }
 
-} // namespace parser
+}  // namespace parser

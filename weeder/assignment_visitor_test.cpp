@@ -7,8 +7,7 @@ using parser::internal::Result;
 
 namespace weeder {
 
-class AssignmentVisitorTest : public WeederTest {
-};
+class AssignmentVisitorTest : public WeederTest {};
 
 TEST_F(AssignmentVisitorTest, Name) {
   MakeParser("a = 1;");
@@ -59,5 +58,4 @@ TEST_F(AssignmentVisitorTest, Fail) {
   EXPECT_EQ("InvalidLHSError(0:4)\n", testing::PrintToString(errors));
 }
 
-} // namespace weeder
-
+}  // namespace weeder

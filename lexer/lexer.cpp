@@ -15,99 +15,99 @@ namespace {
 #define NEW(repr, value) TokenTypeInfo::New(repr, #repr, value)
 
 const TokenTypeInfo kTokenTypeInfo[NUM_TOKEN_TYPES] = {
-  NEW(LINE_COMMENT, "LINE_COMMENT").Skippable(),
-  NEW(BLOCK_COMMENT, "BLOCK_COMMENT").Skippable(),
-  NEW(WHITESPACE, "WHITESPACE").Skippable(),
-  NEW(LE, "<=").BinOp(7),
-  NEW(GE, ">=").BinOp(7),
-  NEW(EQ, "==").BinOp(6),
-  NEW(NEQ, "!=").BinOp(6),
-  NEW(AND, "&&").BinOp(2),
-  NEW(OR, "||").BinOp(1),
-  NEW(INCR, "++").UnaryOp().Unsupported(),
-  NEW(DECR, "--").UnaryOp().Unsupported(),
-  NEW(ADD, "+").BinOp(8),
-  NEW(SUB, "-").BinOp(8).UnaryOp(),
-  NEW(MUL, "*").BinOp(9),
-  NEW(DIV, "/").BinOp(9),
-  NEW(MOD, "%").BinOp(9),
-  NEW(LT, "<").BinOp(7),
-  NEW(GT, ">").BinOp(7),
-  NEW(BAND, "&").BinOp(5),
-  NEW(BOR, "|").BinOp(3),
-  NEW(XOR, "^").BinOp(4),
-  NEW(NOT, "!").UnaryOp(),
-  NEW(ASSG, "=").BinOp(0),
-  NEW(LPAREN, "(").Symbol(),
-  NEW(RPAREN, ")").Symbol(),
-  NEW(LBRACE, "{").Symbol(),
-  NEW(RBRACE, "}").Symbol(),
-  NEW(LBRACK, "[").Symbol(),
-  NEW(RBRACK, "]").Symbol(),
-  NEW(SEMI, ";").Symbol(),
-  NEW(COMMA, ",").Symbol(),
-  NEW(DOT, ".").Symbol(),
-  NEW(INTEGER, "INTEGER").Literal(),
-  NEW(IDENTIFIER, "IDENTIFIER"),
-  NEW(CHAR, "CHAR").Literal(),
-  NEW(STRING, "STRING").Literal(),
-  // Keywords.
-  NEW(K_ABSTRACT, "abstract").Keyword().MakeModifier(ABSTRACT),
-  NEW(K_DEFAULT, "default").Keyword().Unsupported(),
-  NEW(K_IF, "if").Keyword(),
-  NEW(K_PRIVATE, "private").Keyword().Unsupported(),
-  NEW(K_THIS, "this").Keyword(),
-  NEW(K_BOOL, "boolean").Keyword().Primitive(),
-  NEW(K_DO, "do").Keyword().Unsupported(),
-  NEW(K_IMPLEMENTS, "implements").Keyword(),
-  NEW(K_PROTECTED, "protected").Keyword().MakeModifier(PROTECTED),
-  NEW(K_THROW, "throw").Keyword().Unsupported(),
-  NEW(K_BREAK, "break").Keyword().Unsupported(),
-  NEW(K_DOUBLE, "double").Keyword().Unsupported(),
-  NEW(K_IMPORT, "import").Keyword(),
-  NEW(K_PUBLIC, "public").Keyword().MakeModifier(PUBLIC),
-  NEW(K_THROWS, "throws").Keyword().Unsupported(),
-  NEW(K_BYTE, "byte").Keyword().Primitive(),
-  NEW(K_ELSE, "else").Keyword(),
-  NEW(K_INSTANCEOF, "instanceof").Keyword().BinOp(7),
-  NEW(K_RETURN, "return").Keyword(),
-  NEW(K_TRANSIENT, "transient").Keyword().Unsupported(),
-  NEW(K_CASE, "case").Keyword().Unsupported(),
-  NEW(K_EXTENDS, "extends").Keyword(),
-  NEW(K_INT, "int").Keyword().Primitive(),
-  NEW(K_SHORT, "short").Keyword().Primitive(),
-  NEW(K_TRY, "try").Keyword().Unsupported(),
-  NEW(K_CATCH, "catch").Keyword().Unsupported(),
-  NEW(K_FINAL, "final").Keyword().MakeModifier(FINAL),
-  NEW(K_INTERFACE, "interface").Keyword(),
-  NEW(K_STATIC, "static").Keyword().MakeModifier(STATIC),
-  NEW(K_VOID, "void").Keyword().Primitive(),
-  NEW(K_CHAR, "char").Keyword().Primitive(),
-  NEW(K_FINALLY, "finally").Keyword().Unsupported(),
-  NEW(K_LONG, "long").Keyword().Unsupported(),
-  NEW(K_STRICTFP, "strictfp").Keyword().Unsupported(),
-  NEW(K_VOLATILE, "volatile").Keyword().Unsupported(),
-  NEW(K_CLASS, "class").Keyword(),
-  NEW(K_FLOAT, "float").Keyword(),
-  NEW(K_NATIVE, "native").Keyword().MakeModifier(NATIVE),
-  NEW(K_SUPER, "super").Keyword().Unsupported(),
-  NEW(K_WHILE, "while").Keyword(),
-  NEW(K_CONST, "const").Keyword().Unsupported(),
-  NEW(K_FOR, "for").Keyword(),
-  NEW(K_NEW, "new").Keyword(),
-  NEW(K_SWITCH, "switch").Keyword().Unsupported(),
-  NEW(K_CONTINUE, "continue").Keyword().Unsupported(),
-  NEW(K_GOTO, "goto").Keyword().Unsupported(),
-  NEW(K_PACKAGE, "package").Keyword(),
-  NEW(K_SYNCHRONIZED, "synchronized").Keyword().Unsupported(),
-  NEW(K_TRUE, "true").Keyword().Literal(),
-  NEW(K_FALSE, "false").Keyword().Literal(),
-  NEW(K_NULL, "null").Keyword().Literal(),
+    NEW(LINE_COMMENT, "LINE_COMMENT").Skippable(),
+    NEW(BLOCK_COMMENT, "BLOCK_COMMENT").Skippable(),
+    NEW(WHITESPACE, "WHITESPACE").Skippable(),
+    NEW(LE, "<=").BinOp(7),
+    NEW(GE, ">=").BinOp(7),
+    NEW(EQ, "==").BinOp(6),
+    NEW(NEQ, "!=").BinOp(6),
+    NEW(AND, "&&").BinOp(2),
+    NEW(OR, "||").BinOp(1),
+    NEW(INCR, "++").UnaryOp().Unsupported(),
+    NEW(DECR, "--").UnaryOp().Unsupported(),
+    NEW(ADD, "+").BinOp(8),
+    NEW(SUB, "-").BinOp(8).UnaryOp(),
+    NEW(MUL, "*").BinOp(9),
+    NEW(DIV, "/").BinOp(9),
+    NEW(MOD, "%").BinOp(9),
+    NEW(LT, "<").BinOp(7),
+    NEW(GT, ">").BinOp(7),
+    NEW(BAND, "&").BinOp(5),
+    NEW(BOR, "|").BinOp(3),
+    NEW(XOR, "^").BinOp(4),
+    NEW(NOT, "!").UnaryOp(),
+    NEW(ASSG, "=").BinOp(0),
+    NEW(LPAREN, "(").Symbol(),
+    NEW(RPAREN, ")").Symbol(),
+    NEW(LBRACE, "{").Symbol(),
+    NEW(RBRACE, "}").Symbol(),
+    NEW(LBRACK, "[").Symbol(),
+    NEW(RBRACK, "]").Symbol(),
+    NEW(SEMI, ";").Symbol(),
+    NEW(COMMA, ",").Symbol(),
+    NEW(DOT, ".").Symbol(),
+    NEW(INTEGER, "INTEGER").Literal(),
+    NEW(IDENTIFIER, "IDENTIFIER"),
+    NEW(CHAR, "CHAR").Literal(),
+    NEW(STRING, "STRING").Literal(),
+    // Keywords.
+    NEW(K_ABSTRACT, "abstract").Keyword().MakeModifier(ABSTRACT),
+    NEW(K_DEFAULT, "default").Keyword().Unsupported(),
+    NEW(K_IF, "if").Keyword(),
+    NEW(K_PRIVATE, "private").Keyword().Unsupported(),
+    NEW(K_THIS, "this").Keyword(),
+    NEW(K_BOOL, "boolean").Keyword().Primitive(),
+    NEW(K_DO, "do").Keyword().Unsupported(),
+    NEW(K_IMPLEMENTS, "implements").Keyword(),
+    NEW(K_PROTECTED, "protected").Keyword().MakeModifier(PROTECTED),
+    NEW(K_THROW, "throw").Keyword().Unsupported(),
+    NEW(K_BREAK, "break").Keyword().Unsupported(),
+    NEW(K_DOUBLE, "double").Keyword().Unsupported(),
+    NEW(K_IMPORT, "import").Keyword(),
+    NEW(K_PUBLIC, "public").Keyword().MakeModifier(PUBLIC),
+    NEW(K_THROWS, "throws").Keyword().Unsupported(),
+    NEW(K_BYTE, "byte").Keyword().Primitive(),
+    NEW(K_ELSE, "else").Keyword(),
+    NEW(K_INSTANCEOF, "instanceof").Keyword().BinOp(7),
+    NEW(K_RETURN, "return").Keyword(),
+    NEW(K_TRANSIENT, "transient").Keyword().Unsupported(),
+    NEW(K_CASE, "case").Keyword().Unsupported(),
+    NEW(K_EXTENDS, "extends").Keyword(),
+    NEW(K_INT, "int").Keyword().Primitive(),
+    NEW(K_SHORT, "short").Keyword().Primitive(),
+    NEW(K_TRY, "try").Keyword().Unsupported(),
+    NEW(K_CATCH, "catch").Keyword().Unsupported(),
+    NEW(K_FINAL, "final").Keyword().MakeModifier(FINAL),
+    NEW(K_INTERFACE, "interface").Keyword(),
+    NEW(K_STATIC, "static").Keyword().MakeModifier(STATIC),
+    NEW(K_VOID, "void").Keyword().Primitive(),
+    NEW(K_CHAR, "char").Keyword().Primitive(),
+    NEW(K_FINALLY, "finally").Keyword().Unsupported(),
+    NEW(K_LONG, "long").Keyword().Unsupported(),
+    NEW(K_STRICTFP, "strictfp").Keyword().Unsupported(),
+    NEW(K_VOLATILE, "volatile").Keyword().Unsupported(),
+    NEW(K_CLASS, "class").Keyword(),
+    NEW(K_FLOAT, "float").Keyword(),
+    NEW(K_NATIVE, "native").Keyword().MakeModifier(NATIVE),
+    NEW(K_SUPER, "super").Keyword().Unsupported(),
+    NEW(K_WHILE, "while").Keyword(),
+    NEW(K_CONST, "const").Keyword().Unsupported(),
+    NEW(K_FOR, "for").Keyword(),
+    NEW(K_NEW, "new").Keyword(),
+    NEW(K_SWITCH, "switch").Keyword().Unsupported(),
+    NEW(K_CONTINUE, "continue").Keyword().Unsupported(),
+    NEW(K_GOTO, "goto").Keyword().Unsupported(),
+    NEW(K_PACKAGE, "package").Keyword(),
+    NEW(K_SYNCHRONIZED, "synchronized").Keyword().Unsupported(),
+    NEW(K_TRUE, "true").Keyword().Literal(),
+    NEW(K_FALSE, "false").Keyword().Literal(),
+    NEW(K_NULL, "null").Keyword().Literal(),
 };
 
 #undef NEW
 
-} // namespace
+}  // namespace
 
 std::ostream& operator<<(std::ostream& out, const TokenTypeInfo& t) {
   return out << t.repr_;
@@ -330,7 +330,6 @@ void Integer(LexState* state) {
     // Reject multi-digit number that starts with 0.
     if (state->begin + 1 == state->end &&
         state->file->At(state->begin) == '0') {
-
       state->EmitFatal(new LeadingZeroInIntLitError(
           state->fs, Pos(state->fileid, state->begin)));
       return;
@@ -555,7 +554,8 @@ void StripSkippableTokens(const vector<Token>& tokens, vector<Token>* out) {
   }
 }
 
-void StripSkippableTokens(const vector<vector<Token>>& tokens, vector<vector<Token>>* out) {
+void StripSkippableTokens(const vector<vector<Token>>& tokens,
+                          vector<vector<Token>>* out) {
   for (const auto& file_tokens : tokens) {
     uint i = out->size();
     out->resize(i + 1);
@@ -563,14 +563,17 @@ void StripSkippableTokens(const vector<vector<Token>>& tokens, vector<vector<Tok
   }
 }
 
-void FindUnsupportedTokens(const base::FileSet* fs, const vector<Token>& tokens, base::ErrorList* errors) {
-  for (const auto& tok: tokens) {
+void FindUnsupportedTokens(const base::FileSet* fs, const vector<Token>& tokens,
+                           base::ErrorList* errors) {
+  for (const auto& tok : tokens) {
     if (!tok.TypeInfo().IsSupported()) {
       errors->Append(new UnsupportedTokenError(fs, tok.pos));
     }
   }
 }
-void FindUnsupportedTokens(const base::FileSet* fs, const vector<vector<Token>>& tokens, base::ErrorList* errors) {
+void FindUnsupportedTokens(const base::FileSet* fs,
+                           const vector<vector<Token>>& tokens,
+                           base::ErrorList* errors) {
   for (const auto& file_tokens : tokens) {
     FindUnsupportedTokens(fs, file_tokens, errors);
   }

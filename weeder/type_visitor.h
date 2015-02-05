@@ -12,8 +12,9 @@ namespace weeder {
 //   2) NewClassExpr must have a non-primitive type. i.e. no "new int(1)".
 //   3) RHS of an instanceof must be a NameExpr.
 class TypeVisitor : public parser::RecursiveVisitor {
-public:
-  TypeVisitor(const base::FileSet* fs, base::ErrorList* errors) : fs_(fs), errors_(errors) {}
+ public:
+  TypeVisitor(const base::FileSet* fs, base::ErrorList* errors)
+      : fs_(fs), errors_(errors) {}
 
   REC_VISIT_DECL(CastExpr, expr);
   REC_VISIT_DECL(InstanceOfExpr, expr);
@@ -29,11 +30,11 @@ public:
   REC_VISIT_DECL(ForStmt, stmt);
   REC_VISIT_DECL(BlockStmt, stmt);
 
-private:
+ private:
   const base::FileSet* fs_;
   base::ErrorList* errors_;
 };
 
-} // namespace weeder
+}  // namespace weeder
 
 #endif

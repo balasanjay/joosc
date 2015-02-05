@@ -22,7 +22,7 @@ namespace parser {
 // return false from the Impl method, signalling to the RecursiveVisitor that
 
 class RecursiveVisitor : public Visitor {
-public:
+ public:
   virtual ~RecursiveVisitor() {}
 
   // Override Visitor's Expr visitors.
@@ -40,13 +40,13 @@ public:
   VISIT_DECL(NewArrayExpr, expr) final;
   VISIT_DECL(NewClassExpr, expr) final;
   VISIT_DECL(ParenExpr, expr) final;
-  VISIT_DECL(ThisExpr,) final;
+  VISIT_DECL(ThisExpr, ) final;
   VISIT_DECL(UnaryExpr, expr) final;
   VISIT_DECL(InstanceOfExpr, expr) final;
 
   // Override Visitor's Stmt visitors.
   VISIT_DECL(BlockStmt, stmt) final;
-  VISIT_DECL(EmptyStmt,) final;
+  VISIT_DECL(EmptyStmt, ) final;
   VISIT_DECL(ExprStmt, stmt) final;
   VISIT_DECL(LocalDeclStmt, stmt) final;
   VISIT_DECL(ReturnStmt, stmt) final;
@@ -76,9 +76,9 @@ public:
   RECURSIVE_VISITOR_IMPL(CastExpr);
   RECURSIVE_VISITOR_IMPL(FieldDerefExpr);
   RECURSIVE_VISITOR_IMPL(BoolLitExpr);
-  RECURSIVE_VISITOR_IMPL (StringLitExpr);
+  RECURSIVE_VISITOR_IMPL(StringLitExpr);
   RECURSIVE_VISITOR_IMPL(CharLitExpr);
-  RECURSIVE_VISITOR_IMPL (IntLitExpr);
+  RECURSIVE_VISITOR_IMPL(IntLitExpr);
   RECURSIVE_VISITOR_IMPL(NullLitExpr);
   RECURSIVE_VISITOR_IMPL(NameExpr);
   RECURSIVE_VISITOR_IMPL(NewArrayExpr);
@@ -113,7 +113,7 @@ public:
 
 #undef RECURSIVE_VISITOR_IMPL
 
-protected:
+ protected:
   RecursiveVisitor() = default;
 };
 
@@ -122,6 +122,6 @@ protected:
 #define REC_VISIT_DEFN(cls, type, var) \
   bool cls::Visit##type##Impl(const parser::type* var)
 
-} // namespace parser
+}  // namespace parser
 
 #endif

@@ -8,8 +8,7 @@ using parser::internal::Result;
 
 namespace weeder {
 
-class ModifierVisitorTest : public WeederTest {
-};
+class ModifierVisitorTest : public WeederTest {};
 
 TEST_F(ModifierVisitorTest, ClassConstructorDeclConflicting) {
   MakeParser("public protected x(){};");
@@ -21,8 +20,8 @@ TEST_F(ModifierVisitorTest, ClassConstructorDeclConflicting) {
   decl.Get()->Accept(&visitor);
 
   string expected =
-"ConflictingAccessModError(0:0-6)\n"
-"ConflictingAccessModError(0:7-16)\n";
+      "ConflictingAccessModError(0:0-6)\n"
+      "ConflictingAccessModError(0:7-16)\n";
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ(expected, testing::PrintToString(errors));
@@ -38,10 +37,10 @@ TEST_F(ModifierVisitorTest, ClassConstructorDeclDisallowed) {
   decl.Get()->Accept(&visitor);
 
   string expected =
-"ClassConstructorModifierError(0:0-8)\n"
-"ClassConstructorModifierError(0:9-15)\n"
-"ClassConstructorModifierError(0:16-21)\n"
-"ClassConstructorModifierError(0:22-28)\n";
+      "ClassConstructorModifierError(0:0-8)\n"
+      "ClassConstructorModifierError(0:9-15)\n"
+      "ClassConstructorModifierError(0:16-21)\n"
+      "ClassConstructorModifierError(0:22-28)\n";
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ(expected, testing::PrintToString(errors));
@@ -57,7 +56,8 @@ TEST_F(ModifierVisitorTest, ClassConstructorDeclInvalidEmpty) {
   decl.Get()->Accept(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("ClassConstructorEmptyError(0:7)\n", testing::PrintToString(errors));
+  EXPECT_EQ("ClassConstructorEmptyError(0:7)\n",
+            testing::PrintToString(errors));
 }
 
 TEST_F(ModifierVisitorTest, ClassConstructorOk) {
@@ -72,7 +72,6 @@ TEST_F(ModifierVisitorTest, ClassConstructorOk) {
   EXPECT_FALSE(errors.IsFatal());
 }
 
-
 TEST_F(ModifierVisitorTest, ClassFieldDeclConflicting) {
   MakeParser("public protected int x = 1;");
   Result<MemberDecl> decl;
@@ -83,8 +82,8 @@ TEST_F(ModifierVisitorTest, ClassFieldDeclConflicting) {
   decl.Get()->Accept(&visitor);
 
   string expected =
-"ConflictingAccessModError(0:0-6)\n"
-"ConflictingAccessModError(0:7-16)\n";
+      "ConflictingAccessModError(0:0-6)\n"
+      "ConflictingAccessModError(0:7-16)\n";
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ(expected, testing::PrintToString(errors));
@@ -100,9 +99,9 @@ TEST_F(ModifierVisitorTest, ClassFieldDeclDisallowed) {
   decl.Get()->Accept(&visitor);
 
   string expected =
-"ClassFieldModifierError(0:0-8)\n"
-"ClassFieldModifierError(0:9-14)\n"
-"ClassFieldModifierError(0:15-21)\n";
+      "ClassFieldModifierError(0:0-8)\n"
+      "ClassFieldModifierError(0:9-14)\n"
+      "ClassFieldModifierError(0:15-21)\n";
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ(expected, testing::PrintToString(errors));
@@ -130,8 +129,8 @@ TEST_F(ModifierVisitorTest, ClassMethodDeclConflicting) {
   decl.Get()->Accept(&visitor);
 
   string expected =
-"ConflictingAccessModError(0:0-6)\n"
-"ConflictingAccessModError(0:7-16)\n";
+      "ConflictingAccessModError(0:0-6)\n"
+      "ConflictingAccessModError(0:7-16)\n";
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ(expected, testing::PrintToString(errors));
@@ -173,7 +172,8 @@ TEST_F(ModifierVisitorTest, ClassMethodAbstractStatic) {
   decl.Get()->Accept(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("ClassMethodAbstractModifierError(0:9-15)\n", testing::PrintToString(errors));
+  EXPECT_EQ("ClassMethodAbstractModifierError(0:9-15)\n",
+            testing::PrintToString(errors));
 }
 
 TEST_F(ModifierVisitorTest, ClassMethodAbstractFinal) {
@@ -186,7 +186,8 @@ TEST_F(ModifierVisitorTest, ClassMethodAbstractFinal) {
   decl.Get()->Accept(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("ClassMethodAbstractModifierError(0:9-14)\n", testing::PrintToString(errors));
+  EXPECT_EQ("ClassMethodAbstractModifierError(0:9-14)\n",
+            testing::PrintToString(errors));
 }
 
 TEST_F(ModifierVisitorTest, ClassMethodStaticFinal) {
@@ -199,7 +200,8 @@ TEST_F(ModifierVisitorTest, ClassMethodStaticFinal) {
   decl.Get()->Accept(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("ClassMethodStaticFinalError(0:7-12)\n", testing::PrintToString(errors));
+  EXPECT_EQ("ClassMethodStaticFinalError(0:7-12)\n",
+            testing::PrintToString(errors));
 }
 
 TEST_F(ModifierVisitorTest, ClassMethodNativeNotStatic) {
@@ -212,7 +214,8 @@ TEST_F(ModifierVisitorTest, ClassMethodNativeNotStatic) {
   decl.Get()->Accept(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("ClassMethodNativeNotStaticError(0:0-6)\n", testing::PrintToString(errors));
+  EXPECT_EQ("ClassMethodNativeNotStaticError(0:0-6)\n",
+            testing::PrintToString(errors));
 }
 
 TEST_F(ModifierVisitorTest, ClassMethodOk) {
@@ -237,9 +240,9 @@ TEST_F(ModifierVisitorTest, InterfaceConstructorDeclFail) {
   decl.Get()->Accept(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("InterfaceConstructorError(0:0-3)\n", testing::PrintToString(errors));
+  EXPECT_EQ("InterfaceConstructorError(0:0-3)\n",
+            testing::PrintToString(errors));
 }
-
 
 TEST_F(ModifierVisitorTest, InterfaceFieldDeclFail) {
   MakeParser("int x = 3;");
@@ -264,10 +267,10 @@ TEST_F(ModifierVisitorTest, InterfaceMethodDisallowed) {
   decl.Get()->Accept(&visitor);
 
   string expected =
-"InterfaceMethodModifierError(0:0-9)\n"
-"InterfaceMethodModifierError(0:10-16)\n"
-"InterfaceMethodModifierError(0:17-22)\n"
-"InterfaceMethodModifierError(0:23-29)\n";
+      "InterfaceMethodModifierError(0:0-9)\n"
+      "InterfaceMethodModifierError(0:10-16)\n"
+      "InterfaceMethodModifierError(0:17-22)\n"
+      "InterfaceMethodModifierError(0:23-29)\n";
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ(expected, testing::PrintToString(errors));
@@ -308,9 +311,9 @@ TEST_F(ModifierVisitorTest, ClassBadModifiers) {
   decl.Get()->Accept(&visitor);
 
   string expected =
-"ClassModifierError(0:0-9)\n"
-"ClassModifierError(0:10-16)\n"
-"ClassModifierError(0:17-23)\n";
+      "ClassModifierError(0:0-9)\n"
+      "ClassModifierError(0:10-16)\n"
+      "ClassModifierError(0:17-23)\n";
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ(expected, testing::PrintToString(errors));
@@ -351,10 +354,10 @@ TEST_F(ModifierVisitorTest, InterfaceBadModifiers) {
   decl.Get()->Accept(&visitor);
 
   string expected =
-"InterfaceModifierError(0:0-9)\n"
-"InterfaceModifierError(0:10-16)\n"
-"InterfaceModifierError(0:17-22)\n"
-"InterfaceModifierError(0:23-29)\n";
+      "InterfaceModifierError(0:0-9)\n"
+      "InterfaceModifierError(0:10-16)\n"
+      "InterfaceModifierError(0:17-22)\n"
+      "InterfaceModifierError(0:23-29)\n";
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ(expected, testing::PrintToString(errors));
@@ -382,7 +385,8 @@ TEST_F(ModifierVisitorTest, RecursionInterfaceOk) {
   decl.Get()->Accept(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("InterfaceMethodImplError(0:35-38)\n", testing::PrintToString(errors));
+  EXPECT_EQ("InterfaceMethodImplError(0:35-38)\n",
+            testing::PrintToString(errors));
 }
 
 TEST_F(ModifierVisitorTest, RecursionClassOk) {
@@ -398,4 +402,4 @@ TEST_F(ModifierVisitorTest, RecursionClassOk) {
   EXPECT_EQ("ClassMethodEmptyError(0:31-34)\n", testing::PrintToString(errors));
 }
 
-} // namespace weeder
+}  // namespace weeder

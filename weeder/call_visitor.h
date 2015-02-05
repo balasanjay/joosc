@@ -10,16 +10,17 @@ namespace weeder {
 // CallVisitor checks that the left-hand-side of a method call is one of
 // NameExpr, or FieldDerefExpr.
 class CallVisitor : public parser::RecursiveVisitor {
-public:
-  CallVisitor(const base::FileSet* fs, base::ErrorList* errors) : fs_(fs), errors_(errors) {}
+ public:
+  CallVisitor(const base::FileSet* fs, base::ErrorList* errors)
+      : fs_(fs), errors_(errors) {}
 
   REC_VISIT_DECL(CallExpr, expr);
 
-private:
+ private:
   const base::FileSet* fs_;
   base::ErrorList* errors_;
 };
 
-} // namespace weeder
+}  // namespace weeder
 
 #endif
