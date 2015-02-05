@@ -199,8 +199,8 @@ string TokenString(const File* file, Token token) {
   return s.str();
 }
 
-QualifiedName* MakeQualifiedName(const File* file,
-                                 const vector<Token>& tokens) {
+QualifiedName MakeQualifiedName(const File* file,
+                                const vector<Token>& tokens) {
   assert(tokens.size() > 0);
   assert((tokens.size() - 1) % 2 == 0);
 
@@ -215,7 +215,7 @@ QualifiedName* MakeQualifiedName(const File* file,
     }
   }
 
-  return new QualifiedName(tokens, parts, fullname.str());
+  return QualifiedName(tokens, parts, fullname.str());
 }
 
 }  // namespace
@@ -295,7 +295,8 @@ Parser Parser::ParseQualifiedName(Result<QualifiedName>* out) const {
     tokens.push_back(*nextIdent.Get());
     cur = next;
   }
-  return cur.Success(MakeQualifiedName(GetFile(), tokens), out);
+  QualifiedName result = MakeQualifiedName(GetFile(), tokens);
+  return cur.Success(new QualifiedName(result), out);
 }
 
 Parser Parser::ParsePrimitiveType(Result<Type>* out) const {
@@ -333,7 +334,7 @@ Parser Parser::ParseSingleType(Result<Type>* out) const {
   if (IsNext(IDENTIFIER)) {
     Result<QualifiedName> reference;
     Parser after = ParseQualifiedName(&reference);
-    RETURN_IF_GOOD(after, new ReferenceType(reference.Release()), out);
+    RETURN_IF_GOOD(after, new ReferenceType(*reference.Get()), out);
 
     *out = ConvertError<QualifiedName, Type>(move(reference));
     return Fail();
@@ -1344,7 +1345,7 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
       return Fail(move(errors), out);
     }
 
-    super.reset(new ReferenceType(superName.Release()));
+    super.reset(new ReferenceType(*superName.Get()));
   }
 
   Parser afterInterfaces = afterSuper;
@@ -1365,7 +1366,7 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
       }
 
       afterInterfaces = afterName;
-      interfaces.Append(new ReferenceType(name.Release()));
+      interfaces.Append(new ReferenceType(*name.Get()));
 
       if (afterInterfaces.IsNext(COMMA)) {
         afterInterfaces = afterInterfaces.Advance();
@@ -1517,7 +1518,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
       return Fail(move(errors), out);
     }
 
-    packageName.reset(new ReferenceType(name.Release()));
+    packageName.reset(new ReferenceType(*name.Get()));
   }
 
   Parser afterImports = afterPackage.EatSemis();

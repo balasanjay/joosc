@@ -10,19 +10,24 @@ namespace parser {
 #define ACCEPT_VISITOR(type) \
   void Accept(Visitor* visitor) const override { visitor->Visit##type(this); }
 
+#define GETTER(type, name, expr) \
+  const type& name() const { return expr; }
+
 class QualifiedName final {
  public:
   QualifiedName(const vector<lexer::Token>& tokens, const vector<string>& parts,
                 const string& name)
       : tokens_(tokens), parts_(parts), name_(name) {}
 
+  QualifiedName() = default;
+  QualifiedName(const QualifiedName&) = default;
+  QualifiedName(QualifiedName&&) = default;
+
   void PrintTo(std::ostream* os) const { *os << name_; }
 
-  const string& Name() const { return name_; }
+  GETTER(string, Name, name_);
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(QualifiedName);
-
   vector<lexer::Token>
       tokens_;            // [IDENTIFIER, DOT, IDENTIFIER, DOT, IDENTIFIER]
   vector<string> parts_;  // ["java", "lang", "String"]
@@ -58,16 +63,16 @@ class PrimitiveType : public Type {
 
 class ReferenceType : public Type {
  public:
-  ReferenceType(QualifiedName* name) : name_(name) {}
+  ReferenceType(const QualifiedName& name) : name_(name) {}
 
-  void PrintTo(std::ostream* os) const override { name_->PrintTo(os); }
+  void PrintTo(std::ostream* os) const override { name_.PrintTo(os); }
 
-  const QualifiedName* Name() const { return name_.get(); }
+  GETTER(QualifiedName, Name, name_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ReferenceType);
 
-  unique_ptr<QualifiedName> name_;
+  QualifiedName name_;
 };
 
 class ArrayType : public Type {

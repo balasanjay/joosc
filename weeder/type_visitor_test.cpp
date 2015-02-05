@@ -9,6 +9,7 @@ using lexer::Token;
 using parser::ArrayType;
 using parser::MemberDecl;
 using parser::PrimitiveType;
+using parser::QualifiedName;
 using parser::ReferenceType;
 using parser::Stmt;
 using parser::Type;
@@ -21,7 +22,7 @@ class TypeVisitorTest : public WeederTest {};
 bool HasVoid(const Type*, Token* out);
 
 TEST_F(TypeVisitorTest, HasVoidReferenceFalse) {
-  Type* reference = new ReferenceType(nullptr);
+  Type* reference = new ReferenceType(QualifiedName());
   EXPECT_FALSE(HasVoid(reference, nullptr));
 
   Type* array = new ArrayType(reference);
