@@ -30,5 +30,4 @@ using std::vector;
   TypeName(const TypeName&);               \
   void operator=(const TypeName&)
 
-
 #endif

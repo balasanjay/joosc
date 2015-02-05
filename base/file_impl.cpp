@@ -19,8 +19,8 @@ class DiskFileError : public base::Error {
   DiskFileError(int errval, const string& path)
       : errval_(errval), path_(path) {}
 
-  void PrintTo(std::ostream* out, const base::OutputOptions& opt) const
-      override {
+  void PrintTo(std::ostream* out,
+               const base::OutputOptions& opt) const override {
     if (opt.simple) {
       *out << "DiskFileError{" << FIELD_PRINT(errval_) << FIELD_PRINT(path_)
            << "}";

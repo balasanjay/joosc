@@ -12,13 +12,14 @@ namespace weeder {
 // of ClassModifierVisitor or InterfaceModifier visitor, and traverse the
 // declaration using that visitor.
 class ModifierVisitor : public parser::RecursiveVisitor {
-public:
-  ModifierVisitor(const base::FileSet* fs, base::ErrorList* errors) : fs_(fs), errors_(errors) {}
+ public:
+  ModifierVisitor(const base::FileSet* fs, base::ErrorList* errors)
+      : fs_(fs), errors_(errors) {}
 
   REC_VISIT_DECL(ClassDecl, decl);
   REC_VISIT_DECL(InterfaceDecl, decl);
 
-private:
+ private:
   const base::FileSet* fs_;
   base::ErrorList* errors_;
 };
@@ -36,14 +37,15 @@ private:
 //   10) A class must be public.
 //   11) A member must be public or protected.
 class ClassModifierVisitor : public parser::RecursiveVisitor {
-public:
-  ClassModifierVisitor(const base::FileSet* fs, base::ErrorList* errors) : fs_(fs), errors_(errors) {}
+ public:
+  ClassModifierVisitor(const base::FileSet* fs, base::ErrorList* errors)
+      : fs_(fs), errors_(errors) {}
 
   REC_VISIT_DECL(ConstructorDecl, decl);
   REC_VISIT_DECL(FieldDecl, decl);
   REC_VISIT_DECL(MethodDecl, decl);
 
-private:
+ private:
   const base::FileSet* fs_;
   base::ErrorList* errors_;
 };
@@ -56,18 +58,19 @@ private:
 //   5) An interface must be public.
 //   6) An interface method must be public.
 class InterfaceModifierVisitor : public parser::RecursiveVisitor {
-public:
-  InterfaceModifierVisitor(const base::FileSet* fs, base::ErrorList* errors) : fs_(fs), errors_(errors) {}
+ public:
+  InterfaceModifierVisitor(const base::FileSet* fs, base::ErrorList* errors)
+      : fs_(fs), errors_(errors) {}
 
   REC_VISIT_DECL(ConstructorDecl, decl);
   REC_VISIT_DECL(FieldDecl, decl);
   REC_VISIT_DECL(MethodDecl, decl);
 
-private:
+ private:
   const base::FileSet* fs_;
   base::ErrorList* errors_;
 };
 
-} // namespace weeder
+}  // namespace weeder
 
 #endif

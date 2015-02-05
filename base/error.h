@@ -40,9 +40,8 @@ class PosRangeError : public Error {
   PosRangeError(const FileSet* fs, PosRange posrange)
       : fs_(fs), posrange_(posrange) {}
 
-public:
-  void PrintTo(std::ostream* out, const OutputOptions& opt) const
-      override {
+ public:
+  void PrintTo(std::ostream* out, const OutputOptions& opt) const override {
     if (opt.simple) {
       *out << SimpleError() << "(" << posrange_ << ")";
       return;
@@ -71,7 +70,8 @@ public:
   PosRange posrange_;
 };
 
-Error* MakeSimplePosRangeError(const FileSet* fs, PosRange pos, string name, string msg);
+Error* MakeSimplePosRangeError(const FileSet* fs, PosRange pos, string name,
+                               string msg);
 
 }  // namespace base
 

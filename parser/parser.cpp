@@ -52,6 +52,7 @@ using std::move;
 struct repstr {
   repstr(int n, string str) : n_(n), str_(str) {}
   friend std::ostream& operator<<(std::ostream&, const repstr& r);
+
  private:
   int n_;
   string str_;
@@ -65,7 +66,8 @@ std::ostream& operator<<(std::ostream& os, const repstr& r) {
 }
 
 struct ScopedPrint {
-  ScopedPrint(const string& construct, const string& destruct) : construct_(construct), destruct_(destruct) {
+  ScopedPrint(const string& construct, const string& destruct)
+      : construct_(construct), destruct_(destruct) {
     cerr << repstr(level_, "|  ") << construct_ << '\n';
     ++level_;
   }
@@ -74,7 +76,7 @@ struct ScopedPrint {
     cerr << repstr(level_, "|  ") << destruct_ << '\n';
   }
 
-private:
+ private:
   string construct_;
   string destruct_;
   static int level_;
@@ -82,25 +84,29 @@ private:
 
 int ScopedPrint::level_ = 0;
 
-#define RETURN_IF_ERR(check) {\
-  if (!(check).IsSuccess()) { \
-    return (check); \
-  } \
-}
+#define RETURN_IF_ERR(check)    \
+  {                             \
+    if (!(check).IsSuccess()) { \
+      return (check);           \
+    }                           \
+  }
 
-#define RETURN_IF_GOOD(parser, value, out) {\
-  Parser _hope_you_didnt_declare_this = (parser); \
-  if ((_hope_you_didnt_declare_this)) {\
-    return (_hope_you_didnt_declare_this).Success((value), (out)); \
-  } \
-}
+#define RETURN_IF_GOOD(parser, value, out)                           \
+  {                                                                  \
+    Parser _hope_you_didnt_declare_this = (parser);                  \
+    if ((_hope_you_didnt_declare_this)) {                            \
+      return (_hope_you_didnt_declare_this).Success((value), (out)); \
+    }                                                                \
+  }
 
-#define SHORT_CIRCUIT {\
-  if (!(*this)) { \
-    return *this; \
-  }\
-};\
-// ScopedPrint _scoped_print(string("Entering ") + __FUNCTION__, string("Leaving ") + __FUNCTION__)
+#define SHORT_CIRCUIT \
+  {                   \
+    if (!(*this)) {   \
+      return *this;   \
+    }                 \
+  };                  \
+// ScopedPrint _scoped_print(string("Entering ") + __FUNCTION__, string("Leaving
+// ") + __FUNCTION__)
 
 namespace parser {
 
@@ -110,7 +116,8 @@ namespace {
 struct ExactType {
   ExactType(TokenType type) : type_(type) {}
   bool operator()(const Token& t) { return t.type == type_; }
-private:
+
+ private:
   TokenType type_;
 };
 struct IsBinOp {
@@ -129,8 +136,8 @@ struct IsModifier {
   bool operator()(const Token& t) { return t.TypeInfo().IsModifier(); }
 };
 
-
-Expr* FixPrecedence(UniquePtrVector<Expr>&& owned_exprs, const vector<Token>& ops) {
+Expr* FixPrecedence(UniquePtrVector<Expr>&& owned_exprs,
+                    const vector<Token>& ops) {
   vector<Expr*> outstack;
   vector<Token> opstack;
 
@@ -144,7 +151,7 @@ Expr* FixPrecedence(UniquePtrVector<Expr>&& owned_exprs, const vector<Token>& op
     if (i < exprs.size() + ops.size()) {
       if (i % 2 == 0) {
         // Expr off input.
-        Expr* e = exprs.at(i/2);
+        Expr* e = exprs.at(i / 2);
         outstack.push_back(e);
         i++;
         continue;
@@ -152,11 +159,14 @@ Expr* FixPrecedence(UniquePtrVector<Expr>&& owned_exprs, const vector<Token>& op
 
       // Op off input.
       assert(i % 2 == 1);
-      Token op = ops.at(i/2);
+      Token op = ops.at(i / 2);
 
-      if (opstack.empty() ||
-          (op.type == ASSG && op.TypeInfo().BinOpPrec() >= opstack.rbegin()->TypeInfo().BinOpPrec()) ||
-          (op.type != ASSG && op.TypeInfo().BinOpPrec() > opstack.rbegin()->TypeInfo().BinOpPrec())) {
+      if (opstack.empty() || (op.type == ASSG &&
+                              op.TypeInfo().BinOpPrec() >=
+                                  opstack.rbegin()->TypeInfo().BinOpPrec()) ||
+          (op.type != ASSG &&
+           op.TypeInfo().BinOpPrec() >
+               opstack.rbegin()->TypeInfo().BinOpPrec())) {
         opstack.push_back(op);
         i++;
         continue;
@@ -189,7 +199,8 @@ string TokenString(const File* file, Token token) {
   return s.str();
 }
 
-QualifiedName* MakeQualifiedName(const File *file, const vector<Token>& tokens) {
+QualifiedName* MakeQualifiedName(const File* file,
+                                 const vector<Token>& tokens) {
   assert(tokens.size() > 0);
   assert((tokens.size() - 1) % 2 == 0);
 
@@ -207,7 +218,7 @@ QualifiedName* MakeQualifiedName(const File *file, const vector<Token>& tokens) 
   return new QualifiedName(tokens, parts, fullname.str());
 }
 
-} // namespace
+}  // namespace
 
 Parser Parser::EatSemis() const {
   SHORT_CIRCUIT;
@@ -220,29 +231,30 @@ Parser Parser::EatSemis() const {
 
 Error* Parser::MakeUnexpectedTokenError(Token token) const {
   // TODO: say what you expected instead.
-  return MakeSimplePosRangeError(fs_, Pos(token.pos.fileid, token.pos.begin), "UnexpectedTokenError", "Unexpected token.");
+  return MakeSimplePosRangeError(fs_, Pos(token.pos.fileid, token.pos.begin),
+                                 "UnexpectedTokenError", "Unexpected token.");
 }
 
 Error* Parser::MakeDuplicateModifierError(Token token) const {
-  return MakeSimplePosRangeError(fs_, token.pos, "DuplicateModifierError", "Duplicate modifier.");
+  return MakeSimplePosRangeError(fs_, token.pos, "DuplicateModifierError",
+                                 "Duplicate modifier.");
 }
 
 Error* Parser::MakeParamRequiresNameError(Token token) const {
-  return MakeSimplePosRangeError(fs_, token.pos, "ParamRequiresNameError", "A parameter requires a type and a name.");
+  return MakeSimplePosRangeError(fs_, token.pos, "ParamRequiresNameError",
+                                 "A parameter requires a type and a name.");
 }
 
 Error* Parser::MakeUnexpectedEOFError() const {
   // TODO: say what you expected instead.
   // TODO: this will crash on an empty file.
   return MakeSimplePosRangeError(
-      fs_,
-      Pos(tokens_->at(0).pos.fileid, file_->Size() - 1),
-      "UnexpectedEOFError",
-      "Unexpected end-of-file."
-  );
+      fs_, Pos(tokens_->at(0).pos.fileid, file_->Size() - 1),
+      "UnexpectedEOFError", "Unexpected end-of-file.");
 }
 
-Parser Parser::ParseTokenIf(std::function<bool(Token)> pred, Result<Token> *out) const {
+Parser Parser::ParseTokenIf(std::function<bool(Token)> pred,
+                            Result<Token>* out) const {
   if (IsAtEnd()) {
     return Fail(MakeUnexpectedEOFError(), out);
   }
@@ -271,9 +283,8 @@ Parser Parser::ParseQualifiedName(Result<QualifiedName>* out) const {
   while (cur.IsNext(DOT)) {
     Result<Token> dot;
     Result<Token> nextIdent;
-    Parser next = cur
-      .ParseTokenIf(ExactType(DOT), &dot)
-      .ParseTokenIf(ExactType(IDENTIFIER), &nextIdent);
+    Parser next = cur.ParseTokenIf(ExactType(DOT), &dot)
+                      .ParseTokenIf(ExactType(IDENTIFIER), &nextIdent);
     if (!next) {
       ErrorList errors;
       FirstOf(&errors, &dot, &nextIdent);
@@ -351,9 +362,8 @@ Parser Parser::ParseType(Result<Type>* out) const {
     Result<Token> lbrack;
     Result<Token> rbrack;
 
-    Parser afterArray = afterSingle
-      .ParseTokenIf(ExactType(LBRACK), &lbrack)
-      .ParseTokenIf(ExactType(RBRACK), &rbrack);
+    Parser afterArray = afterSingle.ParseTokenIf(ExactType(LBRACK), &lbrack)
+                            .ParseTokenIf(ExactType(RBRACK), &rbrack);
     RETURN_IF_GOOD(afterArray, new ArrayType(single.Release()), out);
 
     *out = ConvertError<Token, Type>(move(rbrack));
@@ -365,7 +375,6 @@ Parser Parser::ParseType(Result<Type>* out) const {
   *out = move(single);
   return afterSingle;
 }
-
 
 // Expression parsers.
 
@@ -406,8 +415,8 @@ Parser Parser::ParseExpression(Result<Expr>* out) const {
         return Fail(move(errors), out);
       }
       Expr* instanceOfLhs = exprs.ReleaseBack();
-      exprs.Append(new InstanceOfExpr(
-            instanceOfLhs, *binOp.Get(), instanceOfType.Release()));
+      exprs.Append(new InstanceOfExpr(instanceOfLhs, *binOp.Get(),
+                                      instanceOfType.Release()));
     } else {
       next = next.ParseUnaryExpression(&nextExpr);
       if (!next) {
@@ -441,7 +450,8 @@ Parser Parser::ParseUnaryExpression(Result<Expr>* out) const {
   if (IsNext(IsUnaryOp())) {
     Result<Token> unaryOp;
     Result<Expr> expr;
-    Parser after = ParseTokenIf(IsUnaryOp(), &unaryOp).ParseUnaryExpression(&expr);
+    Parser after =
+        ParseTokenIf(IsUnaryOp(), &unaryOp).ParseUnaryExpression(&expr);
     RETURN_IF_GOOD(after, new UnaryExpr(*unaryOp.Get(), expr.Release()), out);
 
     ErrorList errors;
@@ -469,10 +479,10 @@ Parser Parser::ParseCastExpression(Result<Expr>* out) const {
   Result<Expr> expr;
 
   Parser after = (*this)
-    .ParseTokenIf(ExactType(LPAREN), &lparen)
-    .ParseType(&type)
-    .ParseTokenIf(ExactType(RPAREN), &rparen)
-    .ParseUnaryExpression(&expr);
+                     .ParseTokenIf(ExactType(LPAREN), &lparen)
+                     .ParseType(&type)
+                     .ParseTokenIf(ExactType(RPAREN), &rparen)
+                     .ParseUnaryExpression(&expr);
   RETURN_IF_GOOD(after, new CastExpr(type.Release(), expr.Release()), out);
 
   // Collect the first error, and use that.
@@ -519,7 +529,8 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
 
   Result<Token> newTok;
   Result<Type> type;
-  Parser afterType = ParseTokenIf(ExactType(K_NEW), &newTok).ParseSingleType(&type);
+  Parser afterType =
+      ParseTokenIf(ExactType(K_NEW), &newTok).ParseSingleType(&type);
   if (!afterType) {
     // Collect the first error, and use that.
     ErrorList errors;
@@ -539,10 +550,9 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
     Result<Token> lparen;
     Result<ArgumentList> args;
     Result<Token> rparen;
-    Parser afterCall = afterType
-      .ParseTokenIf(ExactType(LPAREN), &lparen)
-      .ParseArgumentList(&args)
-      .ParseTokenIf(ExactType(RPAREN), &rparen);
+    Parser afterCall = afterType.ParseTokenIf(ExactType(LPAREN), &lparen)
+                           .ParseArgumentList(&args)
+                           .ParseTokenIf(ExactType(RPAREN), &rparen);
 
     if (!afterCall) {
       // Collect the first error, and use that.
@@ -551,7 +561,8 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
       return Fail(move(errors), out);
     }
 
-    Expr* newExpr = new NewClassExpr(*newTok.Get(), type.Release(), args.Release());
+    Expr* newExpr =
+        new NewClassExpr(*newTok.Get(), type.Release(), args.Release());
     Result<Expr> nested;
     Parser afterEnd = afterCall.ParsePrimaryEnd(newExpr, &nested);
     RETURN_IF_GOOD(afterEnd, nested.Release(), out);
@@ -569,10 +580,9 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
     Result<Expr> nested;
     Result<Token> rbrack;
 
-    Parser fullAfter = afterType
-      .Advance() // LBRACK.
-      .ParseExpression(&nested)
-      .ParseTokenIf(ExactType(RBRACK), &rbrack);
+    Parser fullAfter = afterType.Advance()  // LBRACK.
+                           .ParseExpression(&nested)
+                           .ParseTokenIf(ExactType(RBRACK), &rbrack);
     if (!fullAfter) {
       // Collect the first error, and use that.
       ErrorList errors;
@@ -609,7 +619,8 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
     Parser after = (*this).Advance();
     switch (lit.type) {
       case INTEGER:
-        return after.Success(new IntLitExpr(lit, TokenString(GetFile(), lit)), out);
+        return after.Success(new IntLitExpr(lit, TokenString(GetFile(), lit)),
+                             out);
       case CHAR:
         return after.Success(new CharLitExpr(lit), out);
       case K_TRUE:
@@ -636,9 +647,9 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
     Result<Token> rparen;
 
     Parser after = (*this)
-      .ParseTokenIf(ExactType(LPAREN), &lparen)
-      .ParseExpression(&expr)
-      .ParseTokenIf(ExactType(RPAREN), &rparen);
+                       .ParseTokenIf(ExactType(LPAREN), &lparen)
+                       .ParseExpression(&expr)
+                       .ParseTokenIf(ExactType(RPAREN), &rparen);
     RETURN_IF_GOOD(after, new ParenExpr(expr.Release()), out);
 
     ErrorList errors;
@@ -670,9 +681,9 @@ Parser Parser::ParsePrimaryEnd(Expr* base, Result<Expr>* out) const {
     Result<Token> rbrack;
 
     Parser after = (*this)
-      .ParseTokenIf(ExactType(LBRACK), &lbrack)
-      .ParseExpression(&expr)
-      .ParseTokenIf(ExactType(RBRACK), &rbrack);
+                       .ParseTokenIf(ExactType(LBRACK), &lbrack)
+                       .ParseExpression(&expr)
+                       .ParseTokenIf(ExactType(RBRACK), &rbrack);
 
     if (!after) {
       ErrorList errors;
@@ -693,7 +704,8 @@ Parser Parser::ParsePrimaryEnd(Expr* base, Result<Expr>* out) const {
   return ParsePrimaryEndNoArrayAccess(base, out);
 }
 
-Parser Parser::ParsePrimaryEndNoArrayAccess(Expr* base, Result<Expr>* out) const {
+Parser Parser::ParsePrimaryEndNoArrayAccess(Expr* base,
+                                            Result<Expr>* out) const {
   // PrimaryEndNoArrayAccess:
   //   "." Identifier [ PrimaryEnd ]
   //   "(" [ArgumentList] ")" [ PrimaryEnd ]
@@ -710,9 +722,8 @@ Parser Parser::ParsePrimaryEndNoArrayAccess(Expr* base, Result<Expr>* out) const
   if (IsNext(DOT)) {
     Result<Token> dot;
     Result<Token> ident;
-    Parser after = (*this)
-      .ParseTokenIf(ExactType(DOT), &dot)
-      .ParseTokenIf(ExactType(IDENTIFIER), &ident);
+    Parser after = (*this).ParseTokenIf(ExactType(DOT), &dot).ParseTokenIf(
+        ExactType(IDENTIFIER), &ident);
 
     if (!after) {
       ErrorList errors;
@@ -720,7 +731,8 @@ Parser Parser::ParsePrimaryEndNoArrayAccess(Expr* base, Result<Expr>* out) const
       return Fail(move(errors), out);
     }
 
-    Expr* deref = new FieldDerefExpr(base, TokenString(GetFile(), *ident.Get()), *ident.Get());
+    Expr* deref = new FieldDerefExpr(base, TokenString(GetFile(), *ident.Get()),
+                                     *ident.Get());
     Result<Expr> nested;
     Parser afterEnd = after.ParsePrimaryEnd(deref, &nested);
     RETURN_IF_GOOD(afterEnd, nested.Release(), out);
@@ -734,9 +746,9 @@ Parser Parser::ParsePrimaryEndNoArrayAccess(Expr* base, Result<Expr>* out) const
     Result<Token> rparen;
 
     Parser after = (*this)
-      .ParseTokenIf(ExactType(LPAREN), &lparen)
-      .ParseArgumentList(&args)
-      .ParseTokenIf(ExactType(RPAREN), &rparen);
+                       .ParseTokenIf(ExactType(LPAREN), &lparen)
+                       .ParseArgumentList(&args)
+                       .ParseTokenIf(ExactType(RPAREN), &rparen);
 
     if (!after) {
       ErrorList errors;
@@ -770,12 +782,13 @@ Parser Parser::ParseArgumentList(Result<ArgumentList>* out) const {
     Result<Token> comma;
     Result<Expr> expr;
 
-    Parser next = cur.ParseTokenIf(ExactType(COMMA), &comma).ParseExpression(&expr);
+    Parser next =
+        cur.ParseTokenIf(ExactType(COMMA), &comma).ParseExpression(&expr);
     if (!next) {
-        // Fail on hanging comma.
-        ErrorList errors;
-        FirstOf(&errors, &comma, &expr);
-        return Fail(move(errors), out);
+      // Fail on hanging comma.
+      ErrorList errors;
+      FirstOf(&errors, &comma, &expr);
+      return Fail(move(errors), out);
     }
 
     args.Append(expr.Release());
@@ -823,9 +836,8 @@ Parser Parser::ParseStmt(Result<Stmt>* out) const {
   {
     Result<Expr> expr;
     Result<Token> semi;
-    Parser after = (*this)
-      .ParseExpression(&expr)
-      .ParseTokenIf(ExactType(SEMI), &semi);
+    Parser after =
+        (*this).ParseExpression(&expr).ParseTokenIf(ExactType(SEMI), &semi);
     RETURN_IF_GOOD(after, new ExprStmt(expr.Release()), out);
 
     // Fail on last case.
@@ -845,14 +857,12 @@ Parser Parser::ParseVarDecl(Result<Stmt>* out) const {
   Result<Token> eq;
   Result<Expr> expr;
   Parser after = (*this)
-    .ParseType(&type)
-    .ParseTokenIf(ExactType(IDENTIFIER), &ident)
-    .ParseTokenIf(ExactType(ASSG), &eq)
-    .ParseExpression(&expr);
+                     .ParseType(&type)
+                     .ParseTokenIf(ExactType(IDENTIFIER), &ident)
+                     .ParseTokenIf(ExactType(ASSG), &eq)
+                     .ParseExpression(&expr);
   RETURN_IF_GOOD(
-      after,
-      new LocalDeclStmt(
-        type.Release(), *ident.Get(), expr.Release()),
+      after, new LocalDeclStmt(type.Release(), *ident.Get(), expr.Release()),
       out);
 
   // TODO: Make it fatal error only after we find equals?
@@ -875,14 +885,10 @@ Parser Parser::ParseReturnStmt(Result<Stmt>* out) const {
 
   Result<Expr> expr;
   Result<Token> semi;
-  Parser afterAll = afterRet
-    .ParseExpression(&expr)
-    .ParseTokenIf(ExactType(SEMI), &semi);
+  Parser afterAll =
+      afterRet.ParseExpression(&expr).ParseTokenIf(ExactType(SEMI), &semi);
 
-  RETURN_IF_GOOD(
-      afterAll,
-      new ReturnStmt(expr.Release()),
-      out);
+  RETURN_IF_GOOD(afterAll, new ReturnStmt(expr.Release()), out);
 
   ErrorList errors;
   FirstOf(&errors, &ret, &expr, &semi);
@@ -910,9 +916,8 @@ Parser Parser::ParseBlock(Result<Stmt>* out) const {
     {
       Result<Stmt> varDecl;
       Result<Token> semi;
-      Parser next = cur
-        .ParseVarDecl(&varDecl)
-        .ParseTokenIf(ExactType(SEMI), &semi);
+      Parser next =
+          cur.ParseVarDecl(&varDecl).ParseTokenIf(ExactType(SEMI), &semi);
       if (next) {
         stmts.Append(varDecl.Release());
         cur = next;
@@ -949,11 +954,11 @@ Parser Parser::ParseIfStmt(Result<Stmt>* out) const {
   Result<Stmt> stmt;
 
   Parser after = (*this)
-    .ParseTokenIf(ExactType(K_IF), &tokIf)
-    .ParseTokenIf(ExactType(LPAREN), &lparen)
-    .ParseExpression(&expr)
-    .ParseTokenIf(ExactType(RPAREN), &rparen)
-    .ParseStmt(&stmt);
+                     .ParseTokenIf(ExactType(K_IF), &tokIf)
+                     .ParseTokenIf(ExactType(LPAREN), &lparen)
+                     .ParseExpression(&expr)
+                     .ParseTokenIf(ExactType(RPAREN), &rparen)
+                     .ParseStmt(&stmt);
   if (!after) {
     ErrorList errors;
     FirstOf(&errors, &tokIf, &lparen, &expr, &rparen, &stmt);
@@ -961,15 +966,15 @@ Parser Parser::ParseIfStmt(Result<Stmt>* out) const {
   }
 
   if (!after.IsNext(K_ELSE)) {
-    return after.Success(new IfStmt(expr.Release(), stmt.Release(), new EmptyStmt()), out);
+    return after.Success(
+        new IfStmt(expr.Release(), stmt.Release(), new EmptyStmt()), out);
   }
 
   Result<Stmt> elseStmt;
   Parser afterElse = after.Advance().ParseStmt(&elseStmt);
-  RETURN_IF_GOOD(
-      afterElse,
-      new IfStmt(expr.Release(), stmt.Release(), elseStmt.Release()),
-      out);
+  RETURN_IF_GOOD(afterElse,
+                 new IfStmt(expr.Release(), stmt.Release(), elseStmt.Release()),
+                 out);
 
   // Committed to having else, so fail.
   ErrorList errors;
@@ -1007,9 +1012,8 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
 
   Result<Token> forTok;
   Result<Token> lparen;
-  Parser next = (*this)
-    .ParseTokenIf(ExactType(K_FOR), &forTok)
-    .ParseTokenIf(ExactType(LPAREN), &lparen);
+  Parser next = (*this).ParseTokenIf(ExactType(K_FOR), &forTok).ParseTokenIf(
+      ExactType(LPAREN), &lparen);
 
   if (!next) {
     ErrorList errors;
@@ -1027,9 +1031,8 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   } else {
     Result<Stmt> stmt;
     Result<Token> semi;
-    Parser afterInit = next
-      .ParseForInit(&stmt)
-      .ParseTokenIf(ExactType(SEMI), &semi);
+    Parser afterInit =
+        next.ParseForInit(&stmt).ParseTokenIf(ExactType(SEMI), &semi);
     if (!afterInit) {
       ErrorList errors;
       FirstOf(&errors, &stmt, &semi);
@@ -1046,9 +1049,8 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   } else {
     Result<Expr> cond;
     Result<Token> semi;
-    Parser afterCond = next
-      .ParseExpression(&cond)
-      .ParseTokenIf(ExactType(SEMI), &semi);
+    Parser afterCond =
+        next.ParseExpression(&cond).ParseTokenIf(ExactType(SEMI), &semi);
     if (!afterCond) {
       ErrorList errors;
       FirstOf(&errors, &cond, &semi);
@@ -1075,11 +1077,10 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   // Parse RParen and statement.
   Result<Token> rparen;
   Result<Stmt> body;
-  Parser after = next
-    .ParseTokenIf(ExactType(RPAREN), &rparen)
-    .ParseStmt(&body);
-  RETURN_IF_GOOD(after, new ForStmt(
-        forInit.release(), forCond.release(), forUpdate.release(), body.Release()), out);
+  Parser after = next.ParseTokenIf(ExactType(RPAREN), &rparen).ParseStmt(&body);
+  RETURN_IF_GOOD(after, new ForStmt(forInit.release(), forCond.release(),
+                                    forUpdate.release(), body.Release()),
+                 out);
 
   ErrorList errors;
   FirstOf(&errors, &rparen, &body);
@@ -1099,11 +1100,11 @@ Parser Parser::ParseWhileStmt(internal::Result<Stmt>* out) const {
   Result<Stmt> body;
 
   Parser after = (*this)
-    .ParseTokenIf(ExactType(K_WHILE), &whileTok)
-    .ParseTokenIf(ExactType(LPAREN), &lparen)
-    .ParseExpression(&cond)
-    .ParseTokenIf(ExactType(RPAREN), &rparen)
-    .ParseStmt(&body);
+                     .ParseTokenIf(ExactType(K_WHILE), &whileTok)
+                     .ParseTokenIf(ExactType(LPAREN), &lparen)
+                     .ParseExpression(&cond)
+                     .ParseTokenIf(ExactType(RPAREN), &rparen)
+                     .ParseStmt(&body);
 
   RETURN_IF_GOOD(after, new WhileStmt(cond.Release(), body.Release()), out);
 
@@ -1158,8 +1159,8 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
   Parser afterMods = ParseModifierList(&mods);
 
   // Check if constructor - look two tokens ahead.
-  bool isConstructor = afterMods.IsNext(IDENTIFIER) &&
-                       afterMods.Advance().IsNext(LPAREN);
+  bool isConstructor =
+      afterMods.IsNext(IDENTIFIER) && afterMods.Advance().IsNext(LPAREN);
 
   Result<Type> type;
   Result<Token> ident;
@@ -1180,9 +1181,9 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
   if (afterCommon.IsNext(LPAREN)) {
     Result<ParamList> params;
     Result<Token> rparen;
-    Parser afterParams = afterCommon.Advance()
-      .ParseParamList(&params)
-      .ParseTokenIf(ExactType(RPAREN), &rparen);
+    Parser afterParams =
+        afterCommon.Advance().ParseParamList(&params).ParseTokenIf(
+            ExactType(RPAREN), &rparen);
 
     if (!afterParams) {
       ErrorList errors;
@@ -1208,11 +1209,13 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
 
     if (isConstructor) {
       return afterBody.Success(
-          new ConstructorDecl(std::move(*mods.Get()), *ident.Get(), std::move(*params.Get()), bodyPtr.release()),
+          new ConstructorDecl(std::move(*mods.Get()), *ident.Get(),
+                              std::move(*params.Get()), bodyPtr.release()),
           out);
     } else {
       return afterBody.Success(
-          new MethodDecl(std::move(*mods.Get()), type.Release(), *ident.Get(), std::move(*params.Get()), bodyPtr.release()),
+          new MethodDecl(std::move(*mods.Get()), type.Release(), *ident.Get(),
+                         std::move(*params.Get()), bodyPtr.release()),
           out);
     }
   }
@@ -1220,21 +1223,21 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
   // Parse field.
   if (afterCommon.IsNext(SEMI)) {
     return afterCommon.Advance().Success(
-        new FieldDecl(std::move(*mods.Get()), type.Release(), *ident.Get(), nullptr), out);
+        new FieldDecl(std::move(*mods.Get()), type.Release(), *ident.Get(),
+                      nullptr),
+        out);
   }
 
   Result<Token> eq;
   Result<Expr> val;
   Result<Token> semi;
-  Parser afterVal = afterCommon
-    .ParseTokenIf(ExactType(ASSG), &eq)
-    .ParseExpression(&val)
-    .ParseTokenIf(ExactType(SEMI), &semi);
+  Parser afterVal = afterCommon.ParseTokenIf(ExactType(ASSG), &eq)
+                        .ParseExpression(&val)
+                        .ParseTokenIf(ExactType(SEMI), &semi);
 
-  RETURN_IF_GOOD(
-      afterVal,
-      new FieldDecl(std::move(*mods.Get()), type.Release(), *ident.Get(), val.Release()),
-      out);
+  RETURN_IF_GOOD(afterVal, new FieldDecl(std::move(*mods.Get()), type.Release(),
+                                         *ident.Get(), val.Release()),
+                 out);
 
   ErrorList errors;
   FirstOf(&errors, &eq, &val, &semi);
@@ -1267,8 +1270,7 @@ Parser Parser::ParseParamList(Result<ParamList>* out) const {
     }
     firstParam = false;
 
-    Parser afterIdent = afterType
-      .ParseTokenIf(ExactType(IDENTIFIER), &ident);
+    Parser afterIdent = afterType.ParseTokenIf(ExactType(IDENTIFIER), &ident);
     if (!afterIdent) {
       // Committed to getting identifier.
       return afterType.Fail(MakeParamRequiresNameError(cur.GetNext()), out);
@@ -1300,8 +1302,7 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
   SHORT_CIRCUIT;
 
   Result<ModifierList> mods;
-  Parser afterMods = (*this)
-    .ParseModifierList(&mods);
+  Parser afterMods = (*this).ParseModifierList(&mods);
   if (!afterMods) {
     ErrorList errors;
     mods.ReleaseErrors(&errors);
@@ -1334,9 +1335,8 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
   if (isClass && afterIdent.IsNext(K_EXTENDS)) {
     Result<QualifiedName> superName;
 
-    afterSuper = afterIdent
-      .Advance() // Advancing past 'extends'.
-      .ParseQualifiedName(&superName);
+    afterSuper = afterIdent.Advance()  // Advancing past 'extends'.
+                     .ParseQualifiedName(&superName);
 
     if (!afterSuper) {
       ErrorList errors;
@@ -1350,7 +1350,8 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
   Parser afterInterfaces = afterSuper;
   UniquePtrVector<ReferenceType> interfaces;
 
-  if ((isClass && afterSuper.IsNext(K_IMPLEMENTS)) || afterSuper.IsNext(K_EXTENDS)) {
+  if ((isClass && afterSuper.IsNext(K_IMPLEMENTS)) ||
+      afterSuper.IsNext(K_EXTENDS)) {
     afterInterfaces = afterInterfaces.Advance();
 
     while (true) {
@@ -1407,9 +1408,13 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
   TypeDecl* type = nullptr;
 
   if (isClass) {
-    type = new ClassDecl(move(*mods.Get()), TokenString(GetFile(), *ident.Get()), *ident.Get(), move(interfaces), move(members), super.release());
+    type = new ClassDecl(move(*mods.Get()),
+                         TokenString(GetFile(), *ident.Get()), *ident.Get(),
+                         move(interfaces), move(members), super.release());
   } else {
-    type = new InterfaceDecl(move(*mods.Get()), TokenString(GetFile(), *ident.Get()), *ident.Get(), move(interfaces), move(members));
+    type = new InterfaceDecl(move(*mods.Get()),
+                             TokenString(GetFile(), *ident.Get()), *ident.Get(),
+                             move(interfaces), move(members));
   }
 
   return afterBody.Advance().Success(type, out);
@@ -1426,9 +1431,8 @@ Parser Parser::ParseImportDecl(Result<ImportDecl>* out) const {
 
   Result<Token> import;
   Result<Token> ident;
-  Parser cur = (*this)
-    .ParseTokenIf(ExactType(K_IMPORT), &import)
-    .ParseTokenIf(ExactType(IDENTIFIER), &ident);
+  Parser cur = (*this).ParseTokenIf(ExactType(K_IMPORT), &import).ParseTokenIf(
+      ExactType(IDENTIFIER), &ident);
 
   if (!cur) {
     ErrorList errors;
@@ -1470,7 +1474,10 @@ Parser Parser::ParseImportDecl(Result<ImportDecl>* out) const {
     return Fail(move(errors), out);
   }
 
-  return afterSemi.Success(new ImportDecl(new ReferenceType(MakeQualifiedName(GetFile(), tokens)), isWildCard), out);
+  return afterSemi.Success(
+      new ImportDecl(new ReferenceType(MakeQualifiedName(GetFile(), tokens)),
+                     isWildCard),
+      out);
 }
 
 Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
@@ -1500,9 +1507,9 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
     Result<Token> semi;
 
     afterPackage = (*this)
-      .ParseTokenIf(ExactType(K_PACKAGE), &package)
-      .ParseQualifiedName(&name)
-      .ParseTokenIf(ExactType(SEMI), &semi);
+                       .ParseTokenIf(ExactType(K_PACKAGE), &package)
+                       .ParseQualifiedName(&name)
+                       .ParseTokenIf(ExactType(SEMI), &semi);
 
     if (!afterPackage) {
       ErrorList errors;
@@ -1516,9 +1523,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
   Parser afterImports = afterPackage.EatSemis();
   while (afterImports.IsNext(K_IMPORT)) {
     Result<ImportDecl> import;
-    afterImports = afterImports
-      .ParseImportDecl(&import)
-      .EatSemis();
+    afterImports = afterImports.ParseImportDecl(&import).EatSemis();
 
     if (!afterImports) {
       ErrorList errors;
@@ -1532,9 +1537,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
   Parser afterTypes = afterImports;
   while (!afterTypes.IsAtEnd()) {
     Result<TypeDecl> type;
-    afterTypes = afterTypes
-      .ParseTypeDecl(&type)
-      .EatSemis();
+    afterTypes = afterTypes.ParseTypeDecl(&type).EatSemis();
 
     if (!afterTypes) {
       ErrorList errors;
@@ -1545,10 +1548,13 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
     types.Append(type.Release());
   }
 
-  return afterTypes.Success(new CompUnit(packageName.release(), move(imports), move(types)), out);
+  return afterTypes.Success(
+      new CompUnit(packageName.release(), move(imports), move(types)), out);
 }
 
-unique_ptr<Program> Parse(const FileSet* fs, const vector<vector<lexer::Token>>& tokens, ErrorList* error_out) {
+unique_ptr<Program> Parse(const FileSet* fs,
+                          const vector<vector<lexer::Token>>& tokens,
+                          ErrorList* error_out) {
   assert((uint)fs->Size() == tokens.size());
 
   UniquePtrVector<CompUnit> units;
@@ -1575,17 +1581,21 @@ unique_ptr<Program> Parse(const FileSet* fs, const vector<vector<lexer::Token>>&
   return unique_ptr<Program>(new Program(move(units)));
 }
 
-// TODO: After we have types, need to ensure byte literals are within 8-bit signed two's complement.
+// TODO: After we have types, need to ensure byte literals are within 8-bit
+// signed two's complement.
 // TODO: in for-loop initializers, for-loop incrementors, and top-level
 // statements, we must ensure that they are either assignment, method
 // invocation, or class creation, not other types of expressions (like
 // boolean ops).
 // TODO: Handle parsing empty files.
-// TODO: The weeder must ensure that non-abstract classes cannot have abstract methods.
+// TODO: The weeder must ensure that non-abstract classes cannot have abstract
+// methods.
 // TODO: Weed out array indexing into 'this'; i.e. ("this[3]").
-// TODO: Weed out parens around assignment in blocks, for initializer, for update.
-// TODO: "Integer[] a;" gives strange error - should say requires initialization.
+// TODO: Weed out parens around assignment in blocks, for initializer, for
+// update.
+// TODO: "Integer[] a;" gives strange error - should say requires
+// initialization.
 // TODO: Fix cast expression parsing. '(gee)-d' should be a subtraction, not a
 // cast.
 
-} // namespace parser
+}  // namespace parser

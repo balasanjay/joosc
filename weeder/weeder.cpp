@@ -34,4 +34,4 @@ void WeedProgram(const FileSet* fs, const Program* prog, ErrorList* out) {
   // More weeding required.
 }
 
-} // namespace weeder
+}  // namespace weeder

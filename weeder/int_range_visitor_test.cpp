@@ -7,8 +7,7 @@ using parser::internal::Result;
 
 namespace weeder {
 
-class IntRangeVisitorTest : public WeederTest {
-};
+class IntRangeVisitorTest : public WeederTest {};
 
 TEST_F(IntRangeVisitorTest, IntTooNegative) {
   MakeParser("-100000000000");
@@ -99,5 +98,4 @@ TEST_F(IntRangeVisitorTest, Int64Overflow) {
   EXPECT_EQ("InvalidIntRangeError(0:0-43)\n", testing::PrintToString(errors));
 }
 
-} // namespace weeder
-
+}  // namespace weeder

@@ -12,8 +12,7 @@ using base::UniquePtrVector;
 namespace weeder {
 
 class StructureVisitorTest : public WeederTest {
-
-protected:
+ protected:
   unique_ptr<Program> ParseProgram(const string& program) {
     MakeParser(program);
 
@@ -27,7 +26,6 @@ protected:
 
     return unique_ptr<Program>(new Program(move(units)));
   }
-
 };
 
 TEST_F(StructureVisitorTest, MultipleTypesInFile) {
@@ -39,8 +37,8 @@ TEST_F(StructureVisitorTest, MultipleTypesInFile) {
   prog->Accept(&visitor);
 
   string expected =
-"MultipleTypesPerCompUnitError(0:6-9)\n"
-"MultipleTypesPerCompUnitError(0:23-26)\n";
+      "MultipleTypesPerCompUnitError(0:6-9)\n"
+      "MultipleTypesPerCompUnitError(0:23-26)\n";
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ(expected, testing::PrintToString(errors));
@@ -69,5 +67,4 @@ TEST_F(StructureVisitorTest, StructureOk) {
   EXPECT_EQ(errors.Size(), 0);
 }
 
-} // namespace weeder
-
+}  // namespace weeder

@@ -123,7 +123,13 @@ struct TokenTypeInfo {
 
   // NOTE: do not replace this with "= default", it triggers some weird codegen
   // bug on linux.student.cs.
-  TokenTypeInfo(const TokenTypeInfo& other) : type_(other.type_), kind_(other.kind_), precedence_(other.precedence_), mod_(other.mod_), repr_(other.repr_), value_(other.value_) {  }
+  TokenTypeInfo(const TokenTypeInfo& other)
+      : type_(other.type_),
+        kind_(other.kind_),
+        precedence_(other.precedence_),
+        mod_(other.mod_),
+        repr_(other.repr_),
+        value_(other.value_) {}
 
   TokenTypeInfo Keyword() const {
     TokenTypeInfo ret = *this;
@@ -205,7 +211,7 @@ struct TokenTypeInfo {
 
   string Value() const { return value_; }
 
-private:
+ private:
   enum Kind {
     NONE = 0,
     SUPPORTED = 1 << 0,
@@ -225,7 +231,7 @@ private:
 
   TokenType type_ = NUM_TOKEN_TYPES;
   Kind kind_ = SUPPORTED;
-  int precedence_ = -1; // Only valid if kind_ == BIN_OP.
+  int precedence_ = -1;  // Only valid if kind_ == BIN_OP.
   Modifier mod_ = NUM_MODIFIERS;
   string repr_ = "";
   string value_ = "";
@@ -251,10 +257,14 @@ void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
                   base::ErrorList* errors_out);
 
 void StripSkippableTokens(const vector<Token>& tokens, vector<Token>* out);
-void StripSkippableTokens(const vector<vector<Token>>& tokens, vector<vector<Token>>* out);
+void StripSkippableTokens(const vector<vector<Token>>& tokens,
+                          vector<vector<Token>>* out);
 
-void FindUnsupportedTokens(const base::FileSet* fs, const vector<Token>& tokens, base::ErrorList* errors);
-void FindUnsupportedTokens(const base::FileSet* fs, const vector<vector<Token>>& tokens, base::ErrorList* errors);
+void FindUnsupportedTokens(const base::FileSet* fs, const vector<Token>& tokens,
+                           base::ErrorList* errors);
+void FindUnsupportedTokens(const base::FileSet* fs,
+                           const vector<vector<Token>>& tokens,
+                           base::ErrorList* errors);
 
 }  // namespace lexer
 

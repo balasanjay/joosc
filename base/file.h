@@ -67,8 +67,9 @@ std::ostream& operator<<(std::ostream& out, const Pos& p);
 
 struct PosRange {
   PosRange(int fileid, int begin, int end)
-      : fileid(fileid), begin(begin), end(end) {};
-  PosRange(const Pos& pos) : fileid(pos.fileid), begin(pos.index), end(pos.index + 1) {}
+      : fileid(fileid), begin(begin), end(end){};
+  PosRange(const Pos& pos)
+      : fileid(pos.fileid), begin(pos.index), end(pos.index + 1) {}
 
   bool operator==(const PosRange& other) const {
     return fileid == other.fileid && begin == other.begin && end == other.end;
