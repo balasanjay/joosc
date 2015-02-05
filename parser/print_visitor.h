@@ -100,7 +100,7 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(UnaryExpr, expr) {
     *os_ << '(' << expr->Op().TypeInfo() << ' ';
-    expr->Rhs()->Accept(this);
+    expr->Rhs().Accept(this);
     *os_ << ')';
   }
 

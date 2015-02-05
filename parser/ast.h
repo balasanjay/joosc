@@ -179,9 +179,9 @@ class BinExpr : public Expr {
 
   ACCEPT_VISITOR(BinExpr);
 
+  lexer::Token Op() const { return op_; }
   GETTER(Expr, Lhs, *lhs_);
   GETTER(Expr, Rhs, *rhs_);
-  lexer::Token Op() const { return op_; }
 
  private:
   lexer::Token op_;
@@ -199,7 +199,7 @@ class UnaryExpr : public Expr {
   ACCEPT_VISITOR(UnaryExpr);
 
   lexer::Token Op() const { return op_; }
-  const Expr* Rhs() const { return rhs_.get(); }
+  GETTER(Expr, Rhs, *rhs_);
 
  private:
   lexer::Token op_;

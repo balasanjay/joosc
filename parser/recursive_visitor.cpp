@@ -75,7 +75,7 @@ VISIT_DEFN(RecursiveVisitor, ThisExpr, expr) {
 }
 VISIT_DEFN(RecursiveVisitor, UnaryExpr, expr) {
   SHORT_CIRCUIT_CHILD(UnaryExpr, expr);
-  expr->Rhs()->Accept(this);
+  expr->Rhs().Accept(this);
 }
 VISIT_DEFN(RecursiveVisitor, InstanceOfExpr, expr) {
   SHORT_CIRCUIT_CHILD(InstanceOfExpr, expr);

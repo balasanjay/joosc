@@ -48,9 +48,9 @@ REC_VISIT_DEFN(IntRangeVisitor, IntLitExpr, expr) {
 }
 
 REC_VISIT_DEFN(IntRangeVisitor, UnaryExpr, expr) {
-  if (expr->Op().type == SUB && IS_CONST_PTR(IntLitExpr, expr->Rhs())) {
-    const IntLitExpr* intExpr = dynamic_cast<const IntLitExpr*>(expr->Rhs());
-    VerifyIsInRange(intExpr->Value(), intExpr->GetToken(), true, fs_, errors_);
+  if (expr->Op().type == SUB && IS_CONST_REF(IntLitExpr, expr->Rhs())) {
+    const IntLitExpr& intExpr = dynamic_cast<const IntLitExpr&>(expr->Rhs());
+    VerifyIsInRange(intExpr.Value(), intExpr.GetToken(), true, fs_, errors_);
     return false;
   }
 
