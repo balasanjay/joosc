@@ -115,7 +115,7 @@ class ArgumentList final {
 
   void Accept(Visitor* visitor) const { visitor->VisitArgumentList(this); }
 
-  const base::UniquePtrVector<Expr>& Args() const { return args_; }
+  GETTER(base::UniquePtrVector<Expr>, Args, args_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ArgumentList);
@@ -125,14 +125,16 @@ class ArgumentList final {
 
 class NameExpr : public Expr {
  public:
-  NameExpr(QualifiedName* name) : name_(name) {}
+  NameExpr(const QualifiedName& name) : name_(name) {}
 
   ACCEPT_VISITOR(NameExpr);
 
-  const QualifiedName* Name() const { return name_.get(); }
+  GETTER(QualifiedName, Name, name_);
 
  private:
-  unique_ptr<QualifiedName> name_;
+  DISALLOW_COPY_AND_ASSIGN(NameExpr);
+
+  QualifiedName name_;
 };
 
 class InstanceOfExpr : public Expr {

@@ -69,7 +69,7 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(IntLitExpr, expr) { *os_ << expr->GetToken().TypeInfo(); }
 
-  VISIT_DECL(NameExpr, expr) { *os_ << expr->Name()->Name(); }
+  VISIT_DECL(NameExpr, expr) { *os_ << expr->Name().Name(); }
 
   VISIT_DECL(NewArrayExpr, expr) {
     *os_ << "new<array<";

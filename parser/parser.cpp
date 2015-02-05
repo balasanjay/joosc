@@ -661,7 +661,7 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
   if (IsNext(IDENTIFIER)) {
     Result<QualifiedName> name;
     Parser after = ParseQualifiedName(&name);
-    RETURN_IF_GOOD(after, new NameExpr(name.Release()), out);
+    RETURN_IF_GOOD(after, new NameExpr(*name.Get()), out);
 
     *out = ConvertError<QualifiedName, Expr>(move(name));
     return Fail();
