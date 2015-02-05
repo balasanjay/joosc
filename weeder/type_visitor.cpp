@@ -179,8 +179,8 @@ REC_VISIT_DEFN(TypeVisitor, Param, param) {
 }
 
 REC_VISIT_DEFN(TypeVisitor, ForStmt, stmt) {
-  if (!IS_CONST_PTR(LocalDeclStmt, stmt->Init()) &&
-      !IsTopLevelExpr(stmt->Init())) {
+  if (!IS_CONST_REF(LocalDeclStmt, stmt->Init()) &&
+      !IsTopLevelExpr(&stmt->Init())) {
     // TODO: Error.
     Token tok(K_VOID, Pos(0, 1));
     errors_->Append(MakeInvalidTopLevelStatement(fs_, tok));

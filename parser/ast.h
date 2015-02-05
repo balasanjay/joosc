@@ -463,18 +463,18 @@ class ForStmt : public Stmt {
 
   ACCEPT_VISITOR(ForStmt);
 
-  const Stmt* Init() const { return init_.get(); }
+  GETTER(Stmt, Init, *init_);
   const Expr* Cond() const { return cond_.get(); }
   const Expr* Update() const { return update_.get(); }
-  const Stmt* Body() const { return body_.get(); }
+  GETTER(Stmt, Body, *body_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ForStmt);
 
-  unique_ptr<Stmt> init_;    // May be EmptyStmt.
+  unique_ptr<Stmt> init_;
   unique_ptr<Expr> cond_;    // May be nullptr.
   unique_ptr<Expr> update_;  // May be nullptr.
-  unique_ptr<Stmt> body_;    // May be EmptyStmt.
+  unique_ptr<Stmt> body_;
 };
 
 class WhileStmt : public Stmt {

@@ -153,7 +153,7 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(ForStmt, stmt) {
     *os_ << "for" << space_ << '(';
-    stmt->Init()->Accept(this);
+    stmt->Init().Accept(this);
     if (stmt->Cond() != nullptr) {
       *os_ << space_;
       stmt->Cond()->Accept(this);
@@ -164,7 +164,7 @@ class PrintVisitor final : public Visitor {
       stmt->Update()->Accept(this);
     }
     *os_ << ')' << space_ << '{';
-    stmt->Body()->Accept(this);
+    stmt->Body().Accept(this);
     *os_ << '}';
   }
 

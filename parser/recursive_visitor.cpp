@@ -114,14 +114,14 @@ VISIT_DEFN(RecursiveVisitor, IfStmt, stmt) {
 }
 VISIT_DEFN(RecursiveVisitor, ForStmt, stmt) {
   SHORT_CIRCUIT_CHILD(ForStmt, stmt);
-  stmt->Init()->Accept(this);
+  stmt->Init().Accept(this);
   if (stmt->Cond() != nullptr) {
     stmt->Cond()->Accept(this);
   }
   if (stmt->Update() != nullptr) {
     stmt->Update()->Accept(this);
   }
-  stmt->Body()->Accept(this);
+  stmt->Body().Accept(this);
 }
 
 VISIT_DEFN(RecursiveVisitor, WhileStmt, stmt) {
