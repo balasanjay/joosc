@@ -17,8 +17,8 @@ namespace parser {
 
 VISIT_DEFN(RecursiveVisitor, ArrayIndexExpr, expr) {
   SHORT_CIRCUIT_CHILD(ArrayIndexExpr, expr)
-  expr->Base()->Accept(this);
-  expr->Index()->Accept(this);
+  expr->Base().Accept(this);
+  expr->Index().Accept(this);
 }
 VISIT_DEFN(RecursiveVisitor, BinExpr, expr) {
   SHORT_CIRCUIT_CHILD(BinExpr, expr)

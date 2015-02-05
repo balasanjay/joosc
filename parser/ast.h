@@ -230,7 +230,7 @@ class IntLitExpr : public LitExpr {
 
   ACCEPT_VISITOR(IntLitExpr);
 
-  const string& Value() const { return value_; }
+  GETTER(string, Value, value_);
 
  private:
   string value_;
@@ -268,8 +268,8 @@ class ArrayIndexExpr : public Expr {
 
   ACCEPT_VISITOR(ArrayIndexExpr);
 
-  const Expr* Base() const { return base_.get(); }
-  const Expr* Index() const { return index_.get(); }
+  GETTER(Expr, Base, *base_);
+  GETTER(Expr, Index, *index_);
 
  private:
   unique_ptr<Expr> base_;

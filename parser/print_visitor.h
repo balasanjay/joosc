@@ -17,9 +17,9 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(ArrayIndexExpr, expr) {
-    expr->Base()->Accept(this);
+    expr->Base().Accept(this);
     *os_ << '[';
-    expr->Index()->Accept(this);
+    expr->Index().Accept(this);
     *os_ << ']';
   }
 
