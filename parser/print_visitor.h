@@ -92,7 +92,7 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(ParenExpr, expr) {
     *os_ << "(";
-    expr->Nested()->Accept(this);
+    expr->Nested().Accept(this);
     *os_ << ")";
   }
 

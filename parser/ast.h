@@ -13,9 +13,6 @@ namespace parser {
 #define GETTER(type, name, expr) \
   const type& name() const { return expr; }
 
-#define TEMP_GETTER(type, name, expr) \
-  const type& name##temp() const { return expr; }
-
 class QualifiedName final {
  public:
   QualifiedName(const vector<lexer::Token>& tokens, const vector<string>& parts,
@@ -165,7 +162,7 @@ class ParenExpr : public Expr {
 
   ACCEPT_VISITOR(ParenExpr);
 
-  const Expr* Nested() const { return nested_.get(); }
+  GETTER(Expr, Nested, *nested_);
 
  private:
   unique_ptr<Expr> nested_;
