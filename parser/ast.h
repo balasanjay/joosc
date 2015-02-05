@@ -732,7 +732,7 @@ class ImportDecl final {
 
 class CompUnit final {
  public:
-  CompUnit(ReferenceType* package, base::UniquePtrVector<ImportDecl>&& imports,
+  CompUnit(QualifiedName* package, base::UniquePtrVector<ImportDecl>&& imports,
            base::UniquePtrVector<TypeDecl>&& types)
       : package_(package),
         imports_(std::forward<base::UniquePtrVector<ImportDecl>>(imports)),
@@ -740,12 +740,12 @@ class CompUnit final {
 
   void Accept(Visitor* visitor) const { visitor->VisitCompUnit(this); }
 
-  const ReferenceType* Package() const { return package_.get(); }
-  const base::UniquePtrVector<ImportDecl>& Imports() const { return imports_; }
-  const base::UniquePtrVector<TypeDecl>& Types() const { return types_; }
+  const QualifiedName* Package() const { return package_.get(); }
+  GETTER(base::UniquePtrVector<ImportDecl>, Imports, imports_);
+  GETTER(base::UniquePtrVector<TypeDecl>, Types, types_);
 
  private:
-  unique_ptr<ReferenceType> package_;  // Might be nullptr.
+  unique_ptr<QualifiedName> package_;  // Might be nullptr.
   base::UniquePtrVector<ImportDecl> imports_;
   base::UniquePtrVector<TypeDecl> types_;
 };

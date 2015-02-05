@@ -1498,7 +1498,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
     return Success(new CompUnit(nullptr, move(imports), move(types)), out);
   }
 
-  unique_ptr<ReferenceType> packageName(nullptr);
+  unique_ptr<QualifiedName> packageName(nullptr);
   Parser afterPackage = *this;
   if (IsNext(K_PACKAGE)) {
     Result<Token> package;
@@ -1516,7 +1516,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
       return Fail(move(errors), out);
     }
 
-    packageName.reset(new ReferenceType(*name.Get()));
+    packageName.reset(name.Release());
   }
 
   Parser afterImports = afterPackage.EatSemis();
