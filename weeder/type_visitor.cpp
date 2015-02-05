@@ -148,7 +148,7 @@ REC_VISIT_DEFN(TypeVisitor, NewClassExpr, expr) {
 
 REC_VISIT_DEFN(TypeVisitor, NewArrayExpr, expr) {
   Token voidTok(K_VOID, Pos(-1, -1));
-  if (HasVoid(expr->GetType(), &voidTok)) {
+  if (HasVoid(&expr->GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
   }
   return true;

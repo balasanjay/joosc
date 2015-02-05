@@ -350,14 +350,14 @@ class NewArrayExpr : public Expr {
 
   ACCEPT_VISITOR(NewArrayExpr);
 
-  const Type* GetType() const { return type_.get(); }
+  GETTER(Type, GetType, *type_);
   const Expr* GetExpr() const { return expr_.get(); }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NewArrayExpr);
 
   unique_ptr<Type> type_;
-  unique_ptr<Expr> expr_;
+  unique_ptr<Expr> expr_; // Can be nullptr.
 };
 
 class Stmt {

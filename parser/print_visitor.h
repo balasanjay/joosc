@@ -73,7 +73,7 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(NewArrayExpr, expr) {
     *os_ << "new<array<";
-    expr->GetType()->PrintTo(os_);
+    expr->GetType().PrintTo(os_);
 
     *os_ << ">>(";
     if (expr->GetExpr() != nullptr) {
