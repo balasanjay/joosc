@@ -382,21 +382,21 @@ class EmptyStmt : public Stmt {
 
 class LocalDeclStmt : public Stmt {
  public:
-  LocalDeclStmt(Type* type, lexer::Token ident, Expr* val)
-      : type_(type), ident_(ident), val_(val) {}
+  LocalDeclStmt(Type* type, lexer::Token ident, Expr* expr)
+      : type_(type), ident_(ident), expr_(expr) {}
 
   ACCEPT_VISITOR(LocalDeclStmt);
 
-  const Type* GetType() const { return type_.get(); }
+  GETTER(Type, GetType, *type_);
   lexer::Token Ident() const { return ident_; }
-  const Expr* GetExpr() const { return val_.get(); }
+  GETTER(Expr, GetExpr, *expr_);
 
   // TODO: get the identifier as a string.
 
  private:
   unique_ptr<Type> type_;
   lexer::Token ident_;
-  unique_ptr<Expr> val_;
+  unique_ptr<Expr> expr_;
 };
 
 class ReturnStmt : public Stmt {

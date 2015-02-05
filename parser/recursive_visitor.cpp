@@ -98,7 +98,7 @@ VISIT_DEFN(RecursiveVisitor, ExprStmt, stmt) {
 }
 VISIT_DEFN(RecursiveVisitor, LocalDeclStmt, stmt) {
   SHORT_CIRCUIT_CHILD(LocalDeclStmt, stmt);
-  stmt->GetExpr()->Accept(this);
+  stmt->GetExpr().Accept(this);
 }
 VISIT_DEFN(RecursiveVisitor, ReturnStmt, stmt) {
   SHORT_CIRCUIT_CHILD(ReturnStmt, stmt);
