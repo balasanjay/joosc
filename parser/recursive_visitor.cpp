@@ -64,7 +64,7 @@ VISIT_DEFN(RecursiveVisitor, NewArrayExpr, expr) {
 }
 VISIT_DEFN(RecursiveVisitor, NewClassExpr, expr) {
   SHORT_CIRCUIT_CHILD(NewClassExpr, expr);
-  expr->Args()->Accept(this);
+  expr->Args().Accept(this);
 }
 VISIT_DEFN(RecursiveVisitor, ParenExpr, expr) {
   SHORT_CIRCUIT_CHILD(ParenExpr, expr);

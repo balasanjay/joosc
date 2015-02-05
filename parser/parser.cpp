@@ -563,7 +563,7 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
     }
 
     Expr* newExpr =
-        new NewClassExpr(*newTok.Get(), type.Release(), args.Release());
+        new NewClassExpr(*newTok.Get(), type.Release(), move(*args.Get()));
     Result<Expr> nested;
     Parser afterEnd = afterCall.ParsePrimaryEnd(newExpr, &nested);
     RETURN_IF_GOOD(afterEnd, nested.Release(), out);

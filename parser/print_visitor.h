@@ -84,9 +84,9 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(NewClassExpr, expr) {
     *os_ << "new<";
-    expr->GetType()->PrintTo(os_);
+    expr->GetType().PrintTo(os_);
     *os_ << ">(";
-    expr->Args()->Accept(this);
+    expr->Args().Accept(this);
     *os_ << ")";
   }
 

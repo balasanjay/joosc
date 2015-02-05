@@ -138,9 +138,9 @@ REC_VISIT_DEFN(TypeVisitor, InstanceOfExpr, expr) {
 
 REC_VISIT_DEFN(TypeVisitor, NewClassExpr, expr) {
   Token voidTok(K_VOID, Pos(-1, -1));
-  if (HasVoid(expr->GetType(), &voidTok)) {
+  if (HasVoid(&expr->GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
-  } else if (!IS_CONST_PTR(ReferenceType, expr->GetType())) {
+  } else if (!IS_CONST_REF(ReferenceType, expr->GetType())) {
     errors_->Append(MakeNewNonReferenceTypeError(fs_, expr->NewToken()));
   }
   return true;
