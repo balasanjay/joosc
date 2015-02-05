@@ -32,9 +32,9 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(CallExpr, expr) {
-    expr->Base()->Accept(this);
+    expr->Base().Accept(this);
     *os_ << '(';
-    expr->Args()->Accept(this);
+    expr->Args().Accept(this);
     *os_ << ')';
   }
 

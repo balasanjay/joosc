@@ -757,7 +757,7 @@ Parser Parser::ParsePrimaryEndNoArrayAccess(Expr* base,
       return Fail(move(errors), out);
     }
 
-    Expr* call = new CallExpr(base, *lparen.Get(), args.Release());
+    Expr* call = new CallExpr(base, *lparen.Get(), move(*args.Get()));
     Result<Expr> nested;
     Parser afterEnd = after.ParsePrimaryEnd(call, &nested);
     RETURN_IF_GOOD(afterEnd, nested.Release(), out);
