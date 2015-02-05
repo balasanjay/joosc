@@ -46,7 +46,7 @@ class CompilerSuccessTest : public testing::TestWithParam<string> {};
 TEST_P(CompilerSuccessTest, ShouldCompile) {
   FileSet::Builder builder = FileSet::Builder().AddDiskFile(GetParam());
 
-  FileSet *fs;
+  FileSet* fs;
   ErrorList errors;
   vector<vector<Token>> tokens;
 
@@ -82,7 +82,7 @@ class CompilerFailureTest : public testing::TestWithParam<string> {};
 TEST_P(CompilerFailureTest, ShouldNotCompile) {
   FileSet::Builder builder = FileSet::Builder().AddDiskFile(GetParam());
 
-  FileSet *fs;
+  FileSet* fs;
   ErrorList errors;
   vector<vector<Token>> tokens;
 
@@ -116,17 +116,10 @@ TEST_P(CompilerFailureTest, ShouldNotCompile) {
   ASSERT_TRUE(false);
 }
 
-vector<string> SuccessFiles();
-vector<string> FailureFiles();
-
-INSTANTIATE_TEST_CASE_P(MarmosetTests, CompilerSuccessTest, testing::ValuesIn(SuccessFiles()));
-INSTANTIATE_TEST_CASE_P(MarmosetTests, CompilerFailureTest, testing::ValuesIn(FailureFiles()));
-
-// find third_party/cs444/assignment_testcases/a1 -name "*.java" -not -name "*Je*.java".
 vector<string> SuccessFiles() {
   vector<string> files;
   assert(ListDir("third_party/cs444/assignment_testcases/a1", &files));
- 
+
   struct {
     bool operator()(const string& file) {
       return file.find("Je") == string::npos;
@@ -139,11 +132,10 @@ vector<string> SuccessFiles() {
   return filtered;
 }
 
-// find third_party/cs444/assignment_testcases/a1 -name "*Je*.java".
 vector<string> FailureFiles() {
   vector<string> files;
   assert(ListDir("third_party/cs444/assignment_testcases/a1", &files));
- 
+
   struct {
     bool operator()(const string& file) {
       return file.find("Je") != string::npos;
@@ -156,4 +148,9 @@ vector<string> FailureFiles() {
   return filtered;
 }
 
-} // namespace weeder
+INSTANTIATE_TEST_CASE_P(MarmosetTests, CompilerSuccessTest,
+                        testing::ValuesIn(SuccessFiles()));
+INSTANTIATE_TEST_CASE_P(MarmosetTests, CompilerFailureTest,
+                        testing::ValuesIn(FailureFiles()));
+
+}  // namespace weeder
