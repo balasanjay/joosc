@@ -36,7 +36,7 @@ VISIT_DEFN(RecursiveVisitor, CastExpr, expr) {
 }
 VISIT_DEFN(RecursiveVisitor, FieldDerefExpr, expr) {
   SHORT_CIRCUIT_CHILD(FieldDerefExpr, expr);
-  expr->Base()->Accept(this);
+  expr->Base().Accept(this);
 }
 VISIT_DEFN(RecursiveVisitor, BoolLitExpr, expr) {
   SHORT_CIRCUIT_CHILD(BoolLitExpr, expr);

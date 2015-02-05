@@ -283,8 +283,8 @@ class FieldDerefExpr : public Expr {
 
   ACCEPT_VISITOR(FieldDerefExpr);
 
-  const Expr* Base() const { return base_.get(); }
-  const string& FieldName() const { return fieldname_; }
+  GETTER(Expr, Base, *base_);
+  GETTER(string, FieldName, fieldname_);
 
  private:
   unique_ptr<Expr> base_;

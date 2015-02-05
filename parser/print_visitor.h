@@ -55,7 +55,7 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(FieldDerefExpr, expr) {
-    expr->Base()->Accept(this);
+    expr->Base().Accept(this);
     *os_ << '.' << expr->FieldName();
   }
 
