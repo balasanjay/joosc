@@ -4,12 +4,15 @@
   fancyhdr,
   indentfirst,
   lastpage,
+  listings,
 }
 \usepackage[top=1in, bottom=1in, left=1in, right=1in]{geometry}
 
 % declare some useful macros
 \newcommand{\assignmentNumber}{Assignment 1}
 \newcommand{\courseName}{CS 444}
+
+\lstset{basicstyle=\ttfamily}
 
 \begin{document}
 \pagestyle{fancyplain}
@@ -71,26 +74,141 @@ information about each kind of token; for example, it marks `-' as both a
 binary and a unary operator, it marks `++' as unsupported, and it marks `if' as
 a keyword.
 
-\subsection{Abstract Syntax Tree}
-% TODO
 
 \subsection{Parser}
+We hand-wrote a recursive descent parser for Joos. We had two interesting
+classes here, Parser and Result. Parser is immutable and contains a reference
+to a stream of tokens and an index into that stream. Parser has methods that
+parse productions in our grammar and return a new Parser. Instances of the
+Result class are produced from Parser methods, and contain AST nodes. Both
+Parser and Result have a notion of an error state, allowing chained parsing
+method calls to short-circuit on failure. This design allows easy chaining of
+parsers to build higher-level parsers. For instance, here is a snippet from the
+parsing of the `while' statement.
+\begin{lstlisting}[language=c++]
+Result<Token> whileTok;
+Result<Token> lparen;
+Result<Expr> cond;
+Result<Token> rparen;
+Result<Stmt> body;
 
+Parser after = (*this)
+  .ParseTokenIf(ExactType(K_WHILE), &whileTok)
+  .ParseTokenIf(ExactType(LPAREN), &lparen)
+  .ParseExpression(&cond)
+  .ParseTokenIf(ExactType(RPAREN), &rparen)
+  .ParseStmt(&body);
+\end{lstlisting}
+
+We also have a function that will propagate errors correctly from such a
+chained statement. It will take the first non-empty ErrorList as the overall
+error from parsing the while statement.
+\begin{lstlisting}[language=c++]
+ErrorList errors;
+FirstOf(&errors, &whileTok, &lparen, &cond, &rparen, &body);
+return Fail(move(errors), out);
+\end{lstlisting}
+
+\subsubsection{Abstract Syntax Tree}
+We wrote a fairly standard AST for Joos, which our parser generates directly.
+For instance, this is the AST node for the while statement.
+\begin{lstlisting}[language=c++]
+class WhileStmt: public Stmt {
+public:
+  WhileStmt(Expr* cond, Stmt* body): cond_(cond), body_(body) {}
+
+  const Expr* Cond() const { return cond_.get(); }
+  const Stmt* Body() const { return body_.get(); }
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(WhileStmt);
+
+  unique_ptr<Expr> cond_;
+  unique_ptr<Stmt> body_; // May be EmptyStmt.
+};
+\end{lstlisting}
 
 \subsubsection{Grammar}
 We wrote a grammar based on the Second Edition of the Java Language
 Specification (JLS). We heavily modified the grammar to be more concise and to
 be unambiguously parsable by a top-down recursive-descent parser. We removed
 all of the immediate left-recursion and we simplified the rules to more closely
-match our AST nodes.
+match our AST nodes. To continue with our running example, here is our
+production rule for while statements.
+\begin{lstlisting}
+WhileStatement:
+  "while" "(" Expression ")" Statement
+\end{lstlisting}
 
 \subsection{Visitors}
+All of our AST nodes support the Visitor pattern. We used the Visitor pattern
+extensively in the Weeder and to implement a pretty-printer for our AST. In
+addition to our base Visitor, we also have a subclass named RecursiveVisitor
+that automatically recurses through the entire AST. Visitors that only need to
+examine particular nodes in the AST (method calls, for instance) must only
+override the required methods, and the RecursiveVisitor will take care of
+reaching every node. To continue our running example, here is the
+pretty-printer implementation for the while statement.
+\begin{lstlisting}[language=c++]
+VISIT_DECL(WhileStmt, stmt) {
+  *os_ << "while" << space_ << '(';
+  stmt->Cond()->Accept(this);
+  *os_ << ')' << space_ << '{';
+  stmt->Body()->Accept(this);
+  *os_ << '}';
+}
+\end{lstlisting}
 
 \subsection{Weeder}
+The weeder consists of a series of Visitor implementations. We have
+implementations that check various restrictions of the Joos language that were
+difficult to enforce in the parser. For example, we check that modifier lists
+have no contradictions, and that members are either public or protected, and
+not both.
 
 \section{Challenges}
+\subsection{Memory Management}
+C++ has no garbage collection, and we wanted to free all resources that we
+allocated in a safe manner. While it may seem that a compiler could just
+continually allocate memory and never free it, we've found that having
+deterministic ownership semantics helps make code cleaner and easier to
+machine-verify using a tool like `valgrind'. We accomplished this by pervasive
+use of C++11's \verb+unique_ptr+ class. \verb+unique_ptr+ makes use of C++'s
+RAII paradigm to automatically release memory when leaving a scope. Since this
+was a new codebase, and we started using this from the beginning, this
+presented none of the usual usability challenges associated with
+\verb+unique_ptr+ and allowed us to remain free of memory leaks.
+
+\subsection{Precedence and Associativity}
+When removing left-recursion from the grammar, the productions for binary
+operators became highly recursive. That is to say, in order to parse the number
+`3' as an integer literal, it would make around many recursive calls through
+the precedence hierarchy. Also, we couldn't find an easy way to give the binary
+operators their proper associativity.
+
+We solved this in the parser by simply accepting repeating sequences of binary
+operator, expression pairs (after an initial expression). We then applied
+Knuth's famous Shunting Yard algorithm to properly assign appropriate
+precedence and associativity to all binary operators. This was both efficient
+and correct.
+
+\subsection{Integer range checking}
+We treat a negative integer literal as a unary minus operator followed by a
+positive integer literal. This was challenging when checking that a integer
+literal was in range, because negative numbers have a slightly larger range
+than positive integers. This challenge was exacerbated by the fact that
+initially our parser initially only considered parentheses for precedence
+purposes, but did not represent them in the AST. This meant that the AST would
+represent the expression `$-(214783648)$' equivalently to `$-214783648$'.
+However, the former should not be allowed in Joos, because the number inside
+the parentheses is outside the range of a positive integer literal. We fixed
+this by adding an explicit intermediate AST node for parenthesized expressions.
+This allowed the weeder to differentiate the two examples above, and emit an
+error as appropriate.
 
 \section{Testing}
+\subsection{Unit tests}
+\subsection{Integration tests}
 
 \end{document}
 
