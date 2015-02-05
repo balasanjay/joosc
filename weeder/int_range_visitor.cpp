@@ -40,16 +40,16 @@ void VerifyIsInRange(const string& strVal, Token token, bool isNegated,
 }  // namespace
 
 REC_VISIT_DEFN(IntRangeVisitor, IntLitExpr, expr) {
-  const string& strVal = expr->Value();
-  Token token = expr->GetToken();
+  const string& strVal = expr.Value();
+  Token token = expr.GetToken();
 
   VerifyIsInRange(strVal, token, false, fs_, errors_);
   return false;
 }
 
 REC_VISIT_DEFN(IntRangeVisitor, UnaryExpr, expr) {
-  if (expr->Op().type == SUB && IS_CONST_REF(IntLitExpr, expr->Rhs())) {
-    const IntLitExpr& intExpr = dynamic_cast<const IntLitExpr&>(expr->Rhs());
+  if (expr.Op().type == SUB && IS_CONST_REF(IntLitExpr, expr.Rhs())) {
+    const IntLitExpr& intExpr = dynamic_cast<const IntLitExpr&>(expr.Rhs());
     VerifyIsInRange(intExpr.Value(), intExpr.GetToken(), true, fs_, errors_);
     return false;
   }

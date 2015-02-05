@@ -8,7 +8,7 @@
 namespace parser {
 
 #define ACCEPT_VISITOR(type) \
-  void Accept(Visitor* visitor) const override { visitor->Visit##type(this); }
+  void Accept(Visitor* visitor) const override { visitor->Visit##type(*this); }
 
 #define GETTER(type, name, expr) \
   const type& name() const { return expr; }
@@ -85,7 +85,7 @@ class ArrayType : public Type {
     *os << '>';
   }
 
-  const Type* ElemType() const { return elemtype_.get(); }
+  GETTER(Type, ElemType, *elemtype_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ArrayType);
@@ -113,7 +113,7 @@ class ArgumentList final {
   ~ArgumentList() = default;
   ArgumentList(ArgumentList&&) = default;
 
-  void Accept(Visitor* visitor) const { visitor->VisitArgumentList(this); }
+  void Accept(Visitor* visitor) const { visitor->VisitArgumentList(*this); }
 
   GETTER(base::UniquePtrVector<Expr>, Args, args_);
 
@@ -537,7 +537,7 @@ class Param final {
  public:
   Param(Type* type, lexer::Token ident) : type_(type), ident_(ident) {}
 
-  void Accept(Visitor* visitor) const { visitor->VisitParam(this); }
+  void Accept(Visitor* visitor) const { visitor->VisitParam(*this); }
 
   GETTER(Type, GetType, *type_);
   lexer::Token Ident() const { return ident_; }
@@ -556,7 +556,7 @@ class ParamList final {
   ~ParamList() = default;
   ParamList(ParamList&&) = default;
 
-  void Accept(Visitor* visitor) const { visitor->VisitParamList(this); }
+  void Accept(Visitor* visitor) const { visitor->VisitParamList(*this); }
 
   GETTER(base::UniquePtrVector<Param>, Params, params_);
 
@@ -718,7 +718,7 @@ class ImportDecl final {
   ImportDecl(const QualifiedName& name, bool isWildCard)
       : name_(name), isWildCard_(isWildCard) {}
 
-  void Accept(Visitor* visitor) const { visitor->VisitImportDecl(this); }
+  void Accept(Visitor* visitor) const { visitor->VisitImportDecl(*this); }
 
   GETTER(QualifiedName, Name, name_);
   bool IsWildCard() const { return isWildCard_; }
@@ -738,7 +738,7 @@ class CompUnit final {
         imports_(std::forward<base::UniquePtrVector<ImportDecl>>(imports)),
         types_(std::forward<base::UniquePtrVector<TypeDecl>>(types)) {}
 
-  void Accept(Visitor* visitor) const { visitor->VisitCompUnit(this); }
+  void Accept(Visitor* visitor) const { visitor->VisitCompUnit(*this); }
 
   const QualifiedName* Package() const { return package_.get(); }
   GETTER(base::UniquePtrVector<ImportDecl>, Imports, imports_);
@@ -755,7 +755,7 @@ class Program final {
   Program(base::UniquePtrVector<CompUnit>&& units)
       : units_(std::forward<base::UniquePtrVector<CompUnit>>(units)) {}
 
-  void Accept(Visitor* visitor) const { visitor->VisitProgram(this); }
+  void Accept(Visitor* visitor) const { visitor->VisitProgram(*this); }
 
   GETTER(base::UniquePtrVector<CompUnit>, CompUnits, units_);
 

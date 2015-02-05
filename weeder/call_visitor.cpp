@@ -24,13 +24,13 @@ Error* MakeExplicitThisCallError(const FileSet* fs, Token token) {
 }
 
 REC_VISIT_DEFN(CallVisitor, CallExpr, expr) {
-  const Expr& base = expr->Base();
+  const Expr& base = expr.Base();
 
   if (!IS_CONST_REF(FieldDerefExpr, base) && !IS_CONST_REF(NameExpr, base)) {
     if (IS_CONST_REF(ThisExpr, base)) {
-      errors_->Append(MakeExplicitThisCallError(fs_, expr->Lparen()));
+      errors_->Append(MakeExplicitThisCallError(fs_, expr.Lparen()));
     } else {
-      errors_->Append(MakeInvalidCallError(fs_, expr->Lparen()));
+      errors_->Append(MakeInvalidCallError(fs_, expr.Lparen()));
     }
     return true;
   }
