@@ -19,13 +19,13 @@ namespace {
 
 Error* MakeMultipleTypesPerCompUnitError(const FileSet* fs, Token token) {
   return MakeSimplePosRangeError(
-      fs, token.pos,
-      "MultipleTypesPerCompUnitError", "Joos does not support multiple types per file.");
+      fs, token.pos, "MultipleTypesPerCompUnitError",
+      "Joos does not support multiple types per file.");
 }
 
-} // namespace
+}  // namespace
 
-REC_VISIT_DEFN(StructureVisitor, Program, prog){
+REC_VISIT_DEFN(StructureVisitor, Program, prog) {
   // TODO: store fileid in CompUnit, and use that instead of this assertion.
   assert(prog->CompUnits().Size() == fs_->Size());
 
@@ -35,7 +35,8 @@ REC_VISIT_DEFN(StructureVisitor, Program, prog){
 
     if (unit->Types().Size() > 1) {
       for (int j = 0; j < unit->Types().Size(); ++j) {
-        errors_->Append(MakeMultipleTypesPerCompUnitError(fs_, unit->Types().At(j)->NameToken()));
+        errors_->Append(MakeMultipleTypesPerCompUnitError(
+            fs_, unit->Types().At(j)->NameToken()));
       }
       continue;
     } else if (unit->Types().Size() == 0) {
@@ -51,11 +52,11 @@ REC_VISIT_DEFN(StructureVisitor, Program, prog){
     }
 
     errors_->Append(MakeSimplePosRangeError(
-          fs_, unit->Types().At(0)->NameToken().pos,
-          "IncorrectFileNameError", "Must be in file named " + expectedFilename + "."));
+        fs_, unit->Types().At(0)->NameToken().pos, "IncorrectFileNameError",
+        "Must be in file named " + expectedFilename + "."));
   }
 
   return false;
 }
 
-} // namespace weeder
+}  // namespace weeder

@@ -4,7 +4,7 @@
 namespace base {
 
 void ErrorList::PrintTo(std::ostream* out, const OutputOptions& opt) const {
-  for (int i = 0 ; i < Size(); ++i) {
+  for (int i = 0; i < Size(); ++i) {
     At(i)->PrintTo(out, opt);
     *out << '\n';
   }

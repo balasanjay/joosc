@@ -26,9 +26,8 @@ class WeederTest : public ::testing::Test {
 
     // Create file set.
     base::FileSet* fs;
-    ASSERT_TRUE(base::FileSet::Builder()
-        .AddStringFile("foo.java", s)
-        .Build(&fs, &errors));
+    ASSERT_TRUE(base::FileSet::Builder().AddStringFile("foo.java", s).Build(
+        &fs, &errors));
     fs_.reset(fs);
 
     // Lex tokens.
@@ -50,6 +49,6 @@ class WeederTest : public ::testing::Test {
   unique_ptr<parser::Parser> parser_;
 };
 
-} // namespace weeder
+}  // namespace weeder
 
 #endif

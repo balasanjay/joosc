@@ -357,8 +357,10 @@ TEST_F(LexerTest, UnsupportedToken) {
   LexString("synchronized do");
   FindUnsupportedTokens(fs, tokens, &errors);
   ASSERT_TRUE(errors.IsFatal());
-  EXPECT_EQ("UnsupportedTokenError(0:0-12)", testing::PrintToString(*errors.At(0)));
-  EXPECT_EQ("UnsupportedTokenError(0:13-15)", testing::PrintToString(*errors.At(1)));
+  EXPECT_EQ("UnsupportedTokenError(0:0-12)",
+            testing::PrintToString(*errors.At(0)));
+  EXPECT_EQ("UnsupportedTokenError(0:13-15)",
+            testing::PrintToString(*errors.At(1)));
 }
 
 TEST_F(LexerTest, BadBarelyTooHighEscapedChar) {

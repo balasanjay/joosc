@@ -7,73 +7,71 @@
 
 namespace parser {
 
-#define ACCEPT_VISITOR(type) void Accept(Visitor* visitor) const override { visitor->Visit##type(this); }
+#define ACCEPT_VISITOR(type) \
+  void Accept(Visitor* visitor) const override { visitor->Visit##type(this); }
 
 class QualifiedName final {
-public:
-  QualifiedName(const vector<lexer::Token>& tokens, const vector<string>& parts, const string& name) : tokens_(tokens), parts_(parts), name_(name) {}
+ public:
+  QualifiedName(const vector<lexer::Token>& tokens, const vector<string>& parts,
+                const string& name)
+      : tokens_(tokens), parts_(parts), name_(name) {}
 
-  void PrintTo(std::ostream* os) const  {
-    *os << name_;
-  }
+  void PrintTo(std::ostream* os) const { *os << name_; }
 
   const string& Name() const { return name_; }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(QualifiedName);
 
-  vector<lexer::Token> tokens_; // [IDENTIFIER, DOT, IDENTIFIER, DOT, IDENTIFIER]
-  vector<string> parts_; // ["java", "lang", "String"]
-  string name_; // "java.lang.String"
+  vector<lexer::Token>
+      tokens_;            // [IDENTIFIER, DOT, IDENTIFIER, DOT, IDENTIFIER]
+  vector<string> parts_;  // ["java", "lang", "String"]
+  string name_;           // "java.lang.String"
 };
 
 class Type {
-public:
+ public:
   virtual ~Type() = default;
 
   virtual void PrintTo(std::ostream* os) const = 0;
 
-protected:
+ protected:
   Type() = default;
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(Type);
 };
 
 class PrimitiveType : public Type {
-public:
+ public:
   PrimitiveType(lexer::Token token) : token_(token) {}
 
-  void PrintTo(std::ostream* os) const override {
-    *os << token_.TypeInfo();
-  }
+  void PrintTo(std::ostream* os) const override { *os << token_.TypeInfo(); }
 
   lexer::Token GetToken() const { return token_; }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(PrimitiveType);
 
   lexer::Token token_;
 };
 
 class ReferenceType : public Type {
-public:
+ public:
   ReferenceType(QualifiedName* name) : name_(name) {}
 
-  void PrintTo(std::ostream* os) const override {
-    name_->PrintTo(os);
-  }
+  void PrintTo(std::ostream* os) const override { name_->PrintTo(os); }
 
   const QualifiedName* Name() const { return name_.get(); }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(ReferenceType);
 
   unique_ptr<QualifiedName> name_;
 };
 
 class ArrayType : public Type {
-public:
+ public:
   ArrayType(Type* elemtype) : elemtype_(elemtype) {}
 
   void PrintTo(std::ostream* os) const override {
@@ -84,87 +82,87 @@ public:
 
   const Type* ElemType() const { return elemtype_.get(); }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(ArrayType);
 
   unique_ptr<Type> elemtype_;
 };
 
-
 class Expr {
-public:
+ public:
   virtual ~Expr() = default;
 
   virtual void Accept(Visitor* visitor) const = 0;
 
-protected:
+ protected:
   Expr() = default;
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(Expr);
 };
 
 class ArgumentList final {
-  public:
-    ArgumentList(base::UniquePtrVector<Expr>&& args) : args_(std::forward<base::UniquePtrVector<Expr>>(args)) {}
-    ~ArgumentList() = default;
-    ArgumentList(ArgumentList&&) = default;
+ public:
+  ArgumentList(base::UniquePtrVector<Expr>&& args)
+      : args_(std::forward<base::UniquePtrVector<Expr>>(args)) {}
+  ~ArgumentList() = default;
+  ArgumentList(ArgumentList&&) = default;
 
-    void Accept(Visitor* visitor) const { visitor->VisitArgumentList(this); }
+  void Accept(Visitor* visitor) const { visitor->VisitArgumentList(this); }
 
-    const base::UniquePtrVector<Expr>& Args() const { return args_; }
+  const base::UniquePtrVector<Expr>& Args() const { return args_; }
 
-  private:
-    DISALLOW_COPY_AND_ASSIGN(ArgumentList);
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ArgumentList);
 
-    base::UniquePtrVector<Expr> args_;
+  base::UniquePtrVector<Expr> args_;
 };
 
 class NameExpr : public Expr {
-  public:
-    NameExpr(QualifiedName* name) : name_(name) {}
+ public:
+  NameExpr(QualifiedName* name) : name_(name) {}
 
-    ACCEPT_VISITOR(NameExpr);
+  ACCEPT_VISITOR(NameExpr);
 
-    const QualifiedName* Name() const { return name_.get(); }
+  const QualifiedName* Name() const { return name_.get(); }
 
-  private:
-    unique_ptr<QualifiedName> name_;
+ private:
+  unique_ptr<QualifiedName> name_;
 };
 
 class InstanceOfExpr : public Expr {
-  public:
-    InstanceOfExpr(Expr* lhs, lexer::Token instanceof, Type* type) : lhs_(lhs), instanceof_(instanceof), type_(type) {}
+ public:
+  InstanceOfExpr(Expr* lhs, lexer::Token instanceof, Type* type)
+      : lhs_(lhs), instanceof_(instanceof), type_(type) {}
 
-    ACCEPT_VISITOR(InstanceOfExpr);
+  ACCEPT_VISITOR(InstanceOfExpr);
 
-    const Expr* Lhs() const { return lhs_.get(); }
-    lexer::Token InstanceOf() const { return instanceof_; }
-    const Type* GetType() const { return type_.get(); }
+  const Expr* Lhs() const { return lhs_.get(); }
+  lexer::Token InstanceOf() const { return instanceof_; }
+  const Type* GetType() const { return type_.get(); }
 
-  private:
-    unique_ptr<Expr> lhs_;
-    lexer::Token instanceof_;
-    unique_ptr<Type> type_;
+ private:
+  unique_ptr<Expr> lhs_;
+  lexer::Token instanceof_;
+  unique_ptr<Type> type_;
 };
 
-class ParenExpr: public Expr {
-public:
-  ParenExpr(Expr* nested) : nested_(nested) {
-    assert(nested_ != nullptr);
-  }
+class ParenExpr : public Expr {
+ public:
+  ParenExpr(Expr* nested) : nested_(nested) { assert(nested_ != nullptr); }
 
   ACCEPT_VISITOR(ParenExpr);
 
   const Expr* Nested() const { return nested_.get(); }
 
-private:
+ private:
   unique_ptr<Expr> nested_;
 };
 
 class BinExpr : public Expr {
-public:
-  BinExpr(Expr* lhs, lexer::Token op, Expr* rhs) : op_(op), lhs_(lhs), rhs_(rhs) {
+ public:
+  BinExpr(Expr* lhs, lexer::Token op, Expr* rhs)
+      : op_(op), lhs_(lhs), rhs_(rhs) {
     assert(lhs != nullptr);
     assert(op.TypeInfo().IsBinOp());
     assert(rhs != nullptr);
@@ -176,7 +174,7 @@ public:
   const Expr* Rhs() const { return rhs_.get(); }
   lexer::Token Op() const { return op_; }
 
-private:
+ private:
   lexer::Token op_;
 
   unique_ptr<Expr> lhs_;
@@ -184,7 +182,7 @@ private:
 };
 
 class UnaryExpr : public Expr {
-public:
+ public:
   UnaryExpr(lexer::Token op, Expr* rhs) : op_(op), rhs_(rhs) {
     assert(op.TypeInfo().IsUnaryOp());
     assert(rhs != nullptr);
@@ -195,130 +193,134 @@ public:
   lexer::Token Op() const { return op_; }
   const Expr* Rhs() const { return rhs_.get(); }
 
-private:
+ private:
   lexer::Token op_;
   unique_ptr<Expr> rhs_;
 };
 
 class LitExpr : public Expr {
-public :
+ public:
   LitExpr(lexer::Token token) : token_(token) {}
 
   lexer::Token GetToken() const { return token_; }
 
-private:
+ private:
   lexer::Token token_;
 };
 
 class BoolLitExpr : public LitExpr {
-public:
+ public:
   BoolLitExpr(lexer::Token token) : LitExpr(token) {}
 
   ACCEPT_VISITOR(BoolLitExpr);
 };
 
-class IntLitExpr: public LitExpr {
-public:
-  IntLitExpr(lexer::Token token, const string& value) : LitExpr(token), value_(value) {}
+class IntLitExpr : public LitExpr {
+ public:
+  IntLitExpr(lexer::Token token, const string& value)
+      : LitExpr(token), value_(value) {}
 
   ACCEPT_VISITOR(IntLitExpr);
 
   const string& Value() const { return value_; }
 
-private:
+ private:
   string value_;
 };
 
-class StringLitExpr: public LitExpr {
-public:
+class StringLitExpr : public LitExpr {
+ public:
   StringLitExpr(lexer::Token token) : LitExpr(token) {}
 
   ACCEPT_VISITOR(StringLitExpr);
 };
 
-class CharLitExpr: public LitExpr {
-public:
+class CharLitExpr : public LitExpr {
+ public:
   CharLitExpr(lexer::Token token) : LitExpr(token) {}
 
   ACCEPT_VISITOR(CharLitExpr);
 };
 
-class NullLitExpr: public LitExpr {
-public:
+class NullLitExpr : public LitExpr {
+ public:
   NullLitExpr(lexer::Token token) : LitExpr(token) {}
 
   ACCEPT_VISITOR(NullLitExpr);
 };
 
 class ThisExpr : public Expr {
-public :
+ public:
   ACCEPT_VISITOR(ThisExpr);
 };
 
 class ArrayIndexExpr : public Expr {
-  public:
-    ArrayIndexExpr(Expr* base, Expr* index) : base_(base), index_(index) {}
+ public:
+  ArrayIndexExpr(Expr* base, Expr* index) : base_(base), index_(index) {}
 
-    ACCEPT_VISITOR(ArrayIndexExpr);
+  ACCEPT_VISITOR(ArrayIndexExpr);
 
-    const Expr* Base() const { return base_.get(); }
-    const Expr* Index() const { return index_.get(); }
+  const Expr* Base() const { return base_.get(); }
+  const Expr* Index() const { return index_.get(); }
 
-  private:
-    unique_ptr<Expr> base_;
-    unique_ptr<Expr> index_;
+ private:
+  unique_ptr<Expr> base_;
+  unique_ptr<Expr> index_;
 };
 
 class FieldDerefExpr : public Expr {
-  public:
-    FieldDerefExpr(Expr* base, const string& fieldname, lexer::Token token) : base_(base), fieldname_(fieldname), token_(token) {}
+ public:
+  FieldDerefExpr(Expr* base, const string& fieldname, lexer::Token token)
+      : base_(base), fieldname_(fieldname), token_(token) {}
 
-    ACCEPT_VISITOR(FieldDerefExpr);
+  ACCEPT_VISITOR(FieldDerefExpr);
 
-    const Expr* Base() const { return base_.get(); }
-    const string& FieldName() const { return fieldname_; }
+  const Expr* Base() const { return base_.get(); }
+  const string& FieldName() const { return fieldname_; }
 
-  private:
-    unique_ptr<Expr> base_;
-    string fieldname_;
-    lexer::Token token_;
+ private:
+  unique_ptr<Expr> base_;
+  string fieldname_;
+  lexer::Token token_;
 };
 
 class CallExpr : public Expr {
-  public:
-    CallExpr(Expr* base, lexer::Token lparen, ArgumentList* args) : base_(base), lparen_(lparen), args_(args) {}
+ public:
+  CallExpr(Expr* base, lexer::Token lparen, ArgumentList* args)
+      : base_(base), lparen_(lparen), args_(args) {}
 
-    ACCEPT_VISITOR(CallExpr);
+  ACCEPT_VISITOR(CallExpr);
 
-    const Expr* Base() const { return base_.get(); }
-    lexer::Token Lparen() const { return lparen_; }
-    const ArgumentList* Args() const { return args_.get(); }
+  const Expr* Base() const { return base_.get(); }
+  lexer::Token Lparen() const { return lparen_; }
+  const ArgumentList* Args() const { return args_.get(); }
 
-  private:
-    unique_ptr<Expr> base_;
-    lexer::Token lparen_;
-    unique_ptr<ArgumentList> args_;
+ private:
+  unique_ptr<Expr> base_;
+  lexer::Token lparen_;
+  unique_ptr<ArgumentList> args_;
 };
 
 class CastExpr : public Expr {
-  public:
-    CastExpr(Type* type, Expr* expr) : type_(type), expr_(expr) {}
+ public:
+  CastExpr(Type* type, Expr* expr) : type_(type), expr_(expr) {}
 
-    ACCEPT_VISITOR(CastExpr);
+  ACCEPT_VISITOR(CastExpr);
 
-    const Type* GetType() const { return type_.get(); }
-    const Expr* GetExpr() const { return expr_.get(); }
+  const Type* GetType() const { return type_.get(); }
+  const Expr* GetExpr() const { return expr_.get(); }
 
-  private:
-    DISALLOW_COPY_AND_ASSIGN(CastExpr);
+ private:
+  DISALLOW_COPY_AND_ASSIGN(CastExpr);
 
-    unique_ptr<Type> type_;
-    unique_ptr<Expr> expr_;
+  unique_ptr<Type> type_;
+  unique_ptr<Expr> expr_;
 };
 
 class NewClassExpr : public Expr {
-public:
-  NewClassExpr(lexer::Token newTok, Type* type, ArgumentList* args) : newTok_(newTok), type_(type), args_(args) {}
+ public:
+  NewClassExpr(lexer::Token newTok, Type* type, ArgumentList* args)
+      : newTok_(newTok), type_(type), args_(args) {}
 
   ACCEPT_VISITOR(NewClassExpr);
 
@@ -326,7 +328,7 @@ public:
   const Type* GetType() const { return type_.get(); }
   const ArgumentList* Args() const { return args_.get(); }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(NewClassExpr);
 
   lexer::Token newTok_;
@@ -335,7 +337,7 @@ private:
 };
 
 class NewArrayExpr : public Expr {
-public:
+ public:
   NewArrayExpr(Type* type, Expr* expr) : type_(type), expr_(expr) {}
 
   ACCEPT_VISITOR(NewArrayExpr);
@@ -343,7 +345,7 @@ public:
   const Type* GetType() const { return type_.get(); }
   const Expr* GetExpr() const { return expr_.get(); }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(NewArrayExpr);
 
   unique_ptr<Type> type_;
@@ -351,28 +353,29 @@ private:
 };
 
 class Stmt {
-public:
+ public:
   virtual ~Stmt() = default;
 
   virtual void Accept(Visitor* visitor) const = 0;
 
-protected:
+ protected:
   Stmt() = default;
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(Stmt);
 };
 
 class EmptyStmt : public Stmt {
-public:
+ public:
   EmptyStmt() = default;
 
   ACCEPT_VISITOR(EmptyStmt);
 };
 
 class LocalDeclStmt : public Stmt {
-public:
-  LocalDeclStmt(Type* type, lexer::Token ident, Expr* val): type_(type), ident_(ident), val_(val) {}
+ public:
+  LocalDeclStmt(Type* type, lexer::Token ident, Expr* val)
+      : type_(type), ident_(ident), val_(val) {}
 
   ACCEPT_VISITOR(LocalDeclStmt);
 
@@ -382,52 +385,54 @@ public:
 
   // TODO: get the identifier as a string.
 
-private:
+ private:
   unique_ptr<Type> type_;
   lexer::Token ident_;
   unique_ptr<Expr> val_;
 };
 
 class ReturnStmt : public Stmt {
-public:
-  ReturnStmt(Expr* expr): expr_(expr) {}
+ public:
+  ReturnStmt(Expr* expr) : expr_(expr) {}
 
   ACCEPT_VISITOR(ReturnStmt);
 
   const Expr* GetExpr() const { return expr_.get(); }
 
-private:
+ private:
   unique_ptr<Expr> expr_;
 };
 
 class ExprStmt : public Stmt {
-public:
-  ExprStmt(Expr* expr): expr_(expr) {}
+ public:
+  ExprStmt(Expr* expr) : expr_(expr) {}
 
   ACCEPT_VISITOR(ExprStmt);
 
   const Expr* GetExpr() const { return expr_.get(); }
 
-private:
+ private:
   unique_ptr<Expr> expr_;
 };
 
 class BlockStmt : public Stmt {
-public:
-  BlockStmt(base::UniquePtrVector<Stmt>&& stmts): stmts_(std::forward<base::UniquePtrVector<Stmt>>(stmts)) {}
+ public:
+  BlockStmt(base::UniquePtrVector<Stmt>&& stmts)
+      : stmts_(std::forward<base::UniquePtrVector<Stmt>>(stmts)) {}
 
   ACCEPT_VISITOR(BlockStmt);
 
   const base::UniquePtrVector<Stmt>& Stmts() const { return stmts_; }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(BlockStmt);
   base::UniquePtrVector<Stmt> stmts_;
 };
 
 class IfStmt : public Stmt {
-public:
-  IfStmt(Expr* cond, Stmt* trueBody, Stmt* falseBody): cond_(cond), trueBody_(trueBody), falseBody_(falseBody) {}
+ public:
+  IfStmt(Expr* cond, Stmt* trueBody, Stmt* falseBody)
+      : cond_(cond), trueBody_(trueBody), falseBody_(falseBody) {}
 
   ACCEPT_VISITOR(IfStmt);
 
@@ -435,7 +440,7 @@ public:
   const Stmt* TrueBody() const { return trueBody_.get(); }
   const Stmt* FalseBody() const { return falseBody_.get(); }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(IfStmt);
 
   unique_ptr<Expr> cond_;
@@ -444,8 +449,9 @@ private:
 };
 
 class ForStmt : public Stmt {
-public:
-  ForStmt(Stmt* init, Expr* cond, Expr* update, Stmt* body): init_(init), cond_(cond), update_(update), body_(body) {}
+ public:
+  ForStmt(Stmt* init, Expr* cond, Expr* update, Stmt* body)
+      : init_(init), cond_(cond), update_(update), body_(body) {}
 
   ACCEPT_VISITOR(ForStmt);
 
@@ -454,36 +460,38 @@ public:
   const Expr* Update() const { return update_.get(); }
   const Stmt* Body() const { return body_.get(); }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(ForStmt);
 
-  unique_ptr<Stmt> init_; // May be EmptyStmt.
-  unique_ptr<Expr> cond_; // May be nullptr.
-  unique_ptr<Expr> update_; // May be nullptr.
-  unique_ptr<Stmt> body_; // May be EmptyStmt.
+  unique_ptr<Stmt> init_;    // May be EmptyStmt.
+  unique_ptr<Expr> cond_;    // May be nullptr.
+  unique_ptr<Expr> update_;  // May be nullptr.
+  unique_ptr<Stmt> body_;    // May be EmptyStmt.
 };
 
-class WhileStmt: public Stmt {
-public:
-  WhileStmt(Expr* cond, Stmt* body): cond_(cond), body_(body) {}
+class WhileStmt : public Stmt {
+ public:
+  WhileStmt(Expr* cond, Stmt* body) : cond_(cond), body_(body) {}
 
   ACCEPT_VISITOR(WhileStmt);
 
   const Expr* Cond() const { return cond_.get(); }
   const Stmt* Body() const { return body_.get(); }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(WhileStmt);
 
   unique_ptr<Expr> cond_;
-  unique_ptr<Stmt> body_; // May be EmptyStmt.
+  unique_ptr<Stmt> body_;  // May be EmptyStmt.
 };
 
 class ModifierList {
-public:
-  ModifierList(): mods_(int(lexer::NUM_MODIFIERS), lexer::Token(lexer::K_NULL, base::PosRange(0, 0, 0))) {}
+ public:
+  ModifierList()
+      : mods_(int(lexer::NUM_MODIFIERS),
+              lexer::Token(lexer::K_NULL, base::PosRange(0, 0, 0))) {}
 
-  void PrintTo(std::ostream* os) const  {
+  void PrintTo(std::ostream* os) const {
     for (int i = 0; i < lexer::NUM_MODIFIERS; ++i) {
       if (!HasModifier((lexer::Modifier)i)) {
         continue;
@@ -491,7 +499,6 @@ public:
       *os << mods_[i].TypeInfo() << ' ';
     }
   }
-
 
   bool HasModifier(lexer::Modifier m) const {
     return mods_[m].TypeInfo().IsModifier();
@@ -514,20 +521,20 @@ public:
     return mods_[m];
   }
 
-private:
+ private:
   vector<lexer::Token> mods_;
 };
 
 class Param final {
-public:
-  Param(Type* type, lexer::Token ident): type_(type), ident_(ident) {}
+ public:
+  Param(Type* type, lexer::Token ident) : type_(type), ident_(ident) {}
 
   void Accept(Visitor* visitor) const { visitor->VisitParam(this); }
 
   const Type* GetType() const { return type_.get(); }
   lexer::Token Ident() const { return ident_; }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(Param);
 
   unique_ptr<Type> type_;
@@ -535,8 +542,9 @@ private:
 };
 
 class ParamList final {
-public:
-  ParamList(base::UniquePtrVector<Param>&& params): params_(std::forward<base::UniquePtrVector<Param>>(params)) {}
+ public:
+  ParamList(base::UniquePtrVector<Param>&& params)
+      : params_(std::forward<base::UniquePtrVector<Param>>(params)) {}
   ~ParamList() = default;
   ParamList(ParamList&&) = default;
 
@@ -544,15 +552,16 @@ public:
 
   const base::UniquePtrVector<Param>& Params() const { return params_; }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(ParamList);
 
   base::UniquePtrVector<Param> params_;
 };
 
 class MemberDecl {
-public:
-  MemberDecl(ModifierList&& mods, lexer::Token ident): mods_(std::forward<ModifierList>(mods)), ident_(ident) {}
+ public:
+  MemberDecl(ModifierList&& mods, lexer::Token ident)
+      : mods_(std::forward<ModifierList>(mods)), ident_(ident) {}
   virtual ~MemberDecl() = default;
 
   virtual void Accept(Visitor* visitor) const = 0;
@@ -560,7 +569,7 @@ public:
   const ModifierList& Mods() const { return mods_; }
   lexer::Token Ident() const { return ident_; }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(MemberDecl);
 
   ModifierList mods_;
@@ -568,15 +577,19 @@ private:
 };
 
 class ConstructorDecl : public MemberDecl {
-public:
-  ConstructorDecl(ModifierList&& mods, lexer::Token ident, ParamList&& params, Stmt* body): MemberDecl(std::forward<ModifierList>(mods), ident), params_(std::forward<ParamList>(params)), body_(body) {}
+ public:
+  ConstructorDecl(ModifierList&& mods, lexer::Token ident, ParamList&& params,
+                  Stmt* body)
+      : MemberDecl(std::forward<ModifierList>(mods), ident),
+        params_(std::forward<ParamList>(params)),
+        body_(body) {}
 
   ACCEPT_VISITOR(ConstructorDecl);
 
   const ParamList& Params() const { return params_; }
   const Stmt* Body() const { return body_.get(); }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(ConstructorDecl);
 
   ModifierList mods_;
@@ -585,24 +598,32 @@ private:
 };
 
 class FieldDecl : public MemberDecl {
-public:
-  FieldDecl(ModifierList&& mods, Type* type, lexer::Token ident, Expr* val): MemberDecl(std::forward<ModifierList>(mods), ident), type_(type), val_(val) {}
+ public:
+  FieldDecl(ModifierList&& mods, Type* type, lexer::Token ident, Expr* val)
+      : MemberDecl(std::forward<ModifierList>(mods), ident),
+        type_(type),
+        val_(val) {}
 
   ACCEPT_VISITOR(FieldDecl);
 
   const Type* GetType() const { return type_.get(); }
   const Expr* Val() const { return val_.get(); }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(FieldDecl);
 
   unique_ptr<Type> type_;
-  unique_ptr<Expr> val_; // Might be nullptr.
+  unique_ptr<Expr> val_;  // Might be nullptr.
 };
 
 class MethodDecl : public MemberDecl {
-public:
-  MethodDecl(ModifierList&& mods, Type* type, lexer::Token ident, ParamList&& params, Stmt* body): MemberDecl(std::forward<ModifierList>(mods), ident), type_(type), params_(std::forward<ParamList>(params)), body_(body) {}
+ public:
+  MethodDecl(ModifierList&& mods, Type* type, lexer::Token ident,
+             ParamList&& params, Stmt* body)
+      : MemberDecl(std::forward<ModifierList>(mods), ident),
+        type_(type),
+        params_(std::forward<ParamList>(params)),
+        body_(body) {}
 
   ACCEPT_VISITOR(MethodDecl);
 
@@ -610,7 +631,7 @@ public:
   const ParamList& Params() const { return params_; }
   const Stmt* Body() const { return body_.get(); }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(MethodDecl);
 
   unique_ptr<Type> type_;
@@ -619,8 +640,16 @@ private:
 };
 
 class TypeDecl {
-public:
-  TypeDecl(ModifierList&& mods, const string& name, lexer::Token nameToken, base::UniquePtrVector<ReferenceType>&& interfaces, base::UniquePtrVector<MemberDecl>&& members): mods_(std::forward<ModifierList>(mods)), name_(name), nameToken_(nameToken), interfaces_(std::forward<base::UniquePtrVector<ReferenceType>>(interfaces)), members_(std::forward<base::UniquePtrVector<MemberDecl>>(members)) {}
+ public:
+  TypeDecl(ModifierList&& mods, const string& name, lexer::Token nameToken,
+           base::UniquePtrVector<ReferenceType>&& interfaces,
+           base::UniquePtrVector<MemberDecl>&& members)
+      : mods_(std::forward<ModifierList>(mods)),
+        name_(name),
+        nameToken_(nameToken),
+        interfaces_(
+            std::forward<base::UniquePtrVector<ReferenceType>>(interfaces)),
+        members_(std::forward<base::UniquePtrVector<MemberDecl>>(members)) {}
   virtual ~TypeDecl() = default;
 
   virtual void Accept(Visitor* visitor) const = 0;
@@ -628,10 +657,12 @@ public:
   const ModifierList& Mods() const { return mods_; }
   const string& Name() const { return name_; }
   lexer::Token NameToken() const { return nameToken_; }
-  const base::UniquePtrVector<ReferenceType>& Interfaces() const { return interfaces_; }
+  const base::UniquePtrVector<ReferenceType>& Interfaces() const {
+    return interfaces_;
+  }
   const base::UniquePtrVector<MemberDecl>& Members() const { return members_; }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(TypeDecl);
 
   ModifierList mods_;
@@ -642,49 +673,64 @@ private:
 };
 
 class ClassDecl : public TypeDecl {
-public:
-  ClassDecl(ModifierList&& mods, const string& name, lexer::Token nameToken, base::UniquePtrVector<ReferenceType>&& interfaces, base::UniquePtrVector<MemberDecl>&& members, ReferenceType* super): TypeDecl(std::forward<ModifierList>(mods), name, nameToken, std::forward<base::UniquePtrVector<ReferenceType>>(interfaces), std::forward<base::UniquePtrVector<MemberDecl>>(members)), super_(super) {}
+ public:
+  ClassDecl(ModifierList&& mods, const string& name, lexer::Token nameToken,
+            base::UniquePtrVector<ReferenceType>&& interfaces,
+            base::UniquePtrVector<MemberDecl>&& members, ReferenceType* super)
+      : TypeDecl(std::forward<ModifierList>(mods), name, nameToken,
+                 std::forward<base::UniquePtrVector<ReferenceType>>(interfaces),
+                 std::forward<base::UniquePtrVector<MemberDecl>>(members)),
+        super_(super) {}
 
   ACCEPT_VISITOR(ClassDecl);
 
   const ReferenceType* Super() const { return super_.get(); }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(ClassDecl);
 
-  unique_ptr<ReferenceType> super_; // Might be nullptr.
+  unique_ptr<ReferenceType> super_;  // Might be nullptr.
 };
 
-
 class InterfaceDecl : public TypeDecl {
-public:
-  InterfaceDecl(ModifierList&& mods, const string& name, lexer::Token nameToken, base::UniquePtrVector<ReferenceType>&& interfaces, base::UniquePtrVector<MemberDecl>&& members): TypeDecl(std::forward<ModifierList>(mods), name, nameToken, std::forward<base::UniquePtrVector<ReferenceType>>(interfaces), std::forward<base::UniquePtrVector<MemberDecl>>(members)) {}
+ public:
+  InterfaceDecl(ModifierList&& mods, const string& name, lexer::Token nameToken,
+                base::UniquePtrVector<ReferenceType>&& interfaces,
+                base::UniquePtrVector<MemberDecl>&& members)
+      : TypeDecl(std::forward<ModifierList>(mods), name, nameToken,
+                 std::forward<base::UniquePtrVector<ReferenceType>>(interfaces),
+                 std::forward<base::UniquePtrVector<MemberDecl>>(members)) {}
 
   ACCEPT_VISITOR(InterfaceDecl);
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(InterfaceDecl);
 };
 
 class ImportDecl final {
-public:
-  ImportDecl(ReferenceType* name, bool isWildCard) : name_(name), isWildCard_(isWildCard) {}
+ public:
+  ImportDecl(ReferenceType* name, bool isWildCard)
+      : name_(name), isWildCard_(isWildCard) {}
 
   void Accept(Visitor* visitor) const { visitor->VisitImportDecl(this); }
 
   const ReferenceType* Name() const { return name_.get(); }
   bool IsWildCard() const { return isWildCard_; }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(ImportDecl);
 
-  unique_ptr<ReferenceType> name_; // Will not be nullptr.
+  unique_ptr<ReferenceType> name_;  // Will not be nullptr.
   bool isWildCard_;
 };
 
 class CompUnit final {
-public:
-  CompUnit(ReferenceType* package, base::UniquePtrVector<ImportDecl>&& imports, base::UniquePtrVector<TypeDecl>&& types): package_(package), imports_(std::forward<base::UniquePtrVector<ImportDecl>>(imports)), types_(std::forward<base::UniquePtrVector<TypeDecl>>(types)) {}
+ public:
+  CompUnit(ReferenceType* package, base::UniquePtrVector<ImportDecl>&& imports,
+           base::UniquePtrVector<TypeDecl>&& types)
+      : package_(package),
+        imports_(std::forward<base::UniquePtrVector<ImportDecl>>(imports)),
+        types_(std::forward<base::UniquePtrVector<TypeDecl>>(types)) {}
 
   void Accept(Visitor* visitor) const { visitor->VisitCompUnit(this); }
 
@@ -692,21 +738,22 @@ public:
   const base::UniquePtrVector<ImportDecl>& Imports() const { return imports_; }
   const base::UniquePtrVector<TypeDecl>& Types() const { return types_; }
 
-private:
-  unique_ptr<ReferenceType> package_; // Might be nullptr.
+ private:
+  unique_ptr<ReferenceType> package_;  // Might be nullptr.
   base::UniquePtrVector<ImportDecl> imports_;
   base::UniquePtrVector<TypeDecl> types_;
 };
 
 class Program final {
-public:
-  Program(base::UniquePtrVector<CompUnit>&& units) : units_(std::forward<base::UniquePtrVector<CompUnit>>(units)) {}
+ public:
+  Program(base::UniquePtrVector<CompUnit>&& units)
+      : units_(std::forward<base::UniquePtrVector<CompUnit>>(units)) {}
 
   void Accept(Visitor* visitor) const { visitor->VisitProgram(this); }
 
   const base::UniquePtrVector<CompUnit>& CompUnits() const { return units_; }
 
-private:
+ private:
   DISALLOW_COPY_AND_ASSIGN(Program);
 
   base::UniquePtrVector<CompUnit> units_;
@@ -714,8 +761,10 @@ private:
 
 #undef ACCEPT_VISITOR
 
-unique_ptr<Program> Parse(const base::FileSet* fs, const vector<vector<lexer::Token>>& tokens, base::ErrorList* out);
+unique_ptr<Program> Parse(const base::FileSet* fs,
+                          const vector<vector<lexer::Token>>& tokens,
+                          base::ErrorList* out);
 
-} // namespace parser
+}  // namespace parser
 
 #endif

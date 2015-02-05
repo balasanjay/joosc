@@ -91,7 +91,6 @@ class UnsupportedTokenError : public base::PosRangeError {
   string Error() const override { return "Unsupported token."; }
 };
 
-
 }  // namespace lexer
 
 #endif

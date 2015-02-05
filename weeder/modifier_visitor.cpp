@@ -24,155 +24,125 @@ namespace weeder {
 namespace {
 
 Error* MakeInterfaceFieldError(const FileSet* fs, Token token) {
-  return MakeSimplePosRangeError(
-      fs, token.pos,
-      "InterfaceFieldError",
-      "An interface cannot contain any fields.");
+  return MakeSimplePosRangeError(fs, token.pos, "InterfaceFieldError",
+                                 "An interface cannot contain any fields.");
 }
 
 Error* MakeInterfaceConstructorError(const FileSet* fs, Token token) {
-  return MakeSimplePosRangeError(
-      fs, token.pos,
-      "InterfaceConstructorError",
-      "An interface cannot contain a constructor.");
+  return MakeSimplePosRangeError(fs, token.pos, "InterfaceConstructorError",
+                                 "An interface cannot contain a constructor.");
 }
 
 Error* MakeInterfaceMethodImplError(const FileSet* fs, Token token) {
-  return MakeSimplePosRangeError(
-      fs, token.pos,
-      "InterfaceMethodImplError",
-      "An interface method cannot have a body.");
+  return MakeSimplePosRangeError(fs, token.pos, "InterfaceMethodImplError",
+                                 "An interface method cannot have a body.");
 }
 
 Error* MakeInterfaceMethodModifierError(const FileSet* fs, Token token) {
   assert(token.TypeInfo().IsModifier());
   return MakeSimplePosRangeError(
-      fs, token.pos,
-      "InterfaceMethodModifierError",
+      fs, token.pos, "InterfaceMethodModifierError",
       "An interface method cannot be " + token.TypeInfo().Value() + ".");
 }
 
 Error* MakeConflictingAccessModError(const FileSet* fs, Token token) {
   return MakeSimplePosRangeError(
-      fs, token.pos,
-      "ConflictingAccessModError",
+      fs, token.pos, "ConflictingAccessModError",
       "A declaration cannot have conflicting access modifiers.");
 }
 
 Error* MakeClassMemberNoAccessModError(const FileSet* fs, Token token) {
   return MakeSimplePosRangeError(
-      fs, token.pos,
-      "ClassMemberNoAccessModError",
+      fs, token.pos, "ClassMemberNoAccessModError",
       "A class member must be either public or protected.");
 }
 
 Error* MakeInterfaceMethodNoAccessModError(const FileSet* fs, Token token) {
-  return MakeSimplePosRangeError(
-      fs, token.pos,
-      "InterfaceMethodNoAccessModError",
-      "An interface member must be public.");
+  return MakeSimplePosRangeError(fs, token.pos,
+                                 "InterfaceMethodNoAccessModError",
+                                 "An interface member must be public.");
 }
 
 Error* MakeInterfaceNoAccessModError(const FileSet* fs, Token token) {
-  return MakeSimplePosRangeError(
-      fs, token.pos,
-      "InterfaceNoAccessModError",
-      "An interface must be public.");
+  return MakeSimplePosRangeError(fs, token.pos, "InterfaceNoAccessModError",
+                                 "An interface must be public.");
 }
 
 Error* MakeClassNoAccessModError(const FileSet* fs, Token token) {
-  return MakeSimplePosRangeError(
-      fs, token.pos,
-      "ClassNoAccessModError",
-      "A class must be public.");
+  return MakeSimplePosRangeError(fs, token.pos, "ClassNoAccessModError",
+                                 "A class must be public.");
 }
 
 Error* MakeClassFieldModifierError(const FileSet* fs, Token token) {
   assert(token.TypeInfo().IsModifier());
   return MakeSimplePosRangeError(
-      fs, token.pos,
-      "ClassFieldModifierError",
+      fs, token.pos, "ClassFieldModifierError",
       "A class field cannot be " + token.TypeInfo().Value() + ".");
 }
 
 Error* MakeClassMethodEmptyError(const FileSet* fs, Token token) {
   return MakeSimplePosRangeError(
-      fs, token.pos,
-      "ClassMethodEmptyError",
+      fs, token.pos, "ClassMethodEmptyError",
       "A method must be native or abstract to have an empty body.");
 }
 
 Error* MakeClassMethodNotEmptyError(const FileSet* fs, Token token) {
   return MakeSimplePosRangeError(
-      fs, token.pos,
-      "ClassMethodNotEmptyError",
+      fs, token.pos, "ClassMethodNotEmptyError",
       "A native or abstract method must not have a body.");
 }
 
 Error* MakeClassMethodAbstractModifierError(const FileSet* fs, Token token) {
   assert(token.TypeInfo().IsModifier());
   return MakeSimplePosRangeError(
-      fs, token.pos,
-      "ClassMethodAbstractModifierError",
+      fs, token.pos, "ClassMethodAbstractModifierError",
       "An abstract method cannot be " + token.TypeInfo().Value() + ".");
 }
 
 Error* MakeClassMethodStaticFinalError(const FileSet* fs, Token token) {
-  return MakeSimplePosRangeError(
-      fs, token.pos,
-      "ClassMethodStaticFinalError",
-      "A static method cannot be final.");
+  return MakeSimplePosRangeError(fs, token.pos, "ClassMethodStaticFinalError",
+                                 "A static method cannot be final.");
 }
 
 Error* MakeClassMethodNativeNotStaticError(const FileSet* fs, Token token) {
-  return MakeSimplePosRangeError(
-      fs, token.pos,
-      "ClassMethodNativeNotStaticError",
-      "A native method must be static.");
+  return MakeSimplePosRangeError(fs, token.pos,
+                                 "ClassMethodNativeNotStaticError",
+                                 "A native method must be static.");
 }
 
 Error* MakeClassModifierError(const FileSet* fs, Token token) {
   assert(token.TypeInfo().IsModifier());
   return MakeSimplePosRangeError(
-      fs, token.pos,
-      "ClassModifierError",
+      fs, token.pos, "ClassModifierError",
       "A class cannot be " + token.TypeInfo().Value() + ".");
 }
 
 Error* MakeAbstractFinalClassError(const FileSet* fs, Token token) {
-  return MakeSimplePosRangeError(
-      fs, token.pos,
-      "AbstractFinalClass",
-      "A class cannot be both abstract and final.");
+  return MakeSimplePosRangeError(fs, token.pos, "AbstractFinalClass",
+                                 "A class cannot be both abstract and final.");
 }
 
 Error* MakeInterfaceModifierError(const FileSet* fs, Token token) {
   assert(token.TypeInfo().IsModifier());
   return MakeSimplePosRangeError(
-      fs, token.pos,
-      "InterfaceModifierError",
+      fs, token.pos, "InterfaceModifierError",
       "An interface cannot be " + token.TypeInfo().Value() + ".");
 }
 
 Error* MakeClassConstructorModifierError(const FileSet* fs, Token token) {
   assert(token.TypeInfo().IsModifier());
   return MakeSimplePosRangeError(
-      fs, token.pos,
-      "ClassConstructorModifierError",
+      fs, token.pos, "ClassConstructorModifierError",
       "A class constructor cannot be " + token.TypeInfo().Value() + ".");
 }
 
 Error* MakeClassConstructorEmptyError(const FileSet* fs, Token token) {
-  return MakeSimplePosRangeError(
-      fs, token.pos,
-      "ClassConstructorEmptyError",
-      "A constructor cannot have an empty body.");
+  return MakeSimplePosRangeError(fs, token.pos, "ClassConstructorEmptyError",
+                                 "A constructor cannot have an empty body.");
 }
 
-
-inline void VerifyNoneOf(
-    const FileSet*, const ModifierList&, ErrorList*,
-    std::function<Error*(const FileSet*, Token)>) {
+inline void VerifyNoneOf(const FileSet*, const ModifierList&, ErrorList*,
+                         std::function<Error*(const FileSet*, Token)>) {
   // Base-case for 0 modifiers, meant to be empty.
 }
 
@@ -197,8 +167,8 @@ inline void VerifyOneOf(
 template <typename... T>
 inline void VerifyOneOf(
     const FileSet* fs, const ModifierList& mods, ErrorList* out, Token token,
-    std::function<Error*(const FileSet*, Token)> error_maker,
-    Modifier first, T... othermodifiers) {
+    std::function<Error*(const FileSet*, Token)> error_maker, Modifier first,
+    T... othermodifiers) {
   if (mods.HasModifier(first)) {
     return;
   }
@@ -206,28 +176,30 @@ inline void VerifyOneOf(
   VerifyOneOf(fs, mods, out, token, error_maker, othermodifiers...);
 }
 
-void VerifyNoConflictingAccessMods(const FileSet* fs, const ModifierList& mods, ErrorList* out) {
+void VerifyNoConflictingAccessMods(const FileSet* fs, const ModifierList& mods,
+                                   ErrorList* out) {
   if (!mods.HasModifier(PUBLIC) || !mods.HasModifier(PROTECTED)) {
     return;
   }
 
   out->Append(MakeConflictingAccessModError(fs, mods.GetModifierToken(PUBLIC)));
-  out->Append(MakeConflictingAccessModError(fs, mods.GetModifierToken(PROTECTED)));
+  out->Append(
+      MakeConflictingAccessModError(fs, mods.GetModifierToken(PROTECTED)));
 }
 
-} // namespace
+}  // namespace
 
 REC_VISIT_DEFN(ClassModifierVisitor, ConstructorDecl, decl) {
   // Cannot be both public and protected.
   VerifyNoConflictingAccessMods(fs_, decl->Mods(), errors_);
 
   // Must be at least one of public or protected.
-  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(), MakeClassMemberNoAccessModError,
-      PUBLIC, PROTECTED);
+  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(),
+              MakeClassMemberNoAccessModError, PUBLIC, PROTECTED);
 
   // A constructor cannot be abstract, static, final, or native.
   VerifyNoneOf(fs_, decl->Mods(), errors_, MakeClassConstructorModifierError,
-      ABSTRACT, STATIC, FINAL, NATIVE);
+               ABSTRACT, STATIC, FINAL, NATIVE);
 
   // A constructor must have a body; i.e. it can't be ";".
   if (IS_CONST_PTR(EmptyStmt, decl->Body())) {
@@ -242,13 +214,12 @@ REC_VISIT_DEFN(ClassModifierVisitor, FieldDecl, decl) {
   VerifyNoConflictingAccessMods(fs_, decl->Mods(), errors_);
 
   // Must be at least one of public or protected.
-  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(), MakeClassMemberNoAccessModError,
-      PUBLIC, PROTECTED);
+  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(),
+              MakeClassMemberNoAccessModError, PUBLIC, PROTECTED);
 
   // Can't be abstract, final, or native.
-  VerifyNoneOf(
-      fs_, decl->Mods(), errors_, MakeClassFieldModifierError,
-      ABSTRACT, FINAL, NATIVE);
+  VerifyNoneOf(fs_, decl->Mods(), errors_, MakeClassFieldModifierError,
+               ABSTRACT, FINAL, NATIVE);
   return false;
 }
 
@@ -257,8 +228,8 @@ REC_VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
   VerifyNoConflictingAccessMods(fs_, decl->Mods(), errors_);
 
   // Must be at least one of public or protected.
-  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(), MakeClassMemberNoAccessModError,
-      PUBLIC, PROTECTED);
+  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(),
+              MakeClassMemberNoAccessModError, PUBLIC, PROTECTED);
 
   const ModifierList& mods = decl->Mods();
 
@@ -279,19 +250,20 @@ REC_VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
 
   // An abstract method cannot be static or final.
   if (mods.HasModifier(ABSTRACT)) {
-    VerifyNoneOf(
-        fs_, mods, errors_, MakeClassMethodAbstractModifierError,
-        STATIC, FINAL);
+    VerifyNoneOf(fs_, mods, errors_, MakeClassMethodAbstractModifierError,
+                 STATIC, FINAL);
   }
 
   // A static method cannot be final.
   if (mods.HasModifier(STATIC) && mods.HasModifier(FINAL)) {
-    errors_->Append(MakeClassMethodStaticFinalError(fs_, mods.GetModifierToken(FINAL)));
+    errors_->Append(
+        MakeClassMethodStaticFinalError(fs_, mods.GetModifierToken(FINAL)));
   }
 
   // A native method must be static.
   if (mods.HasModifier(NATIVE) && !mods.HasModifier(STATIC)) {
-    errors_->Append(MakeClassMethodNativeNotStaticError(fs_, mods.GetModifierToken(NATIVE)));
+    errors_->Append(MakeClassMethodNativeNotStaticError(
+        fs_, mods.GetModifierToken(NATIVE)));
   }
 
   return false;
@@ -303,7 +275,6 @@ REC_VISIT_DEFN(InterfaceModifierVisitor, ConstructorDecl, decl) {
   return false;
 }
 
-
 REC_VISIT_DEFN(InterfaceModifierVisitor, FieldDecl, decl) {
   // An interface cannot contain fields.
   errors_->Append(MakeInterfaceFieldError(fs_, decl->Ident()));
@@ -312,13 +283,12 @@ REC_VISIT_DEFN(InterfaceModifierVisitor, FieldDecl, decl) {
 
 REC_VISIT_DEFN(InterfaceModifierVisitor, MethodDecl, decl) {
   // An interface method cannot be static, final, native, or protected.
-  VerifyNoneOf(
-      fs_, decl->Mods(), errors_, MakeInterfaceMethodModifierError,
-      PROTECTED, STATIC, FINAL, NATIVE);
+  VerifyNoneOf(fs_, decl->Mods(), errors_, MakeInterfaceMethodModifierError,
+               PROTECTED, STATIC, FINAL, NATIVE);
 
   // Must be public.
-  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(), MakeInterfaceMethodNoAccessModError,
-      PUBLIC);
+  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(),
+              MakeInterfaceMethodNoAccessModError, PUBLIC);
 
   // An interface method cannot have a body.
   if (!IS_CONST_PTR(EmptyStmt, decl->Body())) {
@@ -330,13 +300,12 @@ REC_VISIT_DEFN(InterfaceModifierVisitor, MethodDecl, decl) {
 
 REC_VISIT_DEFN(ModifierVisitor, ClassDecl, decl) {
   // A class cannot be protected, static, or native.
-  VerifyNoneOf(
-      fs_, decl->Mods(), errors_, MakeClassModifierError,
-      PROTECTED, STATIC, NATIVE);
+  VerifyNoneOf(fs_, decl->Mods(), errors_, MakeClassModifierError, PROTECTED,
+               STATIC, NATIVE);
 
   // Must be public.
-  VerifyOneOf(fs_, decl->Mods(), errors_, decl->NameToken(), MakeClassNoAccessModError,
-      PUBLIC);
+  VerifyOneOf(fs_, decl->Mods(), errors_, decl->NameToken(),
+              MakeClassNoAccessModError, PUBLIC);
 
   // A class cannot be both abstract and final.
   if (decl->Mods().HasModifier(ABSTRACT) && decl->Mods().HasModifier(FINAL)) {
@@ -350,17 +319,16 @@ REC_VISIT_DEFN(ModifierVisitor, ClassDecl, decl) {
 
 REC_VISIT_DEFN(ModifierVisitor, InterfaceDecl, decl) {
   // An interface cannot be protected, static, final, or native.
-  VerifyNoneOf(
-      fs_, decl->Mods(), errors_, MakeInterfaceModifierError,
-      PROTECTED, STATIC, FINAL, NATIVE);
+  VerifyNoneOf(fs_, decl->Mods(), errors_, MakeInterfaceModifierError,
+               PROTECTED, STATIC, FINAL, NATIVE);
 
   // Must be public.
-  VerifyOneOf(fs_, decl->Mods(), errors_, decl->NameToken(), MakeInterfaceNoAccessModError,
-      PUBLIC);
+  VerifyOneOf(fs_, decl->Mods(), errors_, decl->NameToken(),
+              MakeInterfaceNoAccessModError, PUBLIC);
 
   InterfaceModifierVisitor visitor(fs_, errors_);
   decl->Accept(&visitor);
   return false;
 }
 
-} // namespace weeder
+}  // namespace weeder

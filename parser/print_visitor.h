@@ -10,7 +10,7 @@ using std::max;
 namespace parser {
 
 class PrintVisitor final : public Visitor {
-public:
+ public:
   static PrintVisitor Pretty(std::ostream* os) {
     return PrintVisitor(os, 0, "\n", "  ", " ", false);
   }
@@ -46,7 +46,7 @@ public:
   }
 
   VISIT_DECL(CastExpr, expr) {
-    *os_ << "cast<" ;
+    *os_ << "cast<";
     expr->GetType()->PrintTo(os_);
     *os_ << ">(";
     expr->GetExpr()->Accept(this);
@@ -66,29 +66,17 @@ public:
     *os_ << '.' << expr->FieldName();
   }
 
-  VISIT_DECL(BoolLitExpr, expr) {
-    *os_ << expr->GetToken().TypeInfo();
-  }
+  VISIT_DECL(BoolLitExpr, expr) { *os_ << expr->GetToken().TypeInfo(); }
 
-  VISIT_DECL(StringLitExpr, expr) {
-    *os_ << expr->GetToken().TypeInfo();
-  }
+  VISIT_DECL(StringLitExpr, expr) { *os_ << expr->GetToken().TypeInfo(); }
 
-  VISIT_DECL(CharLitExpr, expr) {
-    *os_ << expr->GetToken().TypeInfo();
-  }
+  VISIT_DECL(CharLitExpr, expr) { *os_ << expr->GetToken().TypeInfo(); }
 
-  VISIT_DECL(NullLitExpr, expr) {
-    *os_ << expr->GetToken().TypeInfo();
-  }
+  VISIT_DECL(NullLitExpr, expr) { *os_ << expr->GetToken().TypeInfo(); }
 
-  VISIT_DECL(IntLitExpr, expr) {
-    *os_ << expr->GetToken().TypeInfo();
-  }
+  VISIT_DECL(IntLitExpr, expr) { *os_ << expr->GetToken().TypeInfo(); }
 
-  VISIT_DECL(NameExpr, expr) {
-    *os_ << expr->Name()->Name();
-  }
+  VISIT_DECL(NameExpr, expr) { *os_ << expr->Name()->Name(); }
 
   VISIT_DECL(NewArrayExpr, expr) {
     *os_ << "new<array<";
@@ -115,9 +103,7 @@ public:
     *os_ << ")";
   }
 
-  VISIT_DECL(ThisExpr,) {
-    *os_ << "this";
-  }
+  VISIT_DECL(ThisExpr, ) { *os_ << "this"; }
 
   VISIT_DECL(UnaryExpr, expr) {
     *os_ << '(' << expr->Op().TypeInfo() << ' ';
@@ -139,9 +125,7 @@ public:
     *os_ << '}';
   }
 
-  VISIT_DECL(EmptyStmt,) {
-    *os_ << ';';
-  }
+  VISIT_DECL(EmptyStmt, ) { *os_ << ';'; }
 
   VISIT_DECL(ExprStmt, stmt) {
     stmt->GetExpr()->Accept(this);
@@ -156,7 +140,7 @@ public:
   }
 
   VISIT_DECL(ReturnStmt, stmt) {
-   *os_ << "return";
+    *os_ << "return";
     if (stmt->GetExpr() != nullptr) {
       *os_ << ' ';
       stmt->GetExpr()->Accept(this);
@@ -374,6 +358,6 @@ private:
   bool isJosh_;
 };
 
-} // namespace parser
+}  // namespace parser
 
 #endif

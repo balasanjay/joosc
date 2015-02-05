@@ -15,11 +15,12 @@ namespace {
 
 Error* MakeInvalidIntRangeError(const FileSet* fs, Token token) {
   return MakeSimplePosRangeError(
-      fs, token.pos,
-      "InvalidIntRangeError", "Ints must be between -2^-31 and 2^31 - 1 inclusive.");
+      fs, token.pos, "InvalidIntRangeError",
+      "Ints must be between -2^-31 and 2^31 - 1 inclusive.");
 }
 
-void VerifyIsInRange(const string& strVal, Token token, bool isNegated, const base::FileSet* fs, base::ErrorList* errors) {
+void VerifyIsInRange(const string& strVal, Token token, bool isNegated,
+                     const base::FileSet* fs, base::ErrorList* errors) {
   const i64 INT_32_MIN = -(1L << 31L);
   const i64 INT_32_MAX = (1L << 31L) - 1L;
   i64 intVal = 0;
@@ -36,10 +37,9 @@ void VerifyIsInRange(const string& strVal, Token token, bool isNegated, const ba
   }
 }
 
-} // namespace
+}  // namespace
 
-
-REC_VISIT_DEFN(IntRangeVisitor, IntLitExpr, expr){
+REC_VISIT_DEFN(IntRangeVisitor, IntLitExpr, expr) {
   const string& strVal = expr->Value();
   Token token = expr->GetToken();
 
@@ -57,4 +57,4 @@ REC_VISIT_DEFN(IntRangeVisitor, UnaryExpr, expr) {
   return true;
 }
 
-} // namespace weeder
+}  // namespace weeder

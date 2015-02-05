@@ -16,8 +16,7 @@ using parser::internal::Result;
 
 namespace weeder {
 
-class TypeVisitorTest : public WeederTest {
-};
+class TypeVisitorTest : public WeederTest {};
 
 bool HasVoid(const Type*, Token* out);
 
@@ -28,7 +27,7 @@ TEST_F(TypeVisitorTest, HasVoidReferenceFalse) {
   Type* array = new ArrayType(reference);
   EXPECT_FALSE(HasVoid(array, nullptr));
 
-  Type *array2 = new ArrayType(array);
+  Type* array2 = new ArrayType(array);
   EXPECT_FALSE(HasVoid(array2, nullptr));
 
   delete array2;
@@ -41,7 +40,7 @@ TEST_F(TypeVisitorTest, HasVoidPrimitiveFalse) {
   Type* array = new ArrayType(primitive);
   EXPECT_FALSE(HasVoid(array, nullptr));
 
-  Type *array2 = new ArrayType(array);
+  Type* array2 = new ArrayType(array);
   EXPECT_FALSE(HasVoid(array2, nullptr));
 
   delete array2;
@@ -101,7 +100,8 @@ TEST_F(TypeVisitorTest, InstanceOfPrimitive) {
   stmt.Get()->Accept(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("InvalidInstanceOfTypeError(0:2-12)\n", testing::PrintToString(errors));
+  EXPECT_EQ("InvalidInstanceOfTypeError(0:2-12)\n",
+            testing::PrintToString(errors));
 }
 
 TEST_F(TypeVisitorTest, InstanceOfArray) {
@@ -115,7 +115,6 @@ TEST_F(TypeVisitorTest, InstanceOfArray) {
 
   EXPECT_FALSE(errors.IsFatal());
 }
-
 
 TEST_F(TypeVisitorTest, NewClassOk) {
   MakeParser("new String();");
@@ -152,7 +151,8 @@ TEST_F(TypeVisitorTest, NewClassPrimitive) {
   stmt.Get()->Accept(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("NewNonReferenceTypeError(0:0-3)\n", testing::PrintToString(errors));
+  EXPECT_EQ("NewNonReferenceTypeError(0:0-3)\n",
+            testing::PrintToString(errors));
 }
 
 TEST_F(TypeVisitorTest, NewArrayOk) {
@@ -354,8 +354,8 @@ TEST_F(TypeVisitorTest, BlockNotStmt) {
   stmt.Get()->Accept(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("InvalidTopLevelStatement(0:1)\nInvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
+  EXPECT_EQ("InvalidTopLevelStatement(0:1)\nInvalidTopLevelStatement(0:1)\n",
+            testing::PrintToString(errors));
 }
 
-} // namespace weeder
-
+}  // namespace weeder

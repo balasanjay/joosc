@@ -43,7 +43,7 @@ class CompUnit;
 class Program;
 
 class Visitor {
-public:
+ public:
   virtual ~Visitor() = default;
 
 #define ABSTRACT_VISIT(type) virtual void Visit##type(const type*) = 0
@@ -89,15 +89,14 @@ public:
 
 #undef ABSTRACT_VISIT
 
-protected:
+ protected:
   Visitor() = default;
 };
 
-#define VISIT_DECL(type, var) \
-  void Visit##type(const parser::type* var) override
+#define VISIT_DECL(type, var) void Visit##type(const parser::type* var) override
 #define VISIT_DEFN(cls, type, var) \
   void cls::Visit##type(const parser::type* var)
 
-} // namespace parser
+}  // namespace parser
 
 #endif
