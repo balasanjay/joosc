@@ -48,7 +48,7 @@ bool IsTopLevelExpr(const Expr* expr) {
 // (assignment expressions, CallExpr, NewClassExpr).
 bool IsTopLevelExpr(const Stmt* stmt) {
   if (IS_CONST_PTR(ExprStmt, stmt)) {
-    const Expr* expr = dynamic_cast<const ExprStmt*>(stmt)->GetExpr();
+    const Expr* expr = &(dynamic_cast<const ExprStmt*>(stmt)->GetExpr());
     return IsTopLevelExpr(expr);
   }
   return IS_CONST_PTR(EmptyStmt, stmt);

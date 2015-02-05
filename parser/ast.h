@@ -408,7 +408,7 @@ class ReturnStmt : public Stmt {
   const Expr* GetExpr() const { return expr_.get(); }
 
  private:
-  unique_ptr<Expr> expr_;
+  unique_ptr<Expr> expr_; // Can be nullptr.
 };
 
 class ExprStmt : public Stmt {
@@ -417,7 +417,7 @@ class ExprStmt : public Stmt {
 
   ACCEPT_VISITOR(ExprStmt);
 
-  const Expr* GetExpr() const { return expr_.get(); }
+  GETTER(Expr, GetExpr, *expr_);
 
  private:
   unique_ptr<Expr> expr_;

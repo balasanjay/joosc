@@ -121,7 +121,7 @@ class PrintVisitor final : public Visitor {
   VISIT_DECL(EmptyStmt, ) { *os_ << ';'; }
 
   VISIT_DECL(ExprStmt, stmt) {
-    stmt->GetExpr()->Accept(this);
+    stmt->GetExpr().Accept(this);
     *os_ << ';';
   }
 
