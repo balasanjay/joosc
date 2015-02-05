@@ -126,8 +126,8 @@ VISIT_DEFN(RecursiveVisitor, ForStmt, stmt) {
 
 VISIT_DEFN(RecursiveVisitor, WhileStmt, stmt) {
   SHORT_CIRCUIT_CHILD(WhileStmt, stmt);
-  stmt->Cond()->Accept(this);
-  stmt->Body()->Accept(this);
+  stmt->Cond().Accept(this);
+  stmt->Body().Accept(this);
 }
 
 VISIT_DEFN(RecursiveVisitor, ArgumentList, args) {

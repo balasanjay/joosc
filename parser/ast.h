@@ -483,14 +483,14 @@ class WhileStmt : public Stmt {
 
   ACCEPT_VISITOR(WhileStmt);
 
-  const Expr* Cond() const { return cond_.get(); }
-  const Stmt* Body() const { return body_.get(); }
+  GETTER(Expr, Cond, *cond_);
+  GETTER(Stmt, Body, *body_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(WhileStmt);
 
   unique_ptr<Expr> cond_;
-  unique_ptr<Stmt> body_;  // May be EmptyStmt.
+  unique_ptr<Stmt> body_;
 };
 
 class ModifierList {

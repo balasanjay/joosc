@@ -170,9 +170,9 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(WhileStmt, stmt) {
     *os_ << "while" << space_ << '(';
-    stmt->Cond()->Accept(this);
+    stmt->Cond().Accept(this);
     *os_ << ')' << space_ << '{';
-    stmt->Body()->Accept(this);
+    stmt->Body().Accept(this);
     *os_ << '}';
   }
 
