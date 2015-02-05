@@ -1476,9 +1476,7 @@ Parser Parser::ParseImportDecl(Result<ImportDecl>* out) const {
   }
 
   return afterSemi.Success(
-      new ImportDecl(new ReferenceType(MakeQualifiedName(GetFile(), tokens)),
-                     isWildCard),
-      out);
+      new ImportDecl(MakeQualifiedName(GetFile(), tokens), isWildCard), out);
 }
 
 Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {

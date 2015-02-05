@@ -662,13 +662,11 @@ class TypeDecl {
 
   virtual void Accept(Visitor* visitor) const = 0;
 
-  const ModifierList& Mods() const { return mods_; }
-  const string& Name() const { return name_; }
+  GETTER(ModifierList, Mods, mods_);
+  GETTER(string, Name, name_);
   lexer::Token NameToken() const { return nameToken_; }
-  const base::UniquePtrVector<ReferenceType>& Interfaces() const {
-    return interfaces_;
-  }
-  const base::UniquePtrVector<MemberDecl>& Members() const { return members_; }
+  GETTER(base::UniquePtrVector<ReferenceType>, Interfaces, interfaces_);
+  GETTER(base::UniquePtrVector<MemberDecl>, Members, members_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TypeDecl);
@@ -717,18 +715,18 @@ class InterfaceDecl : public TypeDecl {
 
 class ImportDecl final {
  public:
-  ImportDecl(ReferenceType* name, bool isWildCard)
+  ImportDecl(const QualifiedName& name, bool isWildCard)
       : name_(name), isWildCard_(isWildCard) {}
 
   void Accept(Visitor* visitor) const { visitor->VisitImportDecl(this); }
 
-  const ReferenceType* Name() const { return name_.get(); }
+  GETTER(QualifiedName, Name, name_);
   bool IsWildCard() const { return isWildCard_; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ImportDecl);
 
-  unique_ptr<ReferenceType> name_;  // Will not be nullptr.
+  QualifiedName name_;
   bool isWildCard_;
 };
 

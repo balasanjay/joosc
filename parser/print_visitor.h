@@ -283,7 +283,7 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(ImportDecl, import) {
     *os_ << "import ";
-    import->Name()->PrintTo(os_);
+    import->Name().PrintTo(os_);
     *os_ << " ;";
   }
 
@@ -296,7 +296,7 @@ class PrintVisitor final : public Visitor {
 
     for (int i = 0; i < unit->Imports().Size(); ++i) {
       *os_ << "import ";
-      unit->Imports().At(i)->Name()->PrintTo(os_);
+      unit->Imports().At(i)->Name().PrintTo(os_);
       if (unit->Imports().At(i)->IsWildCard()) {
         *os_ << ".*";
       }
