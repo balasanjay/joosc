@@ -74,7 +74,6 @@ information about each kind of token; for example, it marks `-' as both a
 binary and a unary operator, it marks `++' as unsupported, and it marks `if' as
 a keyword.
 
-
 \subsection{Parser}
 We hand-wrote a recursive descent parser for Joos. We had two interesting
 classes here, Parser and Result. Parser is immutable and contains a reference
@@ -166,6 +165,8 @@ difficult to enforce in the parser. For example, we check that modifier lists
 have no contradictions, and that members are either public or protected, and
 not both.
 
+\newpage
+
 \section{Challenges}
 \subsection{Memory Management}
 C++ has no garbage collection, and we wanted to free all resources that we
@@ -206,9 +207,36 @@ this by adding an explicit intermediate AST node for parenthesized expressions.
 This allowed the weeder to differentiate the two examples above, and emit an
 error as appropriate.
 
+\newpage
+
 \section{Testing}
 \subsection{Unit tests}
+We have written a large body of unit tests in an effort to exhaustively cover
+every statement in our lexer, parser, and weeder. We used googletest, Google's
+C++ testing framework; googletest provides an API for writing tests, as well as
+a simple test-runner. googletest made writing new tests very easy, so we ended
+up with over 250 hand-written unit tests in our source tree. Running our tests
+is as simple as running \verb+make && ./test+. Here is an example of a
+unit-test for parsing the while statement.
+
+\begin{lstlisting}[language=c++]
+TEST_F(ParserTest, WhileStmtBadBody) {
+  MakeParser("while(1)class");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseWhileStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:8)\n",
+            testing::PrintToString(stmt.Errors()));
+}
+\end{lstlisting}
+
 \subsection{Integration tests}
+We copied the public Marmoset tests into our source tree's
+\verb+third_party/cs444+ directory. This allows us to quickly run through the
+public Marmoset tests without waiting for Marmoset. In addition, it lets us
+debug failing tests using familiar tools like gdb. We also run all the tests
+under valgrind to check for memory leaks and other memory-related errors.
 
 \end{document}
 
