@@ -614,7 +614,7 @@ class FieldDecl : public MemberDecl {
 
   ACCEPT_VISITOR(FieldDecl);
 
-  const Type* GetType() const { return type_.get(); }
+  GETTER(Type, GetType, *type_);
   const Expr* Val() const { return val_.get(); }
 
  private:

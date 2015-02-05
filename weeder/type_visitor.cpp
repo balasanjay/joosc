@@ -164,7 +164,7 @@ REC_VISIT_DEFN(TypeVisitor, LocalDeclStmt, stmt) {
 
 REC_VISIT_DEFN(TypeVisitor, FieldDecl, stmt) {
   Token voidTok(K_VOID, Pos(-1, -1));
-  if (HasVoid(stmt->GetType(), &voidTok)) {
+  if (HasVoid(&stmt->GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
   }
   return true;

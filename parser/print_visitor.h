@@ -201,7 +201,7 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(FieldDecl, field) {
     field->Mods().PrintTo(os_);
-    field->GetType()->PrintTo(os_);
+    field->GetType().PrintTo(os_);
     *os_ << ' ';
     *os_ << field->Ident().TypeInfo();
     if (field->Val() != nullptr) {
