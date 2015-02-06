@@ -48,7 +48,7 @@ interface.
   We have an implementation of File backed by a C++ string, which is used for
   our unit tests.
   \item
-  We have an disk-backed implementation of File, that uses the `mmap' system
+  We have a disk-backed implementation of File that uses the `mmap' system
   call to have fast random access into a file, without needing to load it into
   memory.
 \end{enumerate}
@@ -70,13 +70,12 @@ corresponding PosRange.
 
 We have a lookup table for valid and reserved tokens in Java. It includes
 entries like `++', `class', `final', and `if'. The table also includes
-information about each kind of token; for example, it marks `-' as both a
+information about each kind of token. For example, it marks `-' as both a
 binary and a unary operator, it marks `++' as unsupported, and it marks `if' as
 a keyword.
 
-
 \subsection{Parser}
-We hand-wrote a recursive descent parser for Joos. We had two interesting
+We hand-wrote a recursive-descent parser for Joos. We had two interesting
 classes here, Parser and Result. Parser is immutable and contains a reference
 to a stream of tokens and an index into that stream. Parser has methods that
 parse productions in our grammar and return a new Parser. Instances of the
@@ -101,7 +100,7 @@ Parser after = (*this)
 \end{lstlisting}
 
 We also have a function that will propagate errors correctly from such a
-chained statement. It will take the first non-empty ErrorList as the overall
+chained statement. It takes the first non-empty ErrorList as the overall
 error from parsing the while statement.
 \begin{lstlisting}[language=c++]
 ErrorList errors;
@@ -117,21 +116,21 @@ class WhileStmt: public Stmt {
 public:
   WhileStmt(Expr* cond, Stmt* body): cond_(cond), body_(body) {}
 
-  const Expr* Cond() const { return cond_.get(); }
-  const Stmt* Body() const { return body_.get(); }
+  const Expr& Cond() const { return *cond_; }
+  const Stmt& Body() const { return *body_; }
 
 private:
   DISALLOW_COPY_AND_ASSIGN(WhileStmt);
 
   unique_ptr<Expr> cond_;
-  unique_ptr<Stmt> body_; // May be EmptyStmt.
+  unique_ptr<Stmt> body_;
 };
 \end{lstlisting}
 
 \subsubsection{Grammar}
 We wrote a grammar based on the Second Edition of the Java Language
 Specification (JLS). We heavily modified the grammar to be more concise and to
-be unambiguously parsable by a top-down recursive-descent parser. We removed
+be unambiguously parseable by a top-down recursive-descent parser. We removed
 all of the immediate left-recursion and we simplified the rules to more closely
 match our AST nodes. To continue with our running example, here is our
 production rule for while statements.
@@ -152,9 +151,9 @@ pretty-printer implementation for the while statement.
 \begin{lstlisting}[language=c++]
 VISIT_DECL(WhileStmt, stmt) {
   *os_ << "while" << space_ << '(';
-  stmt->Cond()->Accept(this);
+  stmt.Cond().Accept(this);
   *os_ << ')' << space_ << '{';
-  stmt->Body()->Accept(this);
+  stmt.Body().Accept(this);
   *os_ << '}';
 }
 \end{lstlisting}
@@ -166,49 +165,79 @@ difficult to enforce in the parser. For example, we check that modifier lists
 have no contradictions, and that members are either public or protected, and
 not both.
 
+\newpage
+
 \section{Challenges}
 \subsection{Memory Management}
 C++ has no garbage collection, and we wanted to free all resources that we
 allocated in a safe manner. While it may seem that a compiler could just
 continually allocate memory and never free it, we've found that having
-deterministic ownership semantics helps make code cleaner and easier to
+deterministic ownership semantics help make code cleaner and easier to
 machine-verify using a tool like `valgrind'. We accomplished this by pervasive
 use of C++11's \verb+unique_ptr+ class. \verb+unique_ptr+ makes use of C++'s
 RAII paradigm to automatically release memory when leaving a scope. Since this
-was a new codebase, and we started using this from the beginning, this
-presented none of the usual usability challenges associated with
-\verb+unique_ptr+ and allowed us to remain free of memory leaks.
+was a new codebase, and we started using this pattern from the beginning, we
+did not face the usual usability challenges associated with \verb+unique_ptr+
+and our code remains free of memory leaks with relatively minor effort.
 
 \subsection{Precedence and Associativity}
 When removing left-recursion from the grammar, the productions for binary
 operators became highly recursive. That is to say, in order to parse the number
-`3' as an integer literal, it would make around many recursive calls through
-the precedence hierarchy. Also, we couldn't find an easy way to give the binary
+`3' as an integer literal, it would make many recursive calls through the
+precedence hierarchy. Also, we couldn't find an easy way to give the binary
 operators their proper associativity.
 
-We solved this in the parser by simply accepting repeating sequences of binary
-operator, expression pairs (after an initial expression). We then applied
-Knuth's famous Shunting Yard algorithm to properly assign appropriate
-precedence and associativity to all binary operators. This was both efficient
-and correct.
+We solved this in the parser by simply accepting repeating sequences of \lbrack
+binary operator, expression\rbrack\ pairs (after an initial expression). We
+then applied Dijkstra's famous Shunting Yard algorithm to properly assign
+appropriate precedence and associativity to all binary operators. This limited
+the amount of recursion required and also gave us the correct precedence and
+associativity.
 
 \subsection{Integer range checking}
 We treat a negative integer literal as a unary minus operator followed by a
-positive integer literal. This was challenging when checking that a integer
-literal was in range, because negative numbers have a slightly larger range
-than positive integers. This challenge was exacerbated by the fact that
-initially our parser initially only considered parentheses for precedence
-purposes, but did not represent them in the AST. This meant that the AST would
-represent the expression `$-(214783648)$' equivalently to `$-214783648$'.
-However, the former should not be allowed in Joos, because the number inside
-the parentheses is outside the range of a positive integer literal. We fixed
-this by adding an explicit intermediate AST node for parenthesized expressions.
-This allowed the weeder to differentiate the two examples above, and emit an
-error as appropriate.
+positive integer literal. This was challenging when checking that an integer
+literal was in range because negative numbers have a slightly larger range than
+positive integers. This challenge was exacerbated by the fact that our parser
+initially only considered parentheses for precedence purposes, but did not
+represent them in the AST. This meant that the AST would represent the
+expression `$-(214783648)$' equivalently to `$-214783648$'. However, the former
+should not be allowed in Joos, because the number inside the parentheses is
+outside the range of a positive integer literal. We fixed this by adding an
+explicit intermediate AST node for parenthesized expressions. This allowed the
+weeder to differentiate the two examples above, and emit an error as
+appropriate.
+
+\newpage
 
 \section{Testing}
 \subsection{Unit tests}
+We have written a large body of unit tests in an effort to exhaustively cover
+every statement in our lexer, parser, and weeder. We used googletest, Google's
+C++ testing framework; googletest provides an API for writing tests, as well as
+a simple test-runner. googletest made writing new tests very easy, so we ended
+up with over 250 hand-written unit tests in our source tree. Running our tests
+is as simple as running \verb+make && ./test+. Here is an example of a
+unit-test for parsing the while statement.
+
+\begin{lstlisting}[language=c++]
+TEST_F(ParserTest, WhileStmtBadBody) {
+  MakeParser("while(1)class");
+  Result<Stmt> stmt;
+  Parser after = parser_->ParseWhileStmt(&stmt);
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(stmt));
+  EXPECT_EQ("UnexpectedTokenError(0:8)\n",
+            testing::PrintToString(stmt.Errors()));
+}
+\end{lstlisting}
+
 \subsection{Integration tests}
+We copied the public Marmoset tests into our source tree's
+\verb+third_party/cs444+ directory. This allows us to quickly run through the
+public Marmoset tests without waiting for Marmoset. In addition, it lets us
+debug failing tests using familiar tools like gdb. We also run all the tests
+under valgrind to check for memory leaks and other memory-related errors.
 
 \end{document}
 
