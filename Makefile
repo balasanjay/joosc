@@ -24,7 +24,7 @@ DEFAULT_BUILD_TARGETS := joosc test
 CXX := /usr/local/clang-3.4/bin/clang++
 
 # CXXFLAGS are the flags passed to the C++ compiler.
-CXXFLAGS := -Wall -Wextra -std=c++0x -MMD -MP -g -pedantic -I ./ -include std.h
+CXXFLAGS := -Wall -Wextra -std=c++11 -MMD -MP -g -pedantic -I ./ -include std.h
 LDFLAGS := -lpthread
 
 # BUILD_CACHE_KEY should contain all variables that are used when building your
