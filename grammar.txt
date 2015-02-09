@@ -114,7 +114,7 @@ PrimitiveType:
   "int"
   "char"
   "boolean"
-  "void" // Lol weed me please.
+  "void"
 
 ArrayAccess:
   QualifiedName [ Expression ]
