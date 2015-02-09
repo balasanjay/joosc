@@ -43,8 +43,8 @@ bool PrintErrors(const ErrorList& errors) {
 int main(int argc, char** argv) {
   const int ERROR = 42;
 
-  if (argc != 2) {
-    cerr << "usage: joosc <filename>" << endl;
+  if (argc < 2) {
+    cerr << "usage: joosc <filename>..." << endl;
     return ERROR;
   }
 
