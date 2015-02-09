@@ -9,6 +9,7 @@ using lexer::Token;
 using parser::ArrayType;
 using parser::MemberDecl;
 using parser::PrimitiveType;
+using parser::QualifiedName;
 using parser::ReferenceType;
 using parser::Stmt;
 using parser::Type;
@@ -18,30 +19,30 @@ namespace weeder {
 
 class TypeVisitorTest : public WeederTest {};
 
-bool HasVoid(const Type*, Token* out);
+bool HasVoid(const Type&, Token* out);
 
 TEST_F(TypeVisitorTest, HasVoidReferenceFalse) {
-  Type* reference = new ReferenceType(nullptr);
-  EXPECT_FALSE(HasVoid(reference, nullptr));
+  Type* reference = new ReferenceType(QualifiedName());
+  EXPECT_FALSE(HasVoid(*reference, nullptr));
 
   Type* array = new ArrayType(reference);
-  EXPECT_FALSE(HasVoid(array, nullptr));
+  EXPECT_FALSE(HasVoid(*array, nullptr));
 
   Type* array2 = new ArrayType(array);
-  EXPECT_FALSE(HasVoid(array2, nullptr));
+  EXPECT_FALSE(HasVoid(*array2, nullptr));
 
   delete array2;
 }
 
 TEST_F(TypeVisitorTest, HasVoidPrimitiveFalse) {
   Type* primitive = new PrimitiveType(Token(K_INT, Pos(0, 0)));
-  EXPECT_FALSE(HasVoid(primitive, nullptr));
+  EXPECT_FALSE(HasVoid(*primitive, nullptr));
 
   Type* array = new ArrayType(primitive);
-  EXPECT_FALSE(HasVoid(array, nullptr));
+  EXPECT_FALSE(HasVoid(*array, nullptr));
 
   Type* array2 = new ArrayType(array);
-  EXPECT_FALSE(HasVoid(array2, nullptr));
+  EXPECT_FALSE(HasVoid(*array2, nullptr));
 
   delete array2;
 }
@@ -51,15 +52,15 @@ TEST_F(TypeVisitorTest, HasVoidTrue) {
   Token tokOut = tok;
 
   Type* voidType = new PrimitiveType(tok);
-  EXPECT_TRUE(HasVoid(voidType, &tokOut));
+  EXPECT_TRUE(HasVoid(*voidType, &tokOut));
   EXPECT_EQ(tok, tokOut);
 
   Type* array = new ArrayType(voidType);
-  EXPECT_TRUE(HasVoid(array, &tokOut));
+  EXPECT_TRUE(HasVoid(*array, &tokOut));
   EXPECT_EQ(tok, tokOut);
 
   Type* array2 = new ArrayType(array);
-  EXPECT_TRUE(HasVoid(array, &tokOut));
+  EXPECT_TRUE(HasVoid(*array, &tokOut));
   EXPECT_EQ(tok, tokOut);
 
   delete array2;
