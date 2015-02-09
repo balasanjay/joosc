@@ -226,7 +226,7 @@ class PrintVisitor final : public Visitor {
     *os_ << meth.Ident().TypeInfo();
     *os_ << '(';
     meth.Params().Accept(this);
-    *os_ << ')' << space_;
+    *os_ << ')' << RepStr(NumDelimiter(), space_);
     meth.Body().Accept(this);
   }
 
