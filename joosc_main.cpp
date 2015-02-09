@@ -44,8 +44,8 @@ int main(int argc, char** argv) {
   srand(time(0));
   const int ERROR = 42;
 
-  if (argc != 2) {
-    cerr << "usage: joosc <filename>" << endl;
+  if (argc < 2) {
+    cerr << "usage: joosc <filename>..." << endl;
     return ERROR;
   }
 
