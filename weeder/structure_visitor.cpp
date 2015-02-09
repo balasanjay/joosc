@@ -27,11 +27,11 @@ Error* MakeMultipleTypesPerCompUnitError(const FileSet* fs, Token token) {
 
 REC_VISIT_DEFN(StructureVisitor, Program, prog) {
   // TODO: store fileid in CompUnit, and use that instead of this assertion.
-  assert(prog->CompUnits().Size() == fs_->Size());
+  assert(prog.CompUnits().Size() == fs_->Size());
 
-  for (int i = 0; i < prog->CompUnits().Size(); ++i) {
+  for (int i = 0; i < prog.CompUnits().Size(); ++i) {
     const File* file = fs_->Get(i);
-    const CompUnit* unit = prog->CompUnits().At(i);
+    const CompUnit* unit = prog.CompUnits().At(i);
 
     if (unit->Types().Size() > 1) {
       for (int j = 0; j < unit->Types().Size(); ++j) {

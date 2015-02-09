@@ -191,19 +191,19 @@ void VerifyNoConflictingAccessMods(const FileSet* fs, const ModifierList& mods,
 
 REC_VISIT_DEFN(ClassModifierVisitor, ConstructorDecl, decl) {
   // Cannot be both public and protected.
-  VerifyNoConflictingAccessMods(fs_, decl->Mods(), errors_);
+  VerifyNoConflictingAccessMods(fs_, decl.Mods(), errors_);
 
   // Must be at least one of public or protected.
-  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(),
+  VerifyOneOf(fs_, decl.Mods(), errors_, decl.Ident(),
               MakeClassMemberNoAccessModError, PUBLIC, PROTECTED);
 
   // A constructor cannot be abstract, static, final, or native.
-  VerifyNoneOf(fs_, decl->Mods(), errors_, MakeClassConstructorModifierError,
+  VerifyNoneOf(fs_, decl.Mods(), errors_, MakeClassConstructorModifierError,
                ABSTRACT, STATIC, FINAL, NATIVE);
 
   // A constructor must have a body; i.e. it can't be ";".
-  if (IS_CONST_PTR(EmptyStmt, decl->Body())) {
-    errors_->Append(MakeClassConstructorEmptyError(fs_, decl->Ident()));
+  if (IS_CONST_REF(EmptyStmt, decl.Body())) {
+    errors_->Append(MakeClassConstructorEmptyError(fs_, decl.Ident()));
   }
 
   return false;
@@ -211,39 +211,39 @@ REC_VISIT_DEFN(ClassModifierVisitor, ConstructorDecl, decl) {
 
 REC_VISIT_DEFN(ClassModifierVisitor, FieldDecl, decl) {
   // Cannot be both public and protected.
-  VerifyNoConflictingAccessMods(fs_, decl->Mods(), errors_);
+  VerifyNoConflictingAccessMods(fs_, decl.Mods(), errors_);
 
   // Must be at least one of public or protected.
-  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(),
+  VerifyOneOf(fs_, decl.Mods(), errors_, decl.Ident(),
               MakeClassMemberNoAccessModError, PUBLIC, PROTECTED);
 
   // Can't be abstract, final, or native.
-  VerifyNoneOf(fs_, decl->Mods(), errors_, MakeClassFieldModifierError,
+  VerifyNoneOf(fs_, decl.Mods(), errors_, MakeClassFieldModifierError,
                ABSTRACT, FINAL, NATIVE);
   return false;
 }
 
 REC_VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
   // Cannot be both public and protected.
-  VerifyNoConflictingAccessMods(fs_, decl->Mods(), errors_);
+  VerifyNoConflictingAccessMods(fs_, decl.Mods(), errors_);
 
   // Must be at least one of public or protected.
-  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(),
+  VerifyOneOf(fs_, decl.Mods(), errors_, decl.Ident(),
               MakeClassMemberNoAccessModError, PUBLIC, PROTECTED);
 
-  const ModifierList& mods = decl->Mods();
+  const ModifierList& mods = decl.Mods();
 
   // A method has a body if and only if it is neither abstract nor native.
   {
-    if (IS_CONST_PTR(EmptyStmt, decl->Body())) {
+    if (IS_CONST_REF(EmptyStmt, decl.Body())) {
       // Has an empty body; this implies it must be either abstract or native.
       if (!mods.HasModifier(ABSTRACT) && !mods.HasModifier(NATIVE)) {
-        errors_->Append(MakeClassMethodEmptyError(fs_, decl->Ident()));
+        errors_->Append(MakeClassMethodEmptyError(fs_, decl.Ident()));
       }
     } else {
       // Has a non-empty body; this implies it must not be abstract or native.
       if (mods.HasModifier(ABSTRACT) || mods.HasModifier(NATIVE)) {
-        errors_->Append(MakeClassMethodNotEmptyError(fs_, decl->Ident()));
+        errors_->Append(MakeClassMethodNotEmptyError(fs_, decl.Ident()));
       }
     }
   }
@@ -271,28 +271,28 @@ REC_VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
 
 REC_VISIT_DEFN(InterfaceModifierVisitor, ConstructorDecl, decl) {
   // An interface cannot contain constructors.
-  errors_->Append(MakeInterfaceConstructorError(fs_, decl->Ident()));
+  errors_->Append(MakeInterfaceConstructorError(fs_, decl.Ident()));
   return false;
 }
 
 REC_VISIT_DEFN(InterfaceModifierVisitor, FieldDecl, decl) {
   // An interface cannot contain fields.
-  errors_->Append(MakeInterfaceFieldError(fs_, decl->Ident()));
+  errors_->Append(MakeInterfaceFieldError(fs_, decl.Ident()));
   return false;
 }
 
 REC_VISIT_DEFN(InterfaceModifierVisitor, MethodDecl, decl) {
   // An interface method cannot be static, final, native, or protected.
-  VerifyNoneOf(fs_, decl->Mods(), errors_, MakeInterfaceMethodModifierError,
+  VerifyNoneOf(fs_, decl.Mods(), errors_, MakeInterfaceMethodModifierError,
                PROTECTED, STATIC, FINAL, NATIVE);
 
   // Must be public.
-  VerifyOneOf(fs_, decl->Mods(), errors_, decl->Ident(),
+  VerifyOneOf(fs_, decl.Mods(), errors_, decl.Ident(),
               MakeInterfaceMethodNoAccessModError, PUBLIC);
 
   // An interface method cannot have a body.
-  if (!IS_CONST_PTR(EmptyStmt, decl->Body())) {
-    errors_->Append(MakeInterfaceMethodImplError(fs_, decl->Ident()));
+  if (!IS_CONST_REF(EmptyStmt, decl.Body())) {
+    errors_->Append(MakeInterfaceMethodImplError(fs_, decl.Ident()));
   }
 
   return false;
@@ -300,34 +300,34 @@ REC_VISIT_DEFN(InterfaceModifierVisitor, MethodDecl, decl) {
 
 REC_VISIT_DEFN(ModifierVisitor, ClassDecl, decl) {
   // A class cannot be protected, static, or native.
-  VerifyNoneOf(fs_, decl->Mods(), errors_, MakeClassModifierError, PROTECTED,
+  VerifyNoneOf(fs_, decl.Mods(), errors_, MakeClassModifierError, PROTECTED,
                STATIC, NATIVE);
 
   // Must be public.
-  VerifyOneOf(fs_, decl->Mods(), errors_, decl->NameToken(),
+  VerifyOneOf(fs_, decl.Mods(), errors_, decl.NameToken(),
               MakeClassNoAccessModError, PUBLIC);
 
   // A class cannot be both abstract and final.
-  if (decl->Mods().HasModifier(ABSTRACT) && decl->Mods().HasModifier(FINAL)) {
-    errors_->Append(MakeAbstractFinalClassError(fs_, decl->NameToken()));
+  if (decl.Mods().HasModifier(ABSTRACT) && decl.Mods().HasModifier(FINAL)) {
+    errors_->Append(MakeAbstractFinalClassError(fs_, decl.NameToken()));
   }
 
   ClassModifierVisitor visitor(fs_, errors_);
-  decl->Accept(&visitor);
+  decl.Accept(&visitor);
   return false;
 }
 
 REC_VISIT_DEFN(ModifierVisitor, InterfaceDecl, decl) {
   // An interface cannot be protected, static, final, or native.
-  VerifyNoneOf(fs_, decl->Mods(), errors_, MakeInterfaceModifierError,
+  VerifyNoneOf(fs_, decl.Mods(), errors_, MakeInterfaceModifierError,
                PROTECTED, STATIC, FINAL, NATIVE);
 
   // Must be public.
-  VerifyOneOf(fs_, decl->Mods(), errors_, decl->NameToken(),
+  VerifyOneOf(fs_, decl.Mods(), errors_, decl.NameToken(),
               MakeInterfaceNoAccessModError, PUBLIC);
 
   InterfaceModifierVisitor visitor(fs_, errors_);
-  decl->Accept(&visitor);
+  decl.Accept(&visitor);
   return false;
 }
 

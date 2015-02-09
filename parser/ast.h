@@ -8,7 +8,13 @@
 namespace parser {
 
 #define ACCEPT_VISITOR(type) \
-  void Accept(Visitor* visitor) const override { visitor->Visit##type(this); }
+  void Accept(Visitor* visitor) const override { visitor->Visit##type(*this); }
+
+#define REF_GETTER(type, name, expr) \
+  const type& name() const { return (expr); }
+
+#define VAL_GETTER(type, name, expr) \
+  type name() const { return (expr); }
 
 class QualifiedName final {
  public:
@@ -16,13 +22,15 @@ class QualifiedName final {
                 const string& name)
       : tokens_(tokens), parts_(parts), name_(name) {}
 
+  QualifiedName() = default;
+  QualifiedName(const QualifiedName&) = default;
+  QualifiedName(QualifiedName&&) = default;
+
   void PrintTo(std::ostream* os) const { *os << name_; }
 
-  const string& Name() const { return name_; }
+  REF_GETTER(string, Name, name_);
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(QualifiedName);
-
   vector<lexer::Token>
       tokens_;            // [IDENTIFIER, DOT, IDENTIFIER, DOT, IDENTIFIER]
   vector<string> parts_;  // ["java", "lang", "String"]
@@ -48,7 +56,7 @@ class PrimitiveType : public Type {
 
   void PrintTo(std::ostream* os) const override { *os << token_.TypeInfo(); }
 
-  lexer::Token GetToken() const { return token_; }
+  VAL_GETTER(lexer::Token, GetToken, token_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(PrimitiveType);
@@ -58,16 +66,16 @@ class PrimitiveType : public Type {
 
 class ReferenceType : public Type {
  public:
-  ReferenceType(QualifiedName* name) : name_(name) {}
+  ReferenceType(const QualifiedName& name) : name_(name) {}
 
-  void PrintTo(std::ostream* os) const override { name_->PrintTo(os); }
+  void PrintTo(std::ostream* os) const override { name_.PrintTo(os); }
 
-  const QualifiedName* Name() const { return name_.get(); }
+  REF_GETTER(QualifiedName, Name, name_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ReferenceType);
 
-  unique_ptr<QualifiedName> name_;
+  QualifiedName name_;
 };
 
 class ArrayType : public Type {
@@ -80,7 +88,7 @@ class ArrayType : public Type {
     *os << '>';
   }
 
-  const Type* ElemType() const { return elemtype_.get(); }
+  REF_GETTER(Type, ElemType, *elemtype_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ArrayType);
@@ -108,9 +116,9 @@ class ArgumentList final {
   ~ArgumentList() = default;
   ArgumentList(ArgumentList&&) = default;
 
-  void Accept(Visitor* visitor) const { visitor->VisitArgumentList(this); }
+  void Accept(Visitor* visitor) const { visitor->VisitArgumentList(*this); }
 
-  const base::UniquePtrVector<Expr>& Args() const { return args_; }
+  REF_GETTER(base::UniquePtrVector<Expr>, Args, args_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ArgumentList);
@@ -120,14 +128,16 @@ class ArgumentList final {
 
 class NameExpr : public Expr {
  public:
-  NameExpr(QualifiedName* name) : name_(name) {}
+  NameExpr(const QualifiedName& name) : name_(name) {}
 
   ACCEPT_VISITOR(NameExpr);
 
-  const QualifiedName* Name() const { return name_.get(); }
+  REF_GETTER(QualifiedName, Name, name_);
 
  private:
-  unique_ptr<QualifiedName> name_;
+  DISALLOW_COPY_AND_ASSIGN(NameExpr);
+
+  QualifiedName name_;
 };
 
 class InstanceOfExpr : public Expr {
@@ -137,11 +147,13 @@ class InstanceOfExpr : public Expr {
 
   ACCEPT_VISITOR(InstanceOfExpr);
 
-  const Expr* Lhs() const { return lhs_.get(); }
-  lexer::Token InstanceOf() const { return instanceof_; }
-  const Type* GetType() const { return type_.get(); }
+  REF_GETTER(Expr, Lhs, *lhs_);
+  VAL_GETTER(lexer::Token, InstanceOf, instanceof_);
+  REF_GETTER(Type, GetType, *type_);
 
  private:
+  DISALLOW_COPY_AND_ASSIGN(InstanceOfExpr);
+
   unique_ptr<Expr> lhs_;
   lexer::Token instanceof_;
   unique_ptr<Type> type_;
@@ -153,7 +165,7 @@ class ParenExpr : public Expr {
 
   ACCEPT_VISITOR(ParenExpr);
 
-  const Expr* Nested() const { return nested_.get(); }
+  REF_GETTER(Expr, Nested, *nested_);
 
  private:
   unique_ptr<Expr> nested_;
@@ -170,13 +182,12 @@ class BinExpr : public Expr {
 
   ACCEPT_VISITOR(BinExpr);
 
-  const Expr* Lhs() const { return lhs_.get(); }
-  const Expr* Rhs() const { return rhs_.get(); }
-  lexer::Token Op() const { return op_; }
+  VAL_GETTER(lexer::Token, Op, op_);
+  REF_GETTER(Expr, Lhs, *lhs_);
+  REF_GETTER(Expr, Rhs, *rhs_);
 
  private:
   lexer::Token op_;
-
   unique_ptr<Expr> lhs_;
   unique_ptr<Expr> rhs_;
 };
@@ -190,8 +201,8 @@ class UnaryExpr : public Expr {
 
   ACCEPT_VISITOR(UnaryExpr);
 
-  lexer::Token Op() const { return op_; }
-  const Expr* Rhs() const { return rhs_.get(); }
+  VAL_GETTER(lexer::Token, Op, op_);
+  REF_GETTER(Expr, Rhs, *rhs_);
 
  private:
   lexer::Token op_;
@@ -202,7 +213,7 @@ class LitExpr : public Expr {
  public:
   LitExpr(lexer::Token token) : token_(token) {}
 
-  lexer::Token GetToken() const { return token_; }
+  VAL_GETTER(lexer::Token, GetToken, token_);
 
  private:
   lexer::Token token_;
@@ -222,7 +233,7 @@ class IntLitExpr : public LitExpr {
 
   ACCEPT_VISITOR(IntLitExpr);
 
-  const string& Value() const { return value_; }
+  REF_GETTER(string, Value, value_);
 
  private:
   string value_;
@@ -260,8 +271,8 @@ class ArrayIndexExpr : public Expr {
 
   ACCEPT_VISITOR(ArrayIndexExpr);
 
-  const Expr* Base() const { return base_.get(); }
-  const Expr* Index() const { return index_.get(); }
+  REF_GETTER(Expr, Base, *base_);
+  REF_GETTER(Expr, Index, *index_);
 
  private:
   unique_ptr<Expr> base_;
@@ -275,8 +286,8 @@ class FieldDerefExpr : public Expr {
 
   ACCEPT_VISITOR(FieldDerefExpr);
 
-  const Expr* Base() const { return base_.get(); }
-  const string& FieldName() const { return fieldname_; }
+  REF_GETTER(Expr, Base, *base_);
+  REF_GETTER(string, FieldName, fieldname_);
 
  private:
   unique_ptr<Expr> base_;
@@ -286,19 +297,19 @@ class FieldDerefExpr : public Expr {
 
 class CallExpr : public Expr {
  public:
-  CallExpr(Expr* base, lexer::Token lparen, ArgumentList* args)
-      : base_(base), lparen_(lparen), args_(args) {}
+  CallExpr(Expr* base, lexer::Token lparen, ArgumentList&& args)
+      : base_(base), lparen_(lparen), args_(std::forward<ArgumentList>(args)) {}
 
   ACCEPT_VISITOR(CallExpr);
 
-  const Expr* Base() const { return base_.get(); }
-  lexer::Token Lparen() const { return lparen_; }
-  const ArgumentList* Args() const { return args_.get(); }
+  REF_GETTER(Expr, Base, *base_);
+  VAL_GETTER(lexer::Token, Lparen, lparen_);
+  REF_GETTER(ArgumentList, Args, args_);
 
  private:
   unique_ptr<Expr> base_;
   lexer::Token lparen_;
-  unique_ptr<ArgumentList> args_;
+  ArgumentList args_;
 };
 
 class CastExpr : public Expr {
@@ -307,8 +318,8 @@ class CastExpr : public Expr {
 
   ACCEPT_VISITOR(CastExpr);
 
-  const Type* GetType() const { return type_.get(); }
-  const Expr* GetExpr() const { return expr_.get(); }
+  REF_GETTER(Type, GetType, *type_);
+  REF_GETTER(Expr, GetExpr, *expr_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CastExpr);
@@ -319,21 +330,21 @@ class CastExpr : public Expr {
 
 class NewClassExpr : public Expr {
  public:
-  NewClassExpr(lexer::Token newTok, Type* type, ArgumentList* args)
-      : newTok_(newTok), type_(type), args_(args) {}
+  NewClassExpr(lexer::Token newTok, Type* type, ArgumentList&& args)
+      : newTok_(newTok), type_(type), args_(std::forward<ArgumentList>(args)) {}
 
   ACCEPT_VISITOR(NewClassExpr);
 
-  lexer::Token NewToken() const { return newTok_; }
-  const Type* GetType() const { return type_.get(); }
-  const ArgumentList* Args() const { return args_.get(); }
+  VAL_GETTER(lexer::Token, NewToken, newTok_);
+  REF_GETTER(Type, GetType, *type_);
+  REF_GETTER(ArgumentList, Args, args_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NewClassExpr);
 
   lexer::Token newTok_;
   unique_ptr<Type> type_;
-  unique_ptr<ArgumentList> args_;
+  ArgumentList args_;
 };
 
 class NewArrayExpr : public Expr {
@@ -342,14 +353,14 @@ class NewArrayExpr : public Expr {
 
   ACCEPT_VISITOR(NewArrayExpr);
 
-  const Type* GetType() const { return type_.get(); }
-  const Expr* GetExpr() const { return expr_.get(); }
+  REF_GETTER(Type, GetType, *type_);
+  VAL_GETTER(const Expr*, GetExpr, expr_.get());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NewArrayExpr);
 
   unique_ptr<Type> type_;
-  unique_ptr<Expr> expr_;
+  unique_ptr<Expr> expr_; // Can be nullptr.
 };
 
 class Stmt {
@@ -374,21 +385,21 @@ class EmptyStmt : public Stmt {
 
 class LocalDeclStmt : public Stmt {
  public:
-  LocalDeclStmt(Type* type, lexer::Token ident, Expr* val)
-      : type_(type), ident_(ident), val_(val) {}
+  LocalDeclStmt(Type* type, lexer::Token ident, Expr* expr)
+      : type_(type), ident_(ident), expr_(expr) {}
 
   ACCEPT_VISITOR(LocalDeclStmt);
 
-  const Type* GetType() const { return type_.get(); }
-  lexer::Token Ident() const { return ident_; }
-  const Expr* GetExpr() const { return val_.get(); }
+  REF_GETTER(Type, GetType, *type_);
+  VAL_GETTER(lexer::Token, Ident, ident_);
+  REF_GETTER(Expr, GetExpr, *expr_);
 
   // TODO: get the identifier as a string.
 
  private:
   unique_ptr<Type> type_;
   lexer::Token ident_;
-  unique_ptr<Expr> val_;
+  unique_ptr<Expr> expr_;
 };
 
 class ReturnStmt : public Stmt {
@@ -397,10 +408,10 @@ class ReturnStmt : public Stmt {
 
   ACCEPT_VISITOR(ReturnStmt);
 
-  const Expr* GetExpr() const { return expr_.get(); }
+  VAL_GETTER(const Expr*, GetExpr, expr_.get());
 
  private:
-  unique_ptr<Expr> expr_;
+  unique_ptr<Expr> expr_; // Can be nullptr.
 };
 
 class ExprStmt : public Stmt {
@@ -409,7 +420,7 @@ class ExprStmt : public Stmt {
 
   ACCEPT_VISITOR(ExprStmt);
 
-  const Expr* GetExpr() const { return expr_.get(); }
+  REF_GETTER(Expr, GetExpr, *expr_);
 
  private:
   unique_ptr<Expr> expr_;
@@ -422,7 +433,7 @@ class BlockStmt : public Stmt {
 
   ACCEPT_VISITOR(BlockStmt);
 
-  const base::UniquePtrVector<Stmt>& Stmts() const { return stmts_; }
+  REF_GETTER(base::UniquePtrVector<Stmt>, Stmts, stmts_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BlockStmt);
@@ -436,9 +447,9 @@ class IfStmt : public Stmt {
 
   ACCEPT_VISITOR(IfStmt);
 
-  const Expr* Cond() const { return cond_.get(); }
-  const Stmt* TrueBody() const { return trueBody_.get(); }
-  const Stmt* FalseBody() const { return falseBody_.get(); }
+  REF_GETTER(Expr, Cond, *cond_);
+  REF_GETTER(Stmt, TrueBody, *trueBody_);
+  REF_GETTER(Stmt, FalseBody, *falseBody_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(IfStmt);
@@ -455,18 +466,18 @@ class ForStmt : public Stmt {
 
   ACCEPT_VISITOR(ForStmt);
 
-  const Stmt* Init() const { return init_.get(); }
-  const Expr* Cond() const { return cond_.get(); }
-  const Expr* Update() const { return update_.get(); }
-  const Stmt* Body() const { return body_.get(); }
+  REF_GETTER(Stmt, Init, *init_);
+  VAL_GETTER(const Expr*, Cond, cond_.get());
+  VAL_GETTER(const Expr*, Update, update_.get());
+  REF_GETTER(Stmt, Body, *body_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ForStmt);
 
-  unique_ptr<Stmt> init_;    // May be EmptyStmt.
+  unique_ptr<Stmt> init_;
   unique_ptr<Expr> cond_;    // May be nullptr.
   unique_ptr<Expr> update_;  // May be nullptr.
-  unique_ptr<Stmt> body_;    // May be EmptyStmt.
+  unique_ptr<Stmt> body_;
 };
 
 class WhileStmt : public Stmt {
@@ -475,14 +486,14 @@ class WhileStmt : public Stmt {
 
   ACCEPT_VISITOR(WhileStmt);
 
-  const Expr* Cond() const { return cond_.get(); }
-  const Stmt* Body() const { return body_.get(); }
+  REF_GETTER(Expr, Cond, *cond_);
+  REF_GETTER(Stmt, Body, *body_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(WhileStmt);
 
   unique_ptr<Expr> cond_;
-  unique_ptr<Stmt> body_;  // May be EmptyStmt.
+  unique_ptr<Stmt> body_;
 };
 
 class ModifierList {
@@ -529,10 +540,10 @@ class Param final {
  public:
   Param(Type* type, lexer::Token ident) : type_(type), ident_(ident) {}
 
-  void Accept(Visitor* visitor) const { visitor->VisitParam(this); }
+  void Accept(Visitor* visitor) const { visitor->VisitParam(*this); }
 
-  const Type* GetType() const { return type_.get(); }
-  lexer::Token Ident() const { return ident_; }
+  REF_GETTER(Type, GetType, *type_);
+  VAL_GETTER(lexer::Token, Ident, ident_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Param);
@@ -548,9 +559,9 @@ class ParamList final {
   ~ParamList() = default;
   ParamList(ParamList&&) = default;
 
-  void Accept(Visitor* visitor) const { visitor->VisitParamList(this); }
+  void Accept(Visitor* visitor) const { visitor->VisitParamList(*this); }
 
-  const base::UniquePtrVector<Param>& Params() const { return params_; }
+  REF_GETTER(base::UniquePtrVector<Param>, Params, params_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ParamList);
@@ -566,8 +577,8 @@ class MemberDecl {
 
   virtual void Accept(Visitor* visitor) const = 0;
 
-  const ModifierList& Mods() const { return mods_; }
-  lexer::Token Ident() const { return ident_; }
+  REF_GETTER(ModifierList, Mods, mods_);
+  VAL_GETTER(lexer::Token, Ident, ident_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MemberDecl);
@@ -586,8 +597,8 @@ class ConstructorDecl : public MemberDecl {
 
   ACCEPT_VISITOR(ConstructorDecl);
 
-  const ParamList& Params() const { return params_; }
-  const Stmt* Body() const { return body_.get(); }
+  REF_GETTER(ParamList, Params, params_);
+  REF_GETTER(Stmt, Body, *body_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ConstructorDecl);
@@ -606,8 +617,8 @@ class FieldDecl : public MemberDecl {
 
   ACCEPT_VISITOR(FieldDecl);
 
-  const Type* GetType() const { return type_.get(); }
-  const Expr* Val() const { return val_.get(); }
+  REF_GETTER(Type, GetType, *type_);
+  VAL_GETTER(const Expr*, Val, val_.get());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FieldDecl);
@@ -627,9 +638,9 @@ class MethodDecl : public MemberDecl {
 
   ACCEPT_VISITOR(MethodDecl);
 
-  const Type* GetType() const { return type_.get(); }
-  const ParamList& Params() const { return params_; }
-  const Stmt* Body() const { return body_.get(); }
+  REF_GETTER(Type, GetType, *type_);
+  REF_GETTER(ParamList, Params, params_);
+  REF_GETTER(Stmt, Body, *body_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MethodDecl);
@@ -654,13 +665,11 @@ class TypeDecl {
 
   virtual void Accept(Visitor* visitor) const = 0;
 
-  const ModifierList& Mods() const { return mods_; }
-  const string& Name() const { return name_; }
-  lexer::Token NameToken() const { return nameToken_; }
-  const base::UniquePtrVector<ReferenceType>& Interfaces() const {
-    return interfaces_;
-  }
-  const base::UniquePtrVector<MemberDecl>& Members() const { return members_; }
+  REF_GETTER(ModifierList, Mods, mods_);
+  REF_GETTER(string, Name, name_);
+  VAL_GETTER(lexer::Token, NameToken, nameToken_);
+  REF_GETTER(base::UniquePtrVector<ReferenceType>, Interfaces, interfaces_);
+  REF_GETTER(base::UniquePtrVector<MemberDecl>, Members, members_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TypeDecl);
@@ -684,7 +693,7 @@ class ClassDecl : public TypeDecl {
 
   ACCEPT_VISITOR(ClassDecl);
 
-  const ReferenceType* Super() const { return super_.get(); }
+  VAL_GETTER(const ReferenceType*, Super, super_.get());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ClassDecl);
@@ -709,37 +718,37 @@ class InterfaceDecl : public TypeDecl {
 
 class ImportDecl final {
  public:
-  ImportDecl(ReferenceType* name, bool isWildCard)
+  ImportDecl(const QualifiedName& name, bool isWildCard)
       : name_(name), isWildCard_(isWildCard) {}
 
-  void Accept(Visitor* visitor) const { visitor->VisitImportDecl(this); }
+  void Accept(Visitor* visitor) const { visitor->VisitImportDecl(*this); }
 
-  const ReferenceType* Name() const { return name_.get(); }
-  bool IsWildCard() const { return isWildCard_; }
+  REF_GETTER(QualifiedName, Name, name_);
+  VAL_GETTER(bool, IsWildCard, isWildCard_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ImportDecl);
 
-  unique_ptr<ReferenceType> name_;  // Will not be nullptr.
+  QualifiedName name_;
   bool isWildCard_;
 };
 
 class CompUnit final {
  public:
-  CompUnit(ReferenceType* package, base::UniquePtrVector<ImportDecl>&& imports,
+  CompUnit(QualifiedName* package, base::UniquePtrVector<ImportDecl>&& imports,
            base::UniquePtrVector<TypeDecl>&& types)
       : package_(package),
         imports_(std::forward<base::UniquePtrVector<ImportDecl>>(imports)),
         types_(std::forward<base::UniquePtrVector<TypeDecl>>(types)) {}
 
-  void Accept(Visitor* visitor) const { visitor->VisitCompUnit(this); }
+  void Accept(Visitor* visitor) const { visitor->VisitCompUnit(*this); }
 
-  const ReferenceType* Package() const { return package_.get(); }
-  const base::UniquePtrVector<ImportDecl>& Imports() const { return imports_; }
-  const base::UniquePtrVector<TypeDecl>& Types() const { return types_; }
+  VAL_GETTER(const QualifiedName*, Package, package_.get());
+  REF_GETTER(base::UniquePtrVector<ImportDecl>, Imports, imports_);
+  REF_GETTER(base::UniquePtrVector<TypeDecl>, Types, types_);
 
  private:
-  unique_ptr<ReferenceType> package_;  // Might be nullptr.
+  unique_ptr<QualifiedName> package_;  // Might be nullptr.
   base::UniquePtrVector<ImportDecl> imports_;
   base::UniquePtrVector<TypeDecl> types_;
 };
@@ -749,9 +758,9 @@ class Program final {
   Program(base::UniquePtrVector<CompUnit>&& units)
       : units_(std::forward<base::UniquePtrVector<CompUnit>>(units)) {}
 
-  void Accept(Visitor* visitor) const { visitor->VisitProgram(this); }
+  void Accept(Visitor* visitor) const { visitor->VisitProgram(*this); }
 
-  const base::UniquePtrVector<CompUnit>& CompUnits() const { return units_; }
+  REF_GETTER(base::UniquePtrVector<CompUnit>, CompUnits, units_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Program);
@@ -760,6 +769,8 @@ class Program final {
 };
 
 #undef ACCEPT_VISITOR
+#undef REF_GETTER
+#undef VAL_GETTER
 
 unique_ptr<Program> Parse(const base::FileSet* fs,
                           const vector<vector<lexer::Token>>& tokens,

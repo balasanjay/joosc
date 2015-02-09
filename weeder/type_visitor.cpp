@@ -48,7 +48,7 @@ bool IsTopLevelExpr(const Expr* expr) {
 // (assignment expressions, CallExpr, NewClassExpr).
 bool IsTopLevelExpr(const Stmt* stmt) {
   if (IS_CONST_PTR(ExprStmt, stmt)) {
-    const Expr* expr = dynamic_cast<const ExprStmt*>(stmt)->GetExpr();
+    const Expr* expr = &(dynamic_cast<const ExprStmt*>(stmt)->GetExpr());
     return IsTopLevelExpr(expr);
   }
   return IS_CONST_PTR(EmptyStmt, stmt);
@@ -90,8 +90,8 @@ Error* MakeInvalidTopLevelStatement(const FileSet* fs, Token token) {
 }
 }  // namespace
 
-bool HasVoid(const Type* type, Token* out) {
-  const Type* cur = type;
+bool HasVoid(const Type& type, Token* out) {
+  const Type* cur = &type;
 
   while (true) {
     // Reference types.
@@ -101,8 +101,8 @@ bool HasVoid(const Type* type, Token* out) {
 
     // Array types.
     if (IS_CONST_PTR(ArrayType, cur)) {
-      const ArrayType* array = dynamic_cast<const ArrayType*>(cur);
-      cur = array->ElemType();
+      const Type& array = dynamic_cast<const ArrayType*>(cur)->ElemType();
+      cur = &array;
       continue;
     }
 
@@ -119,7 +119,7 @@ bool HasVoid(const Type* type, Token* out) {
 
 REC_VISIT_DEFN(TypeVisitor, CastExpr, expr) {
   Token voidTok(K_VOID, Pos(-1, -1));
-  if (HasVoid(expr->GetType(), &voidTok)) {
+  if (HasVoid(expr.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
   }
   return true;
@@ -127,27 +127,27 @@ REC_VISIT_DEFN(TypeVisitor, CastExpr, expr) {
 
 REC_VISIT_DEFN(TypeVisitor, InstanceOfExpr, expr) {
   Token voidTok(K_VOID, Pos(-1, -1));
-  if (HasVoid(expr->GetType(), &voidTok)) {
+  if (HasVoid(expr.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
-  } else if (IS_CONST_PTR(PrimitiveType, expr->GetType())) {
-    errors_->Append(MakeInvalidInstanceOfType(fs_, expr->InstanceOf()));
+  } else if (IS_CONST_REF(PrimitiveType, expr.GetType())) {
+    errors_->Append(MakeInvalidInstanceOfType(fs_, expr.InstanceOf()));
   }
   return true;
 }
 
 REC_VISIT_DEFN(TypeVisitor, NewClassExpr, expr) {
   Token voidTok(K_VOID, Pos(-1, -1));
-  if (HasVoid(expr->GetType(), &voidTok)) {
+  if (HasVoid(expr.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
-  } else if (!IS_CONST_PTR(ReferenceType, expr->GetType())) {
-    errors_->Append(MakeNewNonReferenceTypeError(fs_, expr->NewToken()));
+  } else if (!IS_CONST_REF(ReferenceType, expr.GetType())) {
+    errors_->Append(MakeNewNonReferenceTypeError(fs_, expr.NewToken()));
   }
   return true;
 }
 
 REC_VISIT_DEFN(TypeVisitor, NewArrayExpr, expr) {
   Token voidTok(K_VOID, Pos(-1, -1));
-  if (HasVoid(expr->GetType(), &voidTok)) {
+  if (HasVoid(expr.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
   }
   return true;
@@ -155,7 +155,7 @@ REC_VISIT_DEFN(TypeVisitor, NewArrayExpr, expr) {
 
 REC_VISIT_DEFN(TypeVisitor, LocalDeclStmt, stmt) {
   Token voidTok(K_VOID, Pos(-1, -1));
-  if (HasVoid(stmt->GetType(), &voidTok)) {
+  if (HasVoid(stmt.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
   }
   return true;
@@ -163,7 +163,7 @@ REC_VISIT_DEFN(TypeVisitor, LocalDeclStmt, stmt) {
 
 REC_VISIT_DEFN(TypeVisitor, FieldDecl, stmt) {
   Token voidTok(K_VOID, Pos(-1, -1));
-  if (HasVoid(stmt->GetType(), &voidTok)) {
+  if (HasVoid(stmt.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
   }
   return true;
@@ -171,20 +171,20 @@ REC_VISIT_DEFN(TypeVisitor, FieldDecl, stmt) {
 
 REC_VISIT_DEFN(TypeVisitor, Param, param) {
   Token voidTok(K_VOID, Pos(-1, -1));
-  if (HasVoid(param->GetType(), &voidTok)) {
+  if (HasVoid(param.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
   }
   return true;
 }
 
 REC_VISIT_DEFN(TypeVisitor, ForStmt, stmt) {
-  if (!IS_CONST_PTR(LocalDeclStmt, stmt->Init()) &&
-      !IsTopLevelExpr(stmt->Init())) {
+  if (!IS_CONST_REF(LocalDeclStmt, stmt.Init()) &&
+      !IsTopLevelExpr(&stmt.Init())) {
     // TODO: Error.
     Token tok(K_VOID, Pos(0, 1));
     errors_->Append(MakeInvalidTopLevelStatement(fs_, tok));
   }
-  if (!IsTopLevelExpr(stmt->Update())) {
+  if (!IsTopLevelExpr(stmt.Update())) {
     // TODO: Error.
     Token tok(K_VOID, Pos(0, 1));
     errors_->Append(MakeInvalidTopLevelStatement(fs_, tok));
@@ -193,8 +193,8 @@ REC_VISIT_DEFN(TypeVisitor, ForStmt, stmt) {
 }
 
 REC_VISIT_DEFN(TypeVisitor, BlockStmt, block) {
-  for (int i = 0; i < block->Stmts().Size(); ++i) {
-    if (!IsTopLevelStmt(block->Stmts().At(i))) {
+  for (int i = 0; i < block.Stmts().Size(); ++i) {
+    if (!IsTopLevelStmt(block.Stmts().At(i))) {
       // TODO: Error.
       Token tok(K_VOID, Pos(0, 1));
       errors_->Append(MakeInvalidTopLevelStatement(fs_, tok));

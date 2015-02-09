@@ -68,7 +68,7 @@ class RecursiveVisitor : public Visitor {
   VISIT_DECL(Program, args) final;
 
 #define RECURSIVE_VISITOR_IMPL(type) \
-  virtual bool Visit##type##Impl(const type*) { return true; }
+  virtual bool Visit##type##Impl(const type&) { return true; }
   // Declare *Impl methods for Exprs.
   RECURSIVE_VISITOR_IMPL(ArrayIndexExpr);
   RECURSIVE_VISITOR_IMPL(BinExpr);
@@ -118,9 +118,9 @@ class RecursiveVisitor : public Visitor {
 };
 
 #define REC_VISIT_DECL(type, var) \
-  bool Visit##type##Impl(const parser::type* var) override
+  bool Visit##type##Impl(const parser::type& var) override
 #define REC_VISIT_DEFN(cls, type, var) \
-  bool cls::Visit##type##Impl(const parser::type* var)
+  bool cls::Visit##type##Impl(const parser::type& var)
 
 }  // namespace parser
 
