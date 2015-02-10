@@ -27,7 +27,7 @@ using std::vector;
 
 // Copied from Chromium.
 #define DISALLOW_COPY_AND_ASSIGN(TypeName) \
-  TypeName(const TypeName&);               \
-  void operator=(const TypeName&)
+  TypeName(const TypeName&) = delete;      \
+  void operator=(const TypeName&) = delete
 
 #endif
