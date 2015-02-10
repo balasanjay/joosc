@@ -24,19 +24,6 @@ using weeder::WeedProgram;
 
 namespace {
 
-class NonAnsiCharError : public base::Error {
-  void PrintTo(std::ostream* out,
-               const base::OutputOptions& opt) const override {
-    if (opt.simple) {
-      *out << "NonAnsiCharError\n";
-      return;
-    }
-
-    *out << Red(opt) << "error: My user visible message." << ResetFmt(opt)
-         << " Other sub-message.";
-  }
-};
-
 bool PrintErrors(const ErrorList& errors, ostream* err) {
   if (errors.Size() > 0) {
     errors.PrintTo(err, base::OutputOptions::kUserOutput);
