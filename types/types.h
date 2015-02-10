@@ -1,6 +1,7 @@
 #ifndef TYPES_TYPES_H
 #define TYPES_TYPES_H
 
+#include "base/errorlist.h"
 #include "base/file.h"
 #include "parser/ast.h"
 #include <map>
@@ -63,6 +64,7 @@ public:
 };
 
 class TypeSetBuilder {
+ public:
   // Automatically inserts 'int', 'short', 'byte', 'boolean', 'void', and 'error'.
   TypeSetBuilder() = default;
 
@@ -71,11 +73,16 @@ class TypeSetBuilder {
   void Put(const vector<string>& ns, const string& name, base::PosRange namepos);
 
   // Returns a TypeSet with all types inserted with Put. If a type was defined
-  // multiple times, a vector containing all definitions' PosRanges will be
-  // appended to *duplicates.
-  TypeSet Build(vector<vector<base::PosRange>>* duplicates) const;
+  // multiple times, an Error will be appended to the ErrorList for each
+  // duplicate location.
+  TypeSet Build(base::ErrorList* out) const;
 
-  private:
+ private:
+  struct Entry {
+    string name; // com.foo.Bar
+    base::PosRange namepos;
+  };
+  vector<Entry> entries_;
 };
 
 } // namespace types

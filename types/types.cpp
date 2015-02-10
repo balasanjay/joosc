@@ -1,13 +1,16 @@
 #include "types/types.h"
+
 #include <algorithm>
 #include <iostream>
 #include <iterator>
 
-using parser::ImportDecl;
 using std::back_inserter;
 using std::count;
 using std::cout;
 using std::sort;
+using std::transform;
+
+using parser::ImportDecl;
 
 namespace types {
 
@@ -147,6 +150,47 @@ void TypeSet::InsertWildcardImport(const string& base) {
     string key = decl.substr(prefix.size());
     InsertName(&available_names_, key, iter->second);
   }
+}
+
+void TypeSetBuilder::Put(const vector<string>& ns, const string& name, base::PosRange namepos) {
+  stringstream ss;
+  for (const auto& n : ns) {
+    assert(n.find('.') == string::npos);
+    ss << n << '.';
+  }
+  assert(name.find('.') == string::npos);
+  ss << name;
+  entries_.push_back(Entry{ss.str(), namepos});
+}
+
+TypeSet TypeSetBuilder::Build(base::ErrorList* out) const {
+  // Find duplicates.
+  vector<Entry> entries(entries_);
+  stable_sort(entries.begin(), entries.end(),
+      [](const Entry& lhs, const Entry& rhs) { return lhs.name < rhs.name; });
+
+  uint start = 0;
+  uint end = 1;
+  while (start < entries.size()) {
+    if (end < entries.size() && entries[start].name == entries[end].name) {
+      ++end;
+      continue;
+    }
+
+    if (end - start > 1) {
+      throw;
+      // TODO: Errors
+    }
+
+    start = end;
+    ++end;
+  }
+
+  vector<string> qualifiedNames;
+  transform(entries.begin(), entries.end(), back_inserter(qualifiedNames),
+      [](const Entry& e) { return e.name; });
+
+  return TypeSet(qualifiedNames);
 }
 
 } // namespace types

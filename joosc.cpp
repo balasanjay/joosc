@@ -132,12 +132,22 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
     PrintVisitor printer = PrintVisitor::Pretty(out);
     program.get()->Accept(&printer);
 
-    TypeSet ts(vector<string>{
-        "java.util.List",
-        "java.util.ArrayList",
-        "java.lang.Integer",
-        "com.google.Server",
-    });
+    types::TypeSetBuilder typeSetBuilder;
+
+    for (int i = 0; i < program->CompUnits().Size(); ++i) {
+      const parser::CompUnit& unit = *program->CompUnits().At(i);
+      vector<string> ns;
+      if (unit.Package() != nullptr) {
+        ns = unit.Package()->Parts();
+      }
+      for (int j = 0; j < unit.Types().Size(); ++j) {
+        const parser::TypeDecl& decl = *unit.Types().At(j);
+        typeSetBuilder.Put(ns, decl.Name(), decl.NameToken().pos);
+      }
+    }
+
+    base::ErrorList errors;
+    TypeSet ts = typeSetBuilder.Build(&errors);
 
     cout << "Original\n";
     ts.PrintTo(&cout);
