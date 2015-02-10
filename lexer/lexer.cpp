@@ -129,7 +129,7 @@ struct LexState {
            base::ErrorList* errors)
       : fs(fs), file(file), fileid(fileid), tokens(tokens), errors(errors) {}
 
-  typedef void (*StateFn)(LexState*);
+  using StateFn = void (*)(LexState*);
 
   // Returns true if the cursor is at EOF.
   bool IsAtEnd() { return end >= file->Size(); }
