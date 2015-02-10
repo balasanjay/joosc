@@ -8,7 +8,7 @@
 namespace types {
 
 struct TypeId {
-  typedef u64 Base;
+  using Base = u64;
 
   Base base;
   u64 ndims;
@@ -46,7 +46,7 @@ public:
 
  private:
   friend class TypeSetBuilder;
-  typedef std::map<string, TypeId::Base> QualifiedNameBaseMap;
+  using QualifiedNameBaseMap = std::map<string, TypeId::Base>;
 
   TypeSet() = default;
 
