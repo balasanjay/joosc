@@ -1,25 +1,29 @@
+#include <algorithm>
+#include <dirent.h>
+#include <iostream>
+#include <iterator>
+
 #include "base/error.h"
+#include "joosc.h"
 #include "lexer/lexer.h"
 #include "parser/ast.h"
 #include "third_party/gtest/gtest.h"
 #include "weeder/weeder.h"
 
-#include <algorithm>
-#include <iterator>
-#include <dirent.h>
-
 using base::ErrorList;
 using base::FileSet;
 using base::PosRange;
-using lexer::StripSkippableTokens;
 using lexer::FindUnsupportedTokens;
+using lexer::StripSkippableTokens;
 using lexer::Token;
 using parser::Parse;
 using parser::Program;
 using std::back_inserter;
+using std::cerr;
 using std::copy_if;
+using std::cout;
 
-namespace weeder {
+namespace {
 
 bool ListDir(const string& dirName, vector<string>* files) {
   DIR* dir = opendir(dirName.c_str());
@@ -44,76 +48,14 @@ bool ListDir(const string& dirName, vector<string>* files) {
 class CompilerSuccessTest : public testing::TestWithParam<string> {};
 
 TEST_P(CompilerSuccessTest, ShouldCompile) {
-  FileSet::Builder builder = FileSet::Builder().AddDiskFile(GetParam());
-
-  FileSet* fs;
-  ErrorList errors;
-  vector<vector<Token>> tokens;
-
-  ASSERT_TRUE(builder.Build(&fs, &errors));
-  unique_ptr<FileSet> fs_deleter(fs);
-
-  LexJoosFiles(fs, &tokens, &errors);
-  ASSERT_TRUE(errors.Size() == 0);
-
-  vector<vector<Token>> filtered_tokens;
-  StripSkippableTokens(tokens, &filtered_tokens);
-
-  FindUnsupportedTokens(fs, filtered_tokens, &errors);
-  ASSERT_TRUE(errors.Size() == 0);
-
-  unique_ptr<Program> prog = Parse(fs, filtered_tokens, &errors);
-  if (errors.Size() != 0) {
-    errors.PrintTo(&std::cerr, base::OutputOptions::kUserOutput);
-    ASSERT_TRUE(false);
-  }
-  ASSERT_TRUE(prog != nullptr);
-
-  WeedProgram(fs, prog.get(), &errors);
-  if (errors.Size() != 0) {
-    errors.PrintTo(&std::cerr, base::OutputOptions::kUserOutput);
-    ASSERT_TRUE(false);
-  }
-  ASSERT_TRUE(prog != nullptr);
+  ASSERT_TRUE(CompilerMain(CompilerStage::WEED, {GetParam()}, &cout, &cerr));
 }
 
 class CompilerFailureTest : public testing::TestWithParam<string> {};
 
 TEST_P(CompilerFailureTest, ShouldNotCompile) {
-  FileSet::Builder builder = FileSet::Builder().AddDiskFile(GetParam());
-
-  FileSet* fs;
-  ErrorList errors;
-  vector<vector<Token>> tokens;
-
-  ASSERT_TRUE(builder.Build(&fs, &errors));
-  unique_ptr<FileSet> fs_deleter(fs);
-
-  LexJoosFiles(fs, &tokens, &errors);
-  if (errors.IsFatal()) {
-    return;
-  }
-
-  vector<vector<Token>> filtered_tokens;
-  StripSkippableTokens(tokens, &filtered_tokens);
-
-  FindUnsupportedTokens(fs, filtered_tokens, &errors);
-  if (errors.IsFatal()) {
-    return;
-  }
-
-  unique_ptr<Program> prog = Parse(fs, filtered_tokens, &errors);
-  if (errors.IsFatal()) {
-    return;
-  }
-
-  WeedProgram(fs, prog.get(), &errors);
-  if (errors.IsFatal()) {
-    return;
-  }
-
-  // Shouldn't have made it here.
-  ASSERT_TRUE(false);
+  stringstream blackhole;
+  ASSERT_FALSE(CompilerMain(CompilerStage::WEED, {GetParam()}, &blackhole, &blackhole));
 }
 
 vector<string> SuccessFiles() {
@@ -143,4 +85,4 @@ INSTANTIATE_TEST_CASE_P(MarmosetTests, CompilerSuccessTest,
 INSTANTIATE_TEST_CASE_P(MarmosetTests, CompilerFailureTest,
                         testing::ValuesIn(FailureFiles()));
 
-}  // namespace weeder
+}  // namespace
