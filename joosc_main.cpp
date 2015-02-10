@@ -1,29 +1,6 @@
-<<<<<<< HEAD
-#include "base/error.h"
-#include "base/errorlist.h"
-#include "base/fileset.h"
-#include "lexer/lexer.h"
-#include "parser/ast.h"
-#include "parser/print_visitor.h"
-#include "types/types.h"
-#include "weeder/weeder.h"
-#include <iostream>
-
-using base::ErrorList;
-using types::TypeSet;
-using base::FileSet;
-using lexer::LexJoosFiles;
-using lexer::StripSkippableTokens;
-using lexer::Token;
-using parser::Parse;
-using parser::PrintVisitor;
-using parser::Program;
-using std::cerr;
-=======
 #include "joosc.h"
 #include <iostream>
 
->>>>>>> refactor_main
 using std::cout;
 using std::cerr;
 using std::endl;

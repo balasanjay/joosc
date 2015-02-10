@@ -1,12 +1,20 @@
+#include "joosc.h"
+
+#include <iostream>
+
 #include "base/error.h"
 #include "base/errorlist.h"
 #include "base/fileset.h"
-#include "joosc.h"
 #include "lexer/lexer.h"
 #include "parser/ast.h"
 #include "parser/print_visitor.h"
+#include "types/types.h"
 #include "weeder/weeder.h"
-#include <iostream>
+
+using std::cerr;
+using std::cout;
+using std::endl;
+using std::ostream;
 
 using base::ErrorList;
 using base::FileSet;
@@ -16,10 +24,7 @@ using lexer::Token;
 using parser::Parse;
 using parser::PrintVisitor;
 using parser::Program;
-using std::cerr;
-using std::cout;
-using std::endl;
-using std::ostream;
+using types::TypeSet;
 using weeder::WeedProgram;
 
 namespace {
