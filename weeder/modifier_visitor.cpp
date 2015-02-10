@@ -18,6 +18,8 @@ using parser::EmptyStmt;
 using parser::FieldDecl;
 using parser::MethodDecl;
 using parser::ModifierList;
+using std::function;
+using std::initializer_list;
 
 namespace weeder {
 
@@ -141,39 +143,28 @@ Error* MakeClassConstructorEmptyError(const FileSet* fs, Token token) {
                                  "A constructor cannot have an empty body.");
 }
 
-inline void VerifyNoneOf(const FileSet*, const ModifierList&, ErrorList*,
-                         std::function<Error*(const FileSet*, Token)>) {
-  // Base-case for 0 modifiers, meant to be empty.
+inline void VerifyNoneOf(const FileSet* fs, const ModifierList& mods,
+                         ErrorList* out,
+                         function<Error*(const FileSet*, Token)> error_maker,
+                         const initializer_list<Modifier>& disallowed) {
+  for (auto mod : disallowed) {
+    if (mods.HasModifier(mod)) {
+      out->Append(error_maker(fs, mods.GetModifierToken(mod)));
+    }
+  }
 }
 
 template <typename... T>
-inline void VerifyNoneOf(
-    const FileSet* fs, const ModifierList& mods, ErrorList* out,
-    std::function<Error*(const FileSet*, Token)> error_maker,
-    Modifier disallowed, T... othermodifiers) {
-  if (mods.HasModifier(disallowed)) {
-    out->Append(error_maker(fs, mods.GetModifierToken(disallowed)));
+inline void VerifyOneOf(const FileSet* fs, const ModifierList& mods,
+                        ErrorList* out, Token token,
+                        function<Error*(const FileSet*, Token)> error_maker,
+                        const initializer_list<Modifier>& oneof) {
+  for (auto mod : oneof) {
+    if (mods.HasModifier(mod)) {
+      return;
+    }
   }
-
-  VerifyNoneOf(fs, mods, out, error_maker, othermodifiers...);
-}
-
-inline void VerifyOneOf(
-    const FileSet* fs, const ModifierList&, ErrorList* out, Token token,
-    std::function<Error*(const FileSet*, Token)> error_maker) {
   out->Append(error_maker(fs, token));
-}
-
-template <typename... T>
-inline void VerifyOneOf(
-    const FileSet* fs, const ModifierList& mods, ErrorList* out, Token token,
-    std::function<Error*(const FileSet*, Token)> error_maker, Modifier first,
-    T... othermodifiers) {
-  if (mods.HasModifier(first)) {
-    return;
-  }
-
-  VerifyOneOf(fs, mods, out, token, error_maker, othermodifiers...);
 }
 
 void VerifyNoConflictingAccessMods(const FileSet* fs, const ModifierList& mods,
@@ -195,11 +186,11 @@ REC_VISIT_DEFN(ClassModifierVisitor, ConstructorDecl, decl) {
 
   // Must be at least one of public or protected.
   VerifyOneOf(fs_, decl.Mods(), errors_, decl.Ident(),
-              MakeClassMemberNoAccessModError, PUBLIC, PROTECTED);
+              MakeClassMemberNoAccessModError, {PUBLIC, PROTECTED});
 
   // A constructor cannot be abstract, static, final, or native.
   VerifyNoneOf(fs_, decl.Mods(), errors_, MakeClassConstructorModifierError,
-               ABSTRACT, STATIC, FINAL, NATIVE);
+               {ABSTRACT, STATIC, FINAL, NATIVE});
 
   // A constructor must have a body; i.e. it can't be ";".
   if (IS_CONST_REF(EmptyStmt, decl.Body())) {
@@ -215,11 +206,11 @@ REC_VISIT_DEFN(ClassModifierVisitor, FieldDecl, decl) {
 
   // Must be at least one of public or protected.
   VerifyOneOf(fs_, decl.Mods(), errors_, decl.Ident(),
-              MakeClassMemberNoAccessModError, PUBLIC, PROTECTED);
+              MakeClassMemberNoAccessModError, {PUBLIC, PROTECTED});
 
   // Can't be abstract, final, or native.
   VerifyNoneOf(fs_, decl.Mods(), errors_, MakeClassFieldModifierError,
-               ABSTRACT, FINAL, NATIVE);
+               {ABSTRACT, FINAL, NATIVE});
   return false;
 }
 
@@ -229,7 +220,7 @@ REC_VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
 
   // Must be at least one of public or protected.
   VerifyOneOf(fs_, decl.Mods(), errors_, decl.Ident(),
-              MakeClassMemberNoAccessModError, PUBLIC, PROTECTED);
+              MakeClassMemberNoAccessModError, {PUBLIC, PROTECTED});
 
   const ModifierList& mods = decl.Mods();
 
@@ -251,7 +242,7 @@ REC_VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
   // An abstract method cannot be static or final.
   if (mods.HasModifier(ABSTRACT)) {
     VerifyNoneOf(fs_, mods, errors_, MakeClassMethodAbstractModifierError,
-                 STATIC, FINAL);
+                 {STATIC, FINAL});
   }
 
   // A static method cannot be final.
@@ -284,11 +275,11 @@ REC_VISIT_DEFN(InterfaceModifierVisitor, FieldDecl, decl) {
 REC_VISIT_DEFN(InterfaceModifierVisitor, MethodDecl, decl) {
   // An interface method cannot be static, final, native, or protected.
   VerifyNoneOf(fs_, decl.Mods(), errors_, MakeInterfaceMethodModifierError,
-               PROTECTED, STATIC, FINAL, NATIVE);
+               {PROTECTED, STATIC, FINAL, NATIVE});
 
   // Must be public.
   VerifyOneOf(fs_, decl.Mods(), errors_, decl.Ident(),
-              MakeInterfaceMethodNoAccessModError, PUBLIC);
+              MakeInterfaceMethodNoAccessModError, {PUBLIC});
 
   // An interface method cannot have a body.
   if (!IS_CONST_REF(EmptyStmt, decl.Body())) {
@@ -300,12 +291,12 @@ REC_VISIT_DEFN(InterfaceModifierVisitor, MethodDecl, decl) {
 
 REC_VISIT_DEFN(ModifierVisitor, ClassDecl, decl) {
   // A class cannot be protected, static, or native.
-  VerifyNoneOf(fs_, decl.Mods(), errors_, MakeClassModifierError, PROTECTED,
-               STATIC, NATIVE);
+  VerifyNoneOf(fs_, decl.Mods(), errors_, MakeClassModifierError,
+               {PROTECTED, STATIC, NATIVE});
 
   // Must be public.
   VerifyOneOf(fs_, decl.Mods(), errors_, decl.NameToken(),
-              MakeClassNoAccessModError, PUBLIC);
+              MakeClassNoAccessModError, {PUBLIC});
 
   // A class cannot be both abstract and final.
   if (decl.Mods().HasModifier(ABSTRACT) && decl.Mods().HasModifier(FINAL)) {
@@ -320,11 +311,11 @@ REC_VISIT_DEFN(ModifierVisitor, ClassDecl, decl) {
 REC_VISIT_DEFN(ModifierVisitor, InterfaceDecl, decl) {
   // An interface cannot be protected, static, final, or native.
   VerifyNoneOf(fs_, decl.Mods(), errors_, MakeInterfaceModifierError,
-               PROTECTED, STATIC, FINAL, NATIVE);
+               {PROTECTED, STATIC, FINAL, NATIVE});
 
   // Must be public.
   VerifyOneOf(fs_, decl.Mods(), errors_, decl.NameToken(),
-              MakeInterfaceNoAccessModError, PUBLIC);
+              MakeInterfaceNoAccessModError, {PUBLIC});
 
   InterfaceModifierVisitor visitor(fs_, errors_);
   decl.Accept(&visitor);
