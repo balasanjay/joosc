@@ -47,6 +47,7 @@ using lexer::TokenType;
 using parser::internal::ConvertError;
 using parser::internal::Result;
 using std::cerr;
+using std::function;
 using std::move;
 
 struct repstr {
@@ -120,21 +121,14 @@ struct ExactType {
  private:
   TokenType type_;
 };
-struct IsBinOp {
-  bool operator()(const Token& t) { return t.TypeInfo().IsBinOp(); }
-};
-struct IsUnaryOp {
-  bool operator()(const Token& t) { return t.TypeInfo().IsUnaryOp(); }
-};
-struct IsLiteral {
-  bool operator()(const Token& t) { return t.TypeInfo().IsLiteral(); }
-};
-struct IsPrimitive {
-  bool operator()(const Token& t) { return t.TypeInfo().IsPrimitive(); }
-};
-struct IsModifier {
-  bool operator()(const Token& t) { return t.TypeInfo().IsModifier(); }
-};
+
+#define TYPE_INFO_PRED(expr) auto expr = [](const Token& t) { return t.TypeInfo().expr(); }
+TYPE_INFO_PRED(IsBinOp);
+TYPE_INFO_PRED(IsUnaryOp);
+TYPE_INFO_PRED(IsLiteral);
+TYPE_INFO_PRED(IsPrimitive);
+TYPE_INFO_PRED(IsModifier);
+#undef TYPE_INFO_PRED
 
 Expr* FixPrecedence(UniquePtrVector<Expr>&& owned_exprs,
                     const vector<Token>& ops) {
@@ -253,7 +247,7 @@ Error* Parser::MakeUnexpectedEOFError() const {
       "UnexpectedEOFError", "Unexpected end-of-file.");
 }
 
-Parser Parser::ParseTokenIf(std::function<bool(Token)> pred,
+Parser Parser::ParseTokenIf(function<bool(Token)> pred,
                             Result<Token>* out) const {
   if (IsAtEnd()) {
     return Fail(MakeUnexpectedEOFError(), out);
@@ -309,7 +303,7 @@ Parser Parser::ParsePrimitiveType(Result<Type>* out) const {
   SHORT_CIRCUIT;
 
   Result<Token> primitive;
-  Parser after = ParseTokenIf(IsPrimitive(), &primitive);
+  Parser after = ParseTokenIf(IsPrimitive, &primitive);
   RETURN_IF_GOOD(after, new PrimitiveType(*primitive.Get()), out);
 
   *out = ConvertError<Token, Type>(move(primitive));
@@ -395,11 +389,11 @@ Parser Parser::ParseExpression(Result<Expr>* out) const {
 
   exprs.Append(expr.Release());
 
-  while (cur.IsNext(IsBinOp())) {
+  while (cur.IsNext(IsBinOp)) {
     Result<Token> binOp;
     Result<Expr> nextExpr;
 
-    Parser next = cur.ParseTokenIf(IsBinOp(), &binOp);
+    Parser next = cur.ParseTokenIf(IsBinOp, &binOp);
     if (!next) {
       ErrorList errors;
       binOp.ReleaseErrors(&errors);
@@ -448,11 +442,11 @@ Parser Parser::ParseUnaryExpression(Result<Expr>* out) const {
     return Fail(MakeUnexpectedEOFError(), out);
   }
 
-  if (IsNext(IsUnaryOp())) {
+  if (IsNext(IsUnaryOp)) {
     Result<Token> unaryOp;
     Result<Expr> expr;
     Parser after =
-        ParseTokenIf(IsUnaryOp(), &unaryOp).ParseUnaryExpression(&expr);
+        ParseTokenIf(IsUnaryOp, &unaryOp).ParseUnaryExpression(&expr);
     RETURN_IF_GOOD(after, new UnaryExpr(*unaryOp.Get(), expr.Release()), out);
 
     ErrorList errors;
@@ -615,7 +609,7 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
     return Fail(MakeUnexpectedEOFError(), out);
   }
 
-  if (IsNext(IsLiteral())) {
+  if (IsNext(IsLiteral)) {
     Token lit = GetNext();
     Parser after = (*this).Advance();
     switch (lit.type) {
@@ -1130,7 +1124,7 @@ Parser Parser::ParseModifierList(Result<ModifierList>* out) const {
   Parser cur = *this;
   while (true) {
     Result<Token> tok;
-    Parser next = cur.ParseTokenIf(IsModifier(), &tok);
+    Parser next = cur.ParseTokenIf(IsModifier, &tok);
     if (!next) {
       return cur.Success(new ModifierList(move(ml)), out);
     }

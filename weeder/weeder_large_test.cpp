@@ -120,14 +120,9 @@ vector<string> SuccessFiles() {
   vector<string> files;
   assert(ListDir("third_party/cs444/assignment_testcases/a1", &files));
 
-  struct {
-    bool operator()(const string& file) {
-      return file.find("Je") == string::npos;
-    }
-  } pred;
-
   vector<string> filtered;
-  copy_if(files.begin(), files.end(), back_inserter(filtered), pred);
+  copy_if(files.begin(), files.end(), back_inserter(filtered),
+          [](const string& file) { return file.find("Je") == string::npos; });
 
   return filtered;
 }
@@ -136,14 +131,9 @@ vector<string> FailureFiles() {
   vector<string> files;
   assert(ListDir("third_party/cs444/assignment_testcases/a1", &files));
 
-  struct {
-    bool operator()(const string& file) {
-      return file.find("Je") != string::npos;
-    }
-  } pred;
-
   vector<string> filtered;
-  copy_if(files.begin(), files.end(), back_inserter(filtered), pred);
+  copy_if(files.begin(), files.end(), back_inserter(filtered),
+          [](const string& file) { return file.find("Je") != string::npos; });
 
   return filtered;
 }
