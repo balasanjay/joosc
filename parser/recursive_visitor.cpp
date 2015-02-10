@@ -187,8 +187,8 @@ VISIT_DEFN(RecursiveVisitor, ImportDecl, decl) {
 
 VISIT_DEFN(RecursiveVisitor, CompUnit, unit) {
   SHORT_CIRCUIT_CHILD(CompUnit, unit);
-  for (int i = 0; i < unit.Imports().Size(); ++i) {
-    unit.Imports().At(i)->Accept(this);
+  for (const auto& import : unit.Imports()) {
+    import.Accept(this);
   }
   for (int i = 0; i < unit.Types().Size(); ++i) {
     unit.Types().At(i)->Accept(this);

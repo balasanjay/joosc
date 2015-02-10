@@ -24,11 +24,12 @@ class QualifiedName final {
 
   QualifiedName() = default;
   QualifiedName(const QualifiedName&) = default;
-  QualifiedName(QualifiedName&&) = default;
+  QualifiedName& operator=(const QualifiedName&) = default;
 
   void PrintTo(std::ostream* os) const { *os << name_; }
 
   REF_GETTER(string, Name, name_);
+  REF_GETTER(vector<string>, Parts, parts_);
 
  private:
   vector<lexer::Token>
@@ -720,6 +721,7 @@ class ImportDecl final {
  public:
   ImportDecl(const QualifiedName& name, bool isWildCard)
       : name_(name), isWildCard_(isWildCard) {}
+  ImportDecl(const ImportDecl&) = default;
 
   void Accept(Visitor* visitor) const { visitor->VisitImportDecl(*this); }
 
@@ -727,29 +729,27 @@ class ImportDecl final {
   VAL_GETTER(bool, IsWildCard, isWildCard_);
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(ImportDecl);
-
   QualifiedName name_;
   bool isWildCard_;
 };
 
 class CompUnit final {
  public:
-  CompUnit(QualifiedName* package, base::UniquePtrVector<ImportDecl>&& imports,
+  CompUnit(QualifiedName* package, const vector<ImportDecl>& imports,
            base::UniquePtrVector<TypeDecl>&& types)
       : package_(package),
-        imports_(std::forward<base::UniquePtrVector<ImportDecl>>(imports)),
+        imports_(imports),
         types_(std::forward<base::UniquePtrVector<TypeDecl>>(types)) {}
 
   void Accept(Visitor* visitor) const { visitor->VisitCompUnit(*this); }
 
   VAL_GETTER(const QualifiedName*, Package, package_.get());
-  REF_GETTER(base::UniquePtrVector<ImportDecl>, Imports, imports_);
+  REF_GETTER(vector<ImportDecl>, Imports, imports_);
   REF_GETTER(base::UniquePtrVector<TypeDecl>, Types, types_);
 
  private:
   unique_ptr<QualifiedName> package_;  // Might be nullptr.
-  base::UniquePtrVector<ImportDecl> imports_;
+  vector<ImportDecl> imports_;
   base::UniquePtrVector<TypeDecl> types_;
 };
 

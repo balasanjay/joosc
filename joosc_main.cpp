@@ -4,10 +4,12 @@
 #include "lexer/lexer.h"
 #include "parser/ast.h"
 #include "parser/print_visitor.h"
+#include "types/types.h"
 #include "weeder/weeder.h"
 #include <iostream>
 
 using base::ErrorList;
+using types::TypeSet;
 using base::FileSet;
 using lexer::LexJoosFiles;
 using lexer::StripSkippableTokens;
@@ -115,6 +117,20 @@ int main(int argc, char** argv) {
   {
     PrintVisitor printer = PrintVisitor::Pretty(&cout);
     program.get()->Accept(&printer);
+
+    TypeSet ts(vector<string>{
+        "java.util.List",
+        "java.util.ArrayList",
+        "java.lang.Integer",
+        "com.google.Server",
+    });
+
+
+    cout << "Original\n";
+    ts.PrintTo(&cout);
+
+    cout << "\n\nWithImports\n";
+    ts.WithImports(program->CompUnits().At(0)->Imports()).PrintTo(&cout);
   }
 
   return 0;
