@@ -21,7 +21,7 @@ REWRITE_VISIT_DEFN(Rewriter, BinExpr, Expr, expr) {
 }
 REWRITE_VISIT_DEFN(Rewriter, CallExpr, Expr, expr) {
   Expr* base = expr.Base().Rewrite(this);
-  unique_ptr<ArgumentList> args(expr.Args().Rewrite(this));
+  uptr<ArgumentList> args(expr.Args().Rewrite(this));
   return new CallExpr(base, expr.Lparen(), std::move(*args));
 }
 REWRITE_VISIT_DEFN(Rewriter, CastExpr, Expr, expr) {
@@ -61,7 +61,7 @@ REWRITE_VISIT_DEFN(Rewriter, NewArrayExpr, Expr, expr) {
 }
 REWRITE_VISIT_DEFN(Rewriter, NewClassExpr, Expr, expr) {
   Type* type = expr.GetType().clone();
-  unique_ptr<ArgumentList> args(expr.Args().Rewrite(this));
+  uptr<ArgumentList> args(expr.Args().Rewrite(this));
   return new NewClassExpr(expr.NewToken(), type, std::move(*args));
 }
 REWRITE_VISIT_DEFN(Rewriter, ParenExpr, Expr, expr) {
@@ -164,7 +164,7 @@ REWRITE_VISIT_DEFN(Rewriter, FieldDecl, MemberDecl, field) {
 
 REWRITE_VISIT_DEFN(Rewriter, ConstructorDecl, MemberDecl, meth) {
   ModifierList mods(meth.Mods());
-  unique_ptr<ParamList> params(meth.Params().Rewrite(this));
+  uptr<ParamList> params(meth.Params().Rewrite(this));
   Stmt* body = meth.Body().Rewrite(this);
   return new ConstructorDecl(std::move(mods), meth.Ident(), std::move(*params), body);
 }
@@ -172,7 +172,7 @@ REWRITE_VISIT_DEFN(Rewriter, ConstructorDecl, MemberDecl, meth) {
 REWRITE_VISIT_DEFN(Rewriter, MethodDecl, MemberDecl, meth) {
   ModifierList mods(meth.Mods());
   Type* type = meth.GetType().clone();
-  unique_ptr<ParamList> params(meth.Params().Rewrite(this));
+  uptr<ParamList> params(meth.Params().Rewrite(this));
   Stmt* body = meth.Body().Rewrite(this);
   return new MethodDecl(std::move(mods), type, meth.Ident(), std::move(*params), body);
 }
