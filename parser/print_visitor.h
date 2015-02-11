@@ -291,12 +291,6 @@ class PrintVisitor final : public Visitor {
     *os_ << '}';
   }
 
-  VISIT_DECL(ImportDecl, import) {
-    *os_ << "import ";
-    import.Name().PrintTo(os_);
-    *os_ << " ;";
-  }
-
   VISIT_DECL(CompUnit, unit) {
     if (unit.Package() != nullptr) {
       *os_ << "package ";
@@ -304,10 +298,10 @@ class PrintVisitor final : public Visitor {
       *os_ << ";" << RepStr(NumDelimiters(), newline_);
     }
 
-    for (int i = 0; i < unit.Imports().Size(); ++i) {
+    for (const auto& import : unit.Imports()) {
       *os_ << "import ";
-      unit.Imports().At(i)->Name().PrintTo(os_);
-      if (unit.Imports().At(i)->IsWildCard()) {
+      import.Name().PrintTo(os_);
+      if (import.IsWildCard()) {
         *os_ << ".*";
       }
       *os_ << ";" << RepStr(NumDelimiters(), newline_);

@@ -1,5 +1,7 @@
-#include "base/file.h"
 #include "base/file_impl.h"
+
+#include "base/error.h"
+#include "base/file.h"
 #include "third_party/gtest/gtest.h"
 
 namespace base {
@@ -79,10 +81,13 @@ TEST(StringFileTest, PrintRangePtr) {
       "  String bar = 3; /* foo bar \n"
       "                  ^~         ";
 
-  StringFile sf("foo.txt", file);
+  FileSet* fs;
+  ErrorList errors;
+  ASSERT_TRUE(FileSet::Builder().AddStringFile("foo.txt", file).Build(&fs, &errors));
+  uptr<FileSet> fs_deleter(fs);
 
   std::stringstream ss;
-  PrintRangePtr(&ss, &sf, PosRange(0, 30, 32));
+  PrintRangePtr(&ss, OutputOptions::kSimpleOutput, fs, PosRange(0, 30, 32));
 
   EXPECT_EQ(expected, ss.str());
 }
