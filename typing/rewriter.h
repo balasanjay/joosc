@@ -51,10 +51,10 @@ class Program;
 
 
 #define REWRITE_VISIT_DECL(type, ret_type, var) \
-  virtual ret_type* Visit##type(const parser::type& var)
+  virtual ret_type* RewriteVisit##type(const parser::type& var)
 
 #define REWRITE_VISIT_DEFN(cls, type, ret_type, var) \
-  ret_type* cls::Visit##type(const parser::type& var)
+  ret_type* cls::RewriteVisit##type(const parser::type& var)
 
 // Similar to RecursiveVisitor.
 

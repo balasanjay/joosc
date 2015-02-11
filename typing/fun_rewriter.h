@@ -28,7 +28,7 @@ REWRITE_VISIT_DEFN(FunRewriter, ClassDecl, TypeDecl, type) {
   }
   base::UniquePtrVector<MemberDecl> members;
   for (int i = 0; i < type.Members().Size(); ++i) {
-    members.Append(type.Members().At(i)->Rewrite(this));
+    members.Append(type.Members().At(i)->RewriteAccept(this));
   }
   ReferenceType* super = nullptr;
   if (type.Super() != nullptr) {

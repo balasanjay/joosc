@@ -10,27 +10,27 @@ using base::Error;
 using base::FileSet;
 
 REWRITE_VISIT_DEFN(Rewriter, ArrayIndexExpr, Expr, expr) {
-  Expr* base = expr.Base().Rewrite(this);
-  Expr* index = expr.Index().Rewrite(this);
+  Expr* base = expr.Base().RewriteAccept(this);
+  Expr* index = expr.Index().RewriteAccept(this);
   return new ArrayIndexExpr(base, index);
 }
 REWRITE_VISIT_DEFN(Rewriter, BinExpr, Expr, expr) {
-  Expr* lhs = expr.Lhs().Rewrite(this);
-  Expr* rhs = expr.Rhs().Rewrite(this);
+  Expr* lhs = expr.Lhs().RewriteAccept(this);
+  Expr* rhs = expr.Rhs().RewriteAccept(this);
   return new BinExpr(lhs, expr.Op(), rhs);
 }
 REWRITE_VISIT_DEFN(Rewriter, CallExpr, Expr, expr) {
-  Expr* base = expr.Base().Rewrite(this);
-  uptr<ArgumentList> args(expr.Args().Rewrite(this));
+  Expr* base = expr.Base().RewriteAccept(this);
+  uptr<ArgumentList> args(expr.Args().RewriteAccept(this));
   return new CallExpr(base, expr.Lparen(), std::move(*args));
 }
 REWRITE_VISIT_DEFN(Rewriter, CastExpr, Expr, expr) {
   Type* type = expr.GetType().clone();
-  Expr* castedExpr = expr.GetExpr().Rewrite(this);
+  Expr* castedExpr = expr.GetExpr().RewriteAccept(this);
   return new CastExpr(type, castedExpr);
 }
 REWRITE_VISIT_DEFN(Rewriter, FieldDerefExpr, Expr, expr) {
-  Expr* base = expr.Base().Rewrite(this);
+  Expr* base = expr.Base().RewriteAccept(this);
   return new FieldDerefExpr(base, expr.FieldName(), expr.GetToken());
 }
 REWRITE_VISIT_DEFN(Rewriter, BoolLitExpr, Expr, expr) {
@@ -55,26 +55,26 @@ REWRITE_VISIT_DEFN(Rewriter, NewArrayExpr, Expr, expr) {
   Type* type = expr.GetType().clone();
   Expr* arrayExpr = nullptr;
   if (expr.GetExpr() != nullptr) {
-    arrayExpr = expr.GetExpr()->Rewrite(this);
+    arrayExpr = expr.GetExpr()->RewriteAccept(this);
   }
   return new NewArrayExpr(type, arrayExpr);
 }
 REWRITE_VISIT_DEFN(Rewriter, NewClassExpr, Expr, expr) {
   Type* type = expr.GetType().clone();
-  uptr<ArgumentList> args(expr.Args().Rewrite(this));
+  uptr<ArgumentList> args(expr.Args().RewriteAccept(this));
   return new NewClassExpr(expr.NewToken(), type, std::move(*args));
 }
 REWRITE_VISIT_DEFN(Rewriter, ParenExpr, Expr, expr) {
-  return new ParenExpr(expr.Nested().Rewrite(this));
+  return new ParenExpr(expr.Nested().RewriteAccept(this));
 }
 REWRITE_VISIT_DEFN(Rewriter, ThisExpr, Expr, ) {
   return new ThisExpr();
 }
 REWRITE_VISIT_DEFN(Rewriter, UnaryExpr, Expr, expr) {
-  return new UnaryExpr(expr.Op(), expr.Rhs().Rewrite(this));
+  return new UnaryExpr(expr.Op(), expr.Rhs().RewriteAccept(this));
 }
 REWRITE_VISIT_DEFN(Rewriter, InstanceOfExpr, Expr, expr) {
-  Expr* lhs = expr.Lhs().Rewrite(this);
+  Expr* lhs = expr.Lhs().RewriteAccept(this);
   Type* type = expr.GetType().clone();
   return new InstanceOfExpr(lhs, expr.InstanceOf(), type);
 }
@@ -83,7 +83,7 @@ REWRITE_VISIT_DEFN(Rewriter, BlockStmt, Stmt, stmt) {
   base::UniquePtrVector<Stmt> newStmts;
   const auto& stmts = stmt.Stmts();
   for (int i = 0; i < stmts.Size(); ++i) {
-    newStmts.Append(stmts.At(i)->Rewrite(this));
+    newStmts.Append(stmts.At(i)->RewriteAccept(this));
   }
   return new BlockStmt(std::move(newStmts));
 }
@@ -91,50 +91,50 @@ REWRITE_VISIT_DEFN(Rewriter, EmptyStmt, Stmt, ) {
   return new EmptyStmt();
 }
 REWRITE_VISIT_DEFN(Rewriter, ExprStmt, Stmt, stmt) {
-  return new ExprStmt(stmt.GetExpr().Rewrite(this));
+  return new ExprStmt(stmt.GetExpr().RewriteAccept(this));
 }
 REWRITE_VISIT_DEFN(Rewriter, LocalDeclStmt, Stmt, stmt) {
   Type* type = stmt.GetType().clone();
-  Expr* expr = stmt.GetExpr().Rewrite(this);
+  Expr* expr = stmt.GetExpr().RewriteAccept(this);
   return new LocalDeclStmt(type, stmt.Ident(), expr);
 }
 REWRITE_VISIT_DEFN(Rewriter, ReturnStmt, Stmt, stmt) {
   Expr* expr = nullptr;
   if (stmt.GetExpr() != nullptr) {
-    expr = stmt.GetExpr()->Rewrite(this);
+    expr = stmt.GetExpr()->RewriteAccept(this);
   }
   return new ReturnStmt(expr);
 }
 REWRITE_VISIT_DEFN(Rewriter, IfStmt, Stmt, stmt) {
-  Expr* cond = stmt.Cond().Rewrite(this);
-  Stmt* trueBody = stmt.TrueBody().Rewrite(this);
-  Stmt* falseBody = stmt.FalseBody().Rewrite(this);
+  Expr* cond = stmt.Cond().RewriteAccept(this);
+  Stmt* trueBody = stmt.TrueBody().RewriteAccept(this);
+  Stmt* falseBody = stmt.FalseBody().RewriteAccept(this);
   return new IfStmt(cond, trueBody, falseBody);
 }
 REWRITE_VISIT_DEFN(Rewriter, ForStmt, Stmt, stmt) {
-  Stmt* init = stmt.Init().Rewrite(this);
+  Stmt* init = stmt.Init().RewriteAccept(this);
   Expr* cond = nullptr;
   if (stmt.Cond() != nullptr) {
-    cond = stmt.Cond()->Rewrite(this);
+    cond = stmt.Cond()->RewriteAccept(this);
   }
   Expr* update = nullptr;
   if (stmt.Update() != nullptr) {
-    update = stmt.Update()->Rewrite(this);
+    update = stmt.Update()->RewriteAccept(this);
   }
-  Stmt* body = stmt.Body().Rewrite(this);
+  Stmt* body = stmt.Body().RewriteAccept(this);
   return new ForStmt(init, cond, update, body);
 }
 
 REWRITE_VISIT_DEFN(Rewriter, WhileStmt, Stmt, stmt) {
-  Expr* cond = stmt.Cond().Rewrite(this);
-  Stmt* body = stmt.Body().Rewrite(this);
+  Expr* cond = stmt.Cond().RewriteAccept(this);
+  Stmt* body = stmt.Body().RewriteAccept(this);
   return new WhileStmt(cond, body);
 }
 
 REWRITE_VISIT_DEFN(Rewriter, ArgumentList, ArgumentList, args) {
   base::UniquePtrVector<Expr> newExprs;
   for (int i = 0; i < args.Args().Size(); ++i) {
-    newExprs.Append(args.Args().At(i)->Rewrite(this));
+    newExprs.Append(args.Args().At(i)->RewriteAccept(this));
   }
   return new ArgumentList(std::move(newExprs));
 }
@@ -142,7 +142,7 @@ REWRITE_VISIT_DEFN(Rewriter, ArgumentList, ArgumentList, args) {
 REWRITE_VISIT_DEFN(Rewriter, ParamList, ParamList, params) {
   base::UniquePtrVector<Param> newParams;
   for (int i = 0; i < params.Params().Size(); ++i) {
-    newParams.Append(params.Params().At(i)->Rewrite(this));
+    newParams.Append(params.Params().At(i)->RewriteAccept(this));
   }
   return new ParamList(std::move(newParams));
 }
@@ -157,23 +157,23 @@ REWRITE_VISIT_DEFN(Rewriter, FieldDecl, MemberDecl, field) {
   Type* type = field.GetType().clone();
   Expr* val = nullptr;
   if (field.Val() != nullptr) {
-    val = field.Val()->Rewrite(this);
+    val = field.Val()->RewriteAccept(this);
   }
   return new FieldDecl(std::move(mods), type, field.Ident(), val);
 }
 
 REWRITE_VISIT_DEFN(Rewriter, ConstructorDecl, MemberDecl, meth) {
   ModifierList mods(meth.Mods());
-  uptr<ParamList> params(meth.Params().Rewrite(this));
-  Stmt* body = meth.Body().Rewrite(this);
+  uptr<ParamList> params(meth.Params().RewriteAccept(this));
+  Stmt* body = meth.Body().RewriteAccept(this);
   return new ConstructorDecl(std::move(mods), meth.Ident(), std::move(*params), body);
 }
 
 REWRITE_VISIT_DEFN(Rewriter, MethodDecl, MemberDecl, meth) {
   ModifierList mods(meth.Mods());
   Type* type = meth.GetType().clone();
-  uptr<ParamList> params(meth.Params().Rewrite(this));
-  Stmt* body = meth.Body().Rewrite(this);
+  uptr<ParamList> params(meth.Params().RewriteAccept(this));
+  Stmt* body = meth.Body().RewriteAccept(this);
   return new MethodDecl(std::move(mods), type, meth.Ident(), std::move(*params), body);
 }
 
@@ -185,7 +185,7 @@ REWRITE_VISIT_DEFN(Rewriter, ClassDecl, TypeDecl, type) {
   }
   base::UniquePtrVector<MemberDecl> members;
   for (int i = 0; i < type.Members().Size(); ++i) {
-    members.Append(type.Members().At(i)->Rewrite(this));
+    members.Append(type.Members().At(i)->RewriteAccept(this));
   }
   ReferenceType* super = nullptr;
   if (type.Super() != nullptr) {
@@ -202,7 +202,7 @@ REWRITE_VISIT_DEFN(Rewriter, InterfaceDecl, TypeDecl, type) {
   }
   base::UniquePtrVector<MemberDecl> members;
   for (int i = 0; i < type.Members().Size(); ++i) {
-    members.Append(type.Members().At(i)->Rewrite(this));
+    members.Append(type.Members().At(i)->RewriteAccept(this));
   }
   return new InterfaceDecl(std::move(mods), type.Name(), type.NameToken(), std::move(interfaces), std::move(members));
 }
@@ -219,10 +219,10 @@ REWRITE_VISIT_DEFN(Rewriter, CompUnit, CompUnit, unit) {
   base::UniquePtrVector<ImportDecl> imports;
   base::UniquePtrVector<TypeDecl> decls;
   for (int i = 0; i < unit.Imports().Size(); ++i) {
-    imports.Append(unit.Imports().At(i)->Rewrite(this));
+    imports.Append(unit.Imports().At(i)->RewriteAccept(this));
   }
   for (int i = 0; i < unit.Types().Size(); ++i) {
-    decls.Append(unit.Types().At(i)->Rewrite(this));
+    decls.Append(unit.Types().At(i)->RewriteAccept(this));
   }
   return new CompUnit(package, std::move(imports), std::move(decls));
 }
@@ -230,7 +230,7 @@ REWRITE_VISIT_DEFN(Rewriter, CompUnit, CompUnit, unit) {
 REWRITE_VISIT_DEFN(Rewriter, Program, Program, prog) {
   base::UniquePtrVector<CompUnit> units;
   for (int i = 0; i < prog.CompUnits().Size(); ++i) {
-    units.Append(prog.CompUnits().At(i)->Rewrite(this));
+    units.Append(prog.CompUnits().At(i)->RewriteAccept(this));
   }
   return new Program(std::move(units));
 }
