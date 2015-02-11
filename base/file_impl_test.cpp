@@ -84,7 +84,7 @@ TEST(StringFileTest, PrintRangePtr) {
   FileSet* fs;
   ErrorList errors;
   ASSERT_TRUE(FileSet::Builder().AddStringFile("foo.txt", file).Build(&fs, &errors));
-  unique_ptr<FileSet> fs_deleter(fs);
+  uptr<FileSet> fs_deleter(fs);
 
   std::stringstream ss;
   PrintRangePtr(&ss, OutputOptions::kSimpleOutput, fs, PosRange(0, 30, 32));

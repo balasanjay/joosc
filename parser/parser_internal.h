@@ -66,7 +66,7 @@ class Result final {
   friend Result<T2> ConvertError(Result<T1>&&);
 
   bool success_ = false;
-  unique_ptr<T> data_;
+  uptr<T> data_;
   base::ErrorList errors_;
 };
 

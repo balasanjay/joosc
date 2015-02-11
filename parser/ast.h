@@ -94,7 +94,7 @@ class ArrayType : public Type {
  private:
   DISALLOW_COPY_AND_ASSIGN(ArrayType);
 
-  unique_ptr<Type> elemtype_;
+  uptr<Type> elemtype_;
 };
 
 class Expr {
@@ -155,9 +155,9 @@ class InstanceOfExpr : public Expr {
  private:
   DISALLOW_COPY_AND_ASSIGN(InstanceOfExpr);
 
-  unique_ptr<Expr> lhs_;
+  uptr<Expr> lhs_;
   lexer::Token instanceof_;
-  unique_ptr<Type> type_;
+  uptr<Type> type_;
 };
 
 class ParenExpr : public Expr {
@@ -169,7 +169,7 @@ class ParenExpr : public Expr {
   REF_GETTER(Expr, Nested, *nested_);
 
  private:
-  unique_ptr<Expr> nested_;
+  uptr<Expr> nested_;
 };
 
 class BinExpr : public Expr {
@@ -189,8 +189,8 @@ class BinExpr : public Expr {
 
  private:
   lexer::Token op_;
-  unique_ptr<Expr> lhs_;
-  unique_ptr<Expr> rhs_;
+  uptr<Expr> lhs_;
+  uptr<Expr> rhs_;
 };
 
 class UnaryExpr : public Expr {
@@ -207,7 +207,7 @@ class UnaryExpr : public Expr {
 
  private:
   lexer::Token op_;
-  unique_ptr<Expr> rhs_;
+  uptr<Expr> rhs_;
 };
 
 class LitExpr : public Expr {
@@ -276,8 +276,8 @@ class ArrayIndexExpr : public Expr {
   REF_GETTER(Expr, Index, *index_);
 
  private:
-  unique_ptr<Expr> base_;
-  unique_ptr<Expr> index_;
+  uptr<Expr> base_;
+  uptr<Expr> index_;
 };
 
 class FieldDerefExpr : public Expr {
@@ -291,7 +291,7 @@ class FieldDerefExpr : public Expr {
   REF_GETTER(string, FieldName, fieldname_);
 
  private:
-  unique_ptr<Expr> base_;
+  uptr<Expr> base_;
   string fieldname_;
   lexer::Token token_;
 };
@@ -308,7 +308,7 @@ class CallExpr : public Expr {
   REF_GETTER(ArgumentList, Args, args_);
 
  private:
-  unique_ptr<Expr> base_;
+  uptr<Expr> base_;
   lexer::Token lparen_;
   ArgumentList args_;
 };
@@ -325,8 +325,8 @@ class CastExpr : public Expr {
  private:
   DISALLOW_COPY_AND_ASSIGN(CastExpr);
 
-  unique_ptr<Type> type_;
-  unique_ptr<Expr> expr_;
+  uptr<Type> type_;
+  uptr<Expr> expr_;
 };
 
 class NewClassExpr : public Expr {
@@ -344,7 +344,7 @@ class NewClassExpr : public Expr {
   DISALLOW_COPY_AND_ASSIGN(NewClassExpr);
 
   lexer::Token newTok_;
-  unique_ptr<Type> type_;
+  uptr<Type> type_;
   ArgumentList args_;
 };
 
@@ -360,8 +360,8 @@ class NewArrayExpr : public Expr {
  private:
   DISALLOW_COPY_AND_ASSIGN(NewArrayExpr);
 
-  unique_ptr<Type> type_;
-  unique_ptr<Expr> expr_; // Can be nullptr.
+  uptr<Type> type_;
+  uptr<Expr> expr_; // Can be nullptr.
 };
 
 class Stmt {
@@ -398,9 +398,9 @@ class LocalDeclStmt : public Stmt {
   // TODO: get the identifier as a string.
 
  private:
-  unique_ptr<Type> type_;
+  uptr<Type> type_;
   lexer::Token ident_;
-  unique_ptr<Expr> expr_;
+  uptr<Expr> expr_;
 };
 
 class ReturnStmt : public Stmt {
@@ -412,7 +412,7 @@ class ReturnStmt : public Stmt {
   VAL_GETTER(const Expr*, GetExpr, expr_.get());
 
  private:
-  unique_ptr<Expr> expr_; // Can be nullptr.
+  uptr<Expr> expr_; // Can be nullptr.
 };
 
 class ExprStmt : public Stmt {
@@ -424,7 +424,7 @@ class ExprStmt : public Stmt {
   REF_GETTER(Expr, GetExpr, *expr_);
 
  private:
-  unique_ptr<Expr> expr_;
+  uptr<Expr> expr_;
 };
 
 class BlockStmt : public Stmt {
@@ -455,9 +455,9 @@ class IfStmt : public Stmt {
  private:
   DISALLOW_COPY_AND_ASSIGN(IfStmt);
 
-  unique_ptr<Expr> cond_;
-  unique_ptr<Stmt> trueBody_;
-  unique_ptr<Stmt> falseBody_;
+  uptr<Expr> cond_;
+  uptr<Stmt> trueBody_;
+  uptr<Stmt> falseBody_;
 };
 
 class ForStmt : public Stmt {
@@ -475,10 +475,10 @@ class ForStmt : public Stmt {
  private:
   DISALLOW_COPY_AND_ASSIGN(ForStmt);
 
-  unique_ptr<Stmt> init_;
-  unique_ptr<Expr> cond_;    // May be nullptr.
-  unique_ptr<Expr> update_;  // May be nullptr.
-  unique_ptr<Stmt> body_;
+  uptr<Stmt> init_;
+  uptr<Expr> cond_;    // May be nullptr.
+  uptr<Expr> update_;  // May be nullptr.
+  uptr<Stmt> body_;
 };
 
 class WhileStmt : public Stmt {
@@ -493,8 +493,8 @@ class WhileStmt : public Stmt {
  private:
   DISALLOW_COPY_AND_ASSIGN(WhileStmt);
 
-  unique_ptr<Expr> cond_;
-  unique_ptr<Stmt> body_;
+  uptr<Expr> cond_;
+  uptr<Stmt> body_;
 };
 
 class ModifierList {
@@ -549,7 +549,7 @@ class Param final {
  private:
   DISALLOW_COPY_AND_ASSIGN(Param);
 
-  unique_ptr<Type> type_;
+  uptr<Type> type_;
   lexer::Token ident_;
 };
 
@@ -606,7 +606,7 @@ class ConstructorDecl : public MemberDecl {
 
   ModifierList mods_;
   ParamList params_;
-  unique_ptr<Stmt> body_;
+  uptr<Stmt> body_;
 };
 
 class FieldDecl : public MemberDecl {
@@ -624,8 +624,8 @@ class FieldDecl : public MemberDecl {
  private:
   DISALLOW_COPY_AND_ASSIGN(FieldDecl);
 
-  unique_ptr<Type> type_;
-  unique_ptr<Expr> val_;  // Might be nullptr.
+  uptr<Type> type_;
+  uptr<Expr> val_;  // Might be nullptr.
 };
 
 class MethodDecl : public MemberDecl {
@@ -646,9 +646,9 @@ class MethodDecl : public MemberDecl {
  private:
   DISALLOW_COPY_AND_ASSIGN(MethodDecl);
 
-  unique_ptr<Type> type_;
+  uptr<Type> type_;
   ParamList params_;
-  unique_ptr<Stmt> body_;
+  uptr<Stmt> body_;
 };
 
 class TypeDecl {
@@ -699,7 +699,7 @@ class ClassDecl : public TypeDecl {
  private:
   DISALLOW_COPY_AND_ASSIGN(ClassDecl);
 
-  unique_ptr<ReferenceType> super_;  // Might be nullptr.
+  uptr<ReferenceType> super_;  // Might be nullptr.
 };
 
 class InterfaceDecl : public TypeDecl {
@@ -748,7 +748,7 @@ class CompUnit final {
   REF_GETTER(base::UniquePtrVector<TypeDecl>, Types, types_);
 
  private:
-  unique_ptr<QualifiedName> package_;  // Might be nullptr.
+  uptr<QualifiedName> package_;  // Might be nullptr.
   vector<ImportDecl> imports_;
   base::UniquePtrVector<TypeDecl> types_;
 };
@@ -772,7 +772,7 @@ class Program final {
 #undef REF_GETTER
 #undef VAL_GETTER
 
-unique_ptr<Program> Parse(const base::FileSet* fs,
+uptr<Program> Parse(const base::FileSet* fs,
                           const vector<vector<lexer::Token>>& tokens,
                           base::ErrorList* out);
 

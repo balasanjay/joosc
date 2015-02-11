@@ -51,8 +51,8 @@ class ParserTest : public ::testing::Test {
   }
 
   vector<vector<Token>> tokens;
-  unique_ptr<FileSet> fs_;
-  unique_ptr<Parser> parser_;
+  uptr<FileSet> fs_;
+  uptr<Parser> parser_;
 };
 
 template <typename T>
@@ -401,7 +401,7 @@ TEST_F(ParserTest, PrimaryBaseAbort) {
 
 TEST_F(ParserTest, PrimaryEndFailedArrayAccess) {
   MakeParser("[;]");
-  unique_ptr<Expr> primary(new ThisExpr());
+  uptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after = parser_->ParsePrimaryEnd(primary.get(), &primaryEnd);
 
@@ -413,7 +413,7 @@ TEST_F(ParserTest, PrimaryEndFailedArrayAccess) {
 
 TEST_F(ParserTest, PrimaryEndArrayAccessWithField) {
   MakeParser("[3].f");
-  unique_ptr<Expr> primary(new ThisExpr());
+  uptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after = parser_->ParsePrimaryEnd(primary.release(), &primaryEnd);
 
@@ -424,7 +424,7 @@ TEST_F(ParserTest, PrimaryEndArrayAccessWithField) {
 
 TEST_F(ParserTest, PrimaryEndArrayAccessNoTrailing) {
   MakeParser("[3]+5");
-  unique_ptr<Expr> primary(new ThisExpr());
+  uptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after = parser_->ParsePrimaryEnd(primary.release(), &primaryEnd);
 
@@ -435,7 +435,7 @@ TEST_F(ParserTest, PrimaryEndArrayAccessNoTrailing) {
 
 TEST_F(ParserTest, PrimaryEndNoAccess) {
   MakeParser(".f");
-  unique_ptr<Expr> primary(new ThisExpr());
+  uptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after = parser_->ParsePrimaryEnd(primary.release(), &primaryEnd);
 
@@ -446,7 +446,7 @@ TEST_F(ParserTest, PrimaryEndNoAccess) {
 
 TEST_F(ParserTest, DISABLED_PrimaryEndNoArrayShortCircuit) {
   MakeParser("");
-  unique_ptr<Expr> primary(new ThisExpr());
+  uptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
@@ -459,7 +459,7 @@ TEST_F(ParserTest, DISABLED_PrimaryEndNoArrayShortCircuit) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayUnexpectedToken) {
   MakeParser(";");
-  unique_ptr<Expr> primary(new ThisExpr());
+  uptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
@@ -472,7 +472,7 @@ TEST_F(ParserTest, PrimaryEndNoArrayUnexpectedToken) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayFieldFail) {
   MakeParser(".;");
-  unique_ptr<Expr> primary(new ThisExpr());
+  uptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
@@ -485,7 +485,7 @@ TEST_F(ParserTest, PrimaryEndNoArrayFieldFail) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEnd) {
   MakeParser(".f[0]");
-  unique_ptr<Expr> primary(new ThisExpr());
+  uptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
@@ -497,7 +497,7 @@ TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEnd) {
 
 TEST_F(ParserTest, PrimaryEndDoubleArrayAccess) {
   MakeParser("[0][1]");
-  unique_ptr<Expr> primary(new ThisExpr());
+  uptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after = parser_->ParsePrimaryEnd(primary.release(), &primaryEnd);
 
@@ -508,7 +508,7 @@ TEST_F(ParserTest, PrimaryEndDoubleArrayAccess) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEndFail) {
   MakeParser(".f;");
-  unique_ptr<Expr> primary(new ThisExpr());
+  uptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
@@ -520,7 +520,7 @@ TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEndFail) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayMethodFail) {
   MakeParser("(;)");
-  unique_ptr<Expr> primary(new ThisExpr());
+  uptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
@@ -533,7 +533,7 @@ TEST_F(ParserTest, PrimaryEndNoArrayMethodFail) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayMethodWithEnd) {
   MakeParser("().f");
-  unique_ptr<Expr> primary(new ThisExpr());
+  uptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
@@ -545,7 +545,7 @@ TEST_F(ParserTest, PrimaryEndNoArrayMethodWithEnd) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayMethodWithEndFail) {
   MakeParser("();");
-  unique_ptr<Expr> primary(new ThisExpr());
+  uptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
