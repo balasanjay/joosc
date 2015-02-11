@@ -1,8 +1,8 @@
 #include "weeder/int_range_visitor.h"
 
+#include "ast/ast.h"
 #include "base/macros.h"
 #include "lexer/lexer.h"
-#include "ast/ast.h"
 
 using ast::IntLitExpr;
 using base::Error;

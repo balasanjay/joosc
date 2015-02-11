@@ -1,10 +1,11 @@
+#include "weeder/weeder.h"
+
 #include "weeder/assignment_visitor.h"
 #include "weeder/call_visitor.h"
 #include "weeder/int_range_visitor.h"
 #include "weeder/modifier_visitor.h"
 #include "weeder/structure_visitor.h"
 #include "weeder/type_visitor.h"
-#include "weeder/weeder.h"
 
 using ast::Program;
 using base::ErrorList;

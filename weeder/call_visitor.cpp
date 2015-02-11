@@ -1,6 +1,7 @@
-#include "base/macros.h"
-#include "ast/ast.h"
 #include "weeder/call_visitor.h"
+
+#include "ast/ast.h"
+#include "base/macros.h"
 
 using ast::Expr;
 using ast::FieldDerefExpr;

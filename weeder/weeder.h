@@ -1,9 +1,9 @@
 #ifndef WEEDER_WEEDER_H
 #define WEEDER_WEEDER_H
 
+#include "ast/ast.h"
 #include "base/errorlist.h"
 #include "base/fileset.h"
-#include "ast/ast.h"
 
 namespace weeder {
 

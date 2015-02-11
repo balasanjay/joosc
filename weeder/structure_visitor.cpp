@@ -1,8 +1,8 @@
 #include "weeder/structure_visitor.h"
 
+#include "ast/ast.h"
 #include "base/macros.h"
 #include "lexer/lexer.h"
-#include "ast/ast.h"
 
 using ast::CompUnit;
 using ast::Expr;

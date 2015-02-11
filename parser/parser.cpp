@@ -1,10 +1,12 @@
+#include "parser/parser.h"
+
+#include "ast/ast.h"
 #include "base/unique_ptr_vector.h"
 #include "lexer/lexer.h"
-#include "ast/ast.h"
 #include "parser/parser_internal.h"
 #include "parser/print_visitor.h"
 
-using namespace ast;
+using namespace ast
 
 using std::cerr;
 using std::function;
