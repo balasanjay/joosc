@@ -1,5 +1,5 @@
-#ifndef PARSER_RECURSIVE_VISITOR_H
-#define PARSER_RECURSIVE_VISITOR_H
+#ifndef AST_RECURSIVE_VISITOR_H
+#define AST_RECURSIVE_VISITOR_H
 
 #include "ast/visitor.h"
 #include "base/errorlist.h"

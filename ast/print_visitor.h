@@ -1,5 +1,5 @@
-#ifndef PARSER_PRINT_VISITOR_H
-#define PARSER_PRINT_VISITOR_H
+#ifndef AST_PRINT_VISITOR_H
+#define AST_PRINT_VISITOR_H
 
 #include "ast/ast.h"
 #include "ast/visitor.h"

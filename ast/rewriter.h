@@ -1,5 +1,5 @@
-#ifndef TYPING_REWRITER_H
-#define TYPING_REWRITER_H
+#ifndef AST_REWRITER_H
+#define AST_REWRITER_H
 
 #include "ast/ast_fwd.h"
 #include "base/errorlist.h"
