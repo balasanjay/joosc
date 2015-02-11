@@ -49,7 +49,7 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
       return false;
     }
   }
-  unique_ptr<FileSet> fs_deleter(fs);
+  uptr<FileSet> fs_deleter(fs);
   if (stage == CompilerStage::OPEN_FILES) {
     return true;
   }
@@ -84,10 +84,10 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
   }
 
   // Parse.
-  unique_ptr<Program> program;
+  uptr<Program> program;
   {
     ErrorList errors;
-    unique_ptr<Program> prog = Parse(fs, filtered_tokens, &errors);
+    uptr<Program> prog = Parse(fs, filtered_tokens, &errors);
     if (PrintErrors(errors, err)) {
       return false;
     }

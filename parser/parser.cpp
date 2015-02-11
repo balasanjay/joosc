@@ -982,7 +982,7 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   // TODO: Make emptystmt not print anything.
 
   // Parse optional for initializer.
-  unique_ptr<Stmt> forInit;
+  uptr<Stmt> forInit;
   if (next.IsNext(SEMI)) {
     forInit.reset(new EmptyStmt());
     next = next.Advance();
@@ -1001,7 +1001,7 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   }
 
   // Parse optional for condition.
-  unique_ptr<Expr> forCond = nullptr;
+  uptr<Expr> forCond = nullptr;
   if (next.IsNext(SEMI)) {
     next = next.Advance();
   } else {
@@ -1019,7 +1019,7 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   }
 
   // Parse optional for update.
-  unique_ptr<Expr> forUpdate;
+  uptr<Expr> forUpdate;
   if (!next.IsNext(RPAREN)) {
     Result<Expr> update;
     Parser afterUpdate = next.ParseExpression(&update);
@@ -1149,7 +1149,7 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
       return afterCommon.Fail(move(errors), out);
     }
 
-    unique_ptr<Stmt> bodyPtr(nullptr);
+    uptr<Stmt> bodyPtr(nullptr);
     Parser afterBody = afterParams;
     if (afterParams.IsNext(SEMI)) {
       bodyPtr.reset(new EmptyStmt());
@@ -1289,7 +1289,7 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
   }
 
   Parser afterSuper = afterIdent;
-  unique_ptr<ReferenceType> super(nullptr);
+  uptr<ReferenceType> super(nullptr);
   if (isClass && afterIdent.IsNext(K_EXTENDS)) {
     Result<QualifiedName> superName;
 
@@ -1455,7 +1455,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
     return Success(new CompUnit(nullptr, move(imports), move(types)), out);
   }
 
-  unique_ptr<QualifiedName> packageName(nullptr);
+  uptr<QualifiedName> packageName(nullptr);
   Parser afterPackage = *this;
   if (IsNext(K_PACKAGE)) {
     Result<Token> package;
@@ -1508,7 +1508,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
       new CompUnit(packageName.release(), move(imports), move(types)), out);
 }
 
-unique_ptr<Program> Parse(const FileSet* fs,
+uptr<Program> Parse(const FileSet* fs,
                           const vector<vector<lexer::Token>>& tokens,
                           ErrorList* error_out) {
   assert((uint)fs->Size() == tokens.size());
@@ -1534,7 +1534,7 @@ unique_ptr<Program> Parse(const FileSet* fs,
     }
   }
 
-  return unique_ptr<Program>(new Program(move(units)));
+  return uptr<Program>(new Program(move(units)));
 }
 
 // TODO: After we have types, need to ensure byte literals are within 8-bit
