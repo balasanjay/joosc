@@ -207,24 +207,17 @@ REWRITE_DEFN(Rewriter, InterfaceDecl, TypeDecl, type) {
   return new InterfaceDecl(std::move(mods), type.Name(), type.NameToken(), std::move(interfaces), std::move(members));
 }
 
-REWRITE_DEFN(Rewriter, ImportDecl, ImportDecl, decl) {
-  return new ImportDecl(decl.Name(), decl.IsWildCard());
-}
-
 REWRITE_DEFN(Rewriter, CompUnit, CompUnit, unit) {
   QualifiedName* package = nullptr;
   if (unit.Package() != nullptr) {
     package = new QualifiedName(*unit.Package());
   }
-  base::UniquePtrVector<ImportDecl> imports;
+
   base::UniquePtrVector<TypeDecl> decls;
-  for (int i = 0; i < unit.Imports().Size(); ++i) {
-    imports.Append(unit.Imports().At(i)->AcceptRewriter(this));
-  }
   for (int i = 0; i < unit.Types().Size(); ++i) {
     decls.Append(unit.Types().At(i)->AcceptRewriter(this));
   }
-  return new CompUnit(package, std::move(imports), std::move(decls));
+  return new CompUnit(package, unit.Imports(), std::move(decls));
 }
 
 REWRITE_DEFN(Rewriter, Program, Program, prog) {

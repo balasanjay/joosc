@@ -748,8 +748,6 @@ class ImportDecl final {
       : name_(name), isWildCard_(isWildCard) {}
   ImportDecl(const ImportDecl&) = default;
 
-  ACCEPT_VISITOR(ImportDecl, ImportDecl);
-
   REF_GETTER(QualifiedName, Name, name_);
   VAL_GETTER(bool, IsWildCard, isWildCard_);
 

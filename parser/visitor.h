@@ -38,7 +38,6 @@ class MethodDecl;
 class ConstructorDecl;
 class ClassDecl;
 class InterfaceDecl;
-class ImportDecl;
 class CompUnit;
 class Program;
 
@@ -83,7 +82,6 @@ class Visitor {
   ABSTRACT_VISIT(ConstructorDecl);
   ABSTRACT_VISIT(ClassDecl);
   ABSTRACT_VISIT(InterfaceDecl);
-  ABSTRACT_VISIT(ImportDecl);
   ABSTRACT_VISIT(CompUnit);
   ABSTRACT_VISIT(Program);
 

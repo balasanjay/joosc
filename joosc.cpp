@@ -10,17 +10,11 @@
 #include "parser/print_visitor.h"
 #include "types/types.h"
 #include "weeder/weeder.h"
-<<<<<<< HEAD
 
 using std::cerr;
 using std::cout;
 using std::endl;
 using std::ostream;
-=======
-#include "typing/rewriter.h"
-#include "typing/fun_rewriter.h"
-#include <iostream>
->>>>>>> master
 
 using base::ErrorList;
 using base::FileSet;

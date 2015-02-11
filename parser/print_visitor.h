@@ -281,12 +281,6 @@ class PrintVisitor final : public Visitor {
     *os_ << '}';
   }
 
-  VISIT_DECL(ImportDecl, import) {
-    *os_ << "import ";
-    import.Name().PrintTo(os_);
-    *os_ << " ;";
-  }
-
   VISIT_DECL(CompUnit, unit) {
     if (unit.Package() != nullptr) {
       *os_ << "package ";

@@ -63,7 +63,6 @@ class RecursiveVisitor : public Visitor {
   VISIT_DECL(ConstructorDecl, args) final;
   VISIT_DECL(ClassDecl, args) final;
   VISIT_DECL(InterfaceDecl, args) final;
-  VISIT_DECL(ImportDecl, args) final;
   VISIT_DECL(CompUnit, args) final;
   VISIT_DECL(Program, args) final;
 
@@ -107,7 +106,6 @@ class RecursiveVisitor : public Visitor {
   RECURSIVE_VISITOR_IMPL(MethodDecl);
   RECURSIVE_VISITOR_IMPL(ClassDecl);
   RECURSIVE_VISITOR_IMPL(InterfaceDecl);
-  RECURSIVE_VISITOR_IMPL(ImportDecl);
   RECURSIVE_VISITOR_IMPL(CompUnit);
   RECURSIVE_VISITOR_IMPL(Program);
 
