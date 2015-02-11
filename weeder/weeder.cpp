@@ -14,22 +14,22 @@ namespace weeder {
 
 void WeedProgram(const FileSet* fs, const Program* prog, ErrorList* out) {
   AssignmentVisitor assignmentChecker(fs, out);
-  prog->Accept(&assignmentChecker);
+  prog->AcceptVisitor(&assignmentChecker);
 
   CallVisitor callChecker(fs, out);
-  prog->Accept(&callChecker);
+  prog->AcceptVisitor(&callChecker);
 
   TypeVisitor typeChecker(fs, out);
-  prog->Accept(&typeChecker);
+  prog->AcceptVisitor(&typeChecker);
 
   ModifierVisitor modifierChecker(fs, out);
-  prog->Accept(&modifierChecker);
+  prog->AcceptVisitor(&modifierChecker);
 
   IntRangeVisitor intRangeChecker(fs, out);
-  prog->Accept(&intRangeChecker);
+  prog->AcceptVisitor(&intRangeChecker);
 
   StructureVisitor structureChecker(fs, out);
-  prog->Accept(&structureChecker);
+  prog->AcceptVisitor(&structureChecker);
 
   // More weeding required.
 }

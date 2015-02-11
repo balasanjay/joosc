@@ -24,24 +24,24 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(ArrayIndexExpr, expr) {
-    expr.Base().Accept(this);
+    expr.Base().AcceptVisitor(this);
     *os_ << '[';
-    expr.Index().Accept(this);
+    expr.Index().AcceptVisitor(this);
     *os_ << ']';
   }
 
   VISIT_DECL(BinExpr, expr) {
     *os_ << '(';
-    expr.Lhs().Accept(this);
+    expr.Lhs().AcceptVisitor(this);
     *os_ << ' ' << expr.Op().TypeInfo() << ' ';
-    expr.Rhs().Accept(this);
+    expr.Rhs().AcceptVisitor(this);
     *os_ << ')';
   }
 
   VISIT_DECL(CallExpr, expr) {
-    expr.Base().Accept(this);
+    expr.Base().AcceptVisitor(this);
     *os_ << '(';
-    expr.Args().Accept(this);
+    expr.Args().AcceptVisitor(this);
     *os_ << ')';
   }
 
@@ -49,20 +49,20 @@ class PrintVisitor final : public Visitor {
     *os_ << "cast<";
     expr.GetType().PrintTo(os_);
     *os_ << ">(";
-    expr.GetExpr().Accept(this);
+    expr.GetExpr().AcceptVisitor(this);
     *os_ << ')';
   }
 
   VISIT_DECL(InstanceOfExpr, expr) {
     *os_ << '(';
-    expr.Lhs().Accept(this);
+    expr.Lhs().AcceptVisitor(this);
     *os_ << " instanceof ";
     expr.GetType().PrintTo(os_);
     *os_ << ')';
   }
 
   VISIT_DECL(FieldDerefExpr, expr) {
-    expr.Base().Accept(this);
+    expr.Base().AcceptVisitor(this);
     *os_ << '.' << expr.FieldName();
   }
 
@@ -84,7 +84,7 @@ class PrintVisitor final : public Visitor {
 
     *os_ << ">>(";
     if (expr.GetExpr() != nullptr) {
-      expr.GetExpr()->Accept(this);
+      expr.GetExpr()->AcceptVisitor(this);
     }
     *os_ << ")";
   }
@@ -93,13 +93,13 @@ class PrintVisitor final : public Visitor {
     *os_ << "new<";
     expr.GetType().PrintTo(os_);
     *os_ << ">(";
-    expr.Args().Accept(this);
+    expr.Args().AcceptVisitor(this);
     *os_ << ")";
   }
 
   VISIT_DECL(ParenExpr, expr) {
     *os_ << "(";
-    expr.Nested().Accept(this);
+    expr.Nested().AcceptVisitor(this);
     *os_ << ")";
   }
 
@@ -107,7 +107,7 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(UnaryExpr, expr) {
     *os_ << '(' << expr.Op().TypeInfo() << ' ';
-    expr.Rhs().Accept(this);
+    expr.Rhs().AcceptVisitor(this);
     *os_ << ')';
   }
 
@@ -117,7 +117,7 @@ class PrintVisitor final : public Visitor {
     const auto& stmts = stmt.Stmts();
     for (int i = 0; i < stmts.Size(); ++i) {
       PutIndent(depth_ + 1);
-      stmts.At(i)->Accept(&nested);
+      stmts.At(i)->AcceptVisitor(&nested);
       *os_ << newline_;
     }
 
@@ -128,7 +128,7 @@ class PrintVisitor final : public Visitor {
   VISIT_DECL(EmptyStmt, ) { *os_ << ';'; }
 
   VISIT_DECL(ExprStmt, stmt) {
-    stmt.GetExpr().Accept(this);
+    stmt.GetExpr().AcceptVisitor(this);
     *os_ << ';';
   }
 
@@ -136,7 +136,7 @@ class PrintVisitor final : public Visitor {
     stmt.GetType().PrintTo(os_);
     *os_ << ' ' << stmt.Ident().TypeInfo() << RepStr(NumDelimiters(), space_)
          << '=' << RepStr(NumDelimiters(), space_);
-    stmt.GetExpr().Accept(this);
+    stmt.GetExpr().AcceptVisitor(this);
     *os_ << ';';
   }
 
@@ -144,44 +144,44 @@ class PrintVisitor final : public Visitor {
     *os_ << "return";
     if (stmt.GetExpr() != nullptr) {
       *os_ << ' ';
-      stmt.GetExpr()->Accept(this);
+      stmt.GetExpr()->AcceptVisitor(this);
     }
     *os_ << ';';
   }
 
   VISIT_DECL(IfStmt, stmt) {
     *os_ << "if" << RepStr(NumDelimiters(), space_) << '(';
-    stmt.Cond().Accept(this);
+    stmt.Cond().AcceptVisitor(this);
     *os_ << ')' << RepStr(NumDelimiters(), space_) << '{';
-    stmt.TrueBody().Accept(this);
+    stmt.TrueBody().AcceptVisitor(this);
     *os_ << '}' << RepStr(NumDelimiters(), space_) << "else"
          << RepStr(NumDelimiters(), space_) << '{';
-    stmt.FalseBody().Accept(this);
+    stmt.FalseBody().AcceptVisitor(this);
     *os_ << '}';
   }
 
   VISIT_DECL(ForStmt, stmt) {
     *os_ << "for" << RepStr(NumDelimiters(), space_) << '(';
-    stmt.Init().Accept(this);
+    stmt.Init().AcceptVisitor(this);
     if (stmt.Cond() != nullptr) {
       *os_ << RepStr(NumDelimiters(), space_);
-      stmt.Cond()->Accept(this);
+      stmt.Cond()->AcceptVisitor(this);
     }
     *os_ << ';';
     if (stmt.Update() != nullptr) {
       *os_ << RepStr(NumDelimiters(), space_);
-      stmt.Update()->Accept(this);
+      stmt.Update()->AcceptVisitor(this);
     }
     *os_ << ')' << RepStr(NumDelimiters(), space_) << '{';
-    stmt.Body().Accept(this);
+    stmt.Body().AcceptVisitor(this);
     *os_ << '}';
   }
 
   VISIT_DECL(WhileStmt, stmt) {
     *os_ << "while" << RepStr(NumDelimiters(), space_) << '(';
-    stmt.Cond().Accept(this);
+    stmt.Cond().AcceptVisitor(this);
     *os_ << ')' << RepStr(NumDelimiters(), space_) << '{';
-    stmt.Body().Accept(this);
+    stmt.Body().AcceptVisitor(this);
     *os_ << '}';
   }
 
@@ -190,7 +190,7 @@ class PrintVisitor final : public Visitor {
       if (i > 0) {
         *os_ << ',' << RepStr(NumDelimiters(), space_);
       }
-      args.Args().At(i)->Accept(this);
+      args.Args().At(i)->AcceptVisitor(this);
     }
   }
 
@@ -199,7 +199,7 @@ class PrintVisitor final : public Visitor {
       if (i > 0) {
         *os_ << ',' << RepStr(NumDelimiters(), space_);
       }
-      params.Params().At(i)->Accept(this);
+      params.Params().At(i)->AcceptVisitor(this);
     }
   }
 
@@ -216,7 +216,7 @@ class PrintVisitor final : public Visitor {
     if (field.Val() != nullptr) {
       *os_ << RepStr(NumDelimiters(), space_) << '='
            << RepStr(NumDelimiters(), space_);
-      field.Val()->Accept(this);
+      field.Val()->AcceptVisitor(this);
     }
     *os_ << ';';
   }
@@ -225,9 +225,9 @@ class PrintVisitor final : public Visitor {
     meth.Mods().PrintTo(os_);
     *os_ << meth.Ident().TypeInfo();
     *os_ << '(';
-    meth.Params().Accept(this);
+    meth.Params().AcceptVisitor(this);
     *os_ << ')' << RepStr(NumDelimiters(), space_);
-    meth.Body().Accept(this);
+    meth.Body().AcceptVisitor(this);
   }
 
   VISIT_DECL(MethodDecl, meth) {
@@ -236,9 +236,9 @@ class PrintVisitor final : public Visitor {
     *os_ << ' ';
     *os_ << meth.Ident().TypeInfo();
     *os_ << '(';
-    meth.Params().Accept(this);
+    meth.Params().AcceptVisitor(this);
     *os_ << ')' << space_;
-    meth.Body().Accept(this);
+    meth.Body().AcceptVisitor(this);
   }
 
   VISIT_DECL(ClassDecl, type) {
@@ -261,7 +261,7 @@ class PrintVisitor final : public Visitor {
     PrintVisitor nested = Indent();
     for (int i = 0; i < type.Members().Size(); ++i) {
       PutIndent(depth_ + 1);
-      type.Members().At(i)->Accept(&nested);
+      type.Members().At(i)->AcceptVisitor(&nested);
       *os_ << RepStr(NumDelimiters(), newline_);
     }
     PutIndent(depth_);
@@ -284,7 +284,7 @@ class PrintVisitor final : public Visitor {
     PrintVisitor nested = Indent();
     for (int i = 0; i < type.Members().Size(); ++i) {
       PutIndent(depth_ + 1);
-      type.Members().At(i)->Accept(&nested);
+      type.Members().At(i)->AcceptVisitor(&nested);
       *os_ << RepStr(NumDelimiters(), newline_);
     }
     PutIndent(depth_);
@@ -314,7 +314,7 @@ class PrintVisitor final : public Visitor {
     }
 
     for (int i = 0; i < unit.Types().Size(); ++i) {
-      unit.Types().At(i)->Accept(this);
+      unit.Types().At(i)->AcceptVisitor(this);
       *os_ << RepStr(NumDelimiters(), newline_);
     }
   }
@@ -322,7 +322,7 @@ class PrintVisitor final : public Visitor {
   VISIT_DECL(Program, prog) {
     // TODO: print the file name?
     for (int i = 0; i < prog.CompUnits().Size(); ++i) {
-      prog.CompUnits().At(i)->Accept(this);
+      prog.CompUnits().At(i)->AcceptVisitor(this);
     }
   }
 
