@@ -13,7 +13,7 @@ namespace weeder {
 
 class StructureVisitorTest : public WeederTest {
  protected:
-  unique_ptr<Program> ParseProgram(const string& program) {
+  uptr<Program> ParseProgram(const string& program) {
     MakeParser(program);
 
     Result<CompUnit> unit;
@@ -24,12 +24,12 @@ class StructureVisitorTest : public WeederTest {
     UniquePtrVector<CompUnit> units;
     units.Append(unit.Release());
 
-    return unique_ptr<Program>(new Program(move(units)));
+    return uptr<Program>(new Program(move(units)));
   }
 };
 
 TEST_F(StructureVisitorTest, MultipleTypesInFile) {
-  unique_ptr<Program> prog = ParseProgram("class foo{}; interface bar{}");
+  uptr<Program> prog = ParseProgram("class foo{}; interface bar{}");
   ASSERT_TRUE(prog != nullptr);
 
   ErrorList errors;
@@ -45,7 +45,7 @@ TEST_F(StructureVisitorTest, MultipleTypesInFile) {
 }
 
 TEST_F(StructureVisitorTest, DifferentFileName) {
-  unique_ptr<Program> prog = ParseProgram("class bar{}");
+  uptr<Program> prog = ParseProgram("class bar{}");
   ASSERT_TRUE(prog != nullptr);
 
   ErrorList errors;
@@ -57,7 +57,7 @@ TEST_F(StructureVisitorTest, DifferentFileName) {
 }
 
 TEST_F(StructureVisitorTest, StructureOk) {
-  unique_ptr<Program> prog = ParseProgram("class foo{}");
+  uptr<Program> prog = ParseProgram("class foo{}");
   ASSERT_TRUE(prog != nullptr);
 
   ErrorList errors;
