@@ -7,11 +7,11 @@
 namespace parser {
 
 class FunRewriter : public Rewriter {
-  REWRITE_VISIT_DECL(BoolLitExpr, Expr, expr);
-  REWRITE_VISIT_DECL(ClassDecl, TypeDecl, expr);
+  REWRITE_DECL(BoolLitExpr, Expr, expr);
+  REWRITE_DECL(ClassDecl, TypeDecl, expr);
 };
 
-REWRITE_VISIT_DEFN(FunRewriter, BoolLitExpr, Expr, expr) {
+REWRITE_DEFN(FunRewriter, BoolLitExpr, Expr, expr) {
   lexer::Token tok = expr.GetToken();
   if (tok.TypeInfo().Type() == lexer::K_TRUE) {
     return new BoolLitExpr(lexer::Token(lexer::K_FALSE, tok.pos));
@@ -20,7 +20,7 @@ REWRITE_VISIT_DEFN(FunRewriter, BoolLitExpr, Expr, expr) {
   }
 }
 
-REWRITE_VISIT_DEFN(FunRewriter, ClassDecl, TypeDecl, type) {
+REWRITE_DEFN(FunRewriter, ClassDecl, TypeDecl, type) {
   ModifierList mods(type.Mods());
   base::UniquePtrVector<ReferenceType> interfaces;
   for (int i = 0; i < type.Interfaces().Size(); ++i) {
