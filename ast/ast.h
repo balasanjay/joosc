@@ -1,21 +1,20 @@
 #ifndef AST_AST_H
 #define AST_AST_H
 
-#include "lexer/lexer.h"
-#include "parser/visitor.h"
-#include "typing/rewriter.h"
 #include <iostream>
+
+#include "ast/visitor.h"
+#include "lexer/lexer.h"
+#include "typing/rewriter.h"
 
 namespace ast {
 
-class Rewriter;
-
 #define ACCEPT_VISITOR_ABSTRACT(type) \
-  virtual void AcceptVisitor(parser::Visitor* visitor) const = 0; \
+  virtual void AcceptVisitor(Visitor* visitor) const = 0; \
   virtual type* AcceptRewriter(parser::Rewriter* visitor) const = 0
 
 #define ACCEPT_VISITOR(type, ret_type) \
-  virtual void AcceptVisitor(parser::Visitor* visitor) const { visitor->Visit##type(*this); } \
+  virtual void AcceptVisitor(Visitor* visitor) const { visitor->Visit##type(*this); } \
   virtual ret_type* AcceptRewriter(parser::Rewriter* visitor) const { return visitor->Rewrite##type(*this); }
 
 #define REF_GETTER(type, name, expr) \

@@ -6,7 +6,7 @@
 #include "parser/parser_internal.h"
 #include "parser/print_visitor.h"
 
-using namespace ast
+using namespace ast;
 
 using std::cerr;
 using std::function;

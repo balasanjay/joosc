@@ -1,9 +1,9 @@
 #ifndef WEEDER_TYPE_VISITOR_H
 #define WEEDER_TYPE_VISITOR_H
 
-#include "base/fileset.h"
+#include "ast/recursive_visitor.h"
 #include "base/errorlist.h"
-#include "parser/recursive_visitor.h"
+#include "base/fileset.h"
 
 namespace weeder {
 
@@ -11,7 +11,7 @@ namespace weeder {
 //   1) "void" is only valid as the return type of a method.
 //   2) NewClassExpr must have a non-primitive type. i.e. no "new int(1)".
 //   3) RHS of an instanceof must be a NameExpr.
-class TypeVisitor : public parser::RecursiveVisitor {
+class TypeVisitor : public ast::RecursiveVisitor {
  public:
   TypeVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}

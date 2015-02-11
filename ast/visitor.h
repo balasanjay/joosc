@@ -1,9 +1,9 @@
-#ifndef PARSER_VISITOR_H
-#define PARSER_VISITOR_H
+#ifndef AST_VISITOR_H
+#define AST_VISITOR_H
 
 #include "ast/ast_fwd.h"
 
-namespace parser {
+namespace ast {
 
 class Visitor {
  public:
@@ -59,6 +59,6 @@ class Visitor {
 #define VISIT_DEFN(cls, type, var) \
   void cls::Visit##type(const ast::type& var)
 
-}  // namespace parser
+}  // namespace ast
 
 #endif

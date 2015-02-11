@@ -1,15 +1,15 @@
 #ifndef WEEDER_INT_RANGE_VISITOR_H
 #define WEEDER_INT_RANGE_VISITOR_H
 
-#include "base/fileset.h"
+#include "ast/recursive_visitor.h"
 #include "base/errorlist.h"
-#include "parser/recursive_visitor.h"
+#include "base/fileset.h"
 
 namespace weeder {
 
 // IntRangeVisitor checks that int literals are in range.
 // Joos ints are signed 32-bit integers.
-class IntRangeVisitor : public parser::RecursiveVisitor {
+class IntRangeVisitor : public ast::RecursiveVisitor {
  public:
   IntRangeVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}

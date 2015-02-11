@@ -1,4 +1,5 @@
-#include "parser/recursive_visitor.h"
+#include "ast/recursive_visitor.h"
+
 #include "ast/ast.h"
 #include "parser/print_visitor.h"
 
@@ -6,7 +7,7 @@ using lexer::Token;
 using base::Error;
 using base::FileSet;
 
-namespace parser {
+namespace ast {
 
 #define SHORT_CIRCUIT_CHILD(type, var) \
   {                                    \
@@ -195,4 +196,4 @@ VISIT_DEFN(RecursiveVisitor, Program, prog) {
   }
 }
 
-}  // namespace parser
+}  // namespace ast

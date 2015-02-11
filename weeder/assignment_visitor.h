@@ -1,15 +1,15 @@
 #ifndef WEEDER_ASSIGNMENT_VISITOR_H
 #define WEEDER_ASSIGNMENT_VISITOR_H
 
-#include "base/fileset.h"
+#include "ast/recursive_visitor.h"
 #include "base/errorlist.h"
-#include "parser/recursive_visitor.h"
+#include "base/fileset.h"
 
 namespace weeder {
 
 // AssignmentVisitor checks that the left-hand-side of an assignment is one of
 // NameExpr, FieldDerefExpr, or ArrayIndexExpr.
-class AssignmentVisitor : public parser::RecursiveVisitor {
+class AssignmentVisitor : public ast::RecursiveVisitor {
  public:
   AssignmentVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}

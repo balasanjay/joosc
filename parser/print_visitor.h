@@ -2,11 +2,11 @@
 #define PARSER_PRINT_VISITOR_H
 
 #include "ast/ast.h"
-#include "parser/visitor.h"
+#include "ast/visitor.h"
 
 namespace parser {
 
-class PrintVisitor final : public Visitor {
+class PrintVisitor final : public ast::Visitor {
  public:
   static PrintVisitor Pretty(std::ostream* os) {
     return PrintVisitor(os, 0, "\n", "  ", " ");

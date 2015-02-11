@@ -1,6 +1,7 @@
 #ifndef PARSER_PARSER_H
 #define PARSER_PARSER_H
 
+#include "ast/ast_fwd.h"
 #include "base/errorlist.h"
 #include "base/fileset.h"
 #include "lexer/lexer.h"
