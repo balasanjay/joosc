@@ -1,18 +1,19 @@
 #include "weeder/type_visitor.h"
+
 #include "weeder/weeder_test.h"
 
+using ast::ArrayType;
+using ast::MemberDecl;
+using ast::PrimitiveType;
+using ast::QualifiedName;
+using ast::ReferenceType;
+using ast::Stmt;
+using ast::Type;
 using base::ErrorList;
 using base::Pos;
 using lexer::K_INT;
 using lexer::K_VOID;
 using lexer::Token;
-using parser::ArrayType;
-using parser::MemberDecl;
-using parser::PrimitiveType;
-using parser::QualifiedName;
-using parser::ReferenceType;
-using parser::Stmt;
-using parser::Type;
 using parser::internal::Result;
 
 namespace weeder {

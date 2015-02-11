@@ -1,9 +1,9 @@
 #ifndef WEEDER_MODIFIER_VISITOR_H
 #define WEEDER_MODIFIER_VISITOR_H
 
-#include "base/fileset.h"
+#include "ast/recursive_visitor.h"
 #include "base/errorlist.h"
-#include "parser/recursive_visitor.h"
+#include "base/fileset.h"
 
 namespace weeder {
 
@@ -11,7 +11,7 @@ namespace weeder {
 // CompilationUnit contains a ClassDecl or an InterfaceDecl, it will select one
 // of ClassModifierVisitor or InterfaceModifier visitor, and traverse the
 // declaration using that visitor.
-class ModifierVisitor : public parser::RecursiveVisitor {
+class ModifierVisitor : public ast::RecursiveVisitor {
  public:
   ModifierVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}
@@ -36,7 +36,7 @@ class ModifierVisitor : public parser::RecursiveVisitor {
 //   9) A constructor must have a body; i.e. it can't be ";".
 //   10) A class must be public.
 //   11) A member must be public or protected.
-class ClassModifierVisitor : public parser::RecursiveVisitor {
+class ClassModifierVisitor : public ast::RecursiveVisitor {
  public:
   ClassModifierVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}
@@ -57,7 +57,7 @@ class ClassModifierVisitor : public parser::RecursiveVisitor {
 //   4) An interface cannot be protected, static, final, or native.
 //   5) An interface must be public.
 //   6) An interface method must be public.
-class InterfaceModifierVisitor : public parser::RecursiveVisitor {
+class InterfaceModifierVisitor : public ast::RecursiveVisitor {
  public:
   InterfaceModifierVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}

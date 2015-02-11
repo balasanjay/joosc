@@ -1,9 +1,9 @@
+#include "ast/rewriter.h"
 
-#include "typing/rewriter.h"
+#include "ast/ast.h"
 #include "lexer/lexer.h"
-#include "parser/ast.h"
 
-namespace parser {
+namespace ast {
 
 using lexer::Token;
 using base::Error;
@@ -25,7 +25,7 @@ REWRITE_DEFN(Rewriter, CallExpr, Expr, expr) {
   return new CallExpr(base, expr.Lparen(), std::move(*args));
 }
 REWRITE_DEFN(Rewriter, CastExpr, Expr, expr) {
-  Type* type = expr.GetType().clone();
+  Type* type = expr.GetType().Clone();
   Expr* castedExpr = expr.GetExpr().AcceptRewriter(this);
   return new CastExpr(type, castedExpr);
 }
@@ -52,7 +52,7 @@ REWRITE_DEFN(Rewriter, NameExpr, Expr, expr) {
   return new NameExpr(expr.Name());
 }
 REWRITE_DEFN(Rewriter, NewArrayExpr, Expr, expr) {
-  Type* type = expr.GetType().clone();
+  Type* type = expr.GetType().Clone();
   Expr* arrayExpr = nullptr;
   if (expr.GetExpr() != nullptr) {
     arrayExpr = expr.GetExpr()->AcceptRewriter(this);
@@ -60,7 +60,7 @@ REWRITE_DEFN(Rewriter, NewArrayExpr, Expr, expr) {
   return new NewArrayExpr(type, arrayExpr);
 }
 REWRITE_DEFN(Rewriter, NewClassExpr, Expr, expr) {
-  Type* type = expr.GetType().clone();
+  Type* type = expr.GetType().Clone();
   uptr<ArgumentList> args(expr.Args().AcceptRewriter(this));
   return new NewClassExpr(expr.NewToken(), type, std::move(*args));
 }
@@ -75,7 +75,7 @@ REWRITE_DEFN(Rewriter, UnaryExpr, Expr, expr) {
 }
 REWRITE_DEFN(Rewriter, InstanceOfExpr, Expr, expr) {
   Expr* lhs = expr.Lhs().AcceptRewriter(this);
-  Type* type = expr.GetType().clone();
+  Type* type = expr.GetType().Clone();
   return new InstanceOfExpr(lhs, expr.InstanceOf(), type);
 }
 
@@ -94,7 +94,7 @@ REWRITE_DEFN(Rewriter, ExprStmt, Stmt, stmt) {
   return new ExprStmt(stmt.GetExpr().AcceptRewriter(this));
 }
 REWRITE_DEFN(Rewriter, LocalDeclStmt, Stmt, stmt) {
-  Type* type = stmt.GetType().clone();
+  Type* type = stmt.GetType().Clone();
   Expr* expr = stmt.GetExpr().AcceptRewriter(this);
   return new LocalDeclStmt(type, stmt.Ident(), expr);
 }
@@ -148,13 +148,13 @@ REWRITE_DEFN(Rewriter, ParamList, ParamList, params) {
 }
 
 REWRITE_DEFN(Rewriter, Param, Param, param) {
-  Type* type = param.GetType().clone();
+  Type* type = param.GetType().Clone();
   return new Param(type, param.Ident());
 }
 
 REWRITE_DEFN(Rewriter, FieldDecl, MemberDecl, field) {
   ModifierList mods(field.Mods());
-  Type* type = field.GetType().clone();
+  Type* type = field.GetType().Clone();
   Expr* val = nullptr;
   if (field.Val() != nullptr) {
     val = field.Val()->AcceptRewriter(this);
@@ -171,7 +171,7 @@ REWRITE_DEFN(Rewriter, ConstructorDecl, MemberDecl, meth) {
 
 REWRITE_DEFN(Rewriter, MethodDecl, MemberDecl, meth) {
   ModifierList mods(meth.Mods());
-  Type* type = meth.GetType().clone();
+  Type* type = meth.GetType().Clone();
   uptr<ParamList> params(meth.Params().AcceptRewriter(this));
   Stmt* body = meth.Body().AcceptRewriter(this);
   return new MethodDecl(std::move(mods), type, meth.Ident(), std::move(*params), body);
@@ -181,7 +181,7 @@ REWRITE_DEFN(Rewriter, ClassDecl, TypeDecl, type) {
   ModifierList mods(type.Mods());
   base::UniquePtrVector<ReferenceType> interfaces;
   for (int i = 0; i < type.Interfaces().Size(); ++i) {
-    interfaces.Append(static_cast<ReferenceType*>(type.Interfaces().At(i)->clone()));
+    interfaces.Append(static_cast<ReferenceType*>(type.Interfaces().At(i)->Clone()));
   }
   base::UniquePtrVector<MemberDecl> members;
   for (int i = 0; i < type.Members().Size(); ++i) {
@@ -189,7 +189,7 @@ REWRITE_DEFN(Rewriter, ClassDecl, TypeDecl, type) {
   }
   ReferenceType* super = nullptr;
   if (type.Super() != nullptr) {
-    super = static_cast<ReferenceType*>(type.Super()->clone());
+    super = static_cast<ReferenceType*>(type.Super()->Clone());
   }
   return new ClassDecl(std::move(mods), type.Name(), type.NameToken(), std::move(interfaces), std::move(members), super);
 }
@@ -198,7 +198,7 @@ REWRITE_DEFN(Rewriter, InterfaceDecl, TypeDecl, type) {
   ModifierList mods(type.Mods());
   base::UniquePtrVector<ReferenceType> interfaces;
   for (int i = 0; i < type.Interfaces().Size(); ++i) {
-    interfaces.Append(static_cast<ReferenceType*>(type.Interfaces().At(i)->clone()));
+    interfaces.Append(static_cast<ReferenceType*>(type.Interfaces().At(i)->Clone()));
   }
   base::UniquePtrVector<MemberDecl> members;
   for (int i = 0; i < type.Members().Size(); ++i) {
@@ -228,5 +228,5 @@ REWRITE_DEFN(Rewriter, Program, Program, prog) {
   return new Program(std::move(units));
 }
 
-}  // namespace parser
+}  // namespace ast
 

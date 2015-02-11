@@ -4,7 +4,7 @@
 #include "base/errorlist.h"
 #include "base/file.h"
 #include "lexer/lexer.h"
-#include "parser/ast.h"
+#include "ast/ast.h"
 #include "third_party/gtest/gtest.h"
 
 namespace parser {
@@ -115,45 +115,45 @@ struct Parser {
                       internal::Result<lexer::Token>* out) const;
 
   // Type-related parsers.
-  Parser ParseQualifiedName(internal::Result<QualifiedName>* out) const;
-  Parser ParsePrimitiveType(internal::Result<Type>* out) const;
-  Parser ParseSingleType(internal::Result<Type>* out) const;
-  Parser ParseType(internal::Result<Type>* out) const;
+  Parser ParseQualifiedName(internal::Result<ast::QualifiedName>* out) const;
+  Parser ParsePrimitiveType(internal::Result<ast::Type>* out) const;
+  Parser ParseSingleType(internal::Result<ast::Type>* out) const;
+  Parser ParseType(internal::Result<ast::Type>* out) const;
 
   // Expression parsers.
-  Parser ParseExpression(internal::Result<Expr>*) const;
-  Parser ParseParenExpression(internal::Result<Expr>*) const;
-  Parser ParseUnaryExpression(internal::Result<Expr>*) const;
-  Parser ParseCastExpression(internal::Result<Expr>* out) const;
-  Parser ParsePrimary(internal::Result<Expr>* out) const;
-  Parser ParseNewExpression(internal::Result<Expr>* out) const;
-  Parser ParsePrimaryBase(internal::Result<Expr>* out) const;
-  Parser ParsePrimaryEnd(Expr* base, internal::Result<Expr>* out) const;
-  Parser ParsePrimaryEndNoArrayAccess(Expr* base,
-                                      internal::Result<Expr>* out) const;
+  Parser ParseExpression(internal::Result<ast::Expr>*) const;
+  Parser ParseParenExpression(internal::Result<ast::Expr>*) const;
+  Parser ParseUnaryExpression(internal::Result<ast::Expr>*) const;
+  Parser ParseCastExpression(internal::Result<ast::Expr>* out) const;
+  Parser ParsePrimary(internal::Result<ast::Expr>* out) const;
+  Parser ParseNewExpression(internal::Result<ast::Expr>* out) const;
+  Parser ParsePrimaryBase(internal::Result<ast::Expr>* out) const;
+  Parser ParsePrimaryEnd(ast::Expr* base, internal::Result<ast::Expr>* out) const;
+  Parser ParsePrimaryEndNoArrayAccess(ast::Expr* base,
+                                      internal::Result<ast::Expr>* out) const;
 
   // Other parsers.
-  Parser ParseArgumentList(internal::Result<ArgumentList>*) const;
+  Parser ParseArgumentList(internal::Result<ast::ArgumentList>*) const;
 
   // Statement parsers.
-  Parser ParseStmt(internal::Result<Stmt>* out) const;
-  Parser ParseVarDecl(internal::Result<Stmt>* out) const;
-  Parser ParseReturnStmt(internal::Result<Stmt>* out) const;
-  Parser ParseBlock(internal::Result<Stmt>* out) const;
-  Parser ParseIfStmt(internal::Result<Stmt>* out) const;
-  Parser ParseForInit(internal::Result<Stmt>* out) const;
-  Parser ParseForStmt(internal::Result<Stmt>* out) const;
-  Parser ParseWhileStmt(internal::Result<Stmt>* out) const;
+  Parser ParseStmt(internal::Result<ast::Stmt>* out) const;
+  Parser ParseVarDecl(internal::Result<ast::Stmt>* out) const;
+  Parser ParseReturnStmt(internal::Result<ast::Stmt>* out) const;
+  Parser ParseBlock(internal::Result<ast::Stmt>* out) const;
+  Parser ParseIfStmt(internal::Result<ast::Stmt>* out) const;
+  Parser ParseForInit(internal::Result<ast::Stmt>* out) const;
+  Parser ParseForStmt(internal::Result<ast::Stmt>* out) const;
+  Parser ParseWhileStmt(internal::Result<ast::Stmt>* out) const;
 
   // Class parsers.
-  Parser ParseModifierList(internal::Result<ModifierList>* out) const;
-  Parser ParseMemberDecl(internal::Result<MemberDecl>* out) const;
-  Parser ParseParamList(internal::Result<ParamList>* out) const;
-  Parser ParseTypeDecl(internal::Result<TypeDecl>* out) const;
+  Parser ParseModifierList(internal::Result<ast::ModifierList>* out) const;
+  Parser ParseMemberDecl(internal::Result<ast::MemberDecl>* out) const;
+  Parser ParseParamList(internal::Result<ast::ParamList>* out) const;
+  Parser ParseTypeDecl(internal::Result<ast::TypeDecl>* out) const;
 
   // Compilation unit parsers.
-  Parser ParseCompUnit(internal::Result<CompUnit>* out) const;
-  Parser ParseImportDecl(internal::Result<ImportDecl>* out) const;
+  Parser ParseCompUnit(internal::Result<ast::CompUnit>* out) const;
+  Parser ParseImportDecl(internal::Result<ast::ImportDecl>* out) const;
 
   // Helper methods.
   Parser EatSemis() const;

@@ -1,8 +1,8 @@
 #include "weeder/call_visitor.h"
 #include "weeder/weeder_test.h"
 
+using ast::Stmt;
 using base::ErrorList;
-using parser::Stmt;
 using parser::internal::Result;
 
 namespace weeder {

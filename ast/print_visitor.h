@@ -1,13 +1,14 @@
-#ifndef PARSER_PRINT_VISITOR_H
-#define PARSER_PRINT_VISITOR_H
+#ifndef AST_PRINT_VISITOR_H
+#define AST_PRINT_VISITOR_H
 
 #include <algorithm>
-#include "parser/ast.h"
-#include "parser/visitor.h"
+
+#include "ast/ast.h"
+#include "ast/visitor.h"
 
 using std::max;
 
-namespace parser {
+namespace ast {
 
 class PrintVisitor final : public Visitor {
  public:
@@ -361,6 +362,6 @@ class PrintVisitor final : public Visitor {
   bool isJosh_;
 };
 
-}  // namespace parser
+}  // namespace ast
 
 #endif

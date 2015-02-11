@@ -6,7 +6,7 @@
 #include "base/errorlist.h"
 #include "base/file.h"
 #include "base/fileset.h"
-#include "parser/ast.h"
+#include "ast/ast.h"
 
 
 namespace types {
@@ -28,7 +28,7 @@ public:
   // `a.WithImports(bimports).WithImports(cimports)' is equivalent to
   // `a.WithImports(cimports)' regardless of the values of `bimports' and
   // `cimports'.
-  TypeSet WithImports(const vector<parser::ImportDecl>& imports) const;
+  TypeSet WithImports(const vector<ast::ImportDecl>& imports) const;
 
   // Returns a TypeId corresponding to the entire provided qualified name. If
   // no such type exists, then kErrorTypeId will be returned.
@@ -54,7 +54,7 @@ public:
 
   static void InsertName(QualifiedNameBaseMap* m, string name, TypeId::Base base);
 
-  void InsertImport(const parser::ImportDecl& import);
+  void InsertImport(const ast::ImportDecl& import);
   void InsertWildcardImport(const string& base);
 
   // Changed depending on provided Imports.

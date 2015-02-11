@@ -1,16 +1,16 @@
 #ifndef WEEDER_STRUCTURE_VISITOR_H
 #define WEEDER_STRUCTURE_VISITOR_H
 
-#include "base/fileset.h"
+#include "ast/recursive_visitor.h"
 #include "base/errorlist.h"
-#include "parser/recursive_visitor.h"
+#include "base/fileset.h"
 
 namespace weeder {
 
 // StructureVisitor checks that the a compilation unit has at most 1 type
 // declaration; it also verifies that a type declaration T is declared in a
 // file T.java.
-class StructureVisitor : public parser::RecursiveVisitor {
+class StructureVisitor : public ast::RecursiveVisitor {
  public:
   StructureVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}

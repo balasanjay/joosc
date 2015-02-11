@@ -1,12 +1,11 @@
-#ifndef PARSER_RECURSIVE_VISITOR_H
-#define PARSER_RECURSIVE_VISITOR_H
+#ifndef AST_RECURSIVE_VISITOR_H
+#define AST_RECURSIVE_VISITOR_H
 
-#include "base/fileset.h"
+#include "ast/visitor.h"
 #include "base/errorlist.h"
-#include "parser/visitor.h"
+#include "base/fileset.h"
 
-// TODO: this needs to be moved to weeder.
-namespace parser {
+namespace ast {
 
 // RecursiveVisitor implements all the abstract methods on the Visitor type,
 // and performs an exhaustive traversal of the AST. Subclasses that only care
@@ -20,7 +19,6 @@ namespace parser {
 // you want to avoid recursing further down the AST, return false.  You can
 // also customize the recursion order by doing the recursion 'manually', and
 // return false from the Impl method, signalling to the RecursiveVisitor that
-
 class RecursiveVisitor : public Visitor {
  public:
   virtual ~RecursiveVisitor() {}
@@ -116,10 +114,10 @@ class RecursiveVisitor : public Visitor {
 };
 
 #define REC_VISIT_DECL(type, var) \
-  bool Visit##type##Impl(const parser::type& var) override
+  bool Visit##type##Impl(const ast::type& var) override
 #define REC_VISIT_DEFN(cls, type, var) \
-  bool cls::Visit##type##Impl(const parser::type& var)
+  bool cls::Visit##type##Impl(const ast::type& var)
 
-}  // namespace parser
+}  // namespace ast
 
 #endif

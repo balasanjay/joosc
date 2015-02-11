@@ -1,14 +1,13 @@
-#ifndef PARSER_AST_H
-#define PARSER_AST_H
+#ifndef AST_AST_H
+#define AST_AST_H
 
-#include "lexer/lexer.h"
-#include "parser/visitor.h"
-#include "typing/rewriter.h"
 #include <iostream>
 
-namespace parser {
+#include "ast/rewriter.h"
+#include "ast/visitor.h"
+#include "lexer/lexer.h"
 
-class Rewriter;
+namespace ast {
 
 #define ACCEPT_VISITOR_ABSTRACT(type) \
   virtual void AcceptVisitor(Visitor* visitor) const = 0; \
@@ -52,7 +51,7 @@ class Type {
 
   virtual void PrintTo(std::ostream* os) const = 0;
 
-  virtual Type* clone() const = 0;
+  virtual Type* Clone() const = 0;
 
  protected:
   Type() = default;
@@ -69,7 +68,7 @@ class PrimitiveType : public Type {
 
   VAL_GETTER(lexer::Token, GetToken, token_);
 
-  virtual Type* clone() const {
+  PrimitiveType* Clone() const override {
     return new PrimitiveType(token_);
   }
 
@@ -87,7 +86,7 @@ class ReferenceType : public Type {
 
   REF_GETTER(QualifiedName, Name, name_);
 
-  virtual Type* clone() const {
+  ReferenceType* Clone() const override {
     return new ReferenceType(name_);
   }
 
@@ -109,8 +108,8 @@ class ArrayType : public Type {
 
   REF_GETTER(Type, ElemType, *elemtype_);
 
-  virtual Type* clone() const {
-    return new ArrayType(elemtype_->clone());
+  Type* Clone() const override {
+    return new ArrayType(elemtype_->Clone());
   }
 
  private:
@@ -791,14 +790,11 @@ class Program final {
   base::UniquePtrVector<CompUnit> units_;
 };
 
+#undef ACCEPT_VISITOR_ABSTRACT
 #undef ACCEPT_VISITOR
 #undef REF_GETTER
 #undef VAL_GETTER
 
-uptr<Program> Parse(const base::FileSet* fs,
-                          const vector<vector<lexer::Token>>& tokens,
-                          base::ErrorList* out);
-
-}  // namespace parser
+}  // namespace ast
 
 #endif

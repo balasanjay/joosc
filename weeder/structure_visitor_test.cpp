@@ -1,13 +1,15 @@
 #include "weeder/structure_visitor.h"
+
 #include "weeder/weeder_test.h"
 
 using std::move;
-using parser::Program;
-using parser::CompUnit;
+
+using ast::CompUnit;
+using ast::Program;
+using ast::Stmt;
 using base::ErrorList;
-using parser::Stmt;
-using parser::internal::Result;
 using base::UniquePtrVector;
+using parser::internal::Result;
 
 namespace weeder {
 
