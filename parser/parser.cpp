@@ -1528,14 +1528,14 @@ uptr<Program> Parse(const FileSet* fs,
     Parser parser(fs, file, &filetoks, 0);
     parser.ParseCompUnit(&unit);
 
-    // Move all errors and warnings to the output list.
-    unit.ReleaseErrors(error_out);
-
     if (unit) {
       units.Append(unit.Release());
     } else {
       failed = true;
     }
+
+    // Move all errors and warnings to the output list.
+    unit.ReleaseErrors(error_out);
   }
 
   return uptr<Program>(new Program(move(units)));
