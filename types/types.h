@@ -1,10 +1,13 @@
 #ifndef TYPES_TYPES_H
 #define TYPES_TYPES_H
 
+#include <map>
+
 #include "base/errorlist.h"
 #include "base/file.h"
+#include "base/fileset.h"
 #include "parser/ast.h"
-#include <map>
+
 
 namespace types {
 
@@ -42,14 +45,12 @@ public:
     }
   }
 
-  // TODO: make private.
-  TypeSet(const vector<string>& qualifiedTypes);
-
  private:
   friend class TypeSetBuilder;
   using QualifiedNameBaseMap = std::map<string, TypeId::Base>;
 
   TypeSet() = default;
+  TypeSet(const vector<string>& qualifiedTypes);
 
   static void InsertName(QualifiedNameBaseMap* m, string name, TypeId::Base base);
 
@@ -75,7 +76,7 @@ class TypeSetBuilder {
   // Returns a TypeSet with all types inserted with Put. If a type was defined
   // multiple times, an Error will be appended to the ErrorList for each
   // duplicate location.
-  TypeSet Build(base::ErrorList* out) const;
+  TypeSet Build(const base::FileSet* fs, base::ErrorList* out) const;
 
  private:
   struct Entry {
