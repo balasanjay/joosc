@@ -27,7 +27,7 @@ class DiskFileError : public base::Error {
       return;
     }
 
-    *out << path_ << " " << Red(opt) << "error: " << ResetFmt(opt)
+    *out << path_ << " " << opt.Red() << "error: " << opt.ResetColor()
          << string(strerror(errval_));
   }
 

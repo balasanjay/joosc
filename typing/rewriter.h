@@ -96,7 +96,6 @@ class Rewriter {
   REWRITE_DECL(ConstructorDecl, MemberDecl, args);
   REWRITE_DECL(ClassDecl, TypeDecl, args);
   REWRITE_DECL(InterfaceDecl, TypeDecl, args);
-  REWRITE_DECL(ImportDecl, ImportDecl, args);
   REWRITE_DECL(CompUnit, CompUnit, args);
   REWRITE_DECL(Program, Program, args);
 

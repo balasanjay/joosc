@@ -1,14 +1,20 @@
+#include "joosc.h"
+
+#include <iostream>
+
 #include "base/error.h"
 #include "base/errorlist.h"
 #include "base/fileset.h"
-#include "joosc.h"
 #include "lexer/lexer.h"
 #include "parser/ast.h"
 #include "parser/print_visitor.h"
+#include "types/types.h"
 #include "weeder/weeder.h"
-#include "typing/rewriter.h"
-#include "typing/fun_rewriter.h"
-#include <iostream>
+
+using std::cerr;
+using std::cout;
+using std::endl;
+using std::ostream;
 
 using base::ErrorList;
 using base::FileSet;
@@ -18,10 +24,7 @@ using lexer::Token;
 using parser::Parse;
 using parser::PrintVisitor;
 using parser::Program;
-using std::cerr;
-using std::cout;
-using std::endl;
-using std::ostream;
+using types::TypeSet;
 using weeder::WeedProgram;
 
 namespace {
@@ -111,9 +114,35 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
     return true;
   }
 
-  // TODO.
-  //parser::FunRewriter rewriter;
-  //program.reset(program.get()->Rewrite(&rewriter));
+  // Type-checking.
+  // TODO: clean this up.
+  {
+    types::TypeSetBuilder typeSetBuilder;
+
+    for (int i = 0; i < program->CompUnits().Size(); ++i) {
+      const parser::CompUnit& unit = *program->CompUnits().At(i);
+      vector<string> ns;
+      if (unit.Package() != nullptr) {
+        ns = unit.Package()->Parts();
+      }
+      for (int j = 0; j < unit.Types().Size(); ++j) {
+        const parser::TypeDecl& decl = *unit.Types().At(j);
+        typeSetBuilder.Put(ns, decl.Name(), decl.NameToken().pos);
+      }
+    }
+
+    base::ErrorList errors;
+    TypeSet ts = typeSetBuilder.Build(fs, &errors);
+    if (PrintErrors(errors, err)) {
+      return false;
+    }
+
+    // cout << "Original\n";
+    // ts.PrintTo(&cout);
+
+    // cout << "\n\nWithImports\n";
+    // ts.WithImports(program->CompUnits().At(0)->Imports()).PrintTo(&cout);
+  }
 
   // Print out the AST.
   {

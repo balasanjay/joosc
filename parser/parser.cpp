@@ -1448,7 +1448,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
 
   SHORT_CIRCUIT;
 
-  UniquePtrVector<ImportDecl> imports;
+  vector<ImportDecl> imports;
   UniquePtrVector<TypeDecl> types;
 
   if (IsAtEnd()) {
@@ -1487,7 +1487,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
       return Fail(move(errors), out);
     }
 
-    imports.Append(import.Release());
+    imports.push_back(*import.Get());
   }
 
   Parser afterTypes = afterImports;

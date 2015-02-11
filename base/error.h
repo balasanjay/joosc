@@ -2,6 +2,7 @@
 #define BASE_ERROR_H
 
 #include <ostream>
+
 #include "base/fileset.h"
 
 namespace base {
@@ -15,6 +16,14 @@ struct OutputOptions {
 
   static const OutputOptions kSimpleOutput;
   static const OutputOptions kUserOutput;
+
+  string Red() const;
+  string Magenta() const;
+  string DarkGray() const;
+  string Green() const;
+  string ResetColor() const;
+  string BoldOn() const;
+  string BoldOff() const;
 };
 
 class Error {
@@ -26,15 +35,28 @@ class Error {
  protected:
   Error() = default;
 
-  string Red(const OutputOptions& opt) const;
-  string ResetFmt(const OutputOptions& opt) const;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(Error);
 };
-
 std::ostream& operator<<(std::ostream& out, const Error& e);
 
+using PrintFn = std::function<void(std::ostream*, const OutputOptions&)>;
+Error* MakeError(PrintFn printfn);
+
+enum class DiagnosticClass {
+  ERROR,
+  WARNING,
+  INFO,
+};
+
+void PrintDiagnosticHeader(std::ostream* out, const OutputOptions& opt,
+                           const FileSet* fs, PosRange pos, DiagnosticClass cls,
+                           string msg);
+void PrintRangePtr(std::ostream* out, const OutputOptions& opt,
+                   const FileSet* fs, const PosRange& pos);
+
+// DEPRECATED; use MakeSimplePosRange error or subclass Error directly.
+// TODO: delete all uses of this in lexer_error.h, and delete this class.
 class PosRangeError : public Error {
  protected:
   PosRangeError(const FileSet* fs, PosRange posrange)
@@ -47,18 +69,9 @@ class PosRangeError : public Error {
       return;
     }
 
-    const File* file = fs_->Get(posrange_.fileid);
-
-    // Get line and column info.
-    int line = -1;
-    int col = -1;
-    file->IndexToLineCol(posrange_.begin, &line, &col);
-
-    *out << file->Dirname() << file->Basename() << ":" << line + 1 << ":"
-         << col + 1 << ": " << Red(opt) << "error: " << ResetFmt(opt) << Error()
-         << '\n';
-
-    PrintRangePtr(out, file, posrange_);
+    PrintDiagnosticHeader(out, opt, fs_, posrange_, DiagnosticClass::ERROR,
+                          Error());
+    PrintRangePtr(out, opt, fs_, posrange_);
   }
 
  protected:

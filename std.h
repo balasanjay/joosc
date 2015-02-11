@@ -22,13 +22,12 @@ using std::make_pair;
 using std::pair;
 using std::string;
 using std::stringstream;
-using std::unique_ptr;
 using std::vector;
 
 template<
   class T,
   class Deleter = std::default_delete<T>
-> using uptr = unique_ptr<T, Deleter>;
+> using uptr = std::unique_ptr<T, Deleter>;
 
 // Copied from Chromium.
 #define DISALLOW_COPY_AND_ASSIGN(TypeName) \
