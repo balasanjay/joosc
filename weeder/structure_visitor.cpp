@@ -1,18 +1,19 @@
-#include "base/macros.h"
-#include "lexer/lexer.h"
-#include "parser/ast.h"
 #include "weeder/structure_visitor.h"
 
+#include "ast/ast.h"
+#include "base/macros.h"
+#include "lexer/lexer.h"
+
+using ast::CompUnit;
+using ast::Expr;
+using ast::FieldDerefExpr;
+using ast::NameExpr;
+using ast::Program;
 using base::Error;
 using base::File;
 using base::FileSet;
 using lexer::ASSG;
 using lexer::Token;
-using parser::CompUnit;
-using parser::Expr;
-using parser::FieldDerefExpr;
-using parser::NameExpr;
-using parser::Program;
 
 namespace weeder {
 namespace {

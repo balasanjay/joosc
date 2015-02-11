@@ -1,8 +1,15 @@
+#include "parser/parser.h"
+
+#include "ast/ast.h"
 #include "base/unique_ptr_vector.h"
 #include "lexer/lexer.h"
-#include "parser/ast.h"
 #include "parser/parser_internal.h"
-#include "parser/print_visitor.h"
+
+using namespace ast;
+
+using std::cerr;
+using std::function;
+using std::move;
 
 using base::Error;
 using base::ErrorList;
@@ -46,9 +53,6 @@ using lexer::Token;
 using lexer::TokenType;
 using parser::internal::ConvertError;
 using parser::internal::Result;
-using std::cerr;
-using std::function;
-using std::move;
 
 #define RETURN_IF_ERR(check)    \
   {                             \

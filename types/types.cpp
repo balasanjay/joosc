@@ -11,6 +11,7 @@ using std::ostream;
 using std::sort;
 using std::transform;
 
+using ast::ImportDecl;
 using base::DiagnosticClass;
 using base::Error;
 using base::FileSet;
@@ -18,7 +19,6 @@ using base::MakeError;
 using base::OutputOptions;
 using base::Pos;
 using base::PosRange;
-using parser::ImportDecl;
 
 namespace types {
 
@@ -110,7 +110,7 @@ void TypeSet::InsertName(QualifiedNameBaseMap* m, string name, TypeId::Base base
 }
 
 
-TypeSet TypeSet::WithImports(const vector<parser::ImportDecl>& imports) const {
+TypeSet TypeSet::WithImports(const vector<ast::ImportDecl>& imports) const {
   TypeSet view;
   view.original_names_ = original_names_;
   view.available_names_ = available_names_;

@@ -1,7 +1,10 @@
-#include "lexer/lexer.h"
 #include "parser/parser_internal.h"
-#include "parser/print_visitor.h"
+
+#include "ast/print_visitor.h"
+#include "lexer/lexer.h"
 #include "third_party/gtest/gtest.h"
+
+using namespace ast;
 
 using base::ErrorList;
 using base::FileSet;

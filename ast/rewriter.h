@@ -1,62 +1,18 @@
-#ifndef TYPING_REWRITER_H
-#define TYPING_REWRITER_H
+#ifndef AST_REWRITER_H
+#define AST_REWRITER_H
 
-#include "base/fileset.h"
+#include "ast/ast_fwd.h"
 #include "base/errorlist.h"
+#include "base/fileset.h"
 
-namespace parser {
-
-class ArrayIndexExpr;
-class Expr;
-class BinExpr;
-class CallExpr;
-class CastExpr;
-class FieldDerefExpr;
-class BoolLitExpr;
-class StringLitExpr;
-class CharLitExpr;
-class IntLitExpr;
-class NullLitExpr;
-class NameExpr;
-class NewArrayExpr;
-class NewClassExpr;
-class ParenExpr;
-class ThisExpr;
-class UnaryExpr;
-class InstanceOfExpr;
-
-class Stmt;
-class BlockStmt;
-class EmptyStmt;
-class ExprStmt;
-class LocalDeclStmt;
-class ReturnStmt;
-class IfStmt;
-class ForStmt;
-class WhileStmt;
-
-class ArgumentList;
-class ParamList;
-class Param;
-class MemberDecl;
-class FieldDecl;
-class MethodDecl;
-class ConstructorDecl;
-class TypeDecl;
-class ClassDecl;
-class InterfaceDecl;
-class ImportDecl;
-class CompUnit;
-class Program;
-
+namespace ast {
 
 #define REWRITE_DECL(type, ret_type, var) \
-  virtual ret_type* Rewrite##type(const parser::type& var)
+  virtual ast::ret_type* Rewrite##type(const ast::type& var)
 
-#define REWRITE_DEFN(cls, type, ret_type, var) \
-  ret_type* cls::Rewrite##type(const parser::type& var)
-
-// Similar to RecursiveVisitor.
+// Rewriter rewrites an AST. All Rewrite* methods perform a deep-clone by
+// default; override a method to perform custom rewrites for that corresponding
+// AST node.
 class Rewriter {
  public:
   virtual ~Rewriter() = default;
@@ -103,6 +59,14 @@ protected:
   Rewriter() = default;
 };
 
-}  // namespace parser
+#undef REWRITE_DECL
+
+#define REWRITE_DECL(type, ret_type, var) \
+  ast::ret_type* Rewrite##type(const ast::type& var) override
+
+#define REWRITE_DEFN(cls, type, ret_type, var) \
+  ast::ret_type* cls::Rewrite##type(const ast::type& var)
+
+}  // namespace ast
 
 #endif
