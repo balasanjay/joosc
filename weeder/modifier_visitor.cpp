@@ -1,8 +1,16 @@
-#include "base/macros.h"
-#include "lexer/lexer.h"
-#include "parser/ast.h"
 #include "weeder/modifier_visitor.h"
 
+#include "ast/ast.h"
+#include "base/macros.h"
+#include "lexer/lexer.h"
+
+using std::function;
+using std::initializer_list;
+
+using ast::EmptyStmt;
+using ast::FieldDecl;
+using ast::MethodDecl;
+using ast::ModifierList;
 using base::Error;
 using base::ErrorList;
 using base::FileSet;
@@ -14,12 +22,6 @@ using lexer::PROTECTED;
 using lexer::PUBLIC;
 using lexer::STATIC;
 using lexer::Token;
-using parser::EmptyStmt;
-using parser::FieldDecl;
-using parser::MethodDecl;
-using parser::ModifierList;
-using std::function;
-using std::initializer_list;
 
 namespace weeder {
 

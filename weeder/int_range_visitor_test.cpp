@@ -1,8 +1,9 @@
 #include "weeder/int_range_visitor.h"
+
 #include "weeder/weeder_test.h"
 
+using ast::Expr;
 using base::ErrorList;
-using parser::Expr;
 using parser::internal::Result;
 
 namespace weeder {

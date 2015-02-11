@@ -2,11 +2,12 @@
 
 #include <iostream>
 
+#include "ast/ast.h"
 #include "base/error.h"
 #include "base/errorlist.h"
 #include "base/fileset.h"
 #include "lexer/lexer.h"
-#include "parser/ast.h"
+#include "parser/parser.h"
 #include "parser/print_visitor.h"
 #include "types/types.h"
 #include "weeder/weeder.h"
@@ -16,6 +17,7 @@ using std::cout;
 using std::endl;
 using std::ostream;
 
+using ast::Program;
 using base::ErrorList;
 using base::FileSet;
 using lexer::LexJoosFiles;
@@ -23,7 +25,6 @@ using lexer::StripSkippableTokens;
 using lexer::Token;
 using parser::Parse;
 using parser::PrintVisitor;
-using parser::Program;
 using types::TypeSet;
 using weeder::WeedProgram;
 
@@ -120,13 +121,13 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
     types::TypeSetBuilder typeSetBuilder;
 
     for (int i = 0; i < program->CompUnits().Size(); ++i) {
-      const parser::CompUnit& unit = *program->CompUnits().At(i);
+      const ast::CompUnit& unit = *program->CompUnits().At(i);
       vector<string> ns;
       if (unit.Package() != nullptr) {
         ns = unit.Package()->Parts();
       }
       for (int j = 0; j < unit.Types().Size(); ++j) {
-        const parser::TypeDecl& decl = *unit.Types().At(j);
+        const ast::TypeDecl& decl = *unit.Types().At(j);
         typeSetBuilder.Put(ns, decl.Name(), decl.NameToken().pos);
       }
     }

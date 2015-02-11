@@ -1,13 +1,14 @@
-#include "base/macros.h"
-#include "lexer/lexer.h"
-#include "parser/ast.h"
 #include "weeder/int_range_visitor.h"
 
+#include "base/macros.h"
+#include "lexer/lexer.h"
+#include "ast/ast.h"
+
+using ast::IntLitExpr;
 using base::Error;
 using base::FileSet;
 using lexer::SUB;
 using lexer::Token;
-using parser::IntLitExpr;
 
 namespace weeder {
 

@@ -1,51 +1,15 @@
 #ifndef PARSER_VISITOR_H
 #define PARSER_VISITOR_H
 
+#include "ast/ast_fwd.h"
+
 namespace parser {
-
-class ArrayIndexExpr;
-class BinExpr;
-class CallExpr;
-class CastExpr;
-class FieldDerefExpr;
-class BoolLitExpr;
-class StringLitExpr;
-class CharLitExpr;
-class IntLitExpr;
-class NullLitExpr;
-class NameExpr;
-class NewArrayExpr;
-class NewClassExpr;
-class ParenExpr;
-class ThisExpr;
-class UnaryExpr;
-class InstanceOfExpr;
-
-class BlockStmt;
-class EmptyStmt;
-class ExprStmt;
-class LocalDeclStmt;
-class ReturnStmt;
-class IfStmt;
-class ForStmt;
-class WhileStmt;
-
-class ArgumentList;
-class ParamList;
-class Param;
-class FieldDecl;
-class MethodDecl;
-class ConstructorDecl;
-class ClassDecl;
-class InterfaceDecl;
-class CompUnit;
-class Program;
 
 class Visitor {
  public:
   virtual ~Visitor() = default;
 
-#define ABSTRACT_VISIT(type) virtual void Visit##type(const type&) = 0
+#define ABSTRACT_VISIT(type) virtual void Visit##type(const ast::type&) = 0
 
   ABSTRACT_VISIT(ArrayIndexExpr);
   ABSTRACT_VISIT(BinExpr);
@@ -91,9 +55,9 @@ class Visitor {
   Visitor() = default;
 };
 
-#define VISIT_DECL(type, var) void Visit##type(const parser::type& var) override
+#define VISIT_DECL(type, var) void Visit##type(const ast::type& var) override
 #define VISIT_DEFN(cls, type, var) \
-  void cls::Visit##type(const parser::type& var)
+  void cls::Visit##type(const ast::type& var)
 
 }  // namespace parser
 

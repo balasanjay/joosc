@@ -3,6 +3,8 @@
 #include "parser/print_visitor.h"
 #include "third_party/gtest/gtest.h"
 
+using namespace ast;
+
 using base::ErrorList;
 using base::FileSet;
 using base::PosRange;

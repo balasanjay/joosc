@@ -1,9 +1,10 @@
 #include "weeder/modifier_visitor.h"
+
 #include "weeder/weeder_test.h"
 
+using ast::MemberDecl;
+using ast::TypeDecl;
 using base::ErrorList;
-using parser::MemberDecl;
-using parser::TypeDecl;
 using parser::internal::Result;
 
 namespace weeder {

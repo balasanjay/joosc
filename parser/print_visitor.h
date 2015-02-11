@@ -1,7 +1,7 @@
 #ifndef PARSER_PRINT_VISITOR_H
 #define PARSER_PRINT_VISITOR_H
 
-#include "parser/ast.h"
+#include "ast/ast.h"
 #include "parser/visitor.h"
 
 namespace parser {

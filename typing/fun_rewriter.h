@@ -1,7 +1,7 @@
 #ifndef TYPING_FUN_REWRITER_H
 #define TYPING_FUN_REWRITER_H
 
-#include "parser/ast.h"
+#include "ast/ast.h"
 #include "typing/rewriter.h"
 
 namespace parser {

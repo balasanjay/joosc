@@ -1,5 +1,5 @@
 #include "parser/recursive_visitor.h"
-#include "parser/ast.h"
+#include "ast/ast.h"
 #include "parser/print_visitor.h"
 
 using lexer::Token;

@@ -1,22 +1,22 @@
-#ifndef PARSER_AST_H
-#define PARSER_AST_H
+#ifndef AST_AST_H
+#define AST_AST_H
 
 #include "lexer/lexer.h"
 #include "parser/visitor.h"
 #include "typing/rewriter.h"
 #include <iostream>
 
-namespace parser {
+namespace ast {
 
 class Rewriter;
 
 #define ACCEPT_VISITOR_ABSTRACT(type) \
-  virtual void AcceptVisitor(Visitor* visitor) const = 0; \
-  virtual type* AcceptRewriter(Rewriter* visitor) const = 0
+  virtual void AcceptVisitor(parser::Visitor* visitor) const = 0; \
+  virtual type* AcceptRewriter(parser::Rewriter* visitor) const = 0
 
 #define ACCEPT_VISITOR(type, ret_type) \
-  virtual void AcceptVisitor(Visitor* visitor) const { visitor->Visit##type(*this); } \
-  virtual ret_type* AcceptRewriter(Rewriter* visitor) const { return visitor->Rewrite##type(*this); }
+  virtual void AcceptVisitor(parser::Visitor* visitor) const { visitor->Visit##type(*this); } \
+  virtual ret_type* AcceptRewriter(parser::Rewriter* visitor) const { return visitor->Rewrite##type(*this); }
 
 #define REF_GETTER(type, name, expr) \
   const type& name() const { return (expr); }
@@ -795,10 +795,6 @@ class Program final {
 #undef REF_GETTER
 #undef VAL_GETTER
 
-uptr<Program> Parse(const base::FileSet* fs,
-                          const vector<vector<lexer::Token>>& tokens,
-                          base::ErrorList* out);
-
-}  // namespace parser
+}  // namespace ast
 
 #endif

@@ -1,8 +1,27 @@
-#include "base/macros.h"
-#include "lexer/lexer.h"
-#include "parser/ast.h"
 #include "weeder/type_visitor.h"
 
+#include "base/macros.h"
+#include "lexer/lexer.h"
+#include "ast/ast.h"
+
+using ast::ArrayType;
+using ast::BinExpr;
+using ast::BlockStmt;
+using ast::CallExpr;
+using ast::CastExpr;
+using ast::EmptyStmt;
+using ast::Expr;
+using ast::ExprStmt;
+using ast::FieldDecl;
+using ast::LocalDeclStmt;
+using ast::NameExpr;
+using ast::NewArrayExpr;
+using ast::NewClassExpr;
+using ast::Param;
+using ast::PrimitiveType;
+using ast::ReferenceType;
+using ast::Stmt;
+using ast::Type;
 using base::Error;
 using base::ErrorList;
 using base::FileSet;
@@ -10,24 +29,6 @@ using base::Pos;
 using lexer::ASSG;
 using lexer::K_VOID;
 using lexer::Token;
-using parser::ArrayType;
-using parser::BinExpr;
-using parser::BlockStmt;
-using parser::CallExpr;
-using parser::CastExpr;
-using parser::EmptyStmt;
-using parser::Expr;
-using parser::ExprStmt;
-using parser::FieldDecl;
-using parser::LocalDeclStmt;
-using parser::NameExpr;
-using parser::NewArrayExpr;
-using parser::NewClassExpr;
-using parser::Param;
-using parser::PrimitiveType;
-using parser::ReferenceType;
-using parser::Stmt;
-using parser::Type;
 
 namespace weeder {
 namespace {

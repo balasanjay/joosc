@@ -1,10 +1,56 @@
 
 #include "typing/rewriter.h"
 #include "lexer/lexer.h"
-#include "parser/ast.h"
+#include "ast/ast.h"
 
 namespace parser {
 
+using ast::ArgumentList;
+using ast::ArrayIndexExpr;
+using ast::ArrayType;
+using ast::BinExpr;
+using ast::BlockStmt;
+using ast::BoolLitExpr;
+using ast::CallExpr;
+using ast::CastExpr;
+using ast::CharLitExpr;
+using ast::ClassDecl;
+using ast::CompUnit;
+using ast::ConstructorDecl;
+using ast::EmptyStmt;
+using ast::Expr;
+using ast::ExprStmt;
+using ast::FieldDecl;
+using ast::FieldDerefExpr;
+using ast::ForStmt;
+using ast::IfStmt;
+using ast::ImportDecl;
+using ast::InstanceOfExpr;
+using ast::IntLitExpr;
+using ast::InterfaceDecl;
+using ast::LocalDeclStmt;
+using ast::MemberDecl;
+using ast::MethodDecl;
+using ast::ModifierList;
+using ast::NameExpr;
+using ast::NewArrayExpr;
+using ast::NewClassExpr;
+using ast::NullLitExpr;
+using ast::Param;
+using ast::ParamList;
+using ast::ParenExpr;
+using ast::PrimitiveType;
+using ast::Program;
+using ast::QualifiedName;
+using ast::ReferenceType;
+using ast::ReturnStmt;
+using ast::Stmt;
+using ast::StringLitExpr;
+using ast::ThisExpr;
+using ast::Type;
+using ast::TypeDecl;
+using ast::UnaryExpr;
+using ast::WhileStmt;
 using lexer::Token;
 using base::Error;
 using base::FileSet;

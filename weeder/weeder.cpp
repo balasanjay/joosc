@@ -6,9 +6,9 @@
 #include "weeder/type_visitor.h"
 #include "weeder/weeder.h"
 
+using ast::Program;
 using base::ErrorList;
 using base::FileSet;
-using parser::Program;
 
 namespace weeder {
 

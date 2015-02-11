@@ -3,13 +3,20 @@
 #include <iostream>
 #include <iterator>
 
+#include "ast/ast.h"
 #include "base/error.h"
 #include "joosc.h"
 #include "lexer/lexer.h"
-#include "parser/ast.h"
+#include "parser/parser.h"
 #include "third_party/gtest/gtest.h"
 #include "weeder/weeder.h"
 
+using std::back_inserter;
+using std::cerr;
+using std::copy_if;
+using std::cout;
+
+using ast::Program;
 using base::ErrorList;
 using base::FileSet;
 using base::PosRange;
@@ -17,11 +24,6 @@ using lexer::FindUnsupportedTokens;
 using lexer::StripSkippableTokens;
 using lexer::Token;
 using parser::Parse;
-using parser::Program;
-using std::back_inserter;
-using std::cerr;
-using std::copy_if;
-using std::cout;
 
 namespace {
 

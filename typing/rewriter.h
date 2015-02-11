@@ -3,58 +3,15 @@
 
 #include "base/fileset.h"
 #include "base/errorlist.h"
+#include "ast/ast_fwd.h"
 
 namespace parser {
 
-class ArrayIndexExpr;
-class Expr;
-class BinExpr;
-class CallExpr;
-class CastExpr;
-class FieldDerefExpr;
-class BoolLitExpr;
-class StringLitExpr;
-class CharLitExpr;
-class IntLitExpr;
-class NullLitExpr;
-class NameExpr;
-class NewArrayExpr;
-class NewClassExpr;
-class ParenExpr;
-class ThisExpr;
-class UnaryExpr;
-class InstanceOfExpr;
-
-class Stmt;
-class BlockStmt;
-class EmptyStmt;
-class ExprStmt;
-class LocalDeclStmt;
-class ReturnStmt;
-class IfStmt;
-class ForStmt;
-class WhileStmt;
-
-class ArgumentList;
-class ParamList;
-class Param;
-class MemberDecl;
-class FieldDecl;
-class MethodDecl;
-class ConstructorDecl;
-class TypeDecl;
-class ClassDecl;
-class InterfaceDecl;
-class ImportDecl;
-class CompUnit;
-class Program;
-
-
 #define REWRITE_DECL(type, ret_type, var) \
-  virtual ret_type* Rewrite##type(const parser::type& var)
+  virtual ast::ret_type* Rewrite##type(const ast::type& var)
 
 #define REWRITE_DEFN(cls, type, ret_type, var) \
-  ret_type* cls::Rewrite##type(const parser::type& var)
+  ast::ret_type* cls::Rewrite##type(const ast::type& var)
 
 // Similar to RecursiveVisitor.
 class Rewriter {
