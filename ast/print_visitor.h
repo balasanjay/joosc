@@ -106,11 +106,11 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(BlockStmt, stmt) {
     *os_ << "{" << newline_;
+
     PrintVisitor nested = Indent();
-    const auto& stmts = stmt.Stmts();
-    for (int i = 0; i < stmts.Size(); ++i) {
+    for (const auto& substmt : stmt.Stmts()) {
       PutIndent(depth_ + 1);
-      stmts.At(i)->AcceptVisitor(&nested);
+      substmt.AcceptVisitor(&nested);
       *os_ << newline_;
     }
 
@@ -177,11 +177,13 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(ArgumentList, args) {
-    for (int i = 0; i < args.Args().Size(); ++i) {
-      if (i > 0) {
+    bool first = true;
+    for (const auto& arg : args.Args()) {
+      if (!first) {
         *os_ << ',' << space_;
       }
-      args.Args().At(i)->AcceptVisitor(this);
+      first = false;
+      arg.AcceptVisitor(this);
     }
   }
 

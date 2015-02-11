@@ -120,14 +120,12 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
   {
     types::TypeSetBuilder typeSetBuilder;
 
-    for (int i = 0; i < program->CompUnits().Size(); ++i) {
-      const ast::CompUnit& unit = *program->CompUnits().At(i);
+    for (const auto& unit : program->CompUnits()) {
       vector<string> ns;
       if (unit.Package() != nullptr) {
         ns = unit.Package()->Parts();
       }
-      for (int j = 0; j < unit.Types().Size(); ++j) {
-        const ast::TypeDecl& decl = *unit.Types().At(j);
+      for (const auto& decl : unit.Types()) {
         typeSetBuilder.Put(ns, decl.Name(), decl.NameToken().pos);
       }
     }
