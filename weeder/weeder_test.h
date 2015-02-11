@@ -44,9 +44,9 @@ class WeederTest : public ::testing::Test {
     parser_.reset(new parser::Parser(fs, fs->Get(0), &tokens[0]));
   }
 
-  unique_ptr<base::FileSet> fs_;
+  uptr<base::FileSet> fs_;
   vector<vector<lexer::Token>> tokens;
-  unique_ptr<parser::Parser> parser_;
+  uptr<parser::Parser> parser_;
 };
 
 }  // namespace weeder

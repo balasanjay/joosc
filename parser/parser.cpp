@@ -50,41 +50,6 @@ using std::cerr;
 using std::function;
 using std::move;
 
-struct repstr {
-  repstr(int n, string str) : n_(n), str_(str) {}
-  friend std::ostream& operator<<(std::ostream&, const repstr& r);
-
- private:
-  int n_;
-  string str_;
-};
-
-std::ostream& operator<<(std::ostream& os, const repstr& r) {
-  for (int i = 0; i < r.n_; ++i) {
-    os << r.str_;
-  }
-  return os;
-}
-
-struct ScopedPrint {
-  ScopedPrint(const string& construct, const string& destruct)
-      : construct_(construct), destruct_(destruct) {
-    cerr << repstr(level_, "|  ") << construct_ << '\n';
-    ++level_;
-  }
-  ~ScopedPrint() {
-    --level_;
-    cerr << repstr(level_, "|  ") << destruct_ << '\n';
-  }
-
- private:
-  string construct_;
-  string destruct_;
-  static int level_;
-};
-
-int ScopedPrint::level_ = 0;
-
 #define RETURN_IF_ERR(check)    \
   {                             \
     if (!(check).IsSuccess()) { \
@@ -106,8 +71,6 @@ int ScopedPrint::level_ = 0;
       return *this;   \
     }                 \
   };                  \
-// ScopedPrint _scoped_print(string("Entering ") + __FUNCTION__, string("Leaving
-// ") + __FUNCTION__)
 
 namespace parser {
 
@@ -1019,7 +982,7 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   // TODO: Make emptystmt not print anything.
 
   // Parse optional for initializer.
-  unique_ptr<Stmt> forInit;
+  uptr<Stmt> forInit;
   if (next.IsNext(SEMI)) {
     forInit.reset(new EmptyStmt());
     next = next.Advance();
@@ -1038,7 +1001,7 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   }
 
   // Parse optional for condition.
-  unique_ptr<Expr> forCond = nullptr;
+  uptr<Expr> forCond = nullptr;
   if (next.IsNext(SEMI)) {
     next = next.Advance();
   } else {
@@ -1056,7 +1019,7 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   }
 
   // Parse optional for update.
-  unique_ptr<Expr> forUpdate;
+  uptr<Expr> forUpdate;
   if (!next.IsNext(RPAREN)) {
     Result<Expr> update;
     Parser afterUpdate = next.ParseExpression(&update);
@@ -1186,7 +1149,7 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
       return afterCommon.Fail(move(errors), out);
     }
 
-    unique_ptr<Stmt> bodyPtr(nullptr);
+    uptr<Stmt> bodyPtr(nullptr);
     Parser afterBody = afterParams;
     if (afterParams.IsNext(SEMI)) {
       bodyPtr.reset(new EmptyStmt());
@@ -1326,7 +1289,7 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
   }
 
   Parser afterSuper = afterIdent;
-  unique_ptr<ReferenceType> super(nullptr);
+  uptr<ReferenceType> super(nullptr);
   if (isClass && afterIdent.IsNext(K_EXTENDS)) {
     Result<QualifiedName> superName;
 
@@ -1492,7 +1455,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
     return Success(new CompUnit(nullptr, move(imports), move(types)), out);
   }
 
-  unique_ptr<QualifiedName> packageName(nullptr);
+  uptr<QualifiedName> packageName(nullptr);
   Parser afterPackage = *this;
   if (IsNext(K_PACKAGE)) {
     Result<Token> package;
@@ -1545,7 +1508,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
       new CompUnit(packageName.release(), move(imports), move(types)), out);
 }
 
-unique_ptr<Program> Parse(const FileSet* fs,
+uptr<Program> Parse(const FileSet* fs,
                           const vector<vector<lexer::Token>>& tokens,
                           ErrorList* error_out) {
   assert((uint)fs->Size() == tokens.size());
@@ -1571,7 +1534,7 @@ unique_ptr<Program> Parse(const FileSet* fs,
     }
   }
 
-  return unique_ptr<Program>(new Program(move(units)));
+  return uptr<Program>(new Program(move(units)));
 }
 
 // TODO: After we have types, need to ensure byte literals are within 8-bit
