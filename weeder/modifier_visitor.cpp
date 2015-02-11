@@ -304,7 +304,7 @@ REC_VISIT_DEFN(ModifierVisitor, ClassDecl, decl) {
   }
 
   ClassModifierVisitor visitor(fs_, errors_);
-  decl.Accept(&visitor);
+  decl.AcceptVisitor(&visitor);
   return false;
 }
 
@@ -318,7 +318,7 @@ REC_VISIT_DEFN(ModifierVisitor, InterfaceDecl, decl) {
               MakeInterfaceNoAccessModError, {PUBLIC});
 
   InterfaceModifierVisitor visitor(fs_, errors_);
-  decl.Accept(&visitor);
+  decl.AcceptVisitor(&visitor);
   return false;
 }
 

@@ -59,7 +59,7 @@ template <typename T>
 string Str(const T& t) {
   std::stringstream s;
   PrintVisitor visitor = PrintVisitor::Compact(&s);
-  t.Accept(&visitor);
+  t.AcceptVisitor(&visitor);
   return s.str();
 }
 
@@ -67,7 +67,7 @@ template <typename T>
 string Str(T* t) {
   std::stringstream s;
   PrintVisitor visitor = PrintVisitor::Compact(&s);
-  t->Accept(&visitor);
+  t->AcceptVisitor(&visitor);
   return s.str();
 }
 

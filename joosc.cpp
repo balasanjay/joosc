@@ -118,7 +118,7 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
   // Print out the AST.
   {
     PrintVisitor printer = PrintVisitor::Pretty(out);
-    program.get()->Accept(&printer);
+    program.get()->AcceptVisitor(&printer);
   }
 
   return true;

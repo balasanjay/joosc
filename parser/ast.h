@@ -11,12 +11,12 @@ namespace parser {
 class Rewriter;
 
 #define ACCEPT_VISITOR_ABSTRACT(type) \
-  virtual void Accept(Visitor* visitor) const = 0; \
-  virtual type* RewriteAccept(Rewriter* visitor) const = 0
+  virtual void AcceptVisitor(Visitor* visitor) const = 0; \
+  virtual type* AcceptRewriter(Rewriter* visitor) const = 0
 
 #define ACCEPT_VISITOR(type, ret_type) \
-  virtual void Accept(Visitor* visitor) const { visitor->Visit##type(*this); } \
-  virtual ret_type* RewriteAccept(Rewriter* visitor) const { return visitor->RewriteVisit##type(*this); }
+  virtual void AcceptVisitor(Visitor* visitor) const { visitor->Visit##type(*this); } \
+  virtual ret_type* AcceptRewriter(Rewriter* visitor) const { return visitor->Rewrite##type(*this); }
 
 #define REF_GETTER(type, name, expr) \
   const type& name() const { return (expr); }
