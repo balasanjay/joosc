@@ -7,9 +7,17 @@
 using std::back_inserter;
 using std::count;
 using std::cout;
+using std::ostream;
 using std::sort;
 using std::transform;
 
+using base::DiagnosticClass;
+using base::Error;
+using base::FileSet;
+using base::MakeError;
+using base::OutputOptions;
+using base::Pos;
+using base::PosRange;
 using parser::ImportDecl;
 
 namespace types {
@@ -163,7 +171,32 @@ void TypeSetBuilder::Put(const vector<string>& ns, const string& name, base::Pos
   entries_.push_back(Entry{ss.str(), namepos});
 }
 
-TypeSet TypeSetBuilder::Build(base::ErrorList* out) const {
+Error* MakeDuplicateTypeDefinitionError(const FileSet* fs, const string& name, const vector<PosRange> dupes) {
+  return MakeError([=](ostream* out, const OutputOptions& opt) {
+    if (opt.simple) {
+      *out << name << ": [";
+      for (const auto& dupe : dupes) {
+        *out << dupe << ",";
+      }
+      *out << ']';
+      return;
+    }
+
+    stringstream msgstream;
+    msgstream << "Type '" << name << "' was declared multiple times.";
+
+    PrintDiagnosticHeader(out, opt, fs, dupes.at(0), DiagnosticClass::ERROR, msgstream.str());
+    PrintRangePtr(out, opt, fs, dupes.at(0));
+    for (uint i = 1; i < dupes.size(); ++i) {
+      *out << '\n';
+      PosRange pos = dupes.at(i);
+      PrintDiagnosticHeader(out, opt, fs, pos, DiagnosticClass::INFO, "Also declared here.");
+      PrintRangePtr(out, opt, fs, pos);
+    }
+  });
+}
+
+TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
   // Find duplicates.
   vector<Entry> entries(entries_);
   stable_sort(entries.begin(), entries.end(),
@@ -177,9 +210,13 @@ TypeSet TypeSetBuilder::Build(base::ErrorList* out) const {
       continue;
     }
 
+    // Check for duplicate definitions.
     if (end - start > 1) {
-      throw;
-      // TODO: Errors
+      vector<PosRange> defs;
+      for (uint i = start; i < end; ++i) {
+        defs.push_back(entries.at(i).namepos);
+      }
+      out->Append(MakeDuplicateTypeDefinitionError(fs, entries[start].name, defs));
     }
 
     start = end;

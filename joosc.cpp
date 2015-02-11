@@ -29,19 +29,6 @@ using weeder::WeedProgram;
 
 namespace {
 
-class NonAnsiCharError : public base::Error {
-  void PrintTo(std::ostream* out,
-               const base::OutputOptions& opt) const override {
-    if (opt.simple) {
-      *out << "NonAnsiCharError\n";
-      return;
-    }
-
-    *out << Red(opt) << "error: My user visible message." << ResetFmt(opt)
-         << " Other sub-message.";
-  }
-};
-
 bool PrintErrors(const ErrorList& errors, ostream* err) {
   if (errors.Size() > 0) {
     errors.PrintTo(err, base::OutputOptions::kUserOutput);
@@ -127,11 +114,9 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
     return true;
   }
 
-  // Print out the AST.
+  // Type-checking.
+  // TODO: clean this up.
   {
-    PrintVisitor printer = PrintVisitor::Pretty(out);
-    program.get()->Accept(&printer);
-
     types::TypeSetBuilder typeSetBuilder;
 
     for (int i = 0; i < program->CompUnits().Size(); ++i) {
@@ -147,13 +132,22 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
     }
 
     base::ErrorList errors;
-    TypeSet ts = typeSetBuilder.Build(&errors);
+    TypeSet ts = typeSetBuilder.Build(fs, &errors);
+    if (PrintErrors(errors, err)) {
+      return false;
+    }
 
     cout << "Original\n";
     ts.PrintTo(&cout);
 
     cout << "\n\nWithImports\n";
     ts.WithImports(program->CompUnits().At(0)->Imports()).PrintTo(&cout);
+  }
+
+  // Print out the AST.
+  {
+    PrintVisitor printer = PrintVisitor::Pretty(out);
+    program.get()->Accept(&printer);
   }
 
   return true;
