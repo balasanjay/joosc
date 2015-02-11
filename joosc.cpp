@@ -6,6 +6,8 @@
 #include "parser/ast.h"
 #include "parser/print_visitor.h"
 #include "weeder/weeder.h"
+#include "typing/rewriter.h"
+#include "typing/fun_rewriter.h"
 #include <iostream>
 
 using base::ErrorList;
@@ -108,6 +110,10 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
   if (stage == CompilerStage::WEED) {
     return true;
   }
+
+  // TODO.
+  //parser::FunRewriter rewriter;
+  //program.reset(program.get()->Rewrite(&rewriter));
 
   // Print out the AST.
   {
