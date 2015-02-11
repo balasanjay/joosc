@@ -1,19 +1,18 @@
 #ifndef TYPING_REWRITER_H
 #define TYPING_REWRITER_H
 
-#include "base/fileset.h"
-#include "base/errorlist.h"
 #include "ast/ast_fwd.h"
+#include "base/errorlist.h"
+#include "base/fileset.h"
 
-namespace parser {
+namespace ast {
 
 #define REWRITE_DECL(type, ret_type, var) \
   virtual ast::ret_type* Rewrite##type(const ast::type& var)
 
-#define REWRITE_DEFN(cls, type, ret_type, var) \
-  ast::ret_type* cls::Rewrite##type(const ast::type& var)
-
-// Similar to RecursiveVisitor.
+// Rewriter rewrites an AST. All Rewrite* methods perform a deep-clone by
+// default; override a method to perform custom rewrites for that corresponding
+// AST node.
 class Rewriter {
  public:
   virtual ~Rewriter() = default;
@@ -60,6 +59,14 @@ protected:
   Rewriter() = default;
 };
 
-}  // namespace parser
+#undef REWRITE_DECL
+
+#define REWRITE_DECL(type, ret_type, var) \
+  ast::ret_type* Rewrite##type(const ast::type& var) override
+
+#define REWRITE_DEFN(cls, type, ret_type, var) \
+  ast::ret_type* cls::Rewrite##type(const ast::type& var)
+
+}  // namespace ast
 
 #endif

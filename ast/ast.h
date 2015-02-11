@@ -3,19 +3,19 @@
 
 #include <iostream>
 
+#include "ast/rewriter.h"
 #include "ast/visitor.h"
 #include "lexer/lexer.h"
-#include "typing/rewriter.h"
 
 namespace ast {
 
 #define ACCEPT_VISITOR_ABSTRACT(type) \
   virtual void AcceptVisitor(Visitor* visitor) const = 0; \
-  virtual type* AcceptRewriter(parser::Rewriter* visitor) const = 0
+  virtual type* AcceptRewriter(Rewriter* visitor) const = 0
 
 #define ACCEPT_VISITOR(type, ret_type) \
   virtual void AcceptVisitor(Visitor* visitor) const { visitor->Visit##type(*this); } \
-  virtual ret_type* AcceptRewriter(parser::Rewriter* visitor) const { return visitor->Rewrite##type(*this); }
+  virtual ret_type* AcceptRewriter(Rewriter* visitor) const { return visitor->Rewrite##type(*this); }
 
 #define REF_GETTER(type, name, expr) \
   const type& name() const { return (expr); }
@@ -51,7 +51,7 @@ class Type {
 
   virtual void PrintTo(std::ostream* os) const = 0;
 
-  virtual Type* clone() const = 0;
+  virtual Type* Clone() const = 0;
 
  protected:
   Type() = default;
@@ -68,7 +68,7 @@ class PrimitiveType : public Type {
 
   VAL_GETTER(lexer::Token, GetToken, token_);
 
-  virtual Type* clone() const {
+  PrimitiveType* Clone() const override {
     return new PrimitiveType(token_);
   }
 
@@ -86,7 +86,7 @@ class ReferenceType : public Type {
 
   REF_GETTER(QualifiedName, Name, name_);
 
-  virtual Type* clone() const {
+  ReferenceType* Clone() const override {
     return new ReferenceType(name_);
   }
 
@@ -108,8 +108,8 @@ class ArrayType : public Type {
 
   REF_GETTER(Type, ElemType, *elemtype_);
 
-  virtual Type* clone() const {
-    return new ArrayType(elemtype_->clone());
+  Type* Clone() const override {
+    return new ArrayType(elemtype_->Clone());
   }
 
  private:
@@ -790,6 +790,7 @@ class Program final {
   base::UniquePtrVector<CompUnit> units_;
 };
 
+#undef ACCEPT_VISITOR_ABSTRACT
 #undef ACCEPT_VISITOR
 #undef REF_GETTER
 #undef VAL_GETTER
