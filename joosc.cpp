@@ -10,11 +10,17 @@
 #include "parser/print_visitor.h"
 #include "types/types.h"
 #include "weeder/weeder.h"
+<<<<<<< HEAD
 
 using std::cerr;
 using std::cout;
 using std::endl;
 using std::ostream;
+=======
+#include "typing/rewriter.h"
+#include "typing/fun_rewriter.h"
+#include <iostream>
+>>>>>>> master
 
 using base::ErrorList;
 using base::FileSet;
@@ -137,17 +143,17 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
       return false;
     }
 
-    cout << "Original\n";
-    ts.PrintTo(&cout);
+    // cout << "Original\n";
+    // ts.PrintTo(&cout);
 
-    cout << "\n\nWithImports\n";
-    ts.WithImports(program->CompUnits().At(0)->Imports()).PrintTo(&cout);
+    // cout << "\n\nWithImports\n";
+    // ts.WithImports(program->CompUnits().At(0)->Imports()).PrintTo(&cout);
   }
 
   // Print out the AST.
   {
     PrintVisitor printer = PrintVisitor::Pretty(out);
-    program.get()->Accept(&printer);
+    program.get()->AcceptVisitor(&printer);
   }
 
   return true;

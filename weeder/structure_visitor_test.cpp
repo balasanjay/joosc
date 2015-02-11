@@ -34,7 +34,7 @@ TEST_F(StructureVisitorTest, MultipleTypesInFile) {
 
   ErrorList errors;
   StructureVisitor visitor(fs_.get(), &errors);
-  prog->Accept(&visitor);
+  prog->AcceptVisitor(&visitor);
 
   string expected =
       "MultipleTypesPerCompUnitError(0:6-9)\n"
@@ -50,7 +50,7 @@ TEST_F(StructureVisitorTest, DifferentFileName) {
 
   ErrorList errors;
   StructureVisitor visitor(fs_.get(), &errors);
-  prog->Accept(&visitor);
+  prog->AcceptVisitor(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("IncorrectFileNameError(0:6-9)\n", testing::PrintToString(errors));
@@ -62,7 +62,7 @@ TEST_F(StructureVisitorTest, StructureOk) {
 
   ErrorList errors;
   StructureVisitor visitor(fs_.get(), &errors);
-  prog->Accept(&visitor);
+  prog->AcceptVisitor(&visitor);
 
   EXPECT_EQ(errors.Size(), 0);
 }
