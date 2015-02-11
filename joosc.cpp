@@ -3,12 +3,12 @@
 #include <iostream>
 
 #include "ast/ast.h"
+#include "ast/print_visitor.h"
 #include "base/error.h"
 #include "base/errorlist.h"
 #include "base/fileset.h"
 #include "lexer/lexer.h"
 #include "parser/parser.h"
-#include "parser/print_visitor.h"
 #include "types/types.h"
 #include "weeder/weeder.h"
 
@@ -17,6 +17,7 @@ using std::cout;
 using std::endl;
 using std::ostream;
 
+using ast::PrintVisitor;
 using ast::Program;
 using base::ErrorList;
 using base::FileSet;
@@ -24,7 +25,6 @@ using lexer::LexJoosFiles;
 using lexer::StripSkippableTokens;
 using lexer::Token;
 using parser::Parse;
-using parser::PrintVisitor;
 using types::TypeSet;
 using weeder::WeedProgram;
 

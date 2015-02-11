@@ -4,9 +4,9 @@
 #include "ast/ast.h"
 #include "ast/visitor.h"
 
-namespace parser {
+namespace ast {
 
-class PrintVisitor final : public ast::Visitor {
+class PrintVisitor final : public Visitor {
  public:
   static PrintVisitor Pretty(std::ostream* os) {
     return PrintVisitor(os, 0, "\n", "  ", " ");
@@ -337,6 +337,6 @@ class PrintVisitor final : public ast::Visitor {
   string space_;
 };
 
-}  // namespace parser
+}  // namespace ast
 
 #endif

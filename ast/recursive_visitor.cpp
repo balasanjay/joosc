@@ -1,7 +1,6 @@
 #include "ast/recursive_visitor.h"
 
 #include "ast/ast.h"
-#include "parser/print_visitor.h"
 
 using lexer::Token;
 using base::Error;
