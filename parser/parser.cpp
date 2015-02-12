@@ -242,7 +242,7 @@ Parser Parser::ParseQualifiedName(Result<QualifiedName>* out) const {
     *out = ConvertError<Token, QualifiedName>(move(ident));
     return Fail();
   }
-  tokens.push_back(*ident.Get2());
+  tokens.push_back(*ident.Get());
 
   while (cur.IsNext(DOT)) {
     Result<Token> dot;
@@ -255,8 +255,8 @@ Parser Parser::ParseQualifiedName(Result<QualifiedName>* out) const {
       return Fail(move(errors), out);
     }
 
-    tokens.push_back(*dot.Get2());
-    tokens.push_back(*nextIdent.Get2());
+    tokens.push_back(*dot.Get());
+    tokens.push_back(*nextIdent.Get());
     cur = next;
   }
   QualifiedName result = MakeQualifiedName(GetFile(), tokens);
@@ -274,7 +274,7 @@ Parser Parser::ParsePrimitiveType(Result<Type>* out) const {
 
   Result<Token> primitive;
   Parser after = ParseTokenIf(IsPrimitive, &primitive);
-  RETURN_IF_GOOD(after, new PrimitiveType(*primitive.Get2()), out);
+  RETURN_IF_GOOD(after, new PrimitiveType(*primitive.Get()), out);
 
   *out = ConvertError<Token, Type>(move(primitive));
   return Fail();
@@ -298,7 +298,7 @@ Parser Parser::ParseSingleType(Result<Type>* out) const {
   if (IsNext(IDENTIFIER)) {
     Result<QualifiedName> reference;
     Parser after = ParseQualifiedName(&reference);
-    RETURN_IF_GOOD(after, new ReferenceType(*reference.Get2()), out);
+    RETURN_IF_GOOD(after, new ReferenceType(*reference.Get()), out);
 
     *out = ConvertError<QualifiedName, Type>(move(reference));
     return Fail();
@@ -329,7 +329,7 @@ Parser Parser::ParseType(Result<Type>* out) const {
 
     Parser afterArray = afterSingle.ParseTokenIf(ExactType(LBRACK), &lbrack)
                             .ParseTokenIf(ExactType(RBRACK), &rbrack);
-    RETURN_IF_GOOD(afterArray, new ArrayType(single.Get2()), out);
+    RETURN_IF_GOOD(afterArray, new ArrayType(single.Get()), out);
 
     *out = ConvertError<Token, Type>(move(rbrack));
     return Fail();
@@ -357,7 +357,7 @@ Parser Parser::ParseExpression(Result<Expr>* out) const {
     return cur;
   }
 
-  exprs.Append(expr.Get2());
+  exprs.Append(expr.Get());
 
   while (cur.IsNext(IsBinOp)) {
     Result<Token> binOp;
@@ -371,7 +371,7 @@ Parser Parser::ParseExpression(Result<Expr>* out) const {
     }
 
     // Check if binop is instanceof.
-    if (binOp.Get2()->type == lexer::K_INSTANCEOF) {
+    if (binOp.Get()->type == lexer::K_INSTANCEOF) {
       Result<Type> instanceOfType;
       next = next.ParseType(&instanceOfType);
       if (!next) {
@@ -380,8 +380,8 @@ Parser Parser::ParseExpression(Result<Expr>* out) const {
         return Fail(move(errors), out);
       }
       sptr<Expr> instanceOfLhs = exprs.PopBack();
-      exprs.Append(make_shared<InstanceOfExpr>(instanceOfLhs, *binOp.Get2(),
-                                      instanceOfType.Get2()));
+      exprs.Append(make_shared<InstanceOfExpr>(instanceOfLhs, *binOp.Get(),
+                                      instanceOfType.Get()));
     } else {
       next = next.ParseUnaryExpression(&nextExpr);
       if (!next) {
@@ -390,8 +390,8 @@ Parser Parser::ParseExpression(Result<Expr>* out) const {
         return Fail(move(errors), out);
       }
 
-      operators.push_back(*binOp.Get2());
-      exprs.Append(nextExpr.Get2());
+      operators.push_back(*binOp.Get());
+      exprs.Append(nextExpr.Get());
     }
     cur = next;
   }
@@ -417,7 +417,7 @@ Parser Parser::ParseUnaryExpression(Result<Expr>* out) const {
     Result<Expr> expr;
     Parser after =
         ParseTokenIf(IsUnaryOp, &unaryOp).ParseUnaryExpression(&expr);
-    RETURN_IF_GOOD(after, new UnaryExpr(*unaryOp.Get2(), expr.Get2()), out);
+    RETURN_IF_GOOD(after, new UnaryExpr(*unaryOp.Get(), expr.Get()), out);
 
     ErrorList errors;
     FirstOf(&errors, &unaryOp, &expr);
@@ -427,7 +427,7 @@ Parser Parser::ParseUnaryExpression(Result<Expr>* out) const {
   {
     Result<Expr> expr;
     Parser after = ParseCastExpression(&expr);
-    RETURN_IF_GOOD(after, expr.Get2(), out);
+    RETURN_IF_GOOD(after, expr.Get(), out);
   }
 
   return ParsePrimary(out);
@@ -448,7 +448,7 @@ Parser Parser::ParseCastExpression(Result<Expr>* out) const {
                      .ParseType(&type)
                      .ParseTokenIf(ExactType(RPAREN), &rparen)
                      .ParseUnaryExpression(&expr);
-  RETURN_IF_GOOD(after, new CastExpr(type.Get2(), expr.Get2()), out);
+  RETURN_IF_GOOD(after, new CastExpr(type.Get(), expr.Get()), out);
 
   // Collect the first error, and use that.
   ErrorList errors;
@@ -475,10 +475,10 @@ Parser Parser::ParsePrimary(Result<Expr>* out) const {
 
   // We retain ownership IF ParsePrimaryEnd fails. If it succeeds, the
   // expectation is that it will take ownership.
-  sptr<Expr> baseExpr = base.Get2();
+  sptr<Expr> baseExpr = base.Get();
   Result<Expr> baseWithEnds;
   Parser afterEnds = afterBase.ParsePrimaryEnd(baseExpr, &baseWithEnds);
-  RETURN_IF_GOOD(afterEnds, baseWithEnds.Get2(), out);
+  RETURN_IF_GOOD(afterEnds, baseWithEnds.Get(), out);
 
   // If we couldn't parse the PrimaryEnd, then just use base; it's optional.
   return afterBase.Success(baseExpr, out);
@@ -527,10 +527,10 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
     }
 
     sptr<Expr> newExpr =
-        make_shared<NewClassExpr>(*newTok.Get2(), type.Get2(), *args.Get2());
+        make_shared<NewClassExpr>(*newTok.Get(), type.Get(), *args.Get());
     Result<Expr> nested;
     Parser afterEnd = afterCall.ParsePrimaryEnd(newExpr, &nested);
-    RETURN_IF_GOOD(afterEnd, nested.Get2(), out);
+    RETURN_IF_GOOD(afterEnd, nested.Get(), out);
 
     return afterCall.Success(newExpr, out);
   }
@@ -555,14 +555,14 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
       return Fail(move(errors), out);
     }
 
-    sizeExpr = nested.Get2();
+    sizeExpr = nested.Get();
     after = fullAfter;
   }
 
-  sptr<Expr> newExpr = make_shared<NewArrayExpr>(type.Get2(), sizeExpr);
+  sptr<Expr> newExpr = make_shared<NewArrayExpr>(type.Get(), sizeExpr);
   Result<Expr> nested;
   Parser afterEnd = after.ParsePrimaryEndNoArrayAccess(newExpr, &nested);
-  RETURN_IF_GOOD(afterEnd, nested.Get2(), out);
+  RETURN_IF_GOOD(afterEnd, nested.Get(), out);
 
   return after.Success(newExpr, out);
 }
@@ -615,7 +615,7 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
                        .ParseTokenIf(ExactType(LPAREN), &lparen)
                        .ParseExpression(&expr)
                        .ParseTokenIf(ExactType(RPAREN), &rparen);
-    RETURN_IF_GOOD(after, new ParenExpr(expr.Get2()), out);
+    RETURN_IF_GOOD(after, new ParenExpr(expr.Get()), out);
 
     ErrorList errors;
     FirstOf(&errors, &lparen, &expr, &rparen);
@@ -625,7 +625,7 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
   if (IsNext(IDENTIFIER)) {
     Result<QualifiedName> name;
     Parser after = ParseQualifiedName(&name);
-    RETURN_IF_GOOD(after, new NameExpr(*name.Get2()), out);
+    RETURN_IF_GOOD(after, new NameExpr(*name.Get()), out);
 
     *out = ConvertError<QualifiedName, Expr>(move(name));
     return Fail();
@@ -657,10 +657,10 @@ Parser Parser::ParsePrimaryEnd(sptr<Expr> base, Result<Expr>* out) const {
     }
 
     // Try optional PrimaryEndNoArrayAccess.
-    sptr<Expr> index = make_shared<ArrayIndexExpr>(base, expr.Get2());
+    sptr<Expr> index = make_shared<ArrayIndexExpr>(base, expr.Get());
     Result<Expr> nested;
     Parser afterEnd = after.ParsePrimaryEndNoArrayAccess(index, &nested);
-    RETURN_IF_GOOD(afterEnd, nested.Get2(), out);
+    RETURN_IF_GOOD(afterEnd, nested.Get(), out);
 
     // If it failed, return what we had so far.
     return after.Success(index, out);
@@ -696,11 +696,11 @@ Parser Parser::ParsePrimaryEndNoArrayAccess(sptr<Expr> base,
       return Fail(move(errors), out);
     }
 
-    sptr<Expr> deref = make_shared<FieldDerefExpr>(base, TokenString(GetFile(), *ident.Get2()),
-                                     *ident.Get2());
+    sptr<Expr> deref = make_shared<FieldDerefExpr>(base, TokenString(GetFile(), *ident.Get()),
+                                     *ident.Get());
     Result<Expr> nested;
     Parser afterEnd = after.ParsePrimaryEnd(deref, &nested);
-    RETURN_IF_GOOD(afterEnd, nested.Get2(), out);
+    RETURN_IF_GOOD(afterEnd, nested.Get(), out);
 
     return after.Success(deref, out);
   }
@@ -721,10 +721,10 @@ Parser Parser::ParsePrimaryEndNoArrayAccess(sptr<Expr> base,
       return Fail(move(errors), out);
     }
 
-    sptr<Expr> call = make_shared<CallExpr>(base, *lparen.Get2(), *args.Get2());
+    sptr<Expr> call = make_shared<CallExpr>(base, *lparen.Get(), *args.Get());
     Result<Expr> nested;
     Parser afterEnd = after.ParsePrimaryEnd(call, &nested);
-    RETURN_IF_GOOD(afterEnd, nested.Get2(), out);
+    RETURN_IF_GOOD(afterEnd, nested.Get(), out);
 
     return after.Success(call, out);
   }
@@ -741,7 +741,7 @@ Parser Parser::ParseArgumentList(Result<SharedPtrVector<Expr>>* out) const {
   if (!cur) {
     return Success(new SharedPtrVector<Expr>(args), out);
   }
-  args.Append(first.Get2());
+  args.Append(first.Get());
 
   while (cur.IsNext(COMMA)) {
     Result<Token> comma;
@@ -756,7 +756,7 @@ Parser Parser::ParseArgumentList(Result<SharedPtrVector<Expr>>* out) const {
       return Fail(move(errors), out);
     }
 
-    args.Append(expr.Get2());
+    args.Append(expr.Get());
     cur = next;
   }
 
@@ -803,7 +803,7 @@ Parser Parser::ParseStmt(Result<Stmt>* out) const {
     Result<Token> semi;
     Parser after =
         (*this).ParseExpression(&expr).ParseTokenIf(ExactType(SEMI), &semi);
-    RETURN_IF_GOOD(after, new ExprStmt(expr.Get2()), out);
+    RETURN_IF_GOOD(after, new ExprStmt(expr.Get()), out);
 
     // Fail on last case.
     ErrorList errors;
@@ -827,7 +827,7 @@ Parser Parser::ParseVarDecl(Result<Stmt>* out) const {
                      .ParseTokenIf(ExactType(ASSG), &eq)
                      .ParseExpression(&expr);
   RETURN_IF_GOOD(
-      after, new LocalDeclStmt(type.Get2(), *ident.Get2(), expr.Get2()),
+      after, new LocalDeclStmt(type.Get(), *ident.Get(), expr.Get()),
       out);
 
   // TODO: Make it fatal error only after we find equals?
@@ -853,7 +853,7 @@ Parser Parser::ParseReturnStmt(Result<Stmt>* out) const {
   Parser afterAll =
       afterRet.ParseExpression(&expr).ParseTokenIf(ExactType(SEMI), &semi);
 
-  RETURN_IF_GOOD(afterAll, new ReturnStmt(expr.Get2()), out);
+  RETURN_IF_GOOD(afterAll, new ReturnStmt(expr.Get()), out);
 
   ErrorList errors;
   FirstOf(&errors, &ret, &expr, &semi);
@@ -884,7 +884,7 @@ Parser Parser::ParseBlock(Result<Stmt>* out) const {
       Parser next =
           cur.ParseVarDecl(&varDecl).ParseTokenIf(ExactType(SEMI), &semi);
       if (next) {
-        stmts.Append(varDecl.Get2());
+        stmts.Append(varDecl.Get());
         cur = next;
         continue;
       }
@@ -894,7 +894,7 @@ Parser Parser::ParseBlock(Result<Stmt>* out) const {
       Result<Stmt> stmt;
       Parser next = cur.ParseStmt(&stmt);
       if (next) {
-        stmts.Append(stmt.Get2());
+        stmts.Append(stmt.Get());
         cur = next;
         continue;
       }
@@ -932,13 +932,13 @@ Parser Parser::ParseIfStmt(Result<Stmt>* out) const {
 
   if (!after.IsNext(K_ELSE)) {
     return after.Success(
-        new IfStmt(expr.Get2(), stmt.Get2(), make_shared<EmptyStmt>()), out);
+        new IfStmt(expr.Get(), stmt.Get(), make_shared<EmptyStmt>()), out);
   }
 
   Result<Stmt> elseStmt;
   Parser afterElse = after.Advance().ParseStmt(&elseStmt);
   RETURN_IF_GOOD(afterElse,
-                 new IfStmt(expr.Get2(), stmt.Get2(), elseStmt.Get2()),
+                 new IfStmt(expr.Get(), stmt.Get(), elseStmt.Get()),
                  out);
 
   // Committed to having else, so fail.
@@ -956,14 +956,14 @@ Parser Parser::ParseForInit(Result<Stmt>* out) const {
   {
     Result<Stmt> varDecl;
     Parser after = ParseVarDecl(&varDecl);
-    RETURN_IF_GOOD(after, varDecl.Get2(), out);
+    RETURN_IF_GOOD(after, varDecl.Get(), out);
   }
 
   {
     Result<Expr> expr;
     Parser after = ParseExpression(&expr);
     // Note: This ExprStmt didn't consume a semicolon!
-    RETURN_IF_GOOD(after, new ExprStmt(expr.Get2()), out);
+    RETURN_IF_GOOD(after, new ExprStmt(expr.Get()), out);
     ErrorList errors;
     expr.ReleaseErrors(&errors);
     return Fail(move(errors), out);
@@ -1003,7 +1003,7 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
       FirstOf(&errors, &stmt, &semi);
       return next.Fail(move(errors), out);
     }
-    forInit = stmt.Get2();
+    forInit = stmt.Get();
     next = afterInit;
   }
 
@@ -1021,7 +1021,7 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
       FirstOf(&errors, &cond, &semi);
       return next.Fail(move(errors), out);
     }
-    forCond = cond.Get2();
+    forCond = cond.Get();
     next = afterCond;
   }
 
@@ -1035,7 +1035,7 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
       update.ReleaseErrors(&errors);
       return next.Fail(move(errors), out);
     }
-    forUpdate = update.Get2();
+    forUpdate = update.Get();
     next = afterUpdate;
   }
 
@@ -1044,7 +1044,7 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   Result<Stmt> body;
   Parser after = next.ParseTokenIf(ExactType(RPAREN), &rparen).ParseStmt(&body);
   RETURN_IF_GOOD(after, new ForStmt(forInit, forCond,
-                                    forUpdate, body.Get2()),
+                                    forUpdate, body.Get()),
                  out);
 
   ErrorList errors;
@@ -1071,7 +1071,7 @@ Parser Parser::ParseWhileStmt(internal::Result<Stmt>* out) const {
                      .ParseTokenIf(ExactType(RPAREN), &rparen)
                      .ParseStmt(&body);
 
-  RETURN_IF_GOOD(after, new WhileStmt(cond.Get2(), body.Get2()), out);
+  RETURN_IF_GOOD(after, new WhileStmt(cond.Get(), body.Get()), out);
 
   ErrorList errors;
   FirstOf(&errors, &whileTok, &lparen, &cond, &rparen, &body);
@@ -1098,8 +1098,8 @@ Parser Parser::ParseModifierList(Result<ModifierList>* out) const {
     if (!next) {
       return cur.Success(new ModifierList(move(ml)), out);
     }
-    if (!ml.AddModifier(*tok.Get2())) {
-      return cur.Fail(MakeDuplicateModifierError(*tok.Get2()), out);
+    if (!ml.AddModifier(*tok.Get())) {
+      return cur.Fail(MakeDuplicateModifierError(*tok.Get()), out);
     }
     cur = next;
   }
@@ -1169,18 +1169,18 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
         body.ReleaseErrors(&errors);
         return afterParams.Fail(move(errors), out);
       }
-      bodyPtr = body.Get2();
+      bodyPtr = body.Get();
     }
 
     if (isConstructor) {
       return afterBody.Success(
-          new ConstructorDecl(*mods.Get2(), *ident.Get2(),
-                              *params.Get2(), bodyPtr),
+          new ConstructorDecl(*mods.Get(), *ident.Get(),
+                              *params.Get(), bodyPtr),
           out);
     } else {
       return afterBody.Success(
-          new MethodDecl(*mods.Get2(), type.Get2(), *ident.Get2(),
-                         *params.Get2(), bodyPtr),
+          new MethodDecl(*mods.Get(), type.Get(), *ident.Get(),
+                         *params.Get(), bodyPtr),
           out);
     }
   }
@@ -1188,7 +1188,7 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
   // Parse field.
   if (afterCommon.IsNext(SEMI)) {
     return afterCommon.Advance().Success(
-        new FieldDecl(*mods.Get2(), type.Get2(), *ident.Get2(),
+        new FieldDecl(*mods.Get(), type.Get(), *ident.Get(),
                       nullptr),
         out);
   }
@@ -1200,8 +1200,8 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
                         .ParseExpression(&val)
                         .ParseTokenIf(ExactType(SEMI), &semi);
 
-  RETURN_IF_GOOD(afterVal, new FieldDecl(*mods.Get2(), type.Get2(),
-                                         *ident.Get2(), val.Get2()),
+  RETURN_IF_GOOD(afterVal, new FieldDecl(*mods.Get(), type.Get(),
+                                         *ident.Get(), val.Get()),
                  out);
 
   ErrorList errors;
@@ -1241,7 +1241,7 @@ Parser Parser::ParseParamList(Result<ParamList>* out) const {
       return afterType.Fail(MakeParamRequiresNameError(cur.GetNext()), out);
     }
     cur = afterIdent;
-    params.Append(make_shared<Param>(type.Get2(), *ident.Get2()));
+    params.Append(make_shared<Param>(type.Get(), *ident.Get()));
 
     if (cur.IsNext(COMMA)) {
       cur = cur.Advance();
@@ -1309,7 +1309,7 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
       return Fail(move(errors), out);
     }
 
-    super.reset(new ReferenceType(*superName.Get2()));
+    super.reset(new ReferenceType(*superName.Get()));
   }
 
   Parser afterInterfaces = afterSuper;
@@ -1330,7 +1330,7 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
       }
 
       afterInterfaces = afterName;
-      interfaces.push_back(*name.Get2());
+      interfaces.push_back(*name.Get());
 
       if (afterInterfaces.IsNext(COMMA)) {
         afterInterfaces = afterInterfaces.Advance();
@@ -1366,19 +1366,19 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
       return afterBody.Fail(move(errors), out);
     }
 
-    members.Append(member.Get2());
+    members.Append(member.Get());
     afterBody = afterMember;
   }
 
   TypeDecl* type = nullptr;
 
   if (isClass) {
-    type = new ClassDecl(*mods.Get2(),
-                         TokenString(GetFile(), *ident.Get2()), *ident.Get2(),
+    type = new ClassDecl(*mods.Get(),
+                         TokenString(GetFile(), *ident.Get()), *ident.Get(),
                          interfaces, members, super);
   } else {
-    type = new InterfaceDecl(*mods.Get2(),
-                             TokenString(GetFile(), *ident.Get2()), *ident.Get2(),
+    type = new InterfaceDecl(*mods.Get(),
+                             TokenString(GetFile(), *ident.Get()), *ident.Get(),
                              interfaces, members);
   }
 
@@ -1404,7 +1404,7 @@ Parser Parser::ParseImportDecl(Result<ImportDecl>* out) const {
     FirstOf(&errors, &import, &ident);
     return Fail(move(errors), out);
   }
-  tokens.push_back(*ident.Get2());
+  tokens.push_back(*ident.Get());
 
   while (cur.IsNext(DOT)) {
     Token dot = cur.GetNext();
@@ -1426,7 +1426,7 @@ Parser Parser::ParseImportDecl(Result<ImportDecl>* out) const {
     }
 
     tokens.push_back(dot);
-    tokens.push_back(*nextIdent.Get2());
+    tokens.push_back(*nextIdent.Get());
     cur = next;
   }
 
@@ -1480,7 +1480,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
       return Fail(move(errors), out);
     }
 
-    packageName = name.Get2();
+    packageName = name.Get();
   }
 
   Parser afterImports = afterPackage.EatSemis();
@@ -1494,7 +1494,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
       return Fail(move(errors), out);
     }
 
-    imports.push_back(*import.Get2());
+    imports.push_back(*import.Get());
   }
 
   Parser afterTypes = afterImports;
@@ -1508,7 +1508,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
       return Fail(move(errors), out);
     }
 
-    types.Append(type.Get2());
+    types.Append(type.Get());
   }
 
   return afterTypes.Success(
@@ -1532,7 +1532,7 @@ uptr<Program> Parse(const FileSet* fs,
     parser.ParseCompUnit(&unit);
 
     if (unit) {
-      units.Append(unit.Get2());
+      units.Append(unit.Get());
     } else {
       failed = true;
     }

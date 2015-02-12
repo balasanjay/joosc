@@ -68,7 +68,7 @@ TEST_F(TypeVisitorTest, CastOk) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  stmt.Get2()->AcceptVisitor(&visitor);
+  stmt.Get()->AcceptVisitor(&visitor);
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -80,7 +80,7 @@ TEST_F(TypeVisitorTest, CastNotOk) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  stmt.Get2()->AcceptVisitor(&visitor);
+  stmt.Get()->AcceptVisitor(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidVoidTypeError(0:1-5)\n", testing::PrintToString(errors));
@@ -93,7 +93,7 @@ TEST_F(TypeVisitorTest, InstanceOfPrimitive) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  stmt.Get2()->AcceptVisitor(&visitor);
+  stmt.Get()->AcceptVisitor(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidInstanceOfTypeError(0:2-12)\n",
@@ -107,7 +107,7 @@ TEST_F(TypeVisitorTest, InstanceOfArray) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  stmt.Get2()->AcceptVisitor(&visitor);
+  stmt.Get()->AcceptVisitor(&visitor);
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -119,7 +119,7 @@ TEST_F(TypeVisitorTest, NewClassOk) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  stmt.Get2()->AcceptVisitor(&visitor);
+  stmt.Get()->AcceptVisitor(&visitor);
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -131,7 +131,7 @@ TEST_F(TypeVisitorTest, NewClassVoid) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  stmt.Get2()->AcceptVisitor(&visitor);
+  stmt.Get()->AcceptVisitor(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidVoidTypeError(0:4-8)\n", testing::PrintToString(errors));
@@ -144,7 +144,7 @@ TEST_F(TypeVisitorTest, NewClassPrimitive) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  stmt.Get2()->AcceptVisitor(&visitor);
+  stmt.Get()->AcceptVisitor(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("NewNonReferenceTypeError(0:0-3)\n",
@@ -158,7 +158,7 @@ TEST_F(TypeVisitorTest, NewArrayOk) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  stmt.Get2()->AcceptVisitor(&visitor);
+  stmt.Get()->AcceptVisitor(&visitor);
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -170,7 +170,7 @@ TEST_F(TypeVisitorTest, NewArrayNotOk) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  stmt.Get2()->AcceptVisitor(&visitor);
+  stmt.Get()->AcceptVisitor(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidVoidTypeError(0:4-8)\n", testing::PrintToString(errors));
@@ -183,7 +183,7 @@ TEST_F(TypeVisitorTest, LocalDeclOk) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  stmt.Get2()->AcceptVisitor(&visitor);
+  stmt.Get()->AcceptVisitor(&visitor);
 
   EXPECT_FALSE(errors.IsFatal());
   EXPECT_EQ("", testing::PrintToString(errors));
@@ -196,7 +196,7 @@ TEST_F(TypeVisitorTest, LocalDeclNotOk) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  stmt.Get2()->AcceptVisitor(&visitor);
+  stmt.Get()->AcceptVisitor(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidVoidTypeError(0:1-5)\n", testing::PrintToString(errors));
@@ -209,7 +209,7 @@ TEST_F(TypeVisitorTest, FieldDeclOk) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  decl.Get2()->AcceptVisitor(&visitor);
+  decl.Get()->AcceptVisitor(&visitor);
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -221,7 +221,7 @@ TEST_F(TypeVisitorTest, FieldDeclNotOk) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  decl.Get2()->AcceptVisitor(&visitor);
+  decl.Get()->AcceptVisitor(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidVoidTypeError(0:0-4)\n", testing::PrintToString(errors));
@@ -234,7 +234,7 @@ TEST_F(TypeVisitorTest, ParamOk) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  decl.Get2()->AcceptVisitor(&visitor);
+  decl.Get()->AcceptVisitor(&visitor);
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -246,7 +246,7 @@ TEST_F(TypeVisitorTest, ParamNotOk) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  decl.Get2()->AcceptVisitor(&visitor);
+  decl.Get()->AcceptVisitor(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidVoidTypeError(0:9-13)\n", testing::PrintToString(errors));
@@ -259,7 +259,7 @@ TEST_F(TypeVisitorTest, ForInitNotValid) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  stmt.Get2()->AcceptVisitor(&visitor);
+  stmt.Get()->AcceptVisitor(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
@@ -272,7 +272,7 @@ TEST_F(TypeVisitorTest, ForInitNotArrayAccess) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  stmt.Get2()->AcceptVisitor(&visitor);
+  stmt.Get()->AcceptVisitor(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
@@ -285,7 +285,7 @@ TEST_F(TypeVisitorTest, ForInitNewClassAllowed) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  stmt.Get2()->AcceptVisitor(&visitor);
+  stmt.Get()->AcceptVisitor(&visitor);
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -297,7 +297,7 @@ TEST_F(TypeVisitorTest, ForInitMethodCallAllowed) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  stmt.Get2()->AcceptVisitor(&visitor);
+  stmt.Get()->AcceptVisitor(&visitor);
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -309,7 +309,7 @@ TEST_F(TypeVisitorTest, ForInitAssignmentAllowed) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  stmt.Get2()->AcceptVisitor(&visitor);
+  stmt.Get()->AcceptVisitor(&visitor);
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -321,7 +321,7 @@ TEST_F(TypeVisitorTest, ForInitJustIdNotAllowed) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  stmt.Get2()->AcceptVisitor(&visitor);
+  stmt.Get()->AcceptVisitor(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
@@ -334,7 +334,7 @@ TEST_F(TypeVisitorTest, ForInitAssignmentInParensDisallowed) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  stmt.Get2()->AcceptVisitor(&visitor);
+  stmt.Get()->AcceptVisitor(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
@@ -347,7 +347,7 @@ TEST_F(TypeVisitorTest, BlockNotStmt) {
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  stmt.Get2()->AcceptVisitor(&visitor);
+  stmt.Get()->AcceptVisitor(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidTopLevelStatement(0:1)\nInvalidTopLevelStatement(0:1)\n",

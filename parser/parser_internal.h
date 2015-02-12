@@ -21,9 +21,9 @@ class Result final {
 
   bool IsSuccess() const { return !errors_.IsFatal(); }
 
-  sptr<T> Get2() const {
+  sptr<T> Get() const {
     if (!IsSuccess()) {
-      throw "Get2() from non-successful result.";
+      throw "Get() from non-successful result.";
     }
     return data_;
   }

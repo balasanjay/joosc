@@ -25,7 +25,7 @@ class StructureVisitorTest : public WeederTest {
     }
 
     SharedPtrVector<CompUnit> units;
-    units.Append(unit.Get2());
+    units.Append(unit.Get());
 
     return uptr<Program>(new Program(units));
   }
