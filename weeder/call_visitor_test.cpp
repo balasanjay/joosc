@@ -16,7 +16,7 @@ TEST_F(CallVisitorTest, Name) {
 
   ErrorList errors;
   CallVisitor visitor(fs_.get(), &errors);
-  stmt.Get()->AcceptVisitor(&visitor);
+  stmt.Get2()->AcceptVisitor(&visitor);
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -28,7 +28,7 @@ TEST_F(CallVisitorTest, FieldDeref) {
 
   ErrorList errors;
   CallVisitor visitor(fs_.get(), &errors);
-  stmt.Get()->AcceptVisitor(&visitor);
+  stmt.Get2()->AcceptVisitor(&visitor);
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -40,7 +40,7 @@ TEST_F(CallVisitorTest, ThisFail) {
 
   ErrorList errors;
   CallVisitor visitor(fs_.get(), &errors);
-  stmt.Get()->AcceptVisitor(&visitor);
+  stmt.Get2()->AcceptVisitor(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("ExplicitThisCallError(0:4)\n", testing::PrintToString(errors));
@@ -53,7 +53,7 @@ TEST_F(CallVisitorTest, Fail) {
 
   ErrorList errors;
   CallVisitor visitor(fs_.get(), &errors);
-  stmt.Get()->AcceptVisitor(&visitor);
+  stmt.Get2()->AcceptVisitor(&visitor);
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidCallError(0:3)\n", testing::PrintToString(errors));

@@ -38,7 +38,6 @@ class Visitor {
   ABSTRACT_VISIT(ForStmt);
   ABSTRACT_VISIT(WhileStmt);
 
-  ABSTRACT_VISIT(ArgumentList);
   ABSTRACT_VISIT(Param);
   ABSTRACT_VISIT(ParamList);
   ABSTRACT_VISIT(FieldDecl);

@@ -8,6 +8,7 @@ using ast::CompUnit;
 using ast::Program;
 using ast::Stmt;
 using base::ErrorList;
+using base::SharedPtrVector;
 using base::UniquePtrVector;
 using parser::internal::Result;
 
@@ -23,10 +24,10 @@ class StructureVisitorTest : public WeederTest {
       return nullptr;
     }
 
-    UniquePtrVector<CompUnit> units;
-    units.Append(unit.Release());
+    SharedPtrVector<CompUnit> units;
+    units.Append(unit.Get2());
 
-    return uptr<Program>(new Program(move(units)));
+    return uptr<Program>(new Program(units));
   }
 };
 

@@ -1,6 +1,8 @@
 #ifndef BASE_UNIQUE_PTR_VECTOR
 #define BASE_UNIQUE_PTR_VECTOR
 
+#include <cassert>
+
 namespace base {
 
 template <typename T>

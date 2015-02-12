@@ -195,7 +195,7 @@ REC_VISIT_DEFN(TypeVisitor, ForStmt, stmt) {
 
 REC_VISIT_DEFN(TypeVisitor, BlockStmt, block) {
   for (int i = 0; i < block.Stmts().Size(); ++i) {
-    if (!IsTopLevelStmt(block.Stmts().At(i))) {
+    if (!IsTopLevelStmt(block.Stmts().At(i).get())) {
       // TODO: Error.
       Token tok(K_VOID, Pos(0, 1));
       errors_->Append(MakeInvalidTopLevelStatement(fs_, tok));

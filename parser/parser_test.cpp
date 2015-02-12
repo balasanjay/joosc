@@ -9,9 +9,10 @@ using namespace ast;
 using base::ErrorList;
 using base::FileSet;
 using base::PosRange;
+using base::SharedPtrVector;
+using lexer::DOT;
 using lexer::Token;
 using parser::internal::Result;
-using lexer::DOT;
 
 // Help out gtest's macros with boolean conversions.
 #define b(buh) true && buh
@@ -67,20 +68,20 @@ string Str(const T& t) {
 }
 
 template <typename T>
-string Str(T* t) {
+string Str(sptr<T> t) {
   std::stringstream s;
   PrintVisitor visitor = PrintVisitor::Compact(&s);
   t->AcceptVisitor(&visitor);
   return s.str();
 }
 
-string TypeStr(Type* type) {
+string TypeStr(sptr<Type> type) {
   std::stringstream s;
   type->PrintTo(&s);
   return s.str();
 }
 
-string TypeStr(QualifiedName* qn) {
+string TypeStr(sptr<QualifiedName> qn) {
   std::stringstream s;
   qn->PrintTo(&s);
   return s.str();
@@ -108,7 +109,7 @@ TEST_F(ParserTest, QualifiedNameSingleIdent) {
   EXPECT_TRUE(b(name));
   EXPECT_TRUE(after.IsAtEnd());
   EXPECT_FALSE(name.Errors().IsFatal());
-  EXPECT_EQ("foo", TypeStr(name.Get()));
+  EXPECT_EQ("foo", TypeStr(name.Get2()));
 }
 
 TEST_F(ParserTest, QualifiedNameMultiIdent) {
@@ -121,7 +122,7 @@ TEST_F(ParserTest, QualifiedNameMultiIdent) {
   EXPECT_TRUE(b(name));
   EXPECT_TRUE(after.IsAtEnd());
   EXPECT_FALSE(name.Errors().IsFatal());
-  EXPECT_EQ("foo.bar.baz", TypeStr(name.Get()));
+  EXPECT_EQ("foo.bar.baz", TypeStr(name.Get2()));
 }
 
 TEST_F(ParserTest, QualifiedNameTrailingDot) {
@@ -147,7 +148,7 @@ TEST_F(ParserTest, SingleTypePrimitive) {
   EXPECT_TRUE(b(type));
   EXPECT_TRUE(after.IsAtEnd());
   EXPECT_FALSE(type.Errors().IsFatal());
-  EXPECT_EQ("K_INT", TypeStr(type.Get()));
+  EXPECT_EQ("K_INT", TypeStr(type.Get2()));
 }
 
 TEST_F(ParserTest, SingleTypeReference) {
@@ -160,7 +161,7 @@ TEST_F(ParserTest, SingleTypeReference) {
   EXPECT_TRUE(b(type));
   EXPECT_TRUE(after.IsAtEnd());
   EXPECT_FALSE(type.Errors().IsFatal());
-  EXPECT_EQ("String", TypeStr(type.Get()));
+  EXPECT_EQ("String", TypeStr(type.Get2()));
 }
 
 TEST_F(ParserTest, SingleTypeMultiReference) {
@@ -173,7 +174,7 @@ TEST_F(ParserTest, SingleTypeMultiReference) {
   EXPECT_TRUE(b(type));
   EXPECT_TRUE(after.IsAtEnd());
   EXPECT_FALSE(type.Errors().IsFatal());
-  EXPECT_EQ("java.lang.String", TypeStr(type.Get()));
+  EXPECT_EQ("java.lang.String", TypeStr(type.Get2()));
 }
 
 TEST_F(ParserTest, SingleTypeBothFail) {
@@ -199,7 +200,7 @@ TEST_F(ParserTest, TypeNonArray) {
   EXPECT_TRUE(b(type));
   EXPECT_TRUE(after.IsAtEnd());
   EXPECT_FALSE(type.Errors().IsFatal());
-  EXPECT_EQ("K_INT", TypeStr(type.Get()));
+  EXPECT_EQ("K_INT", TypeStr(type.Get2()));
 }
 
 TEST_F(ParserTest, TypeFail) {
@@ -225,7 +226,7 @@ TEST_F(ParserTest, TypeArray) {
   EXPECT_TRUE(b(type));
   EXPECT_TRUE(after.IsAtEnd());
   EXPECT_FALSE(type.Errors().IsFatal());
-  EXPECT_EQ("array<K_INT>", TypeStr(type.Get()));
+  EXPECT_EQ("array<K_INT>", TypeStr(type.Get2()));
 }
 
 TEST_F(ParserTest, TypeArrayFail) {
@@ -243,34 +244,34 @@ TEST_F(ParserTest, TypeArrayFail) {
 
 TEST_F(ParserTest, ArgumentListNone) {
   MakeParser(")");
-  Result<ArgumentList> args;
+  Result<SharedPtrVector<Expr>> args;
   Parser after = parser_->ParseArgumentList(&args);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(args));
-  EXPECT_EQ("", Str(args.Get()));
+  EXPECT_EQ(0, args.Get2()->Size());
 }
 
 TEST_F(ParserTest, ArgumentListOne) {
   MakeParser("foo.bar");
-  Result<ArgumentList> args;
+  Result<SharedPtrVector<Expr>> args;
   Parser after = parser_->ParseArgumentList(&args);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(args));
-  EXPECT_EQ("foo.bar", Str(args.Get()));
+  EXPECT_EQ(1, args.Get2()->Size());
 }
 
 TEST_F(ParserTest, ArgumentListMany) {
   MakeParser("a,b, c, d  , e");
-  Result<ArgumentList> args;
+  Result<SharedPtrVector<Expr>> args;
   Parser after = parser_->ParseArgumentList(&args);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(args));
-  EXPECT_EQ("a,b,c,d,e", Str(args.Get()));
+  EXPECT_EQ(5, args.Get2()->Size());
 }
 
 TEST_F(ParserTest, ArgumentListHangingComma) {
   MakeParser("a, b,)");
-  Result<ArgumentList> args;
+  Result<SharedPtrVector<Expr>> args;
   Parser after = parser_->ParseArgumentList(&args);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(args));
@@ -278,16 +279,15 @@ TEST_F(ParserTest, ArgumentListHangingComma) {
 
 TEST_F(ParserTest, ArgumentListNestedExpr) {
   MakeParser("a, (1 + b))");
-  Result<ArgumentList> args;
+  Result<SharedPtrVector<Expr>> args;
   Parser after = parser_->ParseArgumentList(&args);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(args));
-  EXPECT_EQ("a,((INTEGER ADD b))", Str(args.Get()));
 }
 
 TEST_F(ParserTest, ArgumentListBadExpr) {
   MakeParser("a, ;)");
-  Result<ArgumentList> args;
+  Result<SharedPtrVector<Expr>> args;
   Parser after = parser_->ParseArgumentList(&args);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(args));
@@ -297,14 +297,13 @@ TEST_F(ParserTest, ArgumentListBadExpr) {
 
 TEST_F(ParserTest, ArgumentListStartingComma) {
   MakeParser(", a, b, c)");
-  Result<ArgumentList> args;
+  Result<SharedPtrVector<Expr>> args;
   Parser after = parser_->ParseArgumentList(&args);
   // Shouldn't parse anything, since arg list is optional.
   // TODO: Do we actually want this to fail if it doesn't stop at at an
   // RPAREN?
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(args));
-  EXPECT_EQ("", Str(args.Get()));
 }
 
 TEST_F(ParserTest, DISABLED_PrimaryBaseShortCircuit) {
@@ -325,7 +324,7 @@ TEST_F(ParserTest, PrimaryBaseLit) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(primary));
-  EXPECT_EQ("INTEGER", Str(primary.Get()));
+  EXPECT_EQ("INTEGER", Str(primary.Get2()));
 }
 
 TEST_F(ParserTest, PrimaryBaseThis) {
@@ -335,7 +334,7 @@ TEST_F(ParserTest, PrimaryBaseThis) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(primary));
-  EXPECT_EQ("this", Str(primary.Get()));
+  EXPECT_EQ("this", Str(primary.Get2()));
 }
 
 TEST_F(ParserTest, PrimaryBaseParens) {
@@ -345,7 +344,7 @@ TEST_F(ParserTest, PrimaryBaseParens) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(primary));
-  EXPECT_EQ("(INTEGER)", Str(primary.Get()));
+  EXPECT_EQ("(INTEGER)", Str(primary.Get2()));
 }
 
 TEST_F(ParserTest, PrimaryBaseParensExprFail) {
@@ -377,7 +376,7 @@ TEST_F(ParserTest, PrimaryBaseQualifiedName) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(primary));
-  EXPECT_EQ("a.b", Str(primary.Get()));
+  EXPECT_EQ("a.b", Str(primary.Get2()));
 }
 
 TEST_F(ParserTest, PrimaryBaseQualifiedNameFail) {
@@ -404,9 +403,9 @@ TEST_F(ParserTest, PrimaryBaseAbort) {
 
 TEST_F(ParserTest, PrimaryEndFailedArrayAccess) {
   MakeParser("[;]");
-  uptr<Expr> primary(new ThisExpr());
+  sptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
-  Parser after = parser_->ParsePrimaryEnd(primary.get(), &primaryEnd);
+  Parser after = parser_->ParsePrimaryEnd(primary, &primaryEnd);
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(primaryEnd));
@@ -416,43 +415,43 @@ TEST_F(ParserTest, PrimaryEndFailedArrayAccess) {
 
 TEST_F(ParserTest, PrimaryEndArrayAccessWithField) {
   MakeParser("[3].f");
-  uptr<Expr> primary(new ThisExpr());
+  sptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
-  Parser after = parser_->ParsePrimaryEnd(primary.release(), &primaryEnd);
+  Parser after = parser_->ParsePrimaryEnd(primary, &primaryEnd);
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(primaryEnd));
-  EXPECT_EQ("this[INTEGER].f", Str(primaryEnd.Get()));
+  EXPECT_EQ("this[INTEGER].f", Str(primaryEnd.Get2()));
 }
 
 TEST_F(ParserTest, PrimaryEndArrayAccessNoTrailing) {
   MakeParser("[3]+5");
-  uptr<Expr> primary(new ThisExpr());
+  sptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
-  Parser after = parser_->ParsePrimaryEnd(primary.release(), &primaryEnd);
+  Parser after = parser_->ParsePrimaryEnd(primary, &primaryEnd);
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(primaryEnd));
-  EXPECT_EQ("this[INTEGER]", Str(primaryEnd.Get()));
+  EXPECT_EQ("this[INTEGER]", Str(primaryEnd.Get2()));
 }
 
 TEST_F(ParserTest, PrimaryEndNoAccess) {
   MakeParser(".f");
-  uptr<Expr> primary(new ThisExpr());
+  sptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
-  Parser after = parser_->ParsePrimaryEnd(primary.release(), &primaryEnd);
+  Parser after = parser_->ParsePrimaryEnd(primary, &primaryEnd);
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(primaryEnd));
-  EXPECT_EQ("this.f", Str(primaryEnd.Get()));
+  EXPECT_EQ("this.f", Str(primaryEnd.Get2()));
 }
 
 TEST_F(ParserTest, DISABLED_PrimaryEndNoArrayShortCircuit) {
   MakeParser("");
-  uptr<Expr> primary(new ThisExpr());
+  sptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
-      parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
+      parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(primaryEnd));
@@ -462,10 +461,10 @@ TEST_F(ParserTest, DISABLED_PrimaryEndNoArrayShortCircuit) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayUnexpectedToken) {
   MakeParser(";");
-  uptr<Expr> primary(new ThisExpr());
+  sptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
-      parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
+      parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(primaryEnd));
@@ -475,10 +474,10 @@ TEST_F(ParserTest, PrimaryEndNoArrayUnexpectedToken) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayFieldFail) {
   MakeParser(".;");
-  uptr<Expr> primary(new ThisExpr());
+  sptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
-      parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
+      parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(primaryEnd));
@@ -488,45 +487,45 @@ TEST_F(ParserTest, PrimaryEndNoArrayFieldFail) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEnd) {
   MakeParser(".f[0]");
-  uptr<Expr> primary(new ThisExpr());
+  sptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
-      parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
+      parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(primaryEnd));
-  EXPECT_EQ("this.f[INTEGER]", Str(primaryEnd.Get()));
+  EXPECT_EQ("this.f[INTEGER]", Str(primaryEnd.Get2()));
 }
 
 TEST_F(ParserTest, PrimaryEndDoubleArrayAccess) {
   MakeParser("[0][1]");
-  uptr<Expr> primary(new ThisExpr());
+  sptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
-  Parser after = parser_->ParsePrimaryEnd(primary.release(), &primaryEnd);
+  Parser after = parser_->ParsePrimaryEnd(primary, &primaryEnd);
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(primaryEnd));
-  EXPECT_EQ("this[INTEGER]", Str(primaryEnd.Get()));
+  EXPECT_EQ("this[INTEGER]", Str(primaryEnd.Get2()));
 }
 
 TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEndFail) {
   MakeParser(".f;");
-  uptr<Expr> primary(new ThisExpr());
+  sptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
-      parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
+      parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(primaryEnd));
-  EXPECT_EQ("this.f", Str(primaryEnd.Get()));
+  EXPECT_EQ("this.f", Str(primaryEnd.Get2()));
 }
 
 TEST_F(ParserTest, PrimaryEndNoArrayMethodFail) {
   MakeParser("(;)");
-  uptr<Expr> primary(new ThisExpr());
+  sptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
-      parser_->ParsePrimaryEndNoArrayAccess(primary.get(), &primaryEnd);
+      parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
 
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(primaryEnd));
@@ -536,26 +535,26 @@ TEST_F(ParserTest, PrimaryEndNoArrayMethodFail) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayMethodWithEnd) {
   MakeParser("().f");
-  uptr<Expr> primary(new ThisExpr());
+  sptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
-      parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
+      parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(primaryEnd));
-  EXPECT_EQ("this().f", Str(primaryEnd.Get()));
+  EXPECT_EQ("this().f", Str(primaryEnd.Get2()));
 }
 
 TEST_F(ParserTest, PrimaryEndNoArrayMethodWithEndFail) {
   MakeParser("();");
-  uptr<Expr> primary(new ThisExpr());
+  sptr<Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
-      parser_->ParsePrimaryEndNoArrayAccess(primary.release(), &primaryEnd);
+      parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(primaryEnd));
-  EXPECT_EQ("this()", Str(primaryEnd.Get()));
+  EXPECT_EQ("this()", Str(primaryEnd.Get2()));
 }
 
 TEST_F(ParserTest, DISABLED_UnaryEmptyShortCircuit) {
@@ -578,7 +577,7 @@ TEST_F(ParserTest, UnaryIsUnary) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(unary));
-  EXPECT_EQ("(SUB INTEGER)", Str(unary.Get()));
+  EXPECT_EQ("(SUB INTEGER)", Str(unary.Get2()));
 }
 
 TEST_F(ParserTest, UnaryOpFail) {
@@ -601,7 +600,7 @@ TEST_F(ParserTest, UnaryIsCast) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(unary));
-  EXPECT_EQ("cast<K_INT>(INTEGER)", Str(unary.Get()));
+  EXPECT_EQ("cast<K_INT>(INTEGER)", Str(unary.Get2()));
 }
 
 TEST_F(ParserTest, UnaryCastFailIsPrimary) {
@@ -612,7 +611,7 @@ TEST_F(ParserTest, UnaryCastFailIsPrimary) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(unary));
-  EXPECT_EQ("INTEGER", Str(unary.Get()));
+  EXPECT_EQ("INTEGER", Str(unary.Get2()));
 }
 
 TEST_F(ParserTest, CastSuccess) {
@@ -623,7 +622,7 @@ TEST_F(ParserTest, CastSuccess) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(cast));
-  EXPECT_EQ("cast<K_INT>(INTEGER)", Str(cast.Get()));
+  EXPECT_EQ("cast<K_INT>(INTEGER)", Str(cast.Get2()));
 }
 
 TEST_F(ParserTest, CastTypeFail) {
@@ -658,7 +657,7 @@ TEST_F(ParserTest, InstanceOfRefType) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(expr));
-  EXPECT_EQ("(a instanceof String)", Str(expr.Get()));
+  EXPECT_EQ("(a instanceof String)", Str(expr.Get2()));
 }
 
 TEST_F(ParserTest, InstanceOfArray) {
@@ -669,7 +668,7 @@ TEST_F(ParserTest, InstanceOfArray) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(expr));
-  EXPECT_EQ("(a instanceof array<K_INT>)", Str(expr.Get()));
+  EXPECT_EQ("(a instanceof array<K_INT>)", Str(expr.Get2()));
 }
 
 TEST_F(ParserTest, InstanceOfParens) {
@@ -714,7 +713,7 @@ TEST_F(ParserTest, ExprOnlyUnary) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(expr));
-  EXPECT_EQ("INTEGER", Str(expr.Get()));
+  EXPECT_EQ("INTEGER", Str(expr.Get2()));
 }
 
 TEST_F(ParserTest, ExprUnaryBinFail) {
@@ -737,7 +736,7 @@ TEST_F(ParserTest, ExprLeftAssoc) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(expr));
-  EXPECT_EQ("((a ADD b) ADD c)", Str(expr.Get()));
+  EXPECT_EQ("((a ADD b) ADD c)", Str(expr.Get2()));
 }
 
 TEST_F(ParserTest, ExprRightAssoc) {
@@ -748,7 +747,7 @@ TEST_F(ParserTest, ExprRightAssoc) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(expr));
-  EXPECT_EQ("(a ASSG (b ASSG c))", Str(expr.Get()));
+  EXPECT_EQ("(a ASSG (b ASSG c))", Str(expr.Get2()));
 }
 
 TEST_F(ParserTest, ExprBothAssoc) {
@@ -759,7 +758,7 @@ TEST_F(ParserTest, ExprBothAssoc) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(expr));
-  EXPECT_EQ("(a ASSG ((b ADD c) ASSG d))", Str(expr.Get()));
+  EXPECT_EQ("(a ASSG ((b ADD c) ASSG d))", Str(expr.Get2()));
 }
 
 TEST_F(ParserTest, ExprPrecedence) {
@@ -773,7 +772,7 @@ TEST_F(ParserTest, ExprPrecedence) {
   EXPECT_EQ(
       "(a ASSG (b OR (c AND (d BOR (e XOR (f BAND (g EQ (h LE (i ADD (j MUL "
       "k))))))))))",
-      Str(expr.Get()));
+      Str(expr.Get2()));
 }
 
 TEST_F(ParserTest, VarDecl) {
@@ -784,7 +783,7 @@ TEST_F(ParserTest, VarDecl) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("java.lang.Integer IDENTIFIER=INTEGER;", Str(stmt.Get()));
+  EXPECT_EQ("java.lang.Integer IDENTIFIER=INTEGER;", Str(stmt.Get2()));
 }
 
 TEST_F(ParserTest, VarDeclBadIdentifier) {
@@ -831,7 +830,7 @@ TEST_F(ParserTest, ReturnStmtEmpty) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("return;", Str(stmt.Get()));
+  EXPECT_EQ("return;", Str(stmt.Get2()));
 }
 
 TEST_F(ParserTest, ReturnStmtNoSemi) {
@@ -864,7 +863,7 @@ TEST_F(ParserTest, ReturnStmtWithExpr) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("return INTEGER;", Str(stmt.Get()));
+  EXPECT_EQ("return INTEGER;", Str(stmt.Get2()));
 }
 
 TEST_F(ParserTest, ReturnStmtBadExpr) {
@@ -887,7 +886,7 @@ TEST_F(ParserTest, BlockStmtEmpty) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("{}", Str(stmt.Get()));
+  EXPECT_EQ("{}", Str(stmt.Get2()));
 }
 
 TEST_F(ParserTest, BlockStmtSemis) {
@@ -898,7 +897,7 @@ TEST_F(ParserTest, BlockStmtSemis) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("{;;;;;;;}", Str(stmt.Get()));
+  EXPECT_EQ("{;;;;;;;}", Str(stmt.Get2()));
 }
 
 TEST_F(ParserTest, BlockStmtNoSemi) {
@@ -931,7 +930,7 @@ TEST_F(ParserTest, BlockStmtNested) {
   Parser after = parser_->ParseBlock(&stmt);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("{a;{b;};}", Str(stmt.Get()));
+  EXPECT_EQ("{a;{b;};}", Str(stmt.Get2()));
 }
 
 TEST_F(ParserTest, IfStmtElse) {
@@ -941,7 +940,7 @@ TEST_F(ParserTest, IfStmtElse) {
   Parser after = parser_->ParseIfStmt(&stmt);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("if(K_TRUE){foo;}else{bar;}", Str(stmt.Get()));
+  EXPECT_EQ("if(K_TRUE){foo;}else{bar;}", Str(stmt.Get2()));
 }
 
 TEST_F(ParserTest, IfStmtElseBlock) {
@@ -951,7 +950,7 @@ TEST_F(ParserTest, IfStmtElseBlock) {
   Parser after = parser_->ParseIfStmt(&stmt);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("if(K_TRUE){foo;}else{{bar;}}", Str(stmt.Get()));
+  EXPECT_EQ("if(K_TRUE){foo;}else{{bar;}}", Str(stmt.Get2()));
 }
 
 TEST_F(ParserTest, IfStmtTooManyElses) {
@@ -961,7 +960,7 @@ TEST_F(ParserTest, IfStmtTooManyElses) {
   Parser after = parser_->ParseIfStmt(&stmt);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("if(K_TRUE){foo;}else{{bar;}}", Str(stmt.Get()));
+  EXPECT_EQ("if(K_TRUE){foo;}else{{bar;}}", Str(stmt.Get2()));
 }
 
 TEST_F(ParserTest, IfStmtHangingElse) {
@@ -971,7 +970,7 @@ TEST_F(ParserTest, IfStmtHangingElse) {
   Parser after = parser_->ParseIfStmt(&stmt);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("if(a){if(b){c;}else{d;}}else{;}", Str(stmt.Get()));
+  EXPECT_EQ("if(a){if(b){c;}else{d;}}else{;}", Str(stmt.Get2()));
 }
 
 TEST_F(ParserTest, IfStmtOutsideElse) {
@@ -981,7 +980,7 @@ TEST_F(ParserTest, IfStmtOutsideElse) {
   Parser after = parser_->ParseIfStmt(&stmt);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("if(a){{if(b){c;}else{;}}}else{d;}", Str(stmt.Get()));
+  EXPECT_EQ("if(a){{if(b){c;}else{;}}}else{d;}", Str(stmt.Get2()));
 }
 
 TEST_F(ParserTest, IfStmtFailBodyDecl) {
@@ -1000,7 +999,7 @@ TEST_F(ParserTest, IfStmtIfIfElseElse) {
   Parser after = parser_->ParseIfStmt(&stmt);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("if(a){if(b){foo();}else{bar();}}else{baz();}", Str(stmt.Get()));
+  EXPECT_EQ("if(a){if(b){foo();}else{bar();}}else{baz();}", Str(stmt.Get2()));
 }
 
 TEST_F(ParserTest, IfStmtElseIf) {
@@ -1010,7 +1009,7 @@ TEST_F(ParserTest, IfStmtElseIf) {
   Parser after = parser_->ParseIfStmt(&stmt);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("if(a){foo();}else{if(b){bar();}else{;}}", Str(stmt.Get()));
+  EXPECT_EQ("if(a){foo();}else{if(b){bar();}else{;}}", Str(stmt.Get2()));
 }
 
 TEST_F(ParserTest, IfStmtElseIfElse) {
@@ -1020,7 +1019,7 @@ TEST_F(ParserTest, IfStmtElseIfElse) {
   Parser after = parser_->ParseIfStmt(&stmt);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("if(a){foo();}else{if(b){bar();}else{baz();}}", Str(stmt.Get()));
+  EXPECT_EQ("if(a){foo();}else{if(b){bar();}else{baz();}}", Str(stmt.Get2()));
 }
 
 TEST_F(ParserTest, ForInitDecl) {
@@ -1063,7 +1062,7 @@ TEST_F(ParserTest, ForStmtEmpty) {
   Parser after = parser_->ParseForStmt(&stmt);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("for(;;){;}", Str(stmt.Get()));
+  EXPECT_EQ("for(;;){;}", Str(stmt.Get2()));
 }
 
 TEST_F(ParserTest, ForStmtBlock) {
@@ -1072,7 +1071,7 @@ TEST_F(ParserTest, ForStmtBlock) {
   Parser after = parser_->ParseForStmt(&stmt);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("for(;;){{a;}}", Str(stmt.Get()));
+  EXPECT_EQ("for(;;){{a;}}", Str(stmt.Get2()));
 }
 
 TEST_F(ParserTest, ForStmtFull) {
@@ -1081,7 +1080,7 @@ TEST_F(ParserTest, ForStmtFull) {
   Parser after = parser_->ParseForStmt(&stmt);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("for((i ASSG INTEGER);i;i){print(i);}", Str(stmt.Get()));
+  EXPECT_EQ("for((i ASSG INTEGER);i;i){print(i);}", Str(stmt.Get2()));
 }
 
 TEST_F(ParserTest, ForStmtBadCond) {
@@ -1269,7 +1268,7 @@ TEST_F(ParserTest, WhileStmtSuccess) {
   Parser after = parser_->ParseWhileStmt(&stmt);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("while(INTEGER){{K_INT IDENTIFIER=INTEGER;}}", Str(*stmt.Get()));
+  EXPECT_EQ("while(INTEGER){{K_INT IDENTIFIER=INTEGER;}}", Str(*stmt.Get2()));
 }
 
 TEST_F(ParserTest, ParamListBasic) {
@@ -1279,7 +1278,7 @@ TEST_F(ParserTest, ParamListBasic) {
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(params));
   EXPECT_EQ("K_INT IDENTIFIER,String IDENTIFIER,a.b.c.d.e IDENTIFIER",
-            Str(params.Get()));
+            Str(params.Get2()));
 }
 
 TEST_F(ParserTest, ParamListOne) {
@@ -1288,7 +1287,7 @@ TEST_F(ParserTest, ParamListOne) {
   Parser after = parser_->ParseParamList(&params);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(params));
-  EXPECT_EQ("K_INT IDENTIFIER", Str(params.Get()));
+  EXPECT_EQ("K_INT IDENTIFIER", Str(params.Get2()));
 }
 
 TEST_F(ParserTest, ParamListEmpty) {
@@ -1297,7 +1296,7 @@ TEST_F(ParserTest, ParamListEmpty) {
   Parser after = parser_->ParseParamList(&params);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(params));
-  EXPECT_EQ("", Str(params.Get()));
+  EXPECT_EQ("", Str(params.Get2()));
 }
 
 TEST_F(ParserTest, ParamListNoParamName) {
@@ -1336,7 +1335,7 @@ TEST_F(ParserTest, FieldDeclSimple) {
   Parser after = parser_->ParseMemberDecl(&decl);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
-  EXPECT_EQ("K_INT IDENTIFIER;", Str(decl.Get()));
+  EXPECT_EQ("K_INT IDENTIFIER;", Str(decl.Get2()));
 }
 
 TEST_F(ParserTest, FieldDeclModsOrdered) {
@@ -1348,7 +1347,7 @@ TEST_F(ParserTest, FieldDeclModsOrdered) {
   EXPECT_EQ(
       "K_PUBLIC K_PROTECTED K_ABSTRACT K_STATIC K_FINAL K_NATIVE K_INT "
       "IDENTIFIER;",
-      Str(decl.Get()));
+      Str(decl.Get2()));
 }
 
 TEST_F(ParserTest, FieldDeclWithAssign) {
@@ -1357,7 +1356,7 @@ TEST_F(ParserTest, FieldDeclWithAssign) {
   Parser after = parser_->ParseMemberDecl(&decl);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
-  EXPECT_EQ("K_INT IDENTIFIER=INTEGER;", Str(decl.Get()));
+  EXPECT_EQ("K_INT IDENTIFIER=INTEGER;", Str(decl.Get2()));
 }
 
 TEST_F(ParserTest, FieldDeclExprError) {
@@ -1406,7 +1405,7 @@ TEST_F(ParserTest, MethodDeclNoBody) {
   Parser after = parser_->ParseMemberDecl(&decl);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
-  EXPECT_EQ("K_INT IDENTIFIER();", Str(decl.Get()));
+  EXPECT_EQ("K_INT IDENTIFIER();", Str(decl.Get2()));
 }
 
 TEST_F(ParserTest, MethodDeclParamsBlock) {
@@ -1418,7 +1417,7 @@ TEST_F(ParserTest, MethodDeclParamsBlock) {
   EXPECT_EQ(
       "K_PUBLIC K_INT IDENTIFIER(K_INT IDENTIFIER,array<String> "
       "IDENTIFIER){foo;}",
-      Str(decl.Get()));
+      Str(decl.Get2()));
 }
 
 TEST_F(ParserTest, MethodConstDeclNoBody) {
@@ -1427,7 +1426,7 @@ TEST_F(ParserTest, MethodConstDeclNoBody) {
   Parser after = parser_->ParseMemberDecl(&decl);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
-  EXPECT_EQ("IDENTIFIER();", Str(decl.Get()));
+  EXPECT_EQ("IDENTIFIER();", Str(decl.Get2()));
 }
 
 TEST_F(ParserTest, MethodConstDeclBody) {
@@ -1436,7 +1435,7 @@ TEST_F(ParserTest, MethodConstDeclBody) {
   Parser after = parser_->ParseMemberDecl(&decl);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
-  EXPECT_EQ("IDENTIFIER(){a;}", Str(decl.Get()));
+  EXPECT_EQ("IDENTIFIER(){a;}", Str(decl.Get2()));
 }
 
 TEST_F(ParserTest, MethodConstDeclMembers) {
@@ -1445,7 +1444,7 @@ TEST_F(ParserTest, MethodConstDeclMembers) {
   Parser after = parser_->ParseMemberDecl(&decl);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
-  EXPECT_EQ("IDENTIFIER(K_INT IDENTIFIER,K_INT IDENTIFIER){}", Str(decl.Get()));
+  EXPECT_EQ("IDENTIFIER(K_INT IDENTIFIER,K_INT IDENTIFIER){}", Str(decl.Get2()));
 }
 
 TEST_F(ParserTest, TypeDeclBadModifierList) {
@@ -1548,7 +1547,7 @@ TEST_F(ParserTest, TypeDeclClassManySemis) {
   EXPECT_EQ(
       "K_PUBLIC class IDENTIFIER extends Bar implements Baz,Buh {K_INT "
       "IDENTIFIER=INTEGER;}",
-      Str(decl.Get()));
+      Str(decl.Get2()));
 }
 
 TEST_F(ParserTest, TypeDeclInterfaceBadExtends) {
@@ -1581,7 +1580,7 @@ TEST_F(ParserTest, TypeDeclInterfaceManySemis) {
   EXPECT_EQ(
       "K_PUBLIC interface IDENTIFIER extends Bar,Baz,Buh {K_INT "
       "IDENTIFIER=INTEGER;}",
-      Str(decl.Get()));
+      Str(decl.Get2()));
 }
 
 TEST_F(ParserTest, CompUnitEmptyFile) {
@@ -1591,7 +1590,7 @@ TEST_F(ParserTest, CompUnitEmptyFile) {
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(unit));
   EXPECT_TRUE(after.IsAtEnd());
-  EXPECT_EQ("", Str(unit.Get()));
+  EXPECT_EQ("", Str(unit.Get2()));
 }
 
 TEST_F(ParserTest, CompUnitBadPackage) {
@@ -1691,7 +1690,7 @@ TEST_F(ParserTest, CompUnitSuccess) {
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(unit));
   EXPECT_EQ("package foo;import bar.baz.*;K_PUBLIC class IDENTIFIER {}",
-            Str(unit.Get()));
+            Str(unit.Get2()));
 }
 
 TEST_F(ParserTest, CompUnitOnlyPackageSuccess) {
@@ -1700,7 +1699,7 @@ TEST_F(ParserTest, CompUnitOnlyPackageSuccess) {
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(unit));
-  EXPECT_EQ("package foo;", Str(unit.Get()));
+  EXPECT_EQ("package foo;", Str(unit.Get2()));
 }
 
 TEST_F(ParserTest, CompUnitOnlyImportSuccess) {
@@ -1709,7 +1708,7 @@ TEST_F(ParserTest, CompUnitOnlyImportSuccess) {
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(unit));
-  EXPECT_EQ("import foo;", Str(unit.Get()));
+  EXPECT_EQ("import foo;", Str(unit.Get2()));
 }
 
 TEST_F(ParserTest, CompUnitOnlyTypeSuccess) {
@@ -1718,7 +1717,7 @@ TEST_F(ParserTest, CompUnitOnlyTypeSuccess) {
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(unit));
-  EXPECT_EQ("class IDENTIFIER {}", Str(unit.Get()));
+  EXPECT_EQ("class IDENTIFIER {}", Str(unit.Get2()));
 }
 
 TEST_F(ParserTest, CompUnitOnlySemiSuccess) {
@@ -1727,7 +1726,7 @@ TEST_F(ParserTest, CompUnitOnlySemiSuccess) {
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(unit));
-  EXPECT_EQ("", Str(unit.Get()));
+  EXPECT_EQ("", Str(unit.Get2()));
 }
 
 TEST_F(ParserTest, CompUnitManySemisSuccess) {
@@ -1739,7 +1738,7 @@ TEST_F(ParserTest, CompUnitManySemisSuccess) {
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(unit));
   EXPECT_EQ("package foo;import bar.baz.*;K_PUBLIC class IDENTIFIER {}",
-            Str(unit.Get()));
+            Str(unit.Get2()));
 }
 
 }  // namespace parser

@@ -28,7 +28,9 @@ VISIT_DEFN(RecursiveVisitor, BinExpr, expr) {
 VISIT_DEFN(RecursiveVisitor, CallExpr, expr) {
   SHORT_CIRCUIT_CHILD(CallExpr, expr);
   expr.Base().AcceptVisitor(this);
-  expr.Args().AcceptVisitor(this);
+  for (const auto& arg : expr.Args()) {
+    arg.AcceptVisitor(this);
+  }
 }
 VISIT_DEFN(RecursiveVisitor, CastExpr, expr) {
   SHORT_CIRCUIT_CHILD(CastExpr, expr);
@@ -64,7 +66,9 @@ VISIT_DEFN(RecursiveVisitor, NewArrayExpr, expr) {
 }
 VISIT_DEFN(RecursiveVisitor, NewClassExpr, expr) {
   SHORT_CIRCUIT_CHILD(NewClassExpr, expr);
-  expr.Args().AcceptVisitor(this);
+  for (const auto& arg : expr.Args()) {
+    arg.AcceptVisitor(this);
+  }
 }
 VISIT_DEFN(RecursiveVisitor, ParenExpr, expr) {
   SHORT_CIRCUIT_CHILD(ParenExpr, expr);
@@ -128,13 +132,6 @@ VISIT_DEFN(RecursiveVisitor, WhileStmt, stmt) {
   SHORT_CIRCUIT_CHILD(WhileStmt, stmt);
   stmt.Cond().AcceptVisitor(this);
   stmt.Body().AcceptVisitor(this);
-}
-
-VISIT_DEFN(RecursiveVisitor, ArgumentList, args) {
-  SHORT_CIRCUIT_CHILD(ArgumentList, args);
-  for (int i = 0; i < args.Args().Size(); ++i) {
-    args.Args().At(i)->AcceptVisitor(this);
-  }
 }
 
 VISIT_DEFN(RecursiveVisitor, ParamList, params) {

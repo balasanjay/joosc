@@ -53,9 +53,8 @@ class RecursiveVisitor : public Visitor {
   VISIT_DECL(WhileStmt, stmt) final;
 
   // Override Visitor's other visitors.
-  VISIT_DECL(ArgumentList, args) final;
-  VISIT_DECL(ParamList, args) final;
   VISIT_DECL(Param, args) final;
+  VISIT_DECL(ParamList, args) final;
   VISIT_DECL(FieldDecl, args) final;
   VISIT_DECL(MethodDecl, args) final;
   VISIT_DECL(ConstructorDecl, args) final;
@@ -96,9 +95,8 @@ class RecursiveVisitor : public Visitor {
   RECURSIVE_VISITOR_IMPL(WhileStmt);
 
   // Declare other *Impl methods.
-  RECURSIVE_VISITOR_IMPL(ArgumentList);
-  RECURSIVE_VISITOR_IMPL(ParamList);
   RECURSIVE_VISITOR_IMPL(Param);
+  RECURSIVE_VISITOR_IMPL(ParamList);
   RECURSIVE_VISITOR_IMPL(ConstructorDecl);
   RECURSIVE_VISITOR_IMPL(FieldDecl);
   RECURSIVE_VISITOR_IMPL(MethodDecl);

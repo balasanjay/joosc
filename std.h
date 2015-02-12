@@ -19,6 +19,7 @@ typedef int32_t i32;
 typedef int64_t i64;
 
 using std::make_pair;
+using std::make_shared;
 using std::pair;
 using std::string;
 using std::stringstream;
@@ -28,6 +29,9 @@ template<
   class T,
   class Deleter = std::default_delete<T>
 > using uptr = std::unique_ptr<T, Deleter>;
+
+template<class T>
+using sptr = std::shared_ptr<T>;
 
 // Copied from Chromium.
 #define DISALLOW_COPY_AND_ASSIGN(TypeName) \

@@ -34,7 +34,7 @@ class PrintVisitor final : public Visitor {
   VISIT_DECL(CallExpr, expr) {
     expr.Base().AcceptVisitor(this);
     *os_ << '(';
-    expr.Args().AcceptVisitor(this);
+    PrintArgList(expr.Args());
     *os_ << ')';
   }
 
@@ -86,7 +86,7 @@ class PrintVisitor final : public Visitor {
     *os_ << "new<";
     expr.GetType().PrintTo(os_);
     *os_ << ">(";
-    expr.Args().AcceptVisitor(this);
+    PrintArgList(expr.Args());
     *os_ << ")";
   }
 
@@ -174,17 +174,6 @@ class PrintVisitor final : public Visitor {
     *os_ << ')' << space_ << '{';
     stmt.Body().AcceptVisitor(this);
     *os_ << '}';
-  }
-
-  VISIT_DECL(ArgumentList, args) {
-    bool first = true;
-    for (const auto& arg : args.Args()) {
-      if (!first) {
-        *os_ << ',' << space_;
-      }
-      first = false;
-      arg.AcceptVisitor(this);
-    }
   }
 
   VISIT_DECL(ParamList, params) {
@@ -328,6 +317,17 @@ class PrintVisitor final : public Visitor {
 
   PrintVisitor Indent() const {
     return PrintVisitor(os_, depth_ + 1, newline_, tab_, space_);
+  }
+
+  void PrintArgList(const base::SharedPtrVector<Expr>& args) {
+    bool first = true;
+    for (const auto& arg : args) {
+      if (!first) {
+        *os_ << ',' << space_;
+      }
+      first = false;
+      arg.AcceptVisitor(this);
+    }
   }
 
   void PutIndent(int depth) {
