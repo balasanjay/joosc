@@ -115,10 +115,9 @@ class PrintVisitor final : public Visitor {
   VISIT_DECL(BlockStmt, stmt) {
     *os_ << "{" << RepStr(NumDelimiters(), newline_);
     PrintVisitor nested = Indent();
-    const auto& stmts = stmt.Stmts();
-    for (int i = 0; i < stmts.Size(); ++i) {
+    for (const auto& substmt : stmt.Stmts()) {
       PutIndent(depth_ + 1);
-      stmts.At(i)->AcceptVisitor(&nested);
+      substmt.AcceptVisitor(&nested);
       *os_ << newline_;
     }
 
@@ -187,11 +186,13 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(ArgumentList, args) {
-    for (int i = 0; i < args.Args().Size(); ++i) {
-      if (i > 0) {
+    bool first = true;
+    for (const auto& arg : args.Args()) {
+      if (!first) {
         *os_ << ',' << RepStr(NumDelimiters(), space_);
       }
-      args.Args().At(i)->AcceptVisitor(this);
+      first = false;
+      arg.AcceptVisitor(this);
     }
   }
 
@@ -250,13 +251,15 @@ class PrintVisitor final : public Visitor {
       *os_ << " extends ";
       type.Super()->PrintTo(os_);
     }
-    for (int i = 0; i < type.Interfaces().Size(); ++i) {
-      if (i == 0) {
+    bool first = true;
+    for (const auto& name : type.Interfaces()) {
+      if (first) {
         *os_ << " implements ";
       } else {
         *os_ << ',' << RepStr(NumDelimiters(), space_);
       }
-      type.Interfaces().At(i)->PrintTo(os_);
+      first = false;
+      name.PrintTo(os_);
     }
     *os_ << " {" << RepStr(NumDelimiters(), newline_);
     PrintVisitor nested = Indent();
@@ -273,13 +276,15 @@ class PrintVisitor final : public Visitor {
     type.Mods().PrintTo(os_);
     *os_ << "interface ";
     *os_ << type.NameToken().TypeInfo();
-    for (int i = 0; i < type.Interfaces().Size(); ++i) {
-      if (i == 0) {
+    bool first = true;
+    for (const auto& name : type.Interfaces()) {
+      if (first) {
         *os_ << " extends ";
       } else {
         *os_ << ',' << RepStr(NumDelimiters(), space_);
       }
-      type.Interfaces().At(i)->PrintTo(os_);
+      first = false;
+      name.PrintTo(os_);
     }
     *os_ << " {" << RepStr(NumDelimiters(), newline_);
     PrintVisitor nested = Indent();

@@ -18,7 +18,7 @@ class UniquePtrVector {
   T* At(int i) const { return vec_.at(i).get(); }
 
   // Adds t to the vector; takes ownership of t.
-  void Append(T* t) { vec_.emplace_back(t); }
+  void Append(T* t) { assert(t != nullptr); vec_.emplace_back(t); }
 
   T* ReleaseBack() {
     T* t = vec_.at(Size() - 1).release();
@@ -40,6 +40,62 @@ class UniquePtrVector {
 
   vector<uptr<T>> vec_;
 };
+
+template <typename T>
+class UniquePtrVectorIter : public std::iterator<std::forward_iterator_tag, T> {
+  public:
+    UniquePtrVectorIter() = default;
+    UniquePtrVectorIter(const UniquePtrVectorIter& other) = default;
+    UniquePtrVectorIter& operator=(const UniquePtrVectorIter&) = default;
+    ~UniquePtrVectorIter() = default;
+
+    UniquePtrVectorIter(int idx, const UniquePtrVector<T>* vec) : idx_(idx), vec_(vec) {}
+
+    bool operator==(const UniquePtrVectorIter& other) const {
+      return idx_ == other.idx_ && vec_ == other.vec_;
+    }
+
+    bool operator!=(const UniquePtrVectorIter& other) const {
+      return !(*this == other);
+    }
+
+    const T& operator*() const {
+      assert(vec_ != nullptr);
+      return *(vec_->At(idx_));
+    }
+
+    const T* operator->() const {
+      assert(vec_ != nullptr);
+      return vec_->Get(idx_);
+    }
+
+    // Prefix increment.
+    UniquePtrVectorIter& operator++() {
+      ++idx_;
+      return *this;
+    }
+
+    // Postfix increment.
+    UniquePtrVectorIter operator++(int) {
+      UniquePtrVectorIter copy = *this;
+      ++idx_;
+      return copy;
+    }
+
+private:
+  int idx_;
+  const UniquePtrVector<T>* vec_;
+};
+
+template <typename T>
+UniquePtrVectorIter<T> begin(const UniquePtrVector<T>& vec) {
+  return UniquePtrVectorIter<T>(0, &vec);
+}
+
+template <typename T>
+UniquePtrVectorIter<T> end(const UniquePtrVector<T>& vec) {
+  return UniquePtrVectorIter<T>(vec.Size(), &vec);
+}
 
 }  // namespace base
 

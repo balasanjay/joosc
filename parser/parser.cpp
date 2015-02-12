@@ -1310,7 +1310,7 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
   }
 
   Parser afterInterfaces = afterSuper;
-  UniquePtrVector<ReferenceType> interfaces;
+  vector<QualifiedName> interfaces;
 
   if ((isClass && afterSuper.IsNext(K_IMPLEMENTS)) ||
       afterSuper.IsNext(K_EXTENDS)) {
@@ -1327,7 +1327,7 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
       }
 
       afterInterfaces = afterName;
-      interfaces.Append(new ReferenceType(*name.Get()));
+      interfaces.push_back(*name.Get());
 
       if (afterInterfaces.IsNext(COMMA)) {
         afterInterfaces = afterInterfaces.Advance();
@@ -1372,11 +1372,11 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
   if (isClass) {
     type = new ClassDecl(move(*mods.Get()),
                          TokenString(GetFile(), *ident.Get()), *ident.Get(),
-                         move(interfaces), move(members), super.release());
+                         interfaces, move(members), super.release());
   } else {
     type = new InterfaceDecl(move(*mods.Get()),
                              TokenString(GetFile(), *ident.Get()), *ident.Get(),
-                             move(interfaces), move(members));
+                             interfaces, move(members));
   }
 
   return afterBody.Advance().Success(type, out);
@@ -1528,14 +1528,14 @@ uptr<Program> Parse(const FileSet* fs,
     Parser parser(fs, file, &filetoks, 0);
     parser.ParseCompUnit(&unit);
 
-    // Move all errors and warnings to the output list.
-    unit.ReleaseErrors(error_out);
-
     if (unit) {
       units.Append(unit.Release());
     } else {
       failed = true;
     }
+
+    // Move all errors and warnings to the output list.
+    unit.ReleaseErrors(error_out);
   }
 
   return uptr<Program>(new Program(move(units)));
