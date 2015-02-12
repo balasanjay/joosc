@@ -241,13 +241,15 @@ class PrintVisitor final : public Visitor {
       *os_ << " extends ";
       type.Super()->PrintTo(os_);
     }
-    for (int i = 0; i < type.Interfaces().Size(); ++i) {
-      if (i == 0) {
+    bool first = true;
+    for (const auto& name : type.Interfaces()) {
+      if (first) {
         *os_ << " implements ";
       } else {
         *os_ << ',' << space_;
       }
-      type.Interfaces().At(i)->PrintTo(os_);
+      first = false;
+      name.PrintTo(os_);
     }
     *os_ << " {" << newline_;
     PrintVisitor nested = Indent();
@@ -264,13 +266,15 @@ class PrintVisitor final : public Visitor {
     type.Mods().PrintTo(os_);
     *os_ << "interface ";
     *os_ << type.NameToken().TypeInfo();
-    for (int i = 0; i < type.Interfaces().Size(); ++i) {
-      if (i == 0) {
+    bool first = true;
+    for (const auto& name : type.Interfaces()) {
+      if (first) {
         *os_ << " extends ";
       } else {
         *os_ << ',' << space_;
       }
-      type.Interfaces().At(i)->PrintTo(os_);
+      first = false;
+      name.PrintTo(os_);
     }
     *os_ << " {" << newline_;
     PrintVisitor nested = Indent();

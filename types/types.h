@@ -7,19 +7,9 @@
 #include "base/file.h"
 #include "base/fileset.h"
 #include "ast/ast.h"
-
+#include "ast/ids.h"
 
 namespace types {
-
-struct TypeId {
-  using Base = u64;
-
-  Base base;
-  u64 ndims;
-};
-
-const TypeId kUnassignedTypeId = {0, 0};
-const u64 kErrorTypeIdBase = 1;
 
 class TypeSet {
 public:
@@ -32,14 +22,14 @@ public:
 
   // Returns a TypeId corresponding to the entire provided qualified name. If
   // no such type exists, then kErrorTypeId will be returned.
-  TypeId Get(const vector<string>& qualifiedname) const;
+  ast::TypeId Get(const vector<string>& qualifiedname) const;
 
   // Returns a TypeId corresponding to a prefix of the provided qualfied name.
   // Will write the length of the prefix to *typelen. If no such type exists,
   // then kErrorTypeId will be returned.
-  TypeId GetPrefix(const vector<string>& qualifiedname, u64* typelen) const;
+  ast::TypeId GetPrefix(const vector<string>& qualifiedname, u64* typelen) const;
 
-  void PrintTo(std::ostream* out) {
+  void PrintTo(std::ostream* out) const {
     for (const auto& name : available_names_) {
       *out << name.first << "->" << name.second << '\n';
     }
@@ -47,12 +37,12 @@ public:
 
  private:
   friend class TypeSetBuilder;
-  using QualifiedNameBaseMap = std::map<string, TypeId::Base>;
+  using QualifiedNameBaseMap = std::map<string, ast::TypeId::Base>;
 
   TypeSet() = default;
   TypeSet(const vector<string>& qualifiedTypes);
 
-  static void InsertName(QualifiedNameBaseMap* m, string name, TypeId::Base base);
+  static void InsertName(QualifiedNameBaseMap* m, string name, ast::TypeId::Base base);
 
   void InsertImport(const ast::ImportDecl& import);
   void InsertWildcardImport(const string& base);
