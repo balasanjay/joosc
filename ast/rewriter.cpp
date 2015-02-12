@@ -179,10 +179,6 @@ REWRITE_DEFN(Rewriter, MethodDecl, MemberDecl, meth) {
 
 REWRITE_DEFN(Rewriter, ClassDecl, TypeDecl, type) {
   ModifierList mods(type.Mods());
-  base::UniquePtrVector<ReferenceType> interfaces;
-  for (int i = 0; i < type.Interfaces().Size(); ++i) {
-    interfaces.Append(static_cast<ReferenceType*>(type.Interfaces().At(i)->Clone()));
-  }
   base::UniquePtrVector<MemberDecl> members;
   for (int i = 0; i < type.Members().Size(); ++i) {
     members.Append(type.Members().At(i)->AcceptRewriter(this));
@@ -191,20 +187,16 @@ REWRITE_DEFN(Rewriter, ClassDecl, TypeDecl, type) {
   if (type.Super() != nullptr) {
     super = static_cast<ReferenceType*>(type.Super()->Clone());
   }
-  return new ClassDecl(std::move(mods), type.Name(), type.NameToken(), std::move(interfaces), std::move(members), super);
+  return new ClassDecl(std::move(mods), type.Name(), type.NameToken(), type.Interfaces(), std::move(members), super);
 }
 
 REWRITE_DEFN(Rewriter, InterfaceDecl, TypeDecl, type) {
   ModifierList mods(type.Mods());
-  base::UniquePtrVector<ReferenceType> interfaces;
-  for (int i = 0; i < type.Interfaces().Size(); ++i) {
-    interfaces.Append(static_cast<ReferenceType*>(type.Interfaces().At(i)->Clone()));
-  }
   base::UniquePtrVector<MemberDecl> members;
   for (int i = 0; i < type.Members().Size(); ++i) {
     members.Append(type.Members().At(i)->AcceptRewriter(this));
   }
-  return new InterfaceDecl(std::move(mods), type.Name(), type.NameToken(), std::move(interfaces), std::move(members));
+  return new InterfaceDecl(std::move(mods), type.Name(), type.NameToken(), type.Interfaces(), std::move(members));
 }
 
 REWRITE_DEFN(Rewriter, CompUnit, CompUnit, unit) {

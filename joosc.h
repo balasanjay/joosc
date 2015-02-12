@@ -10,6 +10,7 @@ enum class CompilerStage {
   UNSUPPORTED_TOKS,
   PARSE,
   WEED,
+  TYPE_CHECK,
 
   ALL,
 };

@@ -3,6 +3,7 @@
 
 #include <iostream>
 
+#include "ast/ids.h"
 #include "ast/rewriter.h"
 #include "ast/visitor.h"
 #include "lexer/lexer.h"
@@ -37,6 +38,7 @@ class QualifiedName final {
 
   REF_GETTER(string, Name, name_);
   REF_GETTER(vector<string>, Parts, parts_);
+  REF_GETTER(vector<lexer::Token>, Tokens, tokens_);
 
  private:
   vector<lexer::Token>
@@ -675,17 +677,13 @@ class MethodDecl : public MemberDecl {
   uptr<Stmt> body_;
 };
 
+enum class TypeKind {
+  CLASS,
+  INTERFACE,
+};
+
 class TypeDecl {
  public:
-  TypeDecl(ModifierList&& mods, const string& name, lexer::Token nameToken,
-           base::UniquePtrVector<ReferenceType>&& interfaces,
-           base::UniquePtrVector<MemberDecl>&& members)
-      : mods_(std::forward<ModifierList>(mods)),
-        name_(name),
-        nameToken_(nameToken),
-        interfaces_(
-            std::forward<base::UniquePtrVector<ReferenceType>>(interfaces)),
-        members_(std::forward<base::UniquePtrVector<MemberDecl>>(members)) {}
   virtual ~TypeDecl() = default;
 
   ACCEPT_VISITOR_ABSTRACT(TypeDecl);
@@ -693,8 +691,20 @@ class TypeDecl {
   REF_GETTER(ModifierList, Mods, mods_);
   REF_GETTER(string, Name, name_);
   VAL_GETTER(lexer::Token, NameToken, nameToken_);
-  REF_GETTER(base::UniquePtrVector<ReferenceType>, Interfaces, interfaces_);
+  REF_GETTER(vector<QualifiedName>, Interfaces, interfaces_);
   REF_GETTER(base::UniquePtrVector<MemberDecl>, Members, members_);
+  VAL_GETTER(TypeId, GetTypeId, tid_);
+
+ protected:
+  TypeDecl(ModifierList&& mods, const string& name, lexer::Token nameToken,
+           const vector<QualifiedName>& interfaces,
+           base::UniquePtrVector<MemberDecl>&& members, TypeId tid)
+      : mods_(std::forward<ModifierList>(mods)),
+        name_(name),
+        nameToken_(nameToken),
+        interfaces_(interfaces),
+        members_(std::forward<base::UniquePtrVector<MemberDecl>>(members)),
+        tid_(tid) {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TypeDecl);
@@ -702,18 +712,19 @@ class TypeDecl {
   ModifierList mods_;
   string name_;
   lexer::Token nameToken_;
-  base::UniquePtrVector<ReferenceType> interfaces_;
+  vector<QualifiedName> interfaces_;
   base::UniquePtrVector<MemberDecl> members_;
+  TypeId tid_;
 };
 
 class ClassDecl : public TypeDecl {
  public:
   ClassDecl(ModifierList&& mods, const string& name, lexer::Token nameToken,
-            base::UniquePtrVector<ReferenceType>&& interfaces,
-            base::UniquePtrVector<MemberDecl>&& members, ReferenceType* super)
+            const vector<QualifiedName>& interfaces,
+            base::UniquePtrVector<MemberDecl>&& members, ReferenceType* super, TypeId tid = TypeId::Unassigned())
       : TypeDecl(std::forward<ModifierList>(mods), name, nameToken,
-                 std::forward<base::UniquePtrVector<ReferenceType>>(interfaces),
-                 std::forward<base::UniquePtrVector<MemberDecl>>(members)),
+                 interfaces,
+                 std::forward<base::UniquePtrVector<MemberDecl>>(members), tid),
         super_(super) {}
 
   ACCEPT_VISITOR(ClassDecl, TypeDecl);
@@ -729,11 +740,11 @@ class ClassDecl : public TypeDecl {
 class InterfaceDecl : public TypeDecl {
  public:
   InterfaceDecl(ModifierList&& mods, const string& name, lexer::Token nameToken,
-                base::UniquePtrVector<ReferenceType>&& interfaces,
-                base::UniquePtrVector<MemberDecl>&& members)
+                const vector<QualifiedName>& interfaces,
+                base::UniquePtrVector<MemberDecl>&& members, TypeId tid = TypeId::Unassigned())
       : TypeDecl(std::forward<ModifierList>(mods), name, nameToken,
-                 std::forward<base::UniquePtrVector<ReferenceType>>(interfaces),
-                 std::forward<base::UniquePtrVector<MemberDecl>>(members)) {}
+                 interfaces,
+                 std::forward<base::UniquePtrVector<MemberDecl>>(members), tid) {}
 
   ACCEPT_VISITOR(InterfaceDecl, TypeDecl);
 

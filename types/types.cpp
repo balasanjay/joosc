@@ -12,6 +12,7 @@ using std::sort;
 using std::transform;
 
 using ast::ImportDecl;
+using ast::TypeId;
 using base::DiagnosticClass;
 using base::Error;
 using base::FileSet;
@@ -52,8 +53,8 @@ TypeSet::TypeSet(const vector<string>& qualifiedTypes) {
 TypeId TypeSet::Get(const vector<string>& qualifiedname) const {
   u64 typelen = -1;
   TypeId ret = GetPrefix(qualifiedname, &typelen);
-  if ((uint)typelen < qualifiedname.size() || ret.base == kErrorTypeIdBase) {
-    return TypeId{kErrorTypeIdBase, 0};
+  if ((uint)typelen < qualifiedname.size() || ret.base == TypeId::kErrorBase) {
+    return TypeId::Error();
   }
   return ret;
 }
@@ -72,8 +73,7 @@ TypeId TypeSet::GetPrefix(const vector<string>& qualifiedname, u64* typelen) con
     namestr = ss.str();
   }
 
-  // Don't strip all segments, stop at second-last.
-  for (uint i = 0; i < qualifiedname.size() - 1; ++i) {
+  for (uint i = 0; i < qualifiedname.size(); ++i) {
     uint len = qualifiedname.size() - i;
     if (i != 0) {
       namestr = namestr.substr(0, namestr.size() - qualifiedname[len - 1].size() - 1);
@@ -88,7 +88,7 @@ TypeId TypeSet::GetPrefix(const vector<string>& qualifiedname, u64* typelen) con
     return TypeId{iter->second, 0};
   }
 
-  return TypeId{kErrorTypeIdBase, 0};
+  return TypeId::Error();
 }
 
 void TypeSet::InsertName(QualifiedNameBaseMap* m, string name, TypeId::Base base) {

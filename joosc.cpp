@@ -9,7 +9,7 @@
 #include "base/fileset.h"
 #include "lexer/lexer.h"
 #include "parser/parser.h"
-#include "types/types.h"
+#include "types/typechecker.h"
 #include "weeder/weeder.h"
 
 using std::cerr;
@@ -25,7 +25,7 @@ using lexer::LexJoosFiles;
 using lexer::StripSkippableTokens;
 using lexer::Token;
 using parser::Parse;
-using types::TypeSet;
+using types::TypecheckProgram;
 using weeder::WeedProgram;
 
 namespace {
@@ -116,31 +116,16 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
   }
 
   // Type-checking.
-  // TODO: clean this up.
   {
-    types::TypeSetBuilder typeSetBuilder;
+    ErrorList errors;
+    program = TypecheckProgram(*program.get(), fs, &errors);
 
-    for (const auto& unit : program->CompUnits()) {
-      vector<string> ns;
-      if (unit.Package() != nullptr) {
-        ns = unit.Package()->Parts();
-      }
-      for (const auto& decl : unit.Types()) {
-        typeSetBuilder.Put(ns, decl.Name(), decl.NameToken().pos);
-      }
-    }
-
-    base::ErrorList errors;
-    TypeSet ts = typeSetBuilder.Build(fs, &errors);
     if (PrintErrors(errors, err)) {
       return false;
     }
-
-    // cout << "Original\n";
-    // ts.PrintTo(&cout);
-
-    // cout << "\n\nWithImports\n";
-    // ts.WithImports(program->CompUnits().At(0)->Imports()).PrintTo(&cout);
+  }
+  if (stage == CompilerStage::TYPE_CHECK) {
+    return true;
   }
 
   // Print out the AST.
