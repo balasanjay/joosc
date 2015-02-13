@@ -1,4 +1,4 @@
-#include "ast/visitor2.h"
+#include "ast/visitor.h"
 
 #include "ast/ast.h"
 #include "lexer/lexer.h"

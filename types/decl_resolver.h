@@ -1,7 +1,7 @@
 #ifndef TYPES_DECL_RESOLVER_H
 #define TYPES_DECL_RESOLVER_H
 
-#include "ast/visitor2.h"
+#include "ast/visitor.h"
 #include "base/errorlist.h"
 #include "base/fileset.h"
 #include "types/type_info_map.h"

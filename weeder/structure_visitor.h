@@ -1,7 +1,7 @@
 #ifndef WEEDER_STRUCTURE_VISITOR_H
 #define WEEDER_STRUCTURE_VISITOR_H
 
-#include "ast/visitor2.h"
+#include "ast/visitor.h"
 #include "base/errorlist.h"
 #include "base/fileset.h"
 

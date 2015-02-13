@@ -67,7 +67,7 @@ private:
     *changed_out = false;
     for (int i = 0; i < oldVec.Size(); ++i) {
       sptr<const T> oldVal = oldVec.At(i);
-      sptr<const T> newVal = oldVal->Accept2(this, oldVal);
+      sptr<const T> newVal = oldVal->Accept(this, oldVal);
       if (newVal == nullptr) {
         *changed_out = true;
         continue;
@@ -84,8 +84,8 @@ private:
 #undef FOR_EACH_VISITABLE
 
 template <typename T>
-auto Visit(Visitor* visitor, const sptr<T> t) -> decltype(t->Accept2(visitor, t)) {
-  return t->Accept2(visitor, t);
+auto Visit(Visitor* visitor, const sptr<T> t) -> decltype(t->Accept(visitor, t)) {
+  return t->Accept(visitor, t);
 }
 
 #define VISIT_DECL(type, var) ast::VisitResult Visit##type(const ast::type& var) override

@@ -2,7 +2,7 @@
 #define AST_PRINT_VISITOR_H
 
 #include "ast/ast.h"
-#include "ast/visitor2.h"
+#include "ast/visitor.h"
 
 namespace ast {
 
