@@ -119,7 +119,7 @@ bool HasVoid(const Type& type, Token* out) {
   }
 }
 
-VISIT_DEFN2(TypeVisitor, CastExpr, expr) {
+VISIT_DEFN(TypeVisitor, CastExpr, expr) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(expr.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
@@ -128,7 +128,7 @@ VISIT_DEFN2(TypeVisitor, CastExpr, expr) {
   return VisitResult::RECURSE;
 }
 
-VISIT_DEFN2(TypeVisitor, InstanceOfExpr, expr) {
+VISIT_DEFN(TypeVisitor, InstanceOfExpr, expr) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(expr.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
@@ -138,7 +138,7 @@ VISIT_DEFN2(TypeVisitor, InstanceOfExpr, expr) {
   return VisitResult::RECURSE;
 }
 
-VISIT_DEFN2(TypeVisitor, NewClassExpr, expr) {
+VISIT_DEFN(TypeVisitor, NewClassExpr, expr) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(expr.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
@@ -150,7 +150,7 @@ VISIT_DEFN2(TypeVisitor, NewClassExpr, expr) {
   return VisitResult::RECURSE;
 }
 
-VISIT_DEFN2(TypeVisitor, NewArrayExpr, expr) {
+VISIT_DEFN(TypeVisitor, NewArrayExpr, expr) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(expr.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
@@ -159,7 +159,7 @@ VISIT_DEFN2(TypeVisitor, NewArrayExpr, expr) {
   return VisitResult::RECURSE;
 }
 
-VISIT_DEFN2(TypeVisitor, LocalDeclStmt, stmt) {
+VISIT_DEFN(TypeVisitor, LocalDeclStmt, stmt) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(stmt.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
@@ -168,7 +168,7 @@ VISIT_DEFN2(TypeVisitor, LocalDeclStmt, stmt) {
   return VisitResult::RECURSE;
 }
 
-VISIT_DEFN2(TypeVisitor, FieldDecl, stmt) {
+VISIT_DEFN(TypeVisitor, FieldDecl, stmt) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(stmt.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
@@ -177,7 +177,7 @@ VISIT_DEFN2(TypeVisitor, FieldDecl, stmt) {
   return VisitResult::RECURSE;
 }
 
-VISIT_DEFN2(TypeVisitor, Param, param) {
+VISIT_DEFN(TypeVisitor, Param, param) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(param.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
@@ -186,7 +186,7 @@ VISIT_DEFN2(TypeVisitor, Param, param) {
   return VisitResult::RECURSE;
 }
 
-VISIT_DEFN2(TypeVisitor, ForStmt, stmt) {
+VISIT_DEFN(TypeVisitor, ForStmt, stmt) {
   if (!IS_CONST_REF(LocalDeclStmt, stmt.Init()) &&
       !IsTopLevelExpr(&stmt.Init())) {
     // TODO: Error.
@@ -203,7 +203,7 @@ VISIT_DEFN2(TypeVisitor, ForStmt, stmt) {
   return VisitResult::RECURSE;
 }
 
-VISIT_DEFN2(TypeVisitor, BlockStmt, block) {
+VISIT_DEFN(TypeVisitor, BlockStmt, block) {
   VisitResult result = VisitResult::RECURSE;
   for (int i = 0; i < block.Stmts().Size(); ++i) {
     if (!IsTopLevelStmt(block.Stmts().At(i).get())) {

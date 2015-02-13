@@ -69,7 +69,7 @@ TypeId DeclResolver::MustResolveType(const Type& type) {
   return tid;
 }
 
-REWRITE_DEFN2(DeclResolver, CompUnit, CompUnit, unit,) {
+REWRITE_DEFN(DeclResolver, CompUnit, CompUnit, unit,) {
   sptr<const QualifiedName> package = nullptr;
   if (unit.PackagePtr() != nullptr) {
     package = unit.PackagePtr();
@@ -89,7 +89,7 @@ REWRITE_DEFN2(DeclResolver, CompUnit, CompUnit, unit,) {
   return make_shared<CompUnit>(package, unit.Imports(), decls);
 }
 
-REWRITE_DEFN2(DeclResolver, ClassDecl, TypeDecl, type, ) {
+REWRITE_DEFN(DeclResolver, ClassDecl, TypeDecl, type, ) {
   // Try and resolve TypeId of this class. If this fails, that means that this
   // class has some previously discovered error, and we prune this subtree.
   vector<string> classname;
@@ -131,7 +131,7 @@ REWRITE_DEFN2(DeclResolver, ClassDecl, TypeDecl, type, ) {
 // TODO: we are skipping interfaces; waiting until after the AST merge.
 // TODO: we are skipping constructors; waiting until after the AST merge.
 
-REWRITE_DEFN2(DeclResolver, FieldDecl, MemberDecl, field, ) {
+REWRITE_DEFN(DeclResolver, FieldDecl, MemberDecl, field, ) {
   TypeId tid = MustResolveType(field.GetType());
   if (tid.IsError()) {
     return nullptr;
@@ -142,7 +142,7 @@ REWRITE_DEFN2(DeclResolver, FieldDecl, MemberDecl, field, ) {
   return make_shared<FieldDecl>(field.Mods(), field.GetTypePtr(), field.Ident(), field.ValPtr());
 }
 
-REWRITE_DEFN2(DeclResolver, MethodDecl, MemberDecl, meth,) {
+REWRITE_DEFN(DeclResolver, MethodDecl, MemberDecl, meth,) {
   TypeId rettid = MustResolveType(meth.GetType());
   if (rettid.IsError()) {
     return nullptr;

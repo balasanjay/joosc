@@ -181,7 +181,7 @@ void VerifyNoConflictingAccessMods(const FileSet* fs, const ModifierList& mods,
 
 }  // namespace
 
-VISIT_DEFN2(ClassModifierVisitor, ConstructorDecl, decl) {
+VISIT_DEFN(ClassModifierVisitor, ConstructorDecl, decl) {
   // Cannot be both public and protected.
   VerifyNoConflictingAccessMods(fs_, decl.Mods(), errors_);
 
@@ -201,7 +201,7 @@ VISIT_DEFN2(ClassModifierVisitor, ConstructorDecl, decl) {
   return VisitResult::SKIP;
 }
 
-VISIT_DEFN2(ClassModifierVisitor, FieldDecl, decl) {
+VISIT_DEFN(ClassModifierVisitor, FieldDecl, decl) {
   // Cannot be both public and protected.
   VerifyNoConflictingAccessMods(fs_, decl.Mods(), errors_);
 
@@ -216,7 +216,7 @@ VISIT_DEFN2(ClassModifierVisitor, FieldDecl, decl) {
   return VisitResult::SKIP;
 }
 
-VISIT_DEFN2(ClassModifierVisitor, MethodDecl, decl) {
+VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
   // Cannot be both public and protected.
   VerifyNoConflictingAccessMods(fs_, decl.Mods(), errors_);
 
@@ -262,19 +262,19 @@ VISIT_DEFN2(ClassModifierVisitor, MethodDecl, decl) {
   return VisitResult::SKIP;
 }
 
-VISIT_DEFN2(InterfaceModifierVisitor, ConstructorDecl, decl) {
+VISIT_DEFN(InterfaceModifierVisitor, ConstructorDecl, decl) {
   // An interface cannot contain constructors.
   errors_->Append(MakeInterfaceConstructorError(fs_, decl.Ident()));
   return VisitResult::SKIP;
 }
 
-VISIT_DEFN2(InterfaceModifierVisitor, FieldDecl, decl) {
+VISIT_DEFN(InterfaceModifierVisitor, FieldDecl, decl) {
   // An interface cannot contain fields.
   errors_->Append(MakeInterfaceFieldError(fs_, decl.Ident()));
   return VisitResult::SKIP;
 }
 
-VISIT_DEFN2(InterfaceModifierVisitor, MethodDecl, decl) {
+VISIT_DEFN(InterfaceModifierVisitor, MethodDecl, decl) {
   // An interface method cannot be static, final, native, or protected.
   VerifyNoneOf(fs_, decl.Mods(), errors_, MakeInterfaceMethodModifierError,
                {PROTECTED, STATIC, FINAL, NATIVE});
@@ -291,7 +291,7 @@ VISIT_DEFN2(InterfaceModifierVisitor, MethodDecl, decl) {
   return VisitResult::SKIP;
 }
 
-REWRITE_DEFN2(ModifierVisitor, ClassDecl, TypeDecl, decl, declptr) {
+REWRITE_DEFN(ModifierVisitor, ClassDecl, TypeDecl, decl, declptr) {
   // A class cannot be protected, static, or native.
   VerifyNoneOf(fs_, decl.Mods(), errors_, MakeClassModifierError,
                {PROTECTED, STATIC, NATIVE});
@@ -309,7 +309,7 @@ REWRITE_DEFN2(ModifierVisitor, ClassDecl, TypeDecl, decl, declptr) {
   return Visit(&visitor, declptr);
 }
 
-REWRITE_DEFN2(ModifierVisitor, InterfaceDecl, TypeDecl, decl, declptr) {
+REWRITE_DEFN(ModifierVisitor, InterfaceDecl, TypeDecl, decl, declptr) {
   // An interface cannot be protected, static, final, or native.
   VerifyNoneOf(fs_, decl.Mods(), errors_, MakeInterfaceModifierError,
                {PROTECTED, STATIC, FINAL, NATIVE});

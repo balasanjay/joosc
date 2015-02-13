@@ -25,7 +25,7 @@ Error* MakeInvalidLHSError(const FileSet* fs, Token token) {
 
 } // namespace
 
-VISIT_DEFN2(AssignmentVisitor, BinExpr, expr) {
+VISIT_DEFN(AssignmentVisitor, BinExpr, expr) {
   if (expr.Op().type != ASSG) {
     return VisitResult::RECURSE;
   }

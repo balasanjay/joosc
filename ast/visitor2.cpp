@@ -26,7 +26,7 @@ using base::SharedPtrVector;
 #define SHOULD_PRUNE_AFTER (VISIT_RESULT == VisitResult::RECURSE_PRUNE)
 
 
-REWRITE_DEFN2(Visitor, ArrayIndexExpr, Expr, expr, exprptr) {
+REWRITE_DEFN(Visitor, ArrayIndexExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(ArrayIndexExpr, expr);
 
   sptr<const Expr> base = Visit(this, expr.BasePtr());
@@ -40,7 +40,7 @@ REWRITE_DEFN2(Visitor, ArrayIndexExpr, Expr, expr, exprptr) {
   return make_shared<ArrayIndexExpr>(base, index);
 }
 
-REWRITE_DEFN2(Visitor, BinExpr, Expr, expr, exprptr) {
+REWRITE_DEFN(Visitor, BinExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(BinExpr, expr);
 
   sptr<const Expr> lhs = Visit(this, expr.LhsPtr());
@@ -55,7 +55,7 @@ REWRITE_DEFN2(Visitor, BinExpr, Expr, expr, exprptr) {
   return make_shared<BinExpr>(lhs, expr.Op(), rhs);
 }
 
-REWRITE_DEFN2(Visitor, CallExpr, Expr, expr, exprptr) {
+REWRITE_DEFN(Visitor, CallExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(CallExpr, expr);
 
   bool argsChanged = false;
@@ -72,7 +72,7 @@ REWRITE_DEFN2(Visitor, CallExpr, Expr, expr, exprptr) {
   return make_shared<CallExpr>(base, expr.Lparen(), args);
 }
 
-REWRITE_DEFN2(Visitor, CastExpr, Expr, expr, exprptr) {
+REWRITE_DEFN(Visitor, CastExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(CastExpr, expr);
 
   sptr<const Expr> castedExpr = Visit(this, expr.GetExprPtr());
@@ -84,7 +84,7 @@ REWRITE_DEFN2(Visitor, CastExpr, Expr, expr, exprptr) {
   return make_shared<CastExpr>(expr.GetTypePtr(), castedExpr);
 }
 
-REWRITE_DEFN2(Visitor, FieldDerefExpr, Expr, expr, exprptr) {
+REWRITE_DEFN(Visitor, FieldDerefExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(FieldDerefExpr, expr);
   sptr<const Expr> base = Visit(this, expr.BasePtr());
   if (SHOULD_PRUNE_AFTER || base == nullptr) {
@@ -95,42 +95,42 @@ REWRITE_DEFN2(Visitor, FieldDerefExpr, Expr, expr, exprptr) {
   return make_shared<FieldDerefExpr>(base, expr.FieldName(), expr.GetToken());
 }
 
-REWRITE_DEFN2(Visitor, BoolLitExpr, Expr, expr, exprptr) {
+REWRITE_DEFN(Visitor, BoolLitExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(BoolLitExpr, expr);
   if (SHOULD_PRUNE_AFTER) {
     return nullptr;
   }
   return exprptr;
 }
-REWRITE_DEFN2(Visitor, CharLitExpr, Expr, expr, exprptr) {
+REWRITE_DEFN(Visitor, CharLitExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(CharLitExpr, expr);
   if (SHOULD_PRUNE_AFTER) {
     return nullptr;
   }
   return exprptr;
 }
-REWRITE_DEFN2(Visitor, StringLitExpr, Expr, expr, exprptr) {
+REWRITE_DEFN(Visitor, StringLitExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(StringLitExpr, expr);
   if (SHOULD_PRUNE_AFTER) {
     return nullptr;
   }
   return exprptr;
 }
-REWRITE_DEFN2(Visitor, NullLitExpr, Expr, expr, exprptr) {
+REWRITE_DEFN(Visitor, NullLitExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(NullLitExpr, expr);
   if (SHOULD_PRUNE_AFTER) {
     return nullptr;
   }
   return exprptr;
 }
-REWRITE_DEFN2(Visitor, IntLitExpr, Expr, expr, exprptr) {
+REWRITE_DEFN(Visitor, IntLitExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(IntLitExpr, expr);
   if (SHOULD_PRUNE_AFTER) {
     return nullptr;
   }
   return exprptr;
 }
-REWRITE_DEFN2(Visitor, NameExpr, Expr, expr, exprptr) {
+REWRITE_DEFN(Visitor, NameExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(NameExpr, expr);
   if (SHOULD_PRUNE_AFTER) {
     return nullptr;
@@ -138,7 +138,7 @@ REWRITE_DEFN2(Visitor, NameExpr, Expr, expr, exprptr) {
   return exprptr;
 }
 
-REWRITE_DEFN2(Visitor, NewArrayExpr, Expr, expr, exprptr) {
+REWRITE_DEFN(Visitor, NewArrayExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(NewArrayExpr, expr);
 
   sptr<const Expr> arrayExpr = nullptr;
@@ -156,7 +156,7 @@ REWRITE_DEFN2(Visitor, NewArrayExpr, Expr, expr, exprptr) {
   return make_shared<NewArrayExpr>(expr.GetTypePtr(), arrayExpr);
 }
 
-REWRITE_DEFN2(Visitor, NewClassExpr, Expr, expr, exprptr) {
+REWRITE_DEFN(Visitor, NewClassExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(NewClassExpr, expr);
 
   bool argsChanged = false;
@@ -171,7 +171,7 @@ REWRITE_DEFN2(Visitor, NewClassExpr, Expr, expr, exprptr) {
   return make_shared<NewClassExpr>(expr.NewToken(), expr.GetTypePtr(), args);
 }
 
-REWRITE_DEFN2(Visitor, ParenExpr, Expr, expr, exprptr) {
+REWRITE_DEFN(Visitor, ParenExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(ParenExpr, expr);
   sptr<const Expr> nested = Visit(this, expr.NestedPtr());
   if (SHOULD_PRUNE_AFTER || nested == nullptr) {
@@ -182,7 +182,7 @@ REWRITE_DEFN2(Visitor, ParenExpr, Expr, expr, exprptr) {
   return make_shared<ParenExpr>(nested);
 }
 
-REWRITE_DEFN2(Visitor, ThisExpr, Expr, expr, exprptr) {
+REWRITE_DEFN(Visitor, ThisExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(ThisExpr, expr);
   if (SHOULD_PRUNE_AFTER) {
     return nullptr;
@@ -190,7 +190,7 @@ REWRITE_DEFN2(Visitor, ThisExpr, Expr, expr, exprptr) {
   return exprptr;
 }
 
-REWRITE_DEFN2(Visitor, UnaryExpr, Expr, expr, exprptr) {
+REWRITE_DEFN(Visitor, UnaryExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(UnaryExpr, expr);
   sptr<const Expr> rhs = Visit(this, expr.RhsPtr());
   if (SHOULD_PRUNE_AFTER || rhs == nullptr) {
@@ -201,7 +201,7 @@ REWRITE_DEFN2(Visitor, UnaryExpr, Expr, expr, exprptr) {
   return make_shared<UnaryExpr>(expr.Op(), rhs);
 }
 
-REWRITE_DEFN2(Visitor, InstanceOfExpr, Expr, expr, exprptr) {
+REWRITE_DEFN(Visitor, InstanceOfExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(InstanceOfExpr, expr);
   sptr<const Expr> lhs = Visit(this, expr.LhsPtr());
   if (SHOULD_PRUNE_AFTER || lhs == nullptr) {
@@ -212,7 +212,7 @@ REWRITE_DEFN2(Visitor, InstanceOfExpr, Expr, expr, exprptr) {
   return make_shared<InstanceOfExpr>(lhs, expr.InstanceOf(), expr.GetTypePtr());
 }
 
-REWRITE_DEFN2(Visitor, BlockStmt, Stmt, stmt, stmtptr) {
+REWRITE_DEFN(Visitor, BlockStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(BlockStmt, stmt);
 
   bool stmtsChanged = false;
@@ -228,7 +228,7 @@ REWRITE_DEFN2(Visitor, BlockStmt, Stmt, stmt, stmtptr) {
   return make_shared<BlockStmt>(newStmts);
 }
 
-REWRITE_DEFN2(Visitor, EmptyStmt, Stmt, stmt, stmtptr) {
+REWRITE_DEFN(Visitor, EmptyStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(EmptyStmt, stmt);
   if (SHOULD_PRUNE_AFTER) {
     return nullptr;
@@ -236,7 +236,7 @@ REWRITE_DEFN2(Visitor, EmptyStmt, Stmt, stmt, stmtptr) {
   return stmtptr;
 }
 
-REWRITE_DEFN2(Visitor, ExprStmt, Stmt, stmt, stmtptr) {
+REWRITE_DEFN(Visitor, ExprStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(ExprStmt, stmt);
 
   sptr<const Expr> expr = Visit(this, stmt.GetExprPtr());
@@ -249,7 +249,7 @@ REWRITE_DEFN2(Visitor, ExprStmt, Stmt, stmt, stmtptr) {
   return make_shared<ExprStmt>(expr);
 }
 
-REWRITE_DEFN2(Visitor, LocalDeclStmt, Stmt, stmt, stmtptr) {
+REWRITE_DEFN(Visitor, LocalDeclStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(LocalDeclStmt, stmt);
 
   sptr<const Expr> expr = Visit(this, stmt.GetExprPtr());
@@ -262,7 +262,7 @@ REWRITE_DEFN2(Visitor, LocalDeclStmt, Stmt, stmt, stmtptr) {
   return make_shared<LocalDeclStmt>(stmt.GetTypePtr(), stmt.Ident(), expr);
 }
 
-REWRITE_DEFN2(Visitor, ReturnStmt, Stmt, stmt, stmtptr) {
+REWRITE_DEFN(Visitor, ReturnStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(ReturnStmt, stmt);
 
   sptr<const Expr> expr = nullptr;
@@ -279,7 +279,7 @@ REWRITE_DEFN2(Visitor, ReturnStmt, Stmt, stmt, stmtptr) {
   return make_shared<ReturnStmt>(expr);
 }
 
-REWRITE_DEFN2(Visitor, IfStmt, Stmt, stmt, stmtptr) {
+REWRITE_DEFN(Visitor, IfStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(IfStmt, stmt);
 
   sptr<const Expr> cond = Visit(this, stmt.CondPtr());
@@ -308,7 +308,7 @@ REWRITE_DEFN2(Visitor, IfStmt, Stmt, stmt, stmtptr) {
   return make_shared<IfStmt>(cond, trueBody, falseBody);
 }
 
-REWRITE_DEFN2(Visitor, ForStmt, Stmt, stmt, stmtptr) {
+REWRITE_DEFN(Visitor, ForStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(ForStmt, stmt);
 
   sptr<const Stmt> init = Visit(this, stmt.InitPtr());
@@ -337,7 +337,7 @@ REWRITE_DEFN2(Visitor, ForStmt, Stmt, stmt, stmtptr) {
   return make_shared<ForStmt>(init, cond, update, body);
 }
 
-REWRITE_DEFN2(Visitor, WhileStmt, Stmt, stmt, stmtptr) {
+REWRITE_DEFN(Visitor, WhileStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(WhileStmt, stmt);
 
   sptr<const Expr> cond = Visit(this, stmt.CondPtr());
@@ -357,7 +357,7 @@ REWRITE_DEFN2(Visitor, WhileStmt, Stmt, stmt, stmtptr) {
   return make_shared<WhileStmt>(cond, body);
 }
 
-REWRITE_DEFN2(Visitor, ParamList, ParamList, params, paramsptr) {
+REWRITE_DEFN(Visitor, ParamList, ParamList, params, paramsptr) {
   SHORT_CIRCUIT(ParamList, params);
 
   bool paramsChanged = false;
@@ -374,7 +374,7 @@ REWRITE_DEFN2(Visitor, ParamList, ParamList, params, paramsptr) {
 }
 
 
-REWRITE_DEFN2(Visitor, Param, Param, param, paramptr) {
+REWRITE_DEFN(Visitor, Param, Param, param, paramptr) {
   SHORT_CIRCUIT(Param, param);
   if (SHOULD_PRUNE_AFTER) {
     return nullptr;
@@ -382,7 +382,7 @@ REWRITE_DEFN2(Visitor, Param, Param, param, paramptr) {
   return paramptr;
 }
 
-REWRITE_DEFN2(Visitor, FieldDecl, MemberDecl, field, fieldptr) {
+REWRITE_DEFN(Visitor, FieldDecl, MemberDecl, field, fieldptr) {
   SHORT_CIRCUIT(FieldDecl, field);
 
   sptr<const Expr> val;
@@ -400,7 +400,7 @@ REWRITE_DEFN2(Visitor, FieldDecl, MemberDecl, field, fieldptr) {
   return make_shared<FieldDecl>(field.Mods(), field.GetTypePtr(), field.Ident(), val);
 }
 
-REWRITE_DEFN2(Visitor, MethodDecl, MemberDecl, meth, methptr) {
+REWRITE_DEFN(Visitor, MethodDecl, MemberDecl, meth, methptr) {
   SHORT_CIRCUIT(MethodDecl, meth);
 
   sptr<const ParamList> params = Visit(this, meth.ParamsPtr());
@@ -416,7 +416,7 @@ REWRITE_DEFN2(Visitor, MethodDecl, MemberDecl, meth, methptr) {
 }
 
 
-REWRITE_DEFN2(Visitor, ConstructorDecl, MemberDecl, meth, methptr) {
+REWRITE_DEFN(Visitor, ConstructorDecl, MemberDecl, meth, methptr) {
   SHORT_CIRCUIT(ConstructorDecl, meth);
 
   sptr<const ParamList> params = Visit(this, meth.ParamsPtr());
@@ -431,7 +431,7 @@ REWRITE_DEFN2(Visitor, ConstructorDecl, MemberDecl, meth, methptr) {
   return make_shared<ConstructorDecl>(meth.Mods(), meth.Ident(), params, body);
 }
 
-REWRITE_DEFN2(Visitor, ClassDecl, TypeDecl, type, typeptr) {
+REWRITE_DEFN(Visitor, ClassDecl, TypeDecl, type, typeptr) {
   SHORT_CIRCUIT(ClassDecl, type);
 
   bool membersChanged = false;
@@ -446,7 +446,7 @@ REWRITE_DEFN2(Visitor, ClassDecl, TypeDecl, type, typeptr) {
   return make_shared<ClassDecl>(type.Mods(), type.Name(), type.NameToken(), type.Interfaces(), newMembers, type.SuperPtr(), type.GetTypeId());
 }
 
-REWRITE_DEFN2(Visitor, InterfaceDecl, TypeDecl, type, typeptr) {
+REWRITE_DEFN(Visitor, InterfaceDecl, TypeDecl, type, typeptr) {
   SHORT_CIRCUIT(InterfaceDecl, type);
 
   bool membersChanged = false;
@@ -461,7 +461,7 @@ REWRITE_DEFN2(Visitor, InterfaceDecl, TypeDecl, type, typeptr) {
   return make_shared<InterfaceDecl>(type.Mods(), type.Name(), type.NameToken(), type.Interfaces(), newMembers, type.GetTypeId());
 }
 
-REWRITE_DEFN2(Visitor, CompUnit, CompUnit, unit, unitptr) {
+REWRITE_DEFN(Visitor, CompUnit, CompUnit, unit, unitptr) {
   SHORT_CIRCUIT(CompUnit, unit);
 
   bool typesChanged = false;
@@ -476,7 +476,7 @@ REWRITE_DEFN2(Visitor, CompUnit, CompUnit, unit, unitptr) {
   return make_shared<CompUnit>(unit.PackagePtr(), unit.Imports(), newTypes);
 }
 
-REWRITE_DEFN2(Visitor, Program, Program, prog, progptr) {
+REWRITE_DEFN(Visitor, Program, Program, prog, progptr) {
   // We special-case the short-circuiting for program, because the other two
   // would result in nullable programs.
   auto result = VisitProgram(prog);

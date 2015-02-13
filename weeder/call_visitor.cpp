@@ -29,7 +29,7 @@ Error* MakeExplicitThisCallError(const FileSet* fs, Token token) {
 
 } // namespace
 
-VISIT_DEFN2(CallVisitor, CallExpr, expr) {
+VISIT_DEFN(CallVisitor, CallExpr, expr) {
   const Expr& base = expr.Base();
 
   if (!IS_CONST_REF(FieldDerefExpr, base) && !IS_CONST_REF(NameExpr, base)) {
