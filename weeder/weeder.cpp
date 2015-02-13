@@ -15,7 +15,7 @@ namespace weeder {
 
 sptr<const Program> WeedProgram(const FileSet* fs, sptr<const Program> prog, ErrorList* out) {
   AssignmentVisitor assignmentChecker(fs, out);
-  prog->AcceptVisitor(&assignmentChecker);
+  prog = Visit(&assignmentChecker, prog);
 
   CallVisitor callChecker(fs, out);
   prog->AcceptVisitor(&callChecker);
