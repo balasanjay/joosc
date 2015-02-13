@@ -82,11 +82,16 @@ private:
 
 #undef FOR_EACH_VISITABLE
 
+template <typename T>
+const sptr<T> Visit(Visitor2* visitor, const sptr<T> t) {
+  return t->Accept2(visitor, t);
+}
+
 #define VISIT_DECL2(type, var) VisitResult Visit##type(const ast::type& var) override
 #define VISIT_DEFN2(cls, type, var) VisitResult cls::Visit##type(const ast::type& var)
 
-#define REWRITE_DECL2(type, rettype, var) const sptr<ast::rettype> Rewrite##type(const ast::type& var, const sptr<ast::type> var##ptr) override
-#define REWRITE_DEFN2(cls, type, rettype, var) const sptr<ast::rettype> cls::Rewrite##type(const ast::type& var, const sptr<ast::type> var##ptr)
+#define REWRITE_DECL2(type, rettype, var, varptr) const sptr<ast::rettype> Rewrite##type(const ast::type& var, const sptr<ast::type> varptr) override
+#define REWRITE_DEFN2(cls, type, rettype, var, varptr) const sptr<ast::rettype> cls::Rewrite##type(const ast::type& var, const sptr<ast::type> varptr)
 
 } // namespace ast
 

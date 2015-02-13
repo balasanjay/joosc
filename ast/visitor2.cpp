@@ -21,11 +21,11 @@ using base::SharedPtrVector;
     } \
   }
 
-REWRITE_DEFN2(Visitor2, ArrayIndexExpr, Expr, expr) {
+REWRITE_DEFN2(Visitor2, ArrayIndexExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(ArrayIndexExpr, expr);
 
-  sptr<Expr> base = expr.Base().Accept2(this, expr.BasePtr());
-  sptr<Expr> index = expr.Index().Accept2(this, expr.IndexPtr());
+  sptr<Expr> base = Visit(this, expr.BasePtr());
+  sptr<Expr> index = Visit(this, expr.IndexPtr());
   if (base == nullptr || index == nullptr) {
     return nullptr;
   }
@@ -35,11 +35,11 @@ REWRITE_DEFN2(Visitor2, ArrayIndexExpr, Expr, expr) {
   return make_shared<ArrayIndexExpr>(base, index);
 }
 
-REWRITE_DEFN2(Visitor2, BinExpr, Expr, expr) {
+REWRITE_DEFN2(Visitor2, BinExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(BinExpr, expr);
 
-  sptr<Expr> lhs = expr.Lhs().Accept2(this, expr.LhsPtr());
-  sptr<Expr> rhs = expr.Rhs().Accept2(this, expr.RhsPtr());
+  sptr<Expr> lhs = Visit(this, expr.LhsPtr());
+  sptr<Expr> rhs = Visit(this, expr.RhsPtr());
   if (lhs == nullptr || rhs == nullptr) {
     return nullptr;
   }
@@ -50,11 +50,11 @@ REWRITE_DEFN2(Visitor2, BinExpr, Expr, expr) {
   return make_shared<BinExpr>(lhs, expr.Op(), rhs);
 }
 
-REWRITE_DEFN2(Visitor2, CallExpr, Expr, expr) {
+REWRITE_DEFN2(Visitor2, CallExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(CallExpr, expr);
 
   bool argsChanged = false;
-  sptr<Expr> base = expr.Base().Accept2(this, expr.BasePtr());
+  sptr<Expr> base = Visit(this, expr.BasePtr());
   SharedPtrVector<Expr> args = AcceptMulti(expr.Args(), &argsChanged);
 
   if (base == nullptr || args.Size() != expr.Args().Size()) {
@@ -67,10 +67,10 @@ REWRITE_DEFN2(Visitor2, CallExpr, Expr, expr) {
   return make_shared<CallExpr>(base, expr.Lparen(), args);
 }
 
-REWRITE_DEFN2(Visitor2, CastExpr, Expr, expr) {
+REWRITE_DEFN2(Visitor2, CastExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(CastExpr, expr);
 
-  sptr<Expr> castedExpr = expr.GetExpr().Accept2(this, expr.GetExprPtr());
+  sptr<Expr> castedExpr = Visit(this, expr.GetExprPtr());
   if (castedExpr == nullptr) {
     return nullptr;
   } else if (castedExpr == expr.GetExprPtr()) {
@@ -79,9 +79,9 @@ REWRITE_DEFN2(Visitor2, CastExpr, Expr, expr) {
   return make_shared<CastExpr>(expr.GetTypePtr(), castedExpr);
 }
 
-REWRITE_DEFN2(Visitor2, FieldDerefExpr, Expr, expr) {
+REWRITE_DEFN2(Visitor2, FieldDerefExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(FieldDerefExpr, expr);
-  sptr<Expr> base = expr.Base().Accept2(this, expr.BasePtr());
+  sptr<Expr> base = Visit(this, expr.BasePtr());
   if (base == nullptr) {
     return nullptr;
   } else if (base == expr.BasePtr()) {
@@ -90,37 +90,37 @@ REWRITE_DEFN2(Visitor2, FieldDerefExpr, Expr, expr) {
   return make_shared<FieldDerefExpr>(base, expr.FieldName(), expr.GetToken());
 }
 
-REWRITE_DEFN2(Visitor2, BoolLitExpr, Expr, expr) {
+REWRITE_DEFN2(Visitor2, BoolLitExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(BoolLitExpr, expr);
   return exprptr;
 }
-REWRITE_DEFN2(Visitor2, CharLitExpr, Expr, expr) {
+REWRITE_DEFN2(Visitor2, CharLitExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(CharLitExpr, expr);
   return exprptr;
 }
-REWRITE_DEFN2(Visitor2, StringLitExpr, Expr, expr) {
+REWRITE_DEFN2(Visitor2, StringLitExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(StringLitExpr, expr);
   return exprptr;
 }
-REWRITE_DEFN2(Visitor2, NullLitExpr, Expr, expr) {
+REWRITE_DEFN2(Visitor2, NullLitExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(NullLitExpr, expr);
   return exprptr;
 }
-REWRITE_DEFN2(Visitor2, IntLitExpr, Expr, expr) {
+REWRITE_DEFN2(Visitor2, IntLitExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(IntLitExpr, expr);
   return exprptr;
 }
-REWRITE_DEFN2(Visitor2, NameExpr, Expr, expr) {
+REWRITE_DEFN2(Visitor2, NameExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(NameExpr, expr);
   return exprptr;
 }
 
-REWRITE_DEFN2(Visitor2, NewArrayExpr, Expr, expr) {
+REWRITE_DEFN2(Visitor2, NewArrayExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(NewArrayExpr, expr);
 
   sptr<Expr> arrayExpr = nullptr;
   if (expr.GetExprPtr() != nullptr) {
-    arrayExpr = expr.GetExprPtr()->Accept2(this, expr.GetExprPtr());
+    arrayExpr = Visit(this, expr.GetExprPtr());
   }
 
   // We don't prune the subtree if the expr returns null, because the expr is a
@@ -132,7 +132,7 @@ REWRITE_DEFN2(Visitor2, NewArrayExpr, Expr, expr) {
   return make_shared<NewArrayExpr>(expr.GetTypePtr(), arrayExpr);
 }
 
-REWRITE_DEFN2(Visitor2, NewClassExpr, Expr, expr) {
+REWRITE_DEFN2(Visitor2, NewClassExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(NewClassExpr, expr);
 
   bool argsChanged = false;
@@ -147,9 +147,9 @@ REWRITE_DEFN2(Visitor2, NewClassExpr, Expr, expr) {
   return make_shared<NewClassExpr>(expr.NewToken(), expr.GetTypePtr(), args);
 }
 
-REWRITE_DEFN2(Visitor2, ParenExpr, Expr, expr) {
+REWRITE_DEFN2(Visitor2, ParenExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(ParenExpr, expr);
-  sptr<Expr> nested = expr.Nested().Accept2(this, expr.NestedPtr());
+  sptr<Expr> nested = Visit(this, expr.NestedPtr());
   if (nested == nullptr) {
     return nullptr;
   } else if (nested == expr.NestedPtr()) {
@@ -158,14 +158,14 @@ REWRITE_DEFN2(Visitor2, ParenExpr, Expr, expr) {
   return make_shared<ParenExpr>(nested);
 }
 
-REWRITE_DEFN2(Visitor2, ThisExpr, Expr, expr) {
+REWRITE_DEFN2(Visitor2, ThisExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(ThisExpr, expr);
   return exprptr;
 }
 
-REWRITE_DEFN2(Visitor2, UnaryExpr, Expr, expr) {
+REWRITE_DEFN2(Visitor2, UnaryExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(UnaryExpr, expr);
-  sptr<Expr> rhs = expr.Rhs().Accept2(this, expr.RhsPtr());
+  sptr<Expr> rhs = Visit(this, expr.RhsPtr());
   if (rhs == nullptr) {
     return nullptr;
   } else if (rhs == expr.RhsPtr()) {
@@ -174,9 +174,9 @@ REWRITE_DEFN2(Visitor2, UnaryExpr, Expr, expr) {
   return make_shared<UnaryExpr>(expr.Op(), rhs);
 }
 
-REWRITE_DEFN2(Visitor2, InstanceOfExpr, Expr, expr) {
+REWRITE_DEFN2(Visitor2, InstanceOfExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(InstanceOfExpr, expr);
-  sptr<Expr> lhs = expr.Lhs().Accept2(this, expr.LhsPtr());
+  sptr<Expr> lhs = Visit(this, expr.LhsPtr());
   if (lhs == nullptr) {
     return nullptr;
   } else if (lhs == expr.LhsPtr()) {
@@ -185,7 +185,7 @@ REWRITE_DEFN2(Visitor2, InstanceOfExpr, Expr, expr) {
   return make_shared<InstanceOfExpr>(lhs, expr.InstanceOf(), expr.GetTypePtr());
 }
 
-REWRITE_DEFN2(Visitor2, BlockStmt, Stmt, stmt) {
+REWRITE_DEFN2(Visitor2, BlockStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(BlockStmt, stmt);
 
   bool stmtsChanged = false;
@@ -198,15 +198,15 @@ REWRITE_DEFN2(Visitor2, BlockStmt, Stmt, stmt) {
   return make_shared<BlockStmt>(newStmts);
 }
 
-REWRITE_DEFN2(Visitor2, EmptyStmt, Stmt, stmt) {
+REWRITE_DEFN2(Visitor2, EmptyStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(EmptyStmt, stmt);
   return stmtptr;
 }
 
-REWRITE_DEFN2(Visitor2, ExprStmt, Stmt, stmt) {
+REWRITE_DEFN2(Visitor2, ExprStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(ExprStmt, stmt);
 
-  sptr<Expr> expr = stmt.GetExpr().Accept2(this, stmt.GetExprPtr());
+  sptr<Expr> expr = Visit(this, stmt.GetExprPtr());
   if (expr == nullptr) {
     return nullptr;
   } else if (expr == stmt.GetExprPtr()) {
@@ -216,10 +216,10 @@ REWRITE_DEFN2(Visitor2, ExprStmt, Stmt, stmt) {
   return make_shared<ExprStmt>(expr);
 }
 
-REWRITE_DEFN2(Visitor2, LocalDeclStmt, Stmt, stmt) {
+REWRITE_DEFN2(Visitor2, LocalDeclStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(LocalDeclStmt, stmt);
 
-  sptr<Expr> expr = stmt.GetExpr().Accept2(this, stmt.GetExprPtr());
+  sptr<Expr> expr = Visit(this, stmt.GetExprPtr());
   if (expr == nullptr) {
     return nullptr;
   } else if (expr == stmt.GetExprPtr()) {
@@ -229,13 +229,13 @@ REWRITE_DEFN2(Visitor2, LocalDeclStmt, Stmt, stmt) {
   return make_shared<LocalDeclStmt>(stmt.GetTypePtr(), stmt.Ident(), expr);
 }
 
-REWRITE_DEFN2(Visitor2, ReturnStmt, Stmt, stmt) {
+REWRITE_DEFN2(Visitor2, ReturnStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(ReturnStmt, stmt);
   if (stmt.GetExprPtr() == nullptr) {
     return stmtptr;
   }
 
-  sptr<Expr> expr = stmt.GetExprPtr()->Accept2(this, stmt.GetExprPtr());
+  sptr<Expr> expr = Visit(this, stmt.GetExprPtr());
   if (expr == nullptr) {
     return nullptr;
   } else if (expr == stmt.GetExprPtr()) {
@@ -245,16 +245,16 @@ REWRITE_DEFN2(Visitor2, ReturnStmt, Stmt, stmt) {
   return make_shared<ReturnStmt>(expr);
 }
 
-REWRITE_DEFN2(Visitor2, IfStmt, Stmt, stmt) {
+REWRITE_DEFN2(Visitor2, IfStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(IfStmt, stmt);
 
-  sptr<Expr> cond = stmt.Cond().Accept2(this, stmt.CondPtr());
+  sptr<Expr> cond = Visit(this, stmt.CondPtr());
   if (cond == nullptr) {
     return nullptr;
   }
 
-  sptr<Stmt> trueBody = stmt.TrueBody().Accept2(this, stmt.TrueBodyPtr());
-  sptr<Stmt> falseBody = stmt.FalseBody().Accept2(this, stmt.FalseBodyPtr());
+  sptr<Stmt> trueBody = Visit(this, stmt.TrueBodyPtr());
+  sptr<Stmt> falseBody = Visit(this, stmt.FalseBodyPtr());
 
   // If a subtree was pruned, then make it an empty statement.
   if (trueBody == nullptr) {
@@ -271,22 +271,22 @@ REWRITE_DEFN2(Visitor2, IfStmt, Stmt, stmt) {
   return make_shared<IfStmt>(cond, trueBody, falseBody);
 }
 
-REWRITE_DEFN2(Visitor2, ForStmt, Stmt, stmt) {
+REWRITE_DEFN2(Visitor2, ForStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(ForStmt, stmt);
 
-  sptr<Stmt> init = stmt.Init().Accept2(this, stmt.InitPtr());
+  sptr<Stmt> init = Visit(this, stmt.InitPtr());
 
   sptr<Expr> cond = nullptr;
   if (stmt.CondPtr() != nullptr) {
-    cond = stmt.CondPtr()->Accept2(this, stmt.CondPtr());
+    cond = Visit(this, stmt.CondPtr());
   }
 
   sptr<Expr> update = nullptr;
   if (stmt.UpdatePtr() != nullptr) {
-    update = stmt.UpdatePtr()->Accept2(this, stmt.UpdatePtr());
+    update = Visit(this, stmt.UpdatePtr());
   }
 
-  sptr<Stmt> body = stmt.Body().Accept2(this, stmt.BodyPtr());
+  sptr<Stmt> body = Visit(this, stmt.BodyPtr());
   if (body == nullptr) {
     body = make_shared<EmptyStmt>();
   }
@@ -300,11 +300,11 @@ REWRITE_DEFN2(Visitor2, ForStmt, Stmt, stmt) {
   return make_shared<ForStmt>(init, cond, update, body);
 }
 
-REWRITE_DEFN2(Visitor2, WhileStmt, Stmt, stmt) {
+REWRITE_DEFN2(Visitor2, WhileStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(WhileStmt, stmt);
 
-  sptr<Expr> cond = stmt.Cond().Accept2(this, stmt.CondPtr());
-  sptr<Stmt> body = stmt.Body().Accept2(this, stmt.BodyPtr());
+  sptr<Expr> cond = Visit(this, stmt.CondPtr());
+  sptr<Stmt> body = Visit(this, stmt.BodyPtr());
 
   if (cond == nullptr) {
     return nullptr;
@@ -320,7 +320,7 @@ REWRITE_DEFN2(Visitor2, WhileStmt, Stmt, stmt) {
   return make_shared<WhileStmt>(cond, body);
 }
 
-REWRITE_DEFN2(Visitor2, ParamList, ParamList, params) {
+REWRITE_DEFN2(Visitor2, ParamList, ParamList, params, paramsptr) {
   SHORT_CIRCUIT(ParamList, params);
 
   bool paramsChanged = false;
@@ -337,17 +337,17 @@ REWRITE_DEFN2(Visitor2, ParamList, ParamList, params) {
 }
 
 
-REWRITE_DEFN2(Visitor2, Param, Param, param) {
+REWRITE_DEFN2(Visitor2, Param, Param, param, paramptr) {
   SHORT_CIRCUIT(Param, param);
   return paramptr;
 }
 
-REWRITE_DEFN2(Visitor2, FieldDecl, MemberDecl, field) {
+REWRITE_DEFN2(Visitor2, FieldDecl, MemberDecl, field, fieldptr) {
   SHORT_CIRCUIT(FieldDecl, field);
 
   sptr<Expr> val;
   if (field.ValPtr() != nullptr) {
-    val = field.ValPtr()->Accept2(this, field.ValPtr());
+    val = Visit(this, field.ValPtr());
   }
 
   if (val == field.ValPtr()) {
@@ -357,11 +357,11 @@ REWRITE_DEFN2(Visitor2, FieldDecl, MemberDecl, field) {
   return make_shared<FieldDecl>(field.Mods(), field.GetTypePtr(), field.Ident(), val);
 }
 
-REWRITE_DEFN2(Visitor2, MethodDecl, MemberDecl, meth) {
+REWRITE_DEFN2(Visitor2, MethodDecl, MemberDecl, meth, methptr) {
   SHORT_CIRCUIT(MethodDecl, meth);
 
-  sptr<ParamList> params = meth.Params().Accept2(this, meth.ParamsPtr());
-  sptr<Stmt> body = meth.Body().Accept2(this, meth.BodyPtr());
+  sptr<ParamList> params = Visit(this, meth.ParamsPtr());
+  sptr<Stmt> body = Visit(this, meth.BodyPtr());
 
   if (params == nullptr || body == nullptr) {
     return nullptr;
@@ -373,11 +373,11 @@ REWRITE_DEFN2(Visitor2, MethodDecl, MemberDecl, meth) {
 }
 
 
-REWRITE_DEFN2(Visitor2, ConstructorDecl, MemberDecl, meth) {
+REWRITE_DEFN2(Visitor2, ConstructorDecl, MemberDecl, meth, methptr) {
   SHORT_CIRCUIT(ConstructorDecl, meth);
 
-  sptr<ParamList> params = meth.Params().Accept2(this, meth.ParamsPtr());
-  sptr<Stmt> body = meth.Body().Accept2(this, meth.BodyPtr());
+  sptr<ParamList> params = Visit(this, meth.ParamsPtr());
+  sptr<Stmt> body = Visit(this, meth.BodyPtr());
 
   if (params == nullptr || body == nullptr) {
     return nullptr;
@@ -388,7 +388,7 @@ REWRITE_DEFN2(Visitor2, ConstructorDecl, MemberDecl, meth) {
   return make_shared<ConstructorDecl>(meth.Mods(), meth.Ident(), params, body);
 }
 
-REWRITE_DEFN2(Visitor2, ClassDecl, TypeDecl, type) {
+REWRITE_DEFN2(Visitor2, ClassDecl, TypeDecl, type, typeptr) {
   SHORT_CIRCUIT(ClassDecl, type);
 
   bool membersChanged = false;
@@ -400,7 +400,7 @@ REWRITE_DEFN2(Visitor2, ClassDecl, TypeDecl, type) {
   return make_shared<ClassDecl>(type.Mods(), type.Name(), type.NameToken(), type.Interfaces(), newMembers, type.SuperPtr(), type.GetTypeId());
 }
 
-REWRITE_DEFN2(Visitor2, InterfaceDecl, TypeDecl, type) {
+REWRITE_DEFN2(Visitor2, InterfaceDecl, TypeDecl, type, typeptr) {
   SHORT_CIRCUIT(InterfaceDecl, type);
 
   bool membersChanged = false;
@@ -412,7 +412,7 @@ REWRITE_DEFN2(Visitor2, InterfaceDecl, TypeDecl, type) {
   return make_shared<InterfaceDecl>(type.Mods(), type.Name(), type.NameToken(), type.Interfaces(), newMembers, type.GetTypeId());
 }
 
-REWRITE_DEFN2(Visitor2, CompUnit, CompUnit, unit) {
+REWRITE_DEFN2(Visitor2, CompUnit, CompUnit, unit, unitptr) {
   SHORT_CIRCUIT(CompUnit, unit);
 
   bool typesChanged = false;
@@ -424,7 +424,7 @@ REWRITE_DEFN2(Visitor2, CompUnit, CompUnit, unit) {
   return make_shared<CompUnit>(unit.PackagePtr(), unit.Imports(), newTypes);
 }
 
-REWRITE_DEFN2(Visitor2, Program, Program, prog) {
+REWRITE_DEFN2(Visitor2, Program, Program, prog, progptr) {
   SHORT_CIRCUIT(Program, prog);
 
   bool unitsChanged = false;

@@ -22,9 +22,11 @@ using ast::Stmt;
 using ast::Type;
 using ast::TypeDecl;
 using ast::TypeId;
+using ast::Visit;
 using base::Error;
 using base::FileSet;
 using base::PosRange;
+using base::SharedPtrVector;
 using base::UniquePtrVector;
 
 namespace types {
@@ -66,26 +68,27 @@ TypeId DeclResolver::MustResolveType(const Type& type) {
   return tid;
 }
 
-REWRITE_DEFN(DeclResolver, CompUnit, CompUnit, unit) {
-  QualifiedName* package = nullptr;
-  if (unit.Package() != nullptr) {
-    package = new QualifiedName(*unit.Package());
+REWRITE_DEFN2(DeclResolver, CompUnit, CompUnit, unit,) {
+  sptr<QualifiedName> package = nullptr;
+  if (unit.PackagePtr() != nullptr) {
+    package = unit.PackagePtr();
   }
 
   TypeSet scopedTypeSet = typeset_.WithImports(unit.Imports());
   DeclResolver scopedResolver(builder_, scopedTypeSet, fs_, errors_, package);
 
-  base::UniquePtrVector<TypeDecl> decls;
-  for (const auto& type : unit.Types()) {
-    TypeDecl* newtype = type.AcceptRewriter(&scopedResolver);
+  base::SharedPtrVector<TypeDecl> decls;
+  for (int i = 0; i < unit.Types().Size(); ++i) {
+    sptr<TypeDecl> oldtype = unit.Types().At(i);
+    sptr<TypeDecl> newtype = Visit(&scopedResolver, oldtype);
     if (newtype != nullptr) {
       decls.Append(newtype);
     }
   }
-  return new CompUnit(package, unit.Imports(), std::move(decls));
+  return make_shared<CompUnit>(package, unit.Imports(), decls);
 }
 
-REWRITE_DEFN(DeclResolver, ClassDecl, TypeDecl, type) {
+REWRITE_DEFN2(DeclResolver, ClassDecl, TypeDecl, type, ) {
   // Try and resolve TypeId of this class. If this fails, that means that this
   // class has some previously discovered error, and we prune this subtree.
   vector<string> classname;
@@ -113,25 +116,21 @@ REWRITE_DEFN(DeclResolver, ClassDecl, TypeDecl, type) {
   // TODO: handle super.
   // TODO: put into builder_.
   DeclResolver memberResolver(builder_, typeset_, fs_, errors_, package_, curtid);
-  ModifierList mods(type.Mods());
-  base::UniquePtrVector<MemberDecl> members;
-  for (const auto& member : type.Members()) {
-    MemberDecl* decl = member.AcceptRewriter(&memberResolver);
-    if (decl != nullptr) {
-      members.Append(decl);
+  SharedPtrVector<MemberDecl> members;
+  for (int i = 0; i < type.Members().Size(); ++i) {
+    sptr<MemberDecl> oldMem = type.Members().At(i);
+    sptr<MemberDecl> newMem = Visit(&memberResolver, oldMem);
+    if (newMem != nullptr) {
+      members.Append(newMem);
     }
   }
-  ReferenceType* super = nullptr;
-  if (type.Super() != nullptr) {
-    super = static_cast<ReferenceType*>(type.Super()->Clone());
-  }
-  return new ClassDecl(std::move(mods), type.Name(), type.NameToken(), type.Interfaces(), std::move(members), super, curtid);
+  return make_shared<ClassDecl>(type.Mods(), type.Name(), type.NameToken(), type.Interfaces(), members, type.SuperPtr(), curtid);
 }
 
 // TODO: we are skipping interfaces; waiting until after the AST merge.
 // TODO: we are skipping constructors; waiting until after the AST merge.
 
-REWRITE_DEFN(DeclResolver, FieldDecl, MemberDecl, field) {
+REWRITE_DEFN2(DeclResolver, FieldDecl, MemberDecl, field, ) {
   TypeId tid = MustResolveType(field.GetType());
   if (tid.IsError()) {
     return nullptr;
@@ -139,17 +138,10 @@ REWRITE_DEFN(DeclResolver, FieldDecl, MemberDecl, field) {
 
   // TODO: put field in table keyed by (curtid_, field.Name()).
   // TODO: assign member id to field.
-
-  ModifierList mods(field.Mods());
-  Type* type = field.GetType().Clone();
-  Expr* val = nullptr;
-  if (field.Val() != nullptr) {
-    val = field.Val()->AcceptRewriter(this);
-  }
-  return new FieldDecl(std::move(mods), type, field.Ident(), val);
+  return make_shared<FieldDecl>(field.Mods(), field.GetTypePtr(), field.Ident(), field.ValPtr());
 }
 
-REWRITE_DEFN(DeclResolver, MethodDecl, MemberDecl, meth) {
+REWRITE_DEFN2(DeclResolver, MethodDecl, MemberDecl, meth,) {
   TypeId rettid = MustResolveType(meth.GetType());
   if (rettid.IsError()) {
     return nullptr;
@@ -167,11 +159,7 @@ REWRITE_DEFN(DeclResolver, MethodDecl, MemberDecl, meth) {
   // TODO: put method in table keyed by (curtid_, meth.Name(), paramtids).
   // TODO: assign member id to method.
 
-  ModifierList mods(meth.Mods());
-  Type* type = meth.GetType().Clone();
-  uptr<ParamList> params(meth.Params().AcceptRewriter(this));
-  Stmt* body = meth.Body().AcceptRewriter(this);
-  return new MethodDecl(std::move(mods), type, meth.Ident(), std::move(*params), body);
+  return make_shared<MethodDecl>(meth.Mods(), meth.GetTypePtr(), meth.Ident(), meth.ParamsPtr(), meth.BodyPtr());
 }
 
 } // namespace types

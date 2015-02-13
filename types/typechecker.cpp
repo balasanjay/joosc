@@ -1,7 +1,6 @@
 #include "types/typechecker.h"
 
 #include "ast/ast.h"
-#include "ast/cloner.h"
 #include "types/decl_resolver.h"
 #include "types/type_info_map.h"
 #include "types/types.h"
@@ -18,8 +17,8 @@ TypeSet BuildTypeSet(const Program& prog, const FileSet* fs, ErrorList* out) {
   types::TypeSetBuilder typeSetBuilder;
   for (const auto& unit : prog.CompUnits()) {
     vector<string> ns;
-    if (unit.Package() != nullptr) {
-      ns = unit.Package()->Parts();
+    if (unit.PackagePtr() != nullptr) {
+      ns = unit.PackagePtr()->Parts();
     }
     for (const auto& decl : unit.Types()) {
       typeSetBuilder.Put(ns, decl.Name(), decl.NameToken().pos);
@@ -28,31 +27,29 @@ TypeSet BuildTypeSet(const Program& prog, const FileSet* fs, ErrorList* out) {
   return typeSetBuilder.Build(fs, out);
 }
 
-TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, const Program& prog,
-                             const FileSet* fs, uptr<Program>* new_prog,
+TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, const sptr<Program> prog,
+                             const FileSet* fs, sptr<Program>* new_prog,
                              ErrorList* error_out) {
   TypeInfoMapBuilder builder;
   DeclResolver resolver(&builder, typeset, fs, error_out);
 
-  Program* rewritten_prog = prog.AcceptRewriter(&resolver);
-  new_prog->reset(rewritten_prog);
+  *new_prog = Visit(&resolver, prog);
 
   return builder.Build(fs, error_out);
 }
 
 }  // namespace
 
-uptr<Program> TypecheckProgram(const Program& prog, const FileSet* fs,
+const sptr<Program> TypecheckProgram(const sptr<Program> prog, const FileSet* fs,
                                ErrorList* out) {
   // Phase 1: build a typeset.
-  TypeSet typeset = BuildTypeSet(prog, fs, out);
+  TypeSet typeset = BuildTypeSet(*prog, fs, out);
 
   // Phase 2: build a type info map.
-  uptr<Program> prog2;
+  sptr<Program> prog2;
   TypeInfoMap typeInfoMap = BuildTypeInfoMap(typeset, prog, fs, &prog2, out);
 
-  ast::Cloner cloner;
-  return move(prog2);
+  return prog2;
 
   // TODO: this function needs to return all the data structures it has built.
 }

@@ -115,14 +115,14 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
   }
 
   // Type-checking.
-  /*{
+  {
     ErrorList errors;
-    program = TypecheckProgram(*program.get(), fs, &errors);
+    program = TypecheckProgram(program, fs, &errors);
 
     if (PrintErrors(errors, err)) {
       return false;
     }
-  }*/
+  }
   if (stage == CompilerStage::TYPE_CHECK) {
     return true;
   }
