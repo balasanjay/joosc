@@ -1,5 +1,5 @@
-#ifndef TYPES_TYPES_H
-#define TYPES_TYPES_H
+#ifndef TYPES_TYPESET_H
+#define TYPES_TYPESET_H
 
 #include <map>
 

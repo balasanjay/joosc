@@ -5,7 +5,7 @@
 #include "base/errorlist.h"
 #include "base/fileset.h"
 #include "types/type_info_map.h"
-#include "types/types.h"
+#include "types/typeset.h"
 
 namespace types {
 

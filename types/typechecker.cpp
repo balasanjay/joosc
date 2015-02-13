@@ -3,7 +3,7 @@
 #include "ast/ast.h"
 #include "types/decl_resolver.h"
 #include "types/type_info_map.h"
-#include "types/types.h"
+#include "types/typeset.h"
 
 using ast::Program;
 using base::ErrorList;

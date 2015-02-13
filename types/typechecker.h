@@ -1,5 +1,5 @@
-#ifndef TYPES_TYPECHECKER
-#define TYPES_TYPECHECKER
+#ifndef TYPES_TYPECHECKER_H
+#define TYPES_TYPECHECKER_H
 
 #include "ast/ast.h"
 #include "base/errorlist.h"
