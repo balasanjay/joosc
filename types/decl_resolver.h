@@ -15,10 +15,10 @@ class DeclResolver : public ast::Visitor {
                const base::FileSet* fs, base::ErrorList* errors, sptr<const ast::QualifiedName> package = nullptr, ast::TypeId curtype = ast::TypeId::Unassigned())
       : builder_(builder), typeset_(typeset), fs_(fs), errors_(errors), package_(package), curtype_(curtype) {}
 
-  REWRITE_DECL2(FieldDecl, MemberDecl, args, argsptr);
-  REWRITE_DECL2(MethodDecl, MemberDecl, args, argsptr);
-  REWRITE_DECL2(ClassDecl, TypeDecl, args, argsptr);
-  REWRITE_DECL2(CompUnit, CompUnit, args, argsptr);
+  REWRITE_DECL(FieldDecl, MemberDecl, args, argsptr);
+  REWRITE_DECL(MethodDecl, MemberDecl, args, argsptr);
+  REWRITE_DECL(ClassDecl, TypeDecl, args, argsptr);
+  REWRITE_DECL(CompUnit, CompUnit, args, argsptr);
 
  private:
   ast::TypeId MustResolveType(const ast::Type& type);

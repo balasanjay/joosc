@@ -16,8 +16,8 @@ class ModifierVisitor : public ast::Visitor {
   ModifierVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}
 
-  REWRITE_DECL2(ClassDecl, TypeDecl, decl, declptr);
-  REWRITE_DECL2(InterfaceDecl, TypeDecl, decl, declptr);
+  REWRITE_DECL(ClassDecl, TypeDecl, decl, declptr);
+  REWRITE_DECL(InterfaceDecl, TypeDecl, decl, declptr);
 
  private:
   const base::FileSet* fs_;
@@ -41,9 +41,9 @@ class ClassModifierVisitor : public ast::Visitor {
   ClassModifierVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}
 
-  VISIT_DECL2(ConstructorDecl, decl);
-  VISIT_DECL2(FieldDecl, decl);
-  VISIT_DECL2(MethodDecl, decl);
+  VISIT_DECL(ConstructorDecl, decl);
+  VISIT_DECL(FieldDecl, decl);
+  VISIT_DECL(MethodDecl, decl);
 
  private:
   const base::FileSet* fs_;
@@ -62,9 +62,9 @@ class InterfaceModifierVisitor : public ast::Visitor {
   InterfaceModifierVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}
 
-  VISIT_DECL2(ConstructorDecl, decl);
-  VISIT_DECL2(FieldDecl, decl);
-  VISIT_DECL2(MethodDecl, decl);
+  VISIT_DECL(ConstructorDecl, decl);
+  VISIT_DECL(FieldDecl, decl);
+  VISIT_DECL(MethodDecl, decl);
 
  private:
   const base::FileSet* fs_;

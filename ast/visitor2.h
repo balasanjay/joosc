@@ -88,10 +88,10 @@ auto Visit(Visitor* visitor, const sptr<T> t) -> decltype(t->Accept2(visitor, t)
   return t->Accept2(visitor, t);
 }
 
-#define VISIT_DECL2(type, var) ast::VisitResult Visit##type(const ast::type& var) override
+#define VISIT_DECL(type, var) ast::VisitResult Visit##type(const ast::type& var) override
 #define VISIT_DEFN2(cls, type, var) ast::VisitResult cls::Visit##type(const ast::type& var)
 
-#define REWRITE_DECL2(type, rettype, var, varptr) sptr<const ast::rettype> Rewrite##type(const ast::type& var, sptr<const ast::type> varptr) override
+#define REWRITE_DECL(type, rettype, var, varptr) sptr<const ast::rettype> Rewrite##type(const ast::type& var, sptr<const ast::type> varptr) override
 #define REWRITE_DEFN2(cls, type, rettype, var, varptr) sptr<const ast::rettype> cls::Rewrite##type(const ast::type& var, sptr<const ast::type> varptr)
 
 } // namespace ast
