@@ -637,74 +637,46 @@ enum class TypeKind {
   INTERFACE,
 };
 
-class TypeDecl {
+class TypeDecl final {
  public:
-  virtual ~TypeDecl() = default;
-
-  ACCEPT_VISITOR_ABSTRACT(TypeDecl);
-
-  REF_GETTER(ModifierList, Mods, mods_);
-  REF_GETTER(string, Name, name_);
-  VAL_GETTER(lexer::Token, NameToken, nameToken_);
-  REF_GETTER(vector<QualifiedName>, Interfaces, interfaces_);
-  REF_GETTER(base::SharedPtrVector<const MemberDecl>, Members, members_);
-  VAL_GETTER(TypeId, GetTypeId, tid_);
-
- protected:
-  TypeDecl(const ModifierList& mods, const string& name, lexer::Token nameToken,
-           const vector<QualifiedName>& interfaces,
-           const base::SharedPtrVector<const MemberDecl>& members, TypeId tid)
+  TypeDecl(const ModifierList& mods, TypeKind kind, const string& name, lexer::Token nameToken,
+           const vector<QualifiedName>& extends, const vector<QualifiedName>& implements,
+           const base::SharedPtrVector<const MemberDecl>& members, TypeId tid = TypeId::Unassigned())
       : mods_(mods),
+        kind_(kind),
         name_(name),
         nameToken_(nameToken),
-        interfaces_(interfaces),
+        extends_(extends),
+        implements_(implements),
         members_(members),
         tid_(tid) {}
+
+  virtual ~TypeDecl() = default;
+
+  ACCEPT_VISITOR(TypeDecl, TypeDecl);
+
+  REF_GETTER(ModifierList, Mods, mods_);
+  VAL_GETTER(TypeKind, Kind, kind_);
+  REF_GETTER(string, Name, name_);
+  VAL_GETTER(lexer::Token, NameToken, nameToken_);
+  REF_GETTER(vector<QualifiedName>, Extends, extends_);
+  REF_GETTER(vector<QualifiedName>, Implements, implements_);
+  REF_GETTER(base::SharedPtrVector<const MemberDecl>, Members, members_);
+
+  VAL_GETTER(TypeId, GetTypeId, tid_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TypeDecl);
 
   ModifierList mods_;
+  TypeKind kind_;
   string name_;
   lexer::Token nameToken_;
-  vector<QualifiedName> interfaces_;
+  vector<QualifiedName> extends_;
+  vector<QualifiedName> implements_;
   base::SharedPtrVector<const MemberDecl> members_;
+
   TypeId tid_;
-};
-
-class ClassDecl : public TypeDecl {
- public:
-  ClassDecl(const ModifierList& mods, const string& name, lexer::Token nameToken,
-            const vector<QualifiedName>& interfaces,
-            const base::SharedPtrVector<const MemberDecl>& members, sptr<const ReferenceType> super, TypeId tid = TypeId::Unassigned())
-      : TypeDecl(mods, name, nameToken,
-                 interfaces,
-                 members, tid),
-        super_(super) {}
-
-  ACCEPT_VISITOR(ClassDecl, TypeDecl);
-
-  VAL_GETTER(sptr<const ReferenceType>, SuperPtr, super_);
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(ClassDecl);
-
-  sptr<const ReferenceType> super_;  // Might be nullptr.
-};
-
-class InterfaceDecl : public TypeDecl {
- public:
-  InterfaceDecl(const ModifierList& mods, const string& name, lexer::Token nameToken,
-                const vector<QualifiedName>& interfaces,
-                const base::SharedPtrVector<const MemberDecl>& members, TypeId tid = TypeId::Unassigned())
-      : TypeDecl(mods, name, nameToken,
-                 interfaces,
-                 members, tid) {}
-
-  ACCEPT_VISITOR(InterfaceDecl, TypeDecl);
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(InterfaceDecl);
 };
 
 class ImportDecl final {

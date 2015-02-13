@@ -415,8 +415,8 @@ REWRITE_DEFN(Visitor, MethodDecl, MemberDecl, meth, methptr) {
   return make_shared<MethodDecl>(meth.Mods(), meth.TypePtr(), meth.Ident(), params, body);
 }
 
-REWRITE_DEFN(Visitor, ClassDecl, TypeDecl, type, typeptr) {
-  SHORT_CIRCUIT(ClassDecl, type);
+REWRITE_DEFN(Visitor, TypeDecl, TypeDecl, type, typeptr) {
+  SHORT_CIRCUIT(TypeDecl, type);
 
   bool membersChanged = false;
   SharedPtrVector<const MemberDecl> newMembers = AcceptMulti(type.Members(), &membersChanged);
@@ -427,22 +427,7 @@ REWRITE_DEFN(Visitor, ClassDecl, TypeDecl, type, typeptr) {
     return typeptr;
   }
 
-  return make_shared<ClassDecl>(type.Mods(), type.Name(), type.NameToken(), type.Interfaces(), newMembers, type.SuperPtr(), type.GetTypeId());
-}
-
-REWRITE_DEFN(Visitor, InterfaceDecl, TypeDecl, type, typeptr) {
-  SHORT_CIRCUIT(InterfaceDecl, type);
-
-  bool membersChanged = false;
-  SharedPtrVector<const MemberDecl> newMembers = AcceptMulti(type.Members(), &membersChanged);
-  if (SHOULD_PRUNE_AFTER) {
-    return nullptr;
-  }
-  if (!membersChanged) {
-    return typeptr;
-  }
-
-  return make_shared<InterfaceDecl>(type.Mods(), type.Name(), type.NameToken(), type.Interfaces(), newMembers, type.GetTypeId());
+  return make_shared<TypeDecl>(type.Mods(), type.Kind(), type.Name(), type.NameToken(), type.Extends(), type.Implements(), newMembers, type.GetTypeId());
 }
 
 REWRITE_DEFN(Visitor, CompUnit, CompUnit, unit, unitptr) {

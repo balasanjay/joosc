@@ -260,50 +260,30 @@ class PrintVisitor final : public Visitor {
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(ClassDecl, type) {
+  VISIT_DECL(TypeDecl, type) {
     type.Mods().PrintTo(os_);
-    *os_ << "class ";
+    if (type.Kind() == TypeKind::CLASS) {
+      *os_ << "class ";
+    } else {
+      *os_ << "interface ";
+    }
     *os_ << type.NameToken().TypeInfo();
-    if (type.SuperPtr() != nullptr) {
-      *os_ << " extends ";
-      type.SuperPtr()->PrintTo(os_);
-    }
-    bool first = true;
-    for (const auto& name : type.Interfaces()) {
-      if (first) {
-        *os_ << " implements ";
-      } else {
-        *os_ << ',' << space_;
-      }
-      first = false;
-      name.PrintTo(os_);
-    }
-    *os_ << " {" << newline_;
-    PrintVisitor nested = Indent();
-    for (int i = 0; i < type.Members().Size(); ++i) {
-      PutIndent(depth_ + 1);
-      Visit(&nested, type.Members().At(i));
-      *os_ << newline_;
-    }
-    PutIndent(depth_);
-    *os_ << '}';
-    return VisitResult::SKIP;
-  }
 
-  VISIT_DECL(InterfaceDecl, type) {
-    type.Mods().PrintTo(os_);
-    *os_ << "interface ";
-    *os_ << type.NameToken().TypeInfo();
-    bool first = true;
-    for (const auto& name : type.Interfaces()) {
-      if (first) {
-        *os_ << " extends ";
-      } else {
-        *os_ << ',' << space_;
+    auto printNameList = [&](const string& label, const vector<QualifiedName>& elems) {
+      bool first = true;
+      for (const auto& elem : elems) {
+        if (first) {
+          *os_ << ' ' << label << ' ';
+        } else {
+          *os_ << ',' << space_;
+        }
+        first = false;
+        elem.PrintTo(os_);
       }
-      first = false;
-      name.PrintTo(os_);
-    }
+    };
+    printNameList("extends", type.Extends());
+    printNameList("implements", type.Implements());
+
     *os_ << " {" << newline_;
     PrintVisitor nested = Indent();
     for (int i = 0; i < type.Members().Size(); ++i) {

@@ -33,17 +33,14 @@ class ForStmt;
 class WhileStmt;
 
 class ArgumentList;
-class ClassDecl;
 class CompUnit;
-class ConstructorDecl;
 class FieldDecl;
-class InterfaceDecl;
 class MemberDecl;
 class MethodDecl;
+class TypeDecl;
 class Param;
 class ParamList;
 class Program;
-class TypeDecl;
 
 } // namespace ast
 

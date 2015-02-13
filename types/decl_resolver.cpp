@@ -5,9 +5,7 @@
 #include "base/macros.h"
 
 using ast::ArrayType;
-using ast::ClassDecl;
 using ast::CompUnit;
-using ast::ConstructorDecl;
 using ast::Expr;
 using ast::FieldDecl;
 using ast::MemberDecl;
@@ -22,6 +20,7 @@ using ast::Stmt;
 using ast::Type;
 using ast::TypeDecl;
 using ast::TypeId;
+using ast::TypeKind;
 using ast::Visit;
 using base::Error;
 using base::FileSet;
@@ -89,7 +88,7 @@ REWRITE_DEFN(DeclResolver, CompUnit, CompUnit, unit,) {
   return make_shared<CompUnit>(package, unit.Imports(), decls);
 }
 
-REWRITE_DEFN(DeclResolver, ClassDecl, TypeDecl, type, ) {
+REWRITE_DEFN(DeclResolver, TypeDecl, TypeDecl, type, ) {
   // Try and resolve TypeId of this class. If this fails, that means that this
   // class has some previously discovered error, and we prune this subtree.
   vector<string> classname;
@@ -103,18 +102,28 @@ REWRITE_DEFN(DeclResolver, ClassDecl, TypeDecl, type, ) {
     return nullptr;
   }
 
-  vector<TypeId> interfaces;
-  for (const auto& iface : type.Interfaces()) {
-    TypeId tid = typeset_.Get(iface.Parts());
+  vector<TypeId> extends;
+  for (const auto& name : type.Extends()) {
+    TypeId tid = typeset_.Get(name.Parts());
     if (!tid.IsError()) {
-      interfaces.push_back(tid);
+      extends.push_back(tid);
       continue;
     }
 
-    errors_->Append(MakeUnknownTypenameError(fs_, iface.Tokens().back().pos));
+    errors_->Append(MakeUnknownTypenameError(fs_, name.Tokens().back().pos));
   }
 
-  // TODO: handle super.
+  vector<TypeId> implements;
+  for (const auto& name : type.Implements()) {
+    TypeId tid = typeset_.Get(name.Parts());
+    if (!tid.IsError()) {
+      implements.push_back(tid);
+      continue;
+    }
+
+    errors_->Append(MakeUnknownTypenameError(fs_, name.Tokens().back().pos));
+  }
+
   // TODO: put into builder_.
   DeclResolver memberResolver(builder_, typeset_, fs_, errors_, package_, curtid);
   SharedPtrVector<const MemberDecl> members;
@@ -125,7 +134,7 @@ REWRITE_DEFN(DeclResolver, ClassDecl, TypeDecl, type, ) {
       members.Append(newMem);
     }
   }
-  return make_shared<ClassDecl>(type.Mods(), type.Name(), type.NameToken(), type.Interfaces(), members, type.SuperPtr(), curtid);
+  return make_shared<TypeDecl>(type.Mods(), type.Kind(), type.Name(), type.NameToken(), type.Extends(), type.Implements(), members, curtid);
 }
 
 // TODO: we are skipping interfaces; waiting until after the AST merge.

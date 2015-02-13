@@ -36,8 +36,7 @@ namespace ast {
   code(Param, Param, param) \
   code(FieldDecl, MemberDecl, field) \
   code(MethodDecl, MemberDecl, meth) \
-  code(ClassDecl, TypeDecl, decl) \
-  code(InterfaceDecl, TypeDecl, decl) \
+  code(TypeDecl, TypeDecl, decl) \
   code(CompUnit, CompUnit, unit) \
   code(Program, Program, prog)
 

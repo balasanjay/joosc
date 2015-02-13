@@ -1280,7 +1280,7 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
 
   Token typeToken = afterMods.GetNext();
   Parser afterType = afterMods.Advance();
-  bool isClass = (typeToken.type == K_CLASS);
+  TypeKind kind = (typeToken.type == K_CLASS) ? TypeKind::CLASS : TypeKind::INTERFACE;
 
   Result<Token> ident;
   Parser afterIdent = afterType.ParseTokenIf(ExactType(IDENTIFIER), &ident);
@@ -1291,57 +1291,73 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
     return Fail(move(errors), out);
   }
 
-  Parser afterSuper = afterIdent;
-  sptr<const ReferenceType> super(nullptr);
-  if (isClass && afterIdent.IsNext(K_EXTENDS)) {
-    Result<QualifiedName> superName;
+  vector<QualifiedName> extends;
+  vector<QualifiedName> implements;
 
-    afterSuper = afterIdent.Advance()  // Advancing past 'extends'.
-                     .ParseQualifiedName(&superName);
+  Parser afterExtends = afterIdent;
+  if (afterIdent.IsNext(K_EXTENDS)) {
+    Result<QualifiedName> firstExtend;
+    afterExtends = afterIdent.Advance() // Advancing past 'extends'.
+      .ParseQualifiedName(&firstExtend);
 
-    if (!afterSuper) {
+    if (!afterExtends) {
       ErrorList errors;
-      superName.ReleaseErrors(&errors);
+      firstExtend.ReleaseErrors(&errors);
       return Fail(move(errors), out);
     }
 
-    super.reset(new ReferenceType(*superName.Get()));
+    extends.push_back(*firstExtend.Get());
+
+    // Only interfaces may have 1+ things in their extends list.
+    while (kind == TypeKind::INTERFACE && afterExtends.IsNext(COMMA)) {
+      Result<QualifiedName> nextExtend;
+      afterExtends = afterExtends.Advance() // Advancing past comma.
+        .ParseQualifiedName(&nextExtend);
+
+      if (!afterExtends) {
+        ErrorList errors;
+        nextExtend.ReleaseErrors(&errors);
+        return Fail(move(errors), out);
+      }
+
+      extends.push_back(*nextExtend.Get());
+    }
   }
 
-  Parser afterInterfaces = afterSuper;
-  vector<QualifiedName> interfaces;
+  Parser afterImplements = afterExtends;
+  if (kind == TypeKind::CLASS && afterExtends.IsNext(K_IMPLEMENTS)) {
+    Result<QualifiedName> firstImplements;
+    afterImplements = afterExtends.Advance() // Advancing past 'extends'.
+      .ParseQualifiedName(&firstImplements);
 
-  if ((isClass && afterSuper.IsNext(K_IMPLEMENTS)) ||
-      afterSuper.IsNext(K_EXTENDS)) {
-    afterInterfaces = afterInterfaces.Advance();
+    if (!afterImplements) {
+      ErrorList errors;
+      firstImplements.ReleaseErrors(&errors);
+      return Fail(move(errors), out);
+    }
 
-    while (true) {
-      Result<QualifiedName> name;
-      Parser afterName = afterInterfaces.ParseQualifiedName(&name);
-      if (!afterName) {
-        // Bad token or EOF after a comma.
+    implements.push_back(*firstImplements.Get());
+    while (afterImplements.IsNext(COMMA)) {
+      Result<QualifiedName> nextImplement;
+      afterImplements = afterImplements.Advance() // Advancing past comma.
+        .ParseQualifiedName(&nextImplement);
+
+      if (!afterImplements) {
         ErrorList errors;
-        name.ReleaseErrors(&errors);
-        return afterInterfaces.Fail(move(errors), out);
+        nextImplement.ReleaseErrors(&errors);
+        return Fail(move(errors), out);
       }
 
-      afterInterfaces = afterName;
-      interfaces.push_back(*name.Get());
-
-      if (afterInterfaces.IsNext(COMMA)) {
-        afterInterfaces = afterInterfaces.Advance();
-      } else {
-        break;
-      }
+      implements.push_back(*nextImplement.Get());
     }
   }
 
   Result<Token> lbrace;
-  Parser afterBrace = afterInterfaces.ParseTokenIf(ExactType(LBRACE), &lbrace);
+  Parser afterBrace = afterImplements.ParseTokenIf(ExactType(LBRACE), &lbrace);
   if (!afterBrace) {
     ErrorList errors;
     lbrace.ReleaseErrors(&errors);
-    return afterInterfaces.Fail(move(errors), out);
+    return afterImplements.Fail(move(errors), out);
   }
 
   SharedPtrVector<const MemberDecl> members;
@@ -1366,19 +1382,9 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
     afterBody = afterMember;
   }
 
-  TypeDecl* type = nullptr;
-
-  if (isClass) {
-    type = new ClassDecl(*mods.Get(),
-                         TokenString(GetFile(), *ident.Get()), *ident.Get(),
-                         interfaces, members, super);
-  } else {
-    type = new InterfaceDecl(*mods.Get(),
-                             TokenString(GetFile(), *ident.Get()), *ident.Get(),
-                             interfaces, members);
-  }
-
-  return afterBody.Advance().Success(type, out);
+  Parser afterRbrace = afterBody.Advance();
+  return afterRbrace.Success(new TypeDecl(*mods.Get(), kind, TokenString(GetFile(), *ident.Get()),
+        *ident.Get(), extends, implements, members), out);
 }
 
 Parser Parser::ParseImportDecl(Result<ImportDecl>* out) const {

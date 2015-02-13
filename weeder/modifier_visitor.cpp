@@ -6,11 +6,13 @@
 
 using std::function;
 using std::initializer_list;
-using ast::VisitResult;
+
 using ast::EmptyStmt;
 using ast::FieldDecl;
 using ast::MethodDecl;
 using ast::ModifierList;
+using ast::TypeKind;
+using ast::VisitResult;
 using base::Error;
 using base::ErrorList;
 using base::FileSet;
@@ -284,30 +286,31 @@ VISIT_DEFN(InterfaceModifierVisitor, MethodDecl, decl) {
   return VisitResult::SKIP;
 }
 
-REWRITE_DEFN(ModifierVisitor, ClassDecl, TypeDecl, decl, declptr) {
-  // A class cannot be protected, static, or native.
-  VerifyNoneOf(fs_, decl.Mods(), errors_, MakeClassModifierError,
-               {PROTECTED, STATIC, NATIVE});
+REWRITE_DEFN(ModifierVisitor, TypeDecl, TypeDecl, decl, declptr) {
+  if (decl.Kind() == TypeKind::CLASS) {
+    // A class cannot be protected, static, or native.
+    VerifyNoneOf(fs_, decl.Mods(), errors_, MakeClassModifierError,
+                 {PROTECTED, STATIC, NATIVE});
 
-  // Must be public.
-  VerifyOneOf(fs_, decl.Mods(), errors_, decl.NameToken(),
-              MakeClassNoAccessModError, {PUBLIC});
+    // Must be public.
+    VerifyOneOf(fs_, decl.Mods(), errors_, decl.NameToken(),
+                MakeClassNoAccessModError, {PUBLIC});
 
-  // A class cannot be both abstract and final.
-  if (decl.Mods().HasModifier(ABSTRACT) && decl.Mods().HasModifier(FINAL)) {
-    errors_->Append(MakeAbstractFinalClassError(fs_, decl.NameToken()));
+    // A class cannot be both abstract and final.
+    if (decl.Mods().HasModifier(ABSTRACT) && decl.Mods().HasModifier(FINAL)) {
+      errors_->Append(MakeAbstractFinalClassError(fs_, decl.NameToken()));
+    }
+
+    ClassModifierVisitor visitor(fs_, errors_);
+    return Visit(&visitor, declptr);
   }
 
-  ClassModifierVisitor visitor(fs_, errors_);
-  return Visit(&visitor, declptr);
-}
-
-REWRITE_DEFN(ModifierVisitor, InterfaceDecl, TypeDecl, decl, declptr) {
+  assert(decl.Kind() == TypeKind::INTERFACE);
   // An interface cannot be protected, static, final, or native.
   VerifyNoneOf(fs_, decl.Mods(), errors_, MakeInterfaceModifierError,
                {PROTECTED, STATIC, FINAL, NATIVE});
 
-  // Must be public.
+  // An interface must be public.
   VerifyOneOf(fs_, decl.Mods(), errors_, decl.NameToken(),
               MakeInterfaceNoAccessModError, {PUBLIC});
 

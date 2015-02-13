@@ -17,7 +17,7 @@ class DeclResolver : public ast::Visitor {
 
   REWRITE_DECL(FieldDecl, MemberDecl, args, argsptr);
   REWRITE_DECL(MethodDecl, MemberDecl, args, argsptr);
-  REWRITE_DECL(ClassDecl, TypeDecl, args, argsptr);
+  REWRITE_DECL(TypeDecl, TypeDecl, args, argsptr);
   REWRITE_DECL(CompUnit, CompUnit, args, argsptr);
 
  private:

@@ -16,8 +16,7 @@ class ModifierVisitor : public ast::Visitor {
   ModifierVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}
 
-  REWRITE_DECL(ClassDecl, TypeDecl, decl, declptr);
-  REWRITE_DECL(InterfaceDecl, TypeDecl, decl, declptr);
+  REWRITE_DECL(TypeDecl, TypeDecl, decl, declptr);
 
  private:
   const base::FileSet* fs_;
