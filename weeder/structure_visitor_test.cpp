@@ -16,7 +16,7 @@ namespace weeder {
 
 class StructureVisitorTest : public WeederTest {
  protected:
-  uptr<Program> ParseProgram(const string& program) {
+  sptr<Program> ParseProgram(const string& program) {
     MakeParser(program);
 
     Result<CompUnit> unit;
@@ -27,17 +27,17 @@ class StructureVisitorTest : public WeederTest {
     SharedPtrVector<const CompUnit> units;
     units.Append(unit.Get());
 
-    return uptr<Program>(new Program(units));
+    return make_shared<Program>(units);
   }
 };
 
 TEST_F(StructureVisitorTest, MultipleTypesInFile) {
-  uptr<Program> prog = ParseProgram("class foo{}; interface bar{}");
+  sptr<Program> prog = ParseProgram("class foo{}; interface bar{}");
   ASSERT_TRUE(prog != nullptr);
 
   ErrorList errors;
   StructureVisitor visitor(fs_.get(), &errors);
-  prog->AcceptVisitor(&visitor);
+  Visit(&visitor, prog);
 
   string expected =
       "MultipleTypesPerCompUnitError(0:6-9)\n"
@@ -48,24 +48,24 @@ TEST_F(StructureVisitorTest, MultipleTypesInFile) {
 }
 
 TEST_F(StructureVisitorTest, DifferentFileName) {
-  uptr<Program> prog = ParseProgram("class bar{}");
+  sptr<Program> prog = ParseProgram("class bar{}");
   ASSERT_TRUE(prog != nullptr);
 
   ErrorList errors;
   StructureVisitor visitor(fs_.get(), &errors);
-  prog->AcceptVisitor(&visitor);
+  Visit(&visitor, prog);
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("IncorrectFileNameError(0:6-9)\n", testing::PrintToString(errors));
 }
 
 TEST_F(StructureVisitorTest, StructureOk) {
-  uptr<Program> prog = ParseProgram("class foo{}");
+  sptr<Program> prog = ParseProgram("class foo{}");
   ASSERT_TRUE(prog != nullptr);
 
   ErrorList errors;
   StructureVisitor visitor(fs_.get(), &errors);
-  prog->AcceptVisitor(&visitor);
+  Visit(&visitor, prog);
 
   EXPECT_EQ(errors.Size(), 0);
 }

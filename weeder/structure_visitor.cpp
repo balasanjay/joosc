@@ -9,6 +9,7 @@ using ast::Expr;
 using ast::FieldDerefExpr;
 using ast::NameExpr;
 using ast::Program;
+using ast::VisitResult;
 using base::Error;
 using base::File;
 using base::FileSet;
@@ -26,7 +27,7 @@ Error* MakeMultipleTypesPerCompUnitError(const FileSet* fs, Token token) {
 
 }  // namespace
 
-REC_VISIT_DEFN(StructureVisitor, Program, prog) {
+VISIT_DEFN2(StructureVisitor, Program, prog) {
   // TODO: store fileid in CompUnit, and use that instead of this assertion.
   assert(prog.CompUnits().Size() == fs_->Size());
 
@@ -57,7 +58,7 @@ REC_VISIT_DEFN(StructureVisitor, Program, prog) {
         "Must be in file named " + expectedFilename + "."));
   }
 
-  return false;
+  return VisitResult::SKIP;
 }
 
 }  // namespace weeder

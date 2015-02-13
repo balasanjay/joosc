@@ -27,10 +27,10 @@ sptr<const Program> WeedProgram(const FileSet* fs, sptr<const Program> prog, Err
   prog = Visit(&modifierChecker, prog);
 
   IntRangeVisitor intRangeChecker(fs, out);
-  prog->AcceptVisitor(&intRangeChecker);
+  prog = Visit(&intRangeChecker, prog);
 
   StructureVisitor structureChecker(fs, out);
-  prog->AcceptVisitor(&structureChecker);
+  prog = Visit(&structureChecker, prog);
 
   // More weeding required.
 
