@@ -18,7 +18,7 @@ sptr<const Program> WeedProgram(const FileSet* fs, sptr<const Program> prog, Err
   prog = Visit(&assignmentChecker, prog);
 
   CallVisitor callChecker(fs, out);
-  prog->AcceptVisitor(&callChecker);
+  prog = Visit(&callChecker, prog);
 
   TypeVisitor typeChecker(fs, out);
   prog = Visit(&typeChecker, prog);

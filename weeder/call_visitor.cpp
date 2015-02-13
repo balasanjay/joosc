@@ -7,11 +7,14 @@ using ast::Expr;
 using ast::FieldDerefExpr;
 using ast::NameExpr;
 using ast::ThisExpr;
+using ast::VisitResult;
 using base::Error;
 using base::FileSet;
 using lexer::Token;
 
 namespace weeder {
+
+namespace {
 
 Error* MakeInvalidCallError(const FileSet* fs, Token token) {
   return MakeSimplePosRangeError(fs, token.pos, "InvalidCallError",
@@ -24,7 +27,9 @@ Error* MakeExplicitThisCallError(const FileSet* fs, Token token) {
       "Cannot call explicit 'this' constructor in Joos.");
 }
 
-REC_VISIT_DEFN(CallVisitor, CallExpr, expr) {
+} // namespace
+
+VISIT_DEFN2(CallVisitor, CallExpr, expr) {
   const Expr& base = expr.Base();
 
   if (!IS_CONST_REF(FieldDerefExpr, base) && !IS_CONST_REF(NameExpr, base)) {
@@ -33,10 +38,10 @@ REC_VISIT_DEFN(CallVisitor, CallExpr, expr) {
     } else {
       errors_->Append(MakeInvalidCallError(fs_, expr.Lparen()));
     }
-    return true;
+    return VisitResult::RECURSE_PRUNE;
   }
 
-  return true;
+  return VisitResult::RECURSE;
 }
 
 }  // namespace weeder
