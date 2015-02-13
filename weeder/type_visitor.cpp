@@ -204,15 +204,16 @@ VISIT_DEFN2(TypeVisitor, ForStmt, stmt) {
 }
 
 VISIT_DEFN2(TypeVisitor, BlockStmt, block) {
+  VisitResult result = VisitResult::RECURSE;
   for (int i = 0; i < block.Stmts().Size(); ++i) {
     if (!IsTopLevelStmt(block.Stmts().At(i).get())) {
       // TODO: Error.
       Token tok(K_VOID, Pos(0, 1));
       errors_->Append(MakeInvalidTopLevelStatement(fs_, tok));
-      return VisitResult::RECURSE_PRUNE;
+      result = VisitResult::RECURSE_PRUNE;
     }
   }
-  return VisitResult::RECURSE;
+  return result;
 }
 
 }  // namespace weeder
