@@ -22,6 +22,7 @@ using ast::PrimitiveType;
 using ast::ReferenceType;
 using ast::Stmt;
 using ast::Type;
+using ast::VisitResult;
 using base::Error;
 using base::ErrorList;
 using base::FileSet;
@@ -118,90 +119,100 @@ bool HasVoid(const Type& type, Token* out) {
   }
 }
 
-REC_VISIT_DEFN(TypeVisitor, CastExpr, expr) {
+VISIT_DEFN2(TypeVisitor, CastExpr, expr) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(expr.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
+    return VisitResult::RECURSE_PRUNE;
   }
-  return true;
+  return VisitResult::RECURSE;
 }
 
-REC_VISIT_DEFN(TypeVisitor, InstanceOfExpr, expr) {
+VISIT_DEFN2(TypeVisitor, InstanceOfExpr, expr) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(expr.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
   } else if (IS_CONST_REF(PrimitiveType, expr.GetType())) {
     errors_->Append(MakeInvalidInstanceOfType(fs_, expr.InstanceOf()));
   }
-  return true;
+  return VisitResult::RECURSE;
 }
 
-REC_VISIT_DEFN(TypeVisitor, NewClassExpr, expr) {
+VISIT_DEFN2(TypeVisitor, NewClassExpr, expr) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(expr.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
+    return VisitResult::RECURSE_PRUNE;
   } else if (!IS_CONST_REF(ReferenceType, expr.GetType())) {
     errors_->Append(MakeNewNonReferenceTypeError(fs_, expr.NewToken()));
+    return VisitResult::RECURSE_PRUNE;
   }
-  return true;
+  return VisitResult::RECURSE;
 }
 
-REC_VISIT_DEFN(TypeVisitor, NewArrayExpr, expr) {
+VISIT_DEFN2(TypeVisitor, NewArrayExpr, expr) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(expr.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
+    return VisitResult::RECURSE_PRUNE;
   }
-  return true;
+  return VisitResult::RECURSE;
 }
 
-REC_VISIT_DEFN(TypeVisitor, LocalDeclStmt, stmt) {
+VISIT_DEFN2(TypeVisitor, LocalDeclStmt, stmt) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(stmt.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
+    return VisitResult::RECURSE_PRUNE;
   }
-  return true;
+  return VisitResult::RECURSE;
 }
 
-REC_VISIT_DEFN(TypeVisitor, FieldDecl, stmt) {
+VISIT_DEFN2(TypeVisitor, FieldDecl, stmt) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(stmt.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
+    return VisitResult::RECURSE_PRUNE;
   }
-  return true;
+  return VisitResult::RECURSE;
 }
 
-REC_VISIT_DEFN(TypeVisitor, Param, param) {
+VISIT_DEFN2(TypeVisitor, Param, param) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(param.GetType(), &voidTok)) {
     errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
+    return VisitResult::RECURSE_PRUNE;
   }
-  return true;
+  return VisitResult::RECURSE;
 }
 
-REC_VISIT_DEFN(TypeVisitor, ForStmt, stmt) {
+VISIT_DEFN2(TypeVisitor, ForStmt, stmt) {
   if (!IS_CONST_REF(LocalDeclStmt, stmt.Init()) &&
       !IsTopLevelExpr(&stmt.Init())) {
     // TODO: Error.
     Token tok(K_VOID, Pos(0, 1));
     errors_->Append(MakeInvalidTopLevelStatement(fs_, tok));
+    return VisitResult::RECURSE_PRUNE;
   }
   if (!IsTopLevelExpr(stmt.UpdatePtr().get())) {
     // TODO: Error.
     Token tok(K_VOID, Pos(0, 1));
     errors_->Append(MakeInvalidTopLevelStatement(fs_, tok));
+    return VisitResult::RECURSE_PRUNE;
   }
-  return true;
+  return VisitResult::RECURSE;
 }
 
-REC_VISIT_DEFN(TypeVisitor, BlockStmt, block) {
+VISIT_DEFN2(TypeVisitor, BlockStmt, block) {
   for (int i = 0; i < block.Stmts().Size(); ++i) {
     if (!IsTopLevelStmt(block.Stmts().At(i).get())) {
       // TODO: Error.
       Token tok(K_VOID, Pos(0, 1));
       errors_->Append(MakeInvalidTopLevelStatement(fs_, tok));
+      return VisitResult::RECURSE_PRUNE;
     }
   }
-  return true;
+  return VisitResult::RECURSE;
 }
 
 }  // namespace weeder

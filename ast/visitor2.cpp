@@ -11,22 +11,27 @@ using base::FileSet;
 using base::SharedPtrVector;
 
 #define SHORT_CIRCUIT(type, var) \
+  auto VISIT_RESULT = VisitResult::RECURSE; \
   {                                    \
     auto result = Visit##type(var); \
     if (result == VisitResult::SKIP) { \
       return var##ptr; \
     } \
-    if (result == VisitResult::PRUNE) { \
+    if (result == VisitResult::SKIP_PRUNE) { \
       return nullptr; \
     } \
+    VISIT_RESULT = result; \
   }
+
+#define SHOULD_PRUNE_AFTER (VISIT_RESULT == VisitResult::RECURSE_PRUNE)
+
 
 REWRITE_DEFN2(Visitor2, ArrayIndexExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(ArrayIndexExpr, expr);
 
   sptr<const Expr> base = Visit(this, expr.BasePtr());
   sptr<const Expr> index = Visit(this, expr.IndexPtr());
-  if (base == nullptr || index == nullptr) {
+  if (SHOULD_PRUNE_AFTER || base == nullptr || index == nullptr) {
     return nullptr;
   }
   if (base == expr.BasePtr() && index == expr.IndexPtr()) {
@@ -40,7 +45,7 @@ REWRITE_DEFN2(Visitor2, BinExpr, Expr, expr, exprptr) {
 
   sptr<const Expr> lhs = Visit(this, expr.LhsPtr());
   sptr<const Expr> rhs = Visit(this, expr.RhsPtr());
-  if (lhs == nullptr || rhs == nullptr) {
+  if (SHOULD_PRUNE_AFTER || lhs == nullptr || rhs == nullptr) {
     return nullptr;
   }
   if (lhs == expr.LhsPtr() && rhs == expr.RhsPtr()) {
@@ -57,7 +62,7 @@ REWRITE_DEFN2(Visitor2, CallExpr, Expr, expr, exprptr) {
   sptr<const Expr> base = Visit(this, expr.BasePtr());
   SharedPtrVector<const Expr> args = AcceptMulti(expr.Args(), &argsChanged);
 
-  if (base == nullptr || args.Size() != expr.Args().Size()) {
+  if (SHOULD_PRUNE_AFTER || base == nullptr || args.Size() != expr.Args().Size()) {
     return nullptr;
   }
   if (base == expr.BasePtr() && !argsChanged) {
@@ -71,7 +76,7 @@ REWRITE_DEFN2(Visitor2, CastExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(CastExpr, expr);
 
   sptr<const Expr> castedExpr = Visit(this, expr.GetExprPtr());
-  if (castedExpr == nullptr) {
+  if (SHOULD_PRUNE_AFTER || castedExpr == nullptr) {
     return nullptr;
   } else if (castedExpr == expr.GetExprPtr()) {
     return exprptr;
@@ -82,7 +87,7 @@ REWRITE_DEFN2(Visitor2, CastExpr, Expr, expr, exprptr) {
 REWRITE_DEFN2(Visitor2, FieldDerefExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(FieldDerefExpr, expr);
   sptr<const Expr> base = Visit(this, expr.BasePtr());
-  if (base == nullptr) {
+  if (SHOULD_PRUNE_AFTER || base == nullptr) {
     return nullptr;
   } else if (base == expr.BasePtr()) {
     return exprptr;
@@ -92,26 +97,44 @@ REWRITE_DEFN2(Visitor2, FieldDerefExpr, Expr, expr, exprptr) {
 
 REWRITE_DEFN2(Visitor2, BoolLitExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(BoolLitExpr, expr);
+  if (SHOULD_PRUNE_AFTER) {
+    return nullptr;
+  }
   return exprptr;
 }
 REWRITE_DEFN2(Visitor2, CharLitExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(CharLitExpr, expr);
+  if (SHOULD_PRUNE_AFTER) {
+    return nullptr;
+  }
   return exprptr;
 }
 REWRITE_DEFN2(Visitor2, StringLitExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(StringLitExpr, expr);
+  if (SHOULD_PRUNE_AFTER) {
+    return nullptr;
+  }
   return exprptr;
 }
 REWRITE_DEFN2(Visitor2, NullLitExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(NullLitExpr, expr);
+  if (SHOULD_PRUNE_AFTER) {
+    return nullptr;
+  }
   return exprptr;
 }
 REWRITE_DEFN2(Visitor2, IntLitExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(IntLitExpr, expr);
+  if (SHOULD_PRUNE_AFTER) {
+    return nullptr;
+  }
   return exprptr;
 }
 REWRITE_DEFN2(Visitor2, NameExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(NameExpr, expr);
+  if (SHOULD_PRUNE_AFTER) {
+    return nullptr;
+  }
   return exprptr;
 }
 
@@ -125,8 +148,9 @@ REWRITE_DEFN2(Visitor2, NewArrayExpr, Expr, expr, exprptr) {
 
   // We don't prune the subtree if the expr returns null, because the expr is a
   // nullable field.
-
-  if (arrayExpr == expr.GetExprPtr()) {
+  if (SHOULD_PRUNE_AFTER) {
+    return nullptr;
+  } else if (arrayExpr == expr.GetExprPtr()) {
     return exprptr;
   }
   return make_shared<NewArrayExpr>(expr.GetTypePtr(), arrayExpr);
@@ -138,7 +162,7 @@ REWRITE_DEFN2(Visitor2, NewClassExpr, Expr, expr, exprptr) {
   bool argsChanged = false;
   SharedPtrVector<const Expr> args = AcceptMulti(expr.Args(), &argsChanged);
 
-  if (args.Size() != expr.Args().Size()) {
+  if (SHOULD_PRUNE_AFTER || args.Size() != expr.Args().Size()) {
     return nullptr;
   }
   if (!argsChanged) {
@@ -150,7 +174,7 @@ REWRITE_DEFN2(Visitor2, NewClassExpr, Expr, expr, exprptr) {
 REWRITE_DEFN2(Visitor2, ParenExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(ParenExpr, expr);
   sptr<const Expr> nested = Visit(this, expr.NestedPtr());
-  if (nested == nullptr) {
+  if (SHOULD_PRUNE_AFTER || nested == nullptr) {
     return nullptr;
   } else if (nested == expr.NestedPtr()) {
     return exprptr;
@@ -160,13 +184,16 @@ REWRITE_DEFN2(Visitor2, ParenExpr, Expr, expr, exprptr) {
 
 REWRITE_DEFN2(Visitor2, ThisExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(ThisExpr, expr);
+  if (SHOULD_PRUNE_AFTER) {
+    return nullptr;
+  }
   return exprptr;
 }
 
 REWRITE_DEFN2(Visitor2, UnaryExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(UnaryExpr, expr);
   sptr<const Expr> rhs = Visit(this, expr.RhsPtr());
-  if (rhs == nullptr) {
+  if (SHOULD_PRUNE_AFTER || rhs == nullptr) {
     return nullptr;
   } else if (rhs == expr.RhsPtr()) {
     return exprptr;
@@ -177,7 +204,7 @@ REWRITE_DEFN2(Visitor2, UnaryExpr, Expr, expr, exprptr) {
 REWRITE_DEFN2(Visitor2, InstanceOfExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(InstanceOfExpr, expr);
   sptr<const Expr> lhs = Visit(this, expr.LhsPtr());
-  if (lhs == nullptr) {
+  if (SHOULD_PRUNE_AFTER || lhs == nullptr) {
     return nullptr;
   } else if (lhs == expr.LhsPtr()) {
     return exprptr;
@@ -191,6 +218,9 @@ REWRITE_DEFN2(Visitor2, BlockStmt, Stmt, stmt, stmtptr) {
   bool stmtsChanged = false;
   SharedPtrVector<const Stmt> newStmts = AcceptMulti(stmt.Stmts(), &stmtsChanged);
 
+  if (SHOULD_PRUNE_AFTER) {
+    return nullptr;
+  }
   if (!stmtsChanged) {
     return stmtptr;
   }
@@ -200,6 +230,9 @@ REWRITE_DEFN2(Visitor2, BlockStmt, Stmt, stmt, stmtptr) {
 
 REWRITE_DEFN2(Visitor2, EmptyStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(EmptyStmt, stmt);
+  if (SHOULD_PRUNE_AFTER) {
+    return nullptr;
+  }
   return stmtptr;
 }
 
@@ -207,7 +240,7 @@ REWRITE_DEFN2(Visitor2, ExprStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(ExprStmt, stmt);
 
   sptr<const Expr> expr = Visit(this, stmt.GetExprPtr());
-  if (expr == nullptr) {
+  if (SHOULD_PRUNE_AFTER || expr == nullptr) {
     return nullptr;
   } else if (expr == stmt.GetExprPtr()) {
     return stmtptr;
@@ -220,7 +253,7 @@ REWRITE_DEFN2(Visitor2, LocalDeclStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(LocalDeclStmt, stmt);
 
   sptr<const Expr> expr = Visit(this, stmt.GetExprPtr());
-  if (expr == nullptr) {
+  if (SHOULD_PRUNE_AFTER || expr == nullptr) {
     return nullptr;
   } else if (expr == stmt.GetExprPtr()) {
     return stmtptr;
@@ -231,12 +264,13 @@ REWRITE_DEFN2(Visitor2, LocalDeclStmt, Stmt, stmt, stmtptr) {
 
 REWRITE_DEFN2(Visitor2, ReturnStmt, Stmt, stmt, stmtptr) {
   SHORT_CIRCUIT(ReturnStmt, stmt);
-  if (stmt.GetExprPtr() == nullptr) {
-    return stmtptr;
+
+  sptr<const Expr> expr = nullptr;
+  if (stmt.GetExprPtr() != nullptr) {
+    expr = Visit(this, stmt.GetExprPtr());
   }
 
-  sptr<const Expr> expr = Visit(this, stmt.GetExprPtr());
-  if (expr == nullptr) {
+  if (SHOULD_PRUNE_AFTER) {
     return nullptr;
   } else if (expr == stmt.GetExprPtr()) {
     return stmtptr;
@@ -264,6 +298,9 @@ REWRITE_DEFN2(Visitor2, IfStmt, Stmt, stmt, stmtptr) {
     falseBody = make_shared<EmptyStmt>();
   }
 
+  if (SHOULD_PRUNE_AFTER) {
+    return nullptr;
+  }
   if (cond == stmt.CondPtr() && trueBody == stmt.TrueBodyPtr() && falseBody == stmt.FalseBodyPtr()) {
     return stmtptr;
   }
@@ -291,7 +328,7 @@ REWRITE_DEFN2(Visitor2, ForStmt, Stmt, stmt, stmtptr) {
     body = make_shared<EmptyStmt>();
   }
 
-  if (init == nullptr) {
+  if (SHOULD_PRUNE_AFTER || init == nullptr) {
     return nullptr;
   } else if (init == stmt.InitPtr() && cond == stmt.CondPtr() && update == stmt.UpdatePtr() && body == stmt.BodyPtr()) {
     return stmtptr;
@@ -306,7 +343,7 @@ REWRITE_DEFN2(Visitor2, WhileStmt, Stmt, stmt, stmtptr) {
   sptr<const Expr> cond = Visit(this, stmt.CondPtr());
   sptr<const Stmt> body = Visit(this, stmt.BodyPtr());
 
-  if (cond == nullptr) {
+  if (SHOULD_PRUNE_AFTER || cond == nullptr) {
     return nullptr;
   }
   if (body == nullptr) {
@@ -326,7 +363,7 @@ REWRITE_DEFN2(Visitor2, ParamList, ParamList, params, paramsptr) {
   bool paramsChanged = false;
   SharedPtrVector<const Param> newParams = AcceptMulti(params.Params(), &paramsChanged);
 
-  if (newParams.Size() != params.Params().Size()) {
+  if (SHOULD_PRUNE_AFTER || newParams.Size() != params.Params().Size()) {
     return nullptr;
   }
   if (!paramsChanged) {
@@ -339,6 +376,9 @@ REWRITE_DEFN2(Visitor2, ParamList, ParamList, params, paramsptr) {
 
 REWRITE_DEFN2(Visitor2, Param, Param, param, paramptr) {
   SHORT_CIRCUIT(Param, param);
+  if (SHOULD_PRUNE_AFTER) {
+    return nullptr;
+  }
   return paramptr;
 }
 
@@ -350,6 +390,9 @@ REWRITE_DEFN2(Visitor2, FieldDecl, MemberDecl, field, fieldptr) {
     val = Visit(this, field.ValPtr());
   }
 
+  if (SHOULD_PRUNE_AFTER) {
+    return nullptr;
+  }
   if (val == field.ValPtr()) {
     return fieldptr;
   }
@@ -363,7 +406,7 @@ REWRITE_DEFN2(Visitor2, MethodDecl, MemberDecl, meth, methptr) {
   sptr<const ParamList> params = Visit(this, meth.ParamsPtr());
   sptr<const Stmt> body = Visit(this, meth.BodyPtr());
 
-  if (params == nullptr || body == nullptr) {
+  if (SHOULD_PRUNE_AFTER || params == nullptr || body == nullptr) {
     return nullptr;
   } else if (params == meth.ParamsPtr() && body == meth.BodyPtr()) {
     return methptr;
@@ -379,7 +422,7 @@ REWRITE_DEFN2(Visitor2, ConstructorDecl, MemberDecl, meth, methptr) {
   sptr<const ParamList> params = Visit(this, meth.ParamsPtr());
   sptr<const Stmt> body = Visit(this, meth.BodyPtr());
 
-  if (params == nullptr || body == nullptr) {
+  if (SHOULD_PRUNE_AFTER || params == nullptr || body == nullptr) {
     return nullptr;
   } else if (params == meth.ParamsPtr() && body == meth.BodyPtr()) {
     return methptr;
@@ -393,6 +436,9 @@ REWRITE_DEFN2(Visitor2, ClassDecl, TypeDecl, type, typeptr) {
 
   bool membersChanged = false;
   SharedPtrVector<const MemberDecl> newMembers = AcceptMulti(type.Members(), &membersChanged);
+  if (SHOULD_PRUNE_AFTER) {
+    return nullptr;
+  }
   if (!membersChanged) {
     return typeptr;
   }
@@ -405,6 +451,9 @@ REWRITE_DEFN2(Visitor2, InterfaceDecl, TypeDecl, type, typeptr) {
 
   bool membersChanged = false;
   SharedPtrVector<const MemberDecl> newMembers = AcceptMulti(type.Members(), &membersChanged);
+  if (SHOULD_PRUNE_AFTER) {
+    return nullptr;
+  }
   if (!membersChanged) {
     return typeptr;
   }
@@ -418,6 +467,9 @@ REWRITE_DEFN2(Visitor2, CompUnit, CompUnit, unit, unitptr) {
   bool typesChanged = false;
   SharedPtrVector<const TypeDecl> newTypes = AcceptMulti(unit.Types(), &typesChanged);
 
+  if (SHOULD_PRUNE_AFTER) {
+    return nullptr;
+  }
   if (!typesChanged) {
     return unitptr;
   }
@@ -425,7 +477,13 @@ REWRITE_DEFN2(Visitor2, CompUnit, CompUnit, unit, unitptr) {
 }
 
 REWRITE_DEFN2(Visitor2, Program, Program, prog, progptr) {
-  SHORT_CIRCUIT(Program, prog);
+  // We special-case the short-circuiting for program, because the other two
+  // would result in nullable programs.
+  auto result = VisitProgram(prog);
+  if (result == VisitResult::SKIP) {
+    return progptr;
+  }
+  assert(result == VisitResult::RECURSE);
 
   bool unitsChanged = false;
   SharedPtrVector<const CompUnit> units = AcceptMulti(prog.CompUnits(), &unitsChanged);

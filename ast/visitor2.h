@@ -43,9 +43,10 @@ namespace ast {
   code(Program, Program, prog)
 
 enum class VisitResult {
-  PRUNE,
-  SKIP,
-  RECURSE,
+  SKIP, // Don't visit children; keep them in resulting AST.
+  RECURSE, // Visit children.
+  SKIP_PRUNE, // Don't visit children, prune this subtree from AST.
+  RECURSE_PRUNE, // Visit children, and then prune this subtree from AST.
 };
 
 class Visitor2 {

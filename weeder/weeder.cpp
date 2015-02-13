@@ -21,10 +21,9 @@ sptr<const Program> WeedProgram(const FileSet* fs, sptr<const Program> prog, Err
   prog->AcceptVisitor(&callChecker);
 
   TypeVisitor typeChecker(fs, out);
-  prog->AcceptVisitor(&typeChecker);
+  prog = Visit(&typeChecker, prog);
 
   ModifierVisitor modifierChecker(fs, out);
-  // const sptr<Program> prog2 = ast::Visit(&modifierChecker, prog);
   prog = Visit(&modifierChecker, prog);
 
   IntRangeVisitor intRangeChecker(fs, out);

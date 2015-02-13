@@ -1,7 +1,7 @@
 #ifndef WEEDER_TYPE_VISITOR_H
 #define WEEDER_TYPE_VISITOR_H
 
-#include "ast/recursive_visitor.h"
+#include "ast/visitor2.h"
 #include "base/errorlist.h"
 #include "base/fileset.h"
 
@@ -11,24 +11,24 @@ namespace weeder {
 //   1) "void" is only valid as the return type of a method.
 //   2) NewClassExpr must have a non-primitive type. i.e. no "new int(1)".
 //   3) RHS of an instanceof must be a NameExpr.
-class TypeVisitor : public ast::RecursiveVisitor {
+class TypeVisitor : public ast::Visitor2 {
  public:
   TypeVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}
 
-  REC_VISIT_DECL(CastExpr, expr);
-  REC_VISIT_DECL(InstanceOfExpr, expr);
+  VISIT_DECL2(CastExpr, expr);
+  VISIT_DECL2(InstanceOfExpr, expr);
 
-  REC_VISIT_DECL(NewClassExpr, expr);
-  REC_VISIT_DECL(NewArrayExpr, expr);
+  VISIT_DECL2(NewClassExpr, expr);
+  VISIT_DECL2(NewArrayExpr, expr);
 
-  REC_VISIT_DECL(LocalDeclStmt, stmt);
+  VISIT_DECL2(LocalDeclStmt, stmt);
 
-  REC_VISIT_DECL(FieldDecl, decl);
-  REC_VISIT_DECL(Param, param);
+  VISIT_DECL2(FieldDecl, decl);
+  VISIT_DECL2(Param, param);
 
-  REC_VISIT_DECL(ForStmt, stmt);
-  REC_VISIT_DECL(BlockStmt, stmt);
+  VISIT_DECL2(ForStmt, stmt);
+  VISIT_DECL2(BlockStmt, stmt);
 
  private:
   const base::FileSet* fs_;
