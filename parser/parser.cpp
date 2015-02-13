@@ -1172,17 +1172,13 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
       bodyPtr = body.Get();
     }
 
-    if (isConstructor) {
-      return afterBody.Success(
-          new ConstructorDecl(*mods.Get(), *ident.Get(),
-                              params.Get(), bodyPtr),
-          out);
-    } else {
-      return afterBody.Success(
-          new MethodDecl(*mods.Get(), type.Get(), *ident.Get(),
-                         params.Get(), bodyPtr),
-          out);
+    sptr<const Type> typeptr = nullptr;
+    if (!isConstructor) {
+      typeptr = type.Get();
     }
+    return afterBody.Success(
+        new MethodDecl(*mods.Get(), typeptr, *ident.Get(), params.Get(),
+            bodyPtr), out);
   }
 
   // Parse field.

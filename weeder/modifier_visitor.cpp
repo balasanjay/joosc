@@ -181,26 +181,6 @@ void VerifyNoConflictingAccessMods(const FileSet* fs, const ModifierList& mods,
 
 }  // namespace
 
-VISIT_DEFN(ClassModifierVisitor, ConstructorDecl, decl) {
-  // Cannot be both public and protected.
-  VerifyNoConflictingAccessMods(fs_, decl.Mods(), errors_);
-
-  // Must be at least one of public or protected.
-  VerifyOneOf(fs_, decl.Mods(), errors_, decl.Ident(),
-              MakeClassMemberNoAccessModError, {PUBLIC, PROTECTED});
-
-  // A constructor cannot be abstract, static, final, or native.
-  VerifyNoneOf(fs_, decl.Mods(), errors_, MakeClassConstructorModifierError,
-               {ABSTRACT, STATIC, FINAL, NATIVE});
-
-  // A constructor must have a body; i.e. it can't be ";".
-  if (IS_CONST_REF(EmptyStmt, decl.Body())) {
-    errors_->Append(MakeClassConstructorEmptyError(fs_, decl.Ident()));
-  }
-
-  return VisitResult::SKIP;
-}
-
 VISIT_DEFN(ClassModifierVisitor, FieldDecl, decl) {
   // Cannot be both public and protected.
   VerifyNoConflictingAccessMods(fs_, decl.Mods(), errors_);
@@ -217,6 +197,8 @@ VISIT_DEFN(ClassModifierVisitor, FieldDecl, decl) {
 }
 
 VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
+  bool constructor = decl.TypePtr() == nullptr;
+
   // Cannot be both public and protected.
   VerifyNoConflictingAccessMods(fs_, decl.Mods(), errors_);
 
@@ -227,7 +209,7 @@ VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
   const ModifierList& mods = decl.Mods();
 
   // A method has a body if and only if it is neither abstract nor native.
-  {
+  if (!constructor) {
     if (IS_CONST_REF(EmptyStmt, decl.Body())) {
       // Has an empty body; this implies it must be either abstract or native.
       if (!mods.HasModifier(ABSTRACT) && !mods.HasModifier(NATIVE)) {
@@ -241,30 +223,35 @@ VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
     }
   }
 
+  // A constructor cannot be abstract, static, final, or native.
+  if (constructor) {
+    VerifyNoneOf(fs_, decl.Mods(), errors_, MakeClassConstructorModifierError,
+                 {ABSTRACT, STATIC, FINAL, NATIVE});
+  }
+
+  // A constructor must have a body; i.e. it can't be ";".
+  if (constructor && IS_CONST_REF(EmptyStmt, decl.Body())) {
+    errors_->Append(MakeClassConstructorEmptyError(fs_, decl.Ident()));
+  }
+
   // An abstract method cannot be static or final.
-  if (mods.HasModifier(ABSTRACT)) {
+  if (!constructor && mods.HasModifier(ABSTRACT)) {
     VerifyNoneOf(fs_, mods, errors_, MakeClassMethodAbstractModifierError,
                  {STATIC, FINAL});
   }
 
   // A static method cannot be final.
-  if (mods.HasModifier(STATIC) && mods.HasModifier(FINAL)) {
+  if (!constructor && mods.HasModifier(STATIC) && mods.HasModifier(FINAL)) {
     errors_->Append(
         MakeClassMethodStaticFinalError(fs_, mods.GetModifierToken(FINAL)));
   }
 
   // A native method must be static.
-  if (mods.HasModifier(NATIVE) && !mods.HasModifier(STATIC)) {
+  if (!constructor && mods.HasModifier(NATIVE) && !mods.HasModifier(STATIC)) {
     errors_->Append(MakeClassMethodNativeNotStaticError(
         fs_, mods.GetModifierToken(NATIVE)));
   }
 
-  return VisitResult::SKIP;
-}
-
-VISIT_DEFN(InterfaceModifierVisitor, ConstructorDecl, decl) {
-  // An interface cannot contain constructors.
-  errors_->Append(MakeInterfaceConstructorError(fs_, decl.Ident()));
   return VisitResult::SKIP;
 }
 
@@ -275,6 +262,12 @@ VISIT_DEFN(InterfaceModifierVisitor, FieldDecl, decl) {
 }
 
 VISIT_DEFN(InterfaceModifierVisitor, MethodDecl, decl) {
+  // An interface cannot contain constructors.
+  if (decl.TypePtr() == nullptr) {
+    errors_->Append(MakeInterfaceConstructorError(fs_, decl.Ident()));
+    return VisitResult::SKIP;
+  }
+
   // An interface method cannot be static, final, native, or protected.
   VerifyNoneOf(fs_, decl.Mods(), errors_, MakeInterfaceMethodModifierError,
                {PROTECTED, STATIC, FINAL, NATIVE});

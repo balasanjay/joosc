@@ -143,9 +143,17 @@ REWRITE_DEFN(DeclResolver, FieldDecl, MemberDecl, field, ) {
 }
 
 REWRITE_DEFN(DeclResolver, MethodDecl, MemberDecl, meth,) {
-  TypeId rettid = MustResolveType(meth.GetType());
-  if (rettid.IsError()) {
-    return nullptr;
+  TypeId rettid = TypeId::Unassigned();
+  if (meth.TypePtr() == nullptr) {
+    // Handle constructor.
+    // The return type of a constructor is the containing class.
+    rettid = curtype_;
+  } else {
+    // Handle method.
+    rettid = MustResolveType(*meth.TypePtr());
+    if (rettid.IsError()) {
+      return nullptr;
+    }
   }
 
   vector<TypeId> paramtids;
@@ -160,7 +168,7 @@ REWRITE_DEFN(DeclResolver, MethodDecl, MemberDecl, meth,) {
   // TODO: put method in table keyed by (curtid_, meth.Name(), paramtids).
   // TODO: assign member id to method.
 
-  return make_shared<MethodDecl>(meth.Mods(), meth.GetTypePtr(), meth.Ident(), meth.ParamsPtr(), meth.BodyPtr());
+  return make_shared<MethodDecl>(meth.Mods(), meth.TypePtr(), meth.Ident(), meth.ParamsPtr(), meth.BodyPtr());
 }
 
 } // namespace types

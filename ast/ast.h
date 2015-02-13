@@ -590,27 +590,6 @@ class MemberDecl {
   lexer::Token ident_;
 };
 
-class ConstructorDecl : public MemberDecl {
- public:
-  ConstructorDecl(const ModifierList& mods, lexer::Token ident, sptr<const ParamList> params,
-                  sptr<const Stmt> body)
-      : MemberDecl(mods, ident),
-        params_(params),
-        body_(body) {}
-
-  ACCEPT_VISITOR(ConstructorDecl, MemberDecl);
-
-  SPTR_GETTER(ParamList, Params, params_);
-  SPTR_GETTER(Stmt, Body, body_);
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(ConstructorDecl);
-
-  ModifierList mods_;
-  sptr<const ParamList> params_;
-  sptr<const Stmt> body_;
-};
-
 class FieldDecl : public MemberDecl {
  public:
   FieldDecl(const ModifierList& mods, sptr<const Type> type, lexer::Token ident, sptr<const Expr> val)
@@ -641,14 +620,14 @@ class MethodDecl : public MemberDecl {
 
   ACCEPT_VISITOR(MethodDecl, MemberDecl);
 
-  SPTR_GETTER(Type, GetType, type_);
+  VAL_GETTER(sptr<const Type>, TypePtr, type_);
   SPTR_GETTER(ParamList, Params, params_);
   SPTR_GETTER(Stmt, Body, body_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MethodDecl);
 
-  sptr<const Type> type_;
+  sptr<const Type> type_; // nullptr for constructors.
   sptr<const ParamList> params_;
   sptr<const Stmt> body_;
 };

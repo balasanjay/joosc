@@ -412,23 +412,7 @@ REWRITE_DEFN(Visitor, MethodDecl, MemberDecl, meth, methptr) {
     return methptr;
   }
 
-  return make_shared<MethodDecl>(meth.Mods(), meth.GetTypePtr(), meth.Ident(), params, body);
-}
-
-
-REWRITE_DEFN(Visitor, ConstructorDecl, MemberDecl, meth, methptr) {
-  SHORT_CIRCUIT(ConstructorDecl, meth);
-
-  sptr<const ParamList> params = Visit(this, meth.ParamsPtr());
-  sptr<const Stmt> body = Visit(this, meth.BodyPtr());
-
-  if (SHOULD_PRUNE_AFTER || params == nullptr || body == nullptr) {
-    return nullptr;
-  } else if (params == meth.ParamsPtr() && body == meth.BodyPtr()) {
-    return methptr;
-  }
-
-  return make_shared<ConstructorDecl>(meth.Mods(), meth.Ident(), params, body);
+  return make_shared<MethodDecl>(meth.Mods(), meth.TypePtr(), meth.Ident(), params, body);
 }
 
 REWRITE_DEFN(Visitor, ClassDecl, TypeDecl, type, typeptr) {

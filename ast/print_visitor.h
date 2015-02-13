@@ -246,20 +246,12 @@ class PrintVisitor final : public Visitor {
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(ConstructorDecl, meth) {
-    meth.Mods().PrintTo(os_);
-    *os_ << meth.Ident().TypeInfo();
-    *os_ << '(';
-    Visit(this, meth.ParamsPtr());
-    *os_ << ')' << space_;
-    Visit(this, meth.BodyPtr());
-    return VisitResult::SKIP;
-  }
-
   VISIT_DECL(MethodDecl, meth) {
     meth.Mods().PrintTo(os_);
-    meth.GetType().PrintTo(os_);
-    *os_ << ' ';
+    if (meth.TypePtr() != nullptr) {
+      meth.TypePtr()->PrintTo(os_);
+      *os_ << ' ';
+    }
     *os_ << meth.Ident().TypeInfo();
     *os_ << '(';
     Visit(this, meth.ParamsPtr());
