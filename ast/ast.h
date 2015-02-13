@@ -14,15 +14,23 @@ namespace ast {
 
 #define ACCEPT_VISITOR_ABSTRACT(type) \
   virtual void AcceptVisitor(Visitor* visitor) const = 0; \
-  friend class Visitor2
+  virtual const sptr<type> Accept2(Visitor2* visitor, sptr<type> ptr) const = 0
 
 #define ACCEPT_VISITOR(type, ret_type) \
   virtual void AcceptVisitor(Visitor* visitor) const { visitor->Visit##type(*this); } \
-  friend class Visitor2
+  virtual const sptr<ret_type> Accept2(Visitor2* visitor, sptr<ret_type> ptr) const { \
+    sptr<type> downcasted = std::dynamic_pointer_cast<type, ret_type>(ptr); \
+    assert(downcasted != nullptr); \
+    return visitor->Rewrite##type(*this, downcasted); \
+  }
 
 
 #define REF_GETTER(type, name, expr) \
   const type& name() const { return (expr); }
+
+#define SPTR_GETTER(type, name, field) \
+  const type& name() const { return *field; } \
+  const sptr<type> name##Ptr() const { return field; }
 
 #define VAL_GETTER(type, name, expr) \
   type name() const { return (expr); }
@@ -143,9 +151,9 @@ class InstanceOfExpr : public Expr {
 
   ACCEPT_VISITOR(InstanceOfExpr, Expr);
 
-  REF_GETTER(Expr, Lhs, *lhs_);
+  SPTR_GETTER(Expr, Lhs, lhs_);
   VAL_GETTER(lexer::Token, InstanceOf, instanceof_);
-  REF_GETTER(Type, GetType, *type_);
+  SPTR_GETTER(Type, GetType, type_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(InstanceOfExpr);
@@ -161,7 +169,7 @@ class ParenExpr : public Expr {
 
   ACCEPT_VISITOR(ParenExpr, Expr);
 
-  REF_GETTER(Expr, Nested, *nested_);
+  SPTR_GETTER(Expr, Nested, nested_);
 
  private:
   sptr<Expr> nested_;
@@ -179,8 +187,8 @@ class BinExpr : public Expr {
   ACCEPT_VISITOR(BinExpr, Expr);
 
   VAL_GETTER(lexer::Token, Op, op_);
-  REF_GETTER(Expr, Lhs, *lhs_);
-  REF_GETTER(Expr, Rhs, *rhs_);
+  SPTR_GETTER(Expr, Lhs, lhs_);
+  SPTR_GETTER(Expr, Rhs, rhs_);
 
  private:
   lexer::Token op_;
@@ -198,7 +206,7 @@ class UnaryExpr : public Expr {
   ACCEPT_VISITOR(UnaryExpr, Expr);
 
   VAL_GETTER(lexer::Token, Op, op_);
-  REF_GETTER(Expr, Rhs, *rhs_);
+  SPTR_GETTER(Expr, Rhs, rhs_);
 
  private:
   lexer::Token op_;
@@ -267,8 +275,8 @@ class ArrayIndexExpr : public Expr {
 
   ACCEPT_VISITOR(ArrayIndexExpr, Expr);
 
-  REF_GETTER(Expr, Base, *base_);
-  REF_GETTER(Expr, Index, *index_);
+  SPTR_GETTER(Expr, Base, base_);
+  SPTR_GETTER(Expr, Index, index_);
 
  private:
   sptr<Expr> base_;
@@ -282,7 +290,7 @@ class FieldDerefExpr : public Expr {
 
   ACCEPT_VISITOR(FieldDerefExpr, Expr);
 
-  REF_GETTER(Expr, Base, *base_);
+  SPTR_GETTER(Expr, Base, base_);
   REF_GETTER(string, FieldName, fieldname_);
   REF_GETTER(lexer::Token, GetToken, token_);
 
@@ -299,7 +307,7 @@ class CallExpr : public Expr {
 
   ACCEPT_VISITOR(CallExpr, Expr);
 
-  REF_GETTER(Expr, Base, *base_);
+  SPTR_GETTER(Expr, Base, base_);
   VAL_GETTER(lexer::Token, Lparen, lparen_);
   REF_GETTER(base::SharedPtrVector<Expr>, Args, args_);
 
@@ -315,8 +323,8 @@ class CastExpr : public Expr {
 
   ACCEPT_VISITOR(CastExpr, Expr);
 
-  REF_GETTER(Type, GetType, *type_);
-  REF_GETTER(Expr, GetExpr, *expr_);
+  SPTR_GETTER(Type, GetType, type_);
+  SPTR_GETTER(Expr, GetExpr, expr_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CastExpr);
@@ -333,7 +341,7 @@ class NewClassExpr : public Expr {
   ACCEPT_VISITOR(NewClassExpr, Expr);
 
   VAL_GETTER(lexer::Token, NewToken, newTok_);
-  REF_GETTER(Type, GetType, *type_);
+  SPTR_GETTER(Type, GetType, type_);
   REF_GETTER(base::SharedPtrVector<Expr>, Args, args_);
 
  private:
@@ -350,8 +358,8 @@ class NewArrayExpr : public Expr {
 
   ACCEPT_VISITOR(NewArrayExpr, Expr);
 
-  REF_GETTER(Type, GetType, *type_);
-  VAL_GETTER(const Expr*, GetExpr, expr_.get());
+  SPTR_GETTER(Type, GetType, type_);
+  VAL_GETTER(const sptr<Expr>, GetExprPtr, expr_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NewArrayExpr);
@@ -387,9 +395,9 @@ class LocalDeclStmt : public Stmt {
 
   ACCEPT_VISITOR(LocalDeclStmt, Stmt);
 
-  REF_GETTER(Type, GetType, *type_);
+  SPTR_GETTER(Type, GetType, type_);
   VAL_GETTER(lexer::Token, Ident, ident_);
-  REF_GETTER(Expr, GetExpr, *expr_);
+  SPTR_GETTER(Expr, GetExpr, expr_);
 
   // TODO: get the identifier as a string.
 
@@ -405,7 +413,7 @@ class ReturnStmt : public Stmt {
 
   ACCEPT_VISITOR(ReturnStmt, Stmt);
 
-  VAL_GETTER(const Expr*, GetExpr, expr_.get());
+  VAL_GETTER(const sptr<Expr>, GetExprPtr, expr_);
 
  private:
   sptr<Expr> expr_; // Can be nullptr.
@@ -417,7 +425,7 @@ class ExprStmt : public Stmt {
 
   ACCEPT_VISITOR(ExprStmt, Stmt);
 
-  REF_GETTER(Expr, GetExpr, *expr_);
+  SPTR_GETTER(Expr, GetExpr, expr_);
 
  private:
   sptr<Expr> expr_;
@@ -444,9 +452,9 @@ class IfStmt : public Stmt {
 
   ACCEPT_VISITOR(IfStmt, Stmt);
 
-  REF_GETTER(Expr, Cond, *cond_);
-  REF_GETTER(Stmt, TrueBody, *trueBody_);
-  REF_GETTER(Stmt, FalseBody, *falseBody_);
+  SPTR_GETTER(Expr, Cond, cond_);
+  SPTR_GETTER(Stmt, TrueBody, trueBody_);
+  SPTR_GETTER(Stmt, FalseBody, falseBody_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(IfStmt);
@@ -463,10 +471,10 @@ class ForStmt : public Stmt {
 
   ACCEPT_VISITOR(ForStmt, Stmt);
 
-  REF_GETTER(Stmt, Init, *init_);
-  VAL_GETTER(const Expr*, Cond, cond_.get());
-  VAL_GETTER(const Expr*, Update, update_.get());
-  REF_GETTER(Stmt, Body, *body_);
+  SPTR_GETTER(Stmt, Init, init_);
+  VAL_GETTER(const sptr<Expr>, CondPtr, cond_);
+  VAL_GETTER(const sptr<Expr>, UpdatePtr, update_);
+  SPTR_GETTER(Stmt, Body, body_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ForStmt);
@@ -483,8 +491,8 @@ class WhileStmt : public Stmt {
 
   ACCEPT_VISITOR(WhileStmt, Stmt);
 
-  REF_GETTER(Expr, Cond, *cond_);
-  REF_GETTER(Stmt, Body, *body_);
+  SPTR_GETTER(Expr, Cond, cond_);
+  SPTR_GETTER(Stmt, Body, body_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(WhileStmt);
@@ -586,7 +594,7 @@ class MemberDecl {
 
 class ConstructorDecl : public MemberDecl {
  public:
-  ConstructorDecl(const ModifierList& mods, lexer::Token ident, const ParamList& params,
+  ConstructorDecl(const ModifierList& mods, lexer::Token ident, sptr<ParamList> params,
                   sptr<Stmt> body)
       : MemberDecl(mods, ident),
         params_(params),
@@ -594,14 +602,14 @@ class ConstructorDecl : public MemberDecl {
 
   ACCEPT_VISITOR(ConstructorDecl, MemberDecl);
 
-  REF_GETTER(ParamList, Params, params_);
-  REF_GETTER(Stmt, Body, *body_);
+  SPTR_GETTER(ParamList, Params, params_);
+  SPTR_GETTER(Stmt, Body, body_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ConstructorDecl);
 
   ModifierList mods_;
-  ParamList params_;
+  sptr<ParamList> params_;
   sptr<Stmt> body_;
 };
 
@@ -614,8 +622,8 @@ class FieldDecl : public MemberDecl {
 
   ACCEPT_VISITOR(FieldDecl, MemberDecl);
 
-  REF_GETTER(Type, GetType, *type_);
-  VAL_GETTER(const Expr*, Val, val_.get());
+  SPTR_GETTER(Type, GetType, type_);
+  VAL_GETTER(const sptr<Expr>, ValPtr, val_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FieldDecl);
@@ -627,7 +635,7 @@ class FieldDecl : public MemberDecl {
 class MethodDecl : public MemberDecl {
  public:
   MethodDecl(const ModifierList& mods, sptr<Type> type, lexer::Token ident,
-             const ParamList& params, sptr<Stmt> body)
+             sptr<ParamList> params, sptr<Stmt> body)
       : MemberDecl(mods, ident),
         type_(type),
         params_(params),
@@ -635,15 +643,15 @@ class MethodDecl : public MemberDecl {
 
   ACCEPT_VISITOR(MethodDecl, MemberDecl);
 
-  REF_GETTER(Type, GetType, *type_);
-  REF_GETTER(ParamList, Params, params_);
-  REF_GETTER(Stmt, Body, *body_);
+  SPTR_GETTER(Type, GetType, type_);
+  SPTR_GETTER(ParamList, Params, params_);
+  SPTR_GETTER(Stmt, Body, body_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MethodDecl);
 
   sptr<Type> type_;
-  ParamList params_;
+  sptr<ParamList> params_;
   sptr<Stmt> body_;
 };
 
@@ -699,7 +707,7 @@ class ClassDecl : public TypeDecl {
 
   ACCEPT_VISITOR(ClassDecl, TypeDecl);
 
-  VAL_GETTER(const ReferenceType*, Super, super_.get());
+  VAL_GETTER(const sptr<ReferenceType>, SuperPtr, super_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ClassDecl);
@@ -746,7 +754,7 @@ class CompUnit final {
 
   ACCEPT_VISITOR(CompUnit, CompUnit);
 
-  VAL_GETTER(const QualifiedName*, Package, package_.get());
+  VAL_GETTER(const sptr<QualifiedName>, PackagePtr, package_);
   REF_GETTER(vector<ImportDecl>, Imports, imports_);
   REF_GETTER(base::SharedPtrVector<TypeDecl>, Types, types_);
 

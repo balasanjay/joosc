@@ -60,8 +60,8 @@ VISIT_DEFN(RecursiveVisitor, NameExpr, expr) {
 }
 VISIT_DEFN(RecursiveVisitor, NewArrayExpr, expr) {
   SHORT_CIRCUIT_CHILD(NewArrayExpr, expr);
-  if (expr.GetExpr() != nullptr) {
-    expr.GetExpr()->AcceptVisitor(this);
+  if (expr.GetExprPtr() != nullptr) {
+    expr.GetExprPtr()->AcceptVisitor(this);
   }
 }
 VISIT_DEFN(RecursiveVisitor, NewClassExpr, expr) {
@@ -106,8 +106,8 @@ VISIT_DEFN(RecursiveVisitor, LocalDeclStmt, stmt) {
 }
 VISIT_DEFN(RecursiveVisitor, ReturnStmt, stmt) {
   SHORT_CIRCUIT_CHILD(ReturnStmt, stmt);
-  if (stmt.GetExpr() != nullptr) {
-    stmt.GetExpr()->AcceptVisitor(this);
+  if (stmt.GetExprPtr() != nullptr) {
+    stmt.GetExprPtr()->AcceptVisitor(this);
   }
 }
 VISIT_DEFN(RecursiveVisitor, IfStmt, stmt) {
@@ -119,11 +119,11 @@ VISIT_DEFN(RecursiveVisitor, IfStmt, stmt) {
 VISIT_DEFN(RecursiveVisitor, ForStmt, stmt) {
   SHORT_CIRCUIT_CHILD(ForStmt, stmt);
   stmt.Init().AcceptVisitor(this);
-  if (stmt.Cond() != nullptr) {
-    stmt.Cond()->AcceptVisitor(this);
+  if (stmt.CondPtr() != nullptr) {
+    stmt.CondPtr()->AcceptVisitor(this);
   }
-  if (stmt.Update() != nullptr) {
-    stmt.Update()->AcceptVisitor(this);
+  if (stmt.UpdatePtr() != nullptr) {
+    stmt.UpdatePtr()->AcceptVisitor(this);
   }
   stmt.Body().AcceptVisitor(this);
 }
@@ -147,8 +147,8 @@ VISIT_DEFN(RecursiveVisitor, Param, param) {
 
 VISIT_DEFN(RecursiveVisitor, FieldDecl, field) {
   SHORT_CIRCUIT_CHILD(FieldDecl, field);
-  if (field.Val() != nullptr) {
-    field.Val()->AcceptVisitor(this);
+  if (field.ValPtr() != nullptr) {
+    field.ValPtr()->AcceptVisitor(this);
   }
 }
 

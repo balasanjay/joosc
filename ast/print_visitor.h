@@ -76,8 +76,8 @@ class PrintVisitor final : public Visitor {
     expr.GetType().PrintTo(os_);
 
     *os_ << ">>(";
-    if (expr.GetExpr() != nullptr) {
-      expr.GetExpr()->AcceptVisitor(this);
+    if (expr.GetExprPtr() != nullptr) {
+      expr.GetExprPtr()->AcceptVisitor(this);
     }
     *os_ << ")";
   }
@@ -134,9 +134,9 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(ReturnStmt, stmt) {
     *os_ << "return";
-    if (stmt.GetExpr() != nullptr) {
+    if (stmt.GetExprPtr() != nullptr) {
       *os_ << ' ';
-      stmt.GetExpr()->AcceptVisitor(this);
+      stmt.GetExprPtr()->AcceptVisitor(this);
     }
     *os_ << ';';
   }
@@ -154,14 +154,14 @@ class PrintVisitor final : public Visitor {
   VISIT_DECL(ForStmt, stmt) {
     *os_ << "for" << space_ << '(';
     stmt.Init().AcceptVisitor(this);
-    if (stmt.Cond() != nullptr) {
+    if (stmt.CondPtr() != nullptr) {
       *os_ << space_;
-      stmt.Cond()->AcceptVisitor(this);
+      stmt.CondPtr()->AcceptVisitor(this);
     }
     *os_ << ';';
-    if (stmt.Update() != nullptr) {
+    if (stmt.UpdatePtr() != nullptr) {
       *os_ << space_;
-      stmt.Update()->AcceptVisitor(this);
+      stmt.UpdatePtr()->AcceptVisitor(this);
     }
     *os_ << ')' << space_ << '{';
     stmt.Body().AcceptVisitor(this);
@@ -195,9 +195,9 @@ class PrintVisitor final : public Visitor {
     field.GetType().PrintTo(os_);
     *os_ << ' ';
     *os_ << field.Ident().TypeInfo();
-    if (field.Val() != nullptr) {
+    if (field.ValPtr() != nullptr) {
       *os_ << space_ << '=' << space_;
-      field.Val()->AcceptVisitor(this);
+      field.ValPtr()->AcceptVisitor(this);
     }
     *os_ << ';';
   }
@@ -226,9 +226,9 @@ class PrintVisitor final : public Visitor {
     type.Mods().PrintTo(os_);
     *os_ << "class ";
     *os_ << type.NameToken().TypeInfo();
-    if (type.Super() != nullptr) {
+    if (type.SuperPtr() != nullptr) {
       *os_ << " extends ";
-      type.Super()->PrintTo(os_);
+      type.SuperPtr()->PrintTo(os_);
     }
     bool first = true;
     for (const auto& name : type.Interfaces()) {
@@ -277,9 +277,9 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(CompUnit, unit) {
-    if (unit.Package() != nullptr) {
+    if (unit.PackagePtr() != nullptr) {
       *os_ << "package ";
-      unit.Package()->PrintTo(os_);
+      unit.PackagePtr()->PrintTo(os_);
       *os_ << ";" << newline_;
     }
 

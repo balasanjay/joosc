@@ -90,14 +90,13 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
   }
 
   // Parse.
-  uptr<Program> program;
+  sptr<Program> program;
   {
     ErrorList errors;
-    uptr<Program> prog = Parse(fs, filtered_tokens, &errors);
+    program = Parse(fs, filtered_tokens, &errors);
     if (PrintErrors(errors, err)) {
       return false;
     }
-    program.swap(prog);
   }
   if (stage == CompilerStage::PARSE) {
     return true;

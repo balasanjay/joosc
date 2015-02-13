@@ -1175,12 +1175,12 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
     if (isConstructor) {
       return afterBody.Success(
           new ConstructorDecl(*mods.Get(), *ident.Get(),
-                              *params.Get(), bodyPtr),
+                              params.Get(), bodyPtr),
           out);
     } else {
       return afterBody.Success(
           new MethodDecl(*mods.Get(), type.Get(), *ident.Get(),
-                         *params.Get(), bodyPtr),
+                         params.Get(), bodyPtr),
           out);
     }
   }
@@ -1515,7 +1515,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
       new CompUnit(packageName, imports, types), out);
 }
 
-uptr<Program> Parse(const FileSet* fs,
+sptr<Program> Parse(const FileSet* fs,
                           const vector<vector<lexer::Token>>& tokens,
                           ErrorList* error_out) {
   assert((uint)fs->Size() == tokens.size());
@@ -1541,7 +1541,7 @@ uptr<Program> Parse(const FileSet* fs,
     unit.ReleaseErrors(error_out);
   }
 
-  return uptr<Program>(new Program(move(units)));
+  return make_shared<Program>(units);
 }
 
 // TODO: After we have types, need to ensure byte literals are within 8-bit

@@ -185,7 +185,7 @@ REC_VISIT_DEFN(TypeVisitor, ForStmt, stmt) {
     Token tok(K_VOID, Pos(0, 1));
     errors_->Append(MakeInvalidTopLevelStatement(fs_, tok));
   }
-  if (!IsTopLevelExpr(stmt.Update())) {
+  if (!IsTopLevelExpr(stmt.UpdatePtr().get())) {
     // TODO: Error.
     Token tok(K_VOID, Pos(0, 1));
     errors_->Append(MakeInvalidTopLevelStatement(fs_, tok));
