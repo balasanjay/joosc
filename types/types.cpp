@@ -15,6 +15,7 @@ using ast::ImportDecl;
 using ast::TypeId;
 using base::DiagnosticClass;
 using base::Error;
+using base::ErrorList;
 using base::FileSet;
 using base::MakeError;
 using base::OutputOptions;
@@ -22,6 +23,40 @@ using base::Pos;
 using base::PosRange;
 
 namespace types {
+
+namespace {
+
+Error* MakeUnknownImportError(const FileSet* fs, PosRange pos) {
+  return MakeSimplePosRangeError(fs, pos, "UnknownImportError",
+                                 "Cannot find imported class.");
+}
+
+Error* MakeDuplicateTypeDefinitionError(const FileSet* fs, const string& name, const vector<PosRange> dupes) {
+  return MakeError([=](ostream* out, const OutputOptions& opt) {
+    if (opt.simple) {
+      *out << name << ": [";
+      for (const auto& dupe : dupes) {
+        *out << dupe << ",";
+      }
+      *out << ']';
+      return;
+    }
+
+    stringstream msgstream;
+    msgstream << "Type '" << name << "' was declared multiple times.";
+
+    PrintDiagnosticHeader(out, opt, fs, dupes.at(0), DiagnosticClass::ERROR, msgstream.str());
+    PrintRangePtr(out, opt, fs, dupes.at(0));
+    for (uint i = 1; i < dupes.size(); ++i) {
+      *out << '\n';
+      PosRange pos = dupes.at(i);
+      PrintDiagnosticHeader(out, opt, fs, pos, DiagnosticClass::INFO, "Also declared here.");
+      PrintRangePtr(out, opt, fs, pos);
+    }
+  });
+}
+
+} // namespace
 
 TypeSet::TypeSet(const vector<string>& qualifiedTypes) {
   // Get list of all types.
@@ -106,11 +141,11 @@ void TypeSet::InsertName(QualifiedNameBaseMap* m, string name, TypeId::Base base
   }
 
   // TODO: handle name-clash.
-  assert(false);
+  throw;
 }
 
 
-TypeSet TypeSet::WithImports(const vector<ast::ImportDecl>& imports) const {
+TypeSet TypeSet::WithImports(const vector<ast::ImportDecl>& imports, const FileSet* fs, ErrorList* errors) const {
   TypeSet view;
   view.original_names_ = original_names_;
   view.available_names_ = available_names_;
@@ -120,15 +155,20 @@ TypeSet TypeSet::WithImports(const vector<ast::ImportDecl>& imports) const {
     if (import.IsWildCard()) {
       view.InsertWildcardImport(import.Name().Name());
     } else {
-      view.InsertImport(import);
+      view.InsertImport(import, fs, errors);
     }
   }
 
   return view;
 }
 
-void TypeSet::InsertImport(const ImportDecl& import) {
+void TypeSet::InsertImport(const ImportDecl& import, const FileSet* fs, ErrorList* errors) {
   auto iter = original_names_.find(import.Name().Name());
+
+  if (iter == original_names_.end()) {
+    errors->Append(MakeUnknownImportError(fs, import.Name().Tokens().back().pos));
+    return;
+  }
 
   // TODO: errors.
   assert(iter != original_names_.end());
@@ -169,31 +209,6 @@ void TypeSetBuilder::Put(const vector<string>& ns, const string& name, base::Pos
   assert(name.find('.') == string::npos);
   ss << name;
   entries_.push_back(Entry{ss.str(), namepos});
-}
-
-Error* MakeDuplicateTypeDefinitionError(const FileSet* fs, const string& name, const vector<PosRange> dupes) {
-  return MakeError([=](ostream* out, const OutputOptions& opt) {
-    if (opt.simple) {
-      *out << name << ": [";
-      for (const auto& dupe : dupes) {
-        *out << dupe << ",";
-      }
-      *out << ']';
-      return;
-    }
-
-    stringstream msgstream;
-    msgstream << "Type '" << name << "' was declared multiple times.";
-
-    PrintDiagnosticHeader(out, opt, fs, dupes.at(0), DiagnosticClass::ERROR, msgstream.str());
-    PrintRangePtr(out, opt, fs, dupes.at(0));
-    for (uint i = 1; i < dupes.size(); ++i) {
-      *out << '\n';
-      PosRange pos = dupes.at(i);
-      PrintDiagnosticHeader(out, opt, fs, pos, DiagnosticClass::INFO, "Also declared here.");
-      PrintRangePtr(out, opt, fs, pos);
-    }
-  });
 }
 
 TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {

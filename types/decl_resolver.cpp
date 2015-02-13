@@ -36,7 +36,8 @@ namespace {
 Error* MakeUnknownTypenameError(const FileSet* fs, PosRange pos) {
   return MakeSimplePosRangeError(fs, pos, "UnknownTypenameError",
                                  "Unknown type name.");
-}
+
+} // namespace
 
 TypeId ResolveType(const Type& type, TypeSet typeset, PosRange* pos_out) {
   const Type* cur = &type;
@@ -74,7 +75,7 @@ REWRITE_DEFN2(DeclResolver, CompUnit, CompUnit, unit,) {
     package = unit.PackagePtr();
   }
 
-  TypeSet scopedTypeSet = typeset_.WithImports(unit.Imports());
+  TypeSet scopedTypeSet = typeset_.WithImports(unit.Imports(), fs_, errors_);
   DeclResolver scopedResolver(builder_, scopedTypeSet, fs_, errors_, package);
 
   base::SharedPtrVector<TypeDecl> decls;
