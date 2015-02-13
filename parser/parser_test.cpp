@@ -60,18 +60,10 @@ class ParserTest : public ::testing::Test {
 };
 
 template <typename T>
-string Str(const T& t) {
-  std::stringstream s;
-  PrintVisitor visitor = PrintVisitor::Compact(&s);
-  t.AcceptVisitor(&visitor);
-  return s.str();
-}
-
-template <typename T>
 string Str(sptr<const T> t) {
   std::stringstream s;
   PrintVisitor visitor = PrintVisitor::Compact(&s);
-  t->AcceptVisitor(&visitor);
+  Visit(&visitor, t);
   return s.str();
 }
 
@@ -1268,7 +1260,7 @@ TEST_F(ParserTest, WhileStmtSuccess) {
   Parser after = parser_->ParseWhileStmt(&stmt);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("while(INTEGER){{K_INT IDENTIFIER=INTEGER;}}", Str(*stmt.Get()));
+  EXPECT_EQ("while(INTEGER){{K_INT IDENTIFIER=INTEGER;}}", Str(stmt.Get()));
 }
 
 TEST_F(ParserTest, ParamListBasic) {

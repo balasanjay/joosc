@@ -2,11 +2,11 @@
 #define AST_PRINT_VISITOR_H
 
 #include "ast/ast.h"
-#include "ast/visitor.h"
+#include "ast/visitor2.h"
 
 namespace ast {
 
-class PrintVisitor final : public Visitor {
+class PrintVisitor final : public Visitor2 {
  public:
   static PrintVisitor Pretty(std::ostream* os) {
     return PrintVisitor(os, 0, "\n", "  ", " ");
@@ -16,213 +16,259 @@ class PrintVisitor final : public Visitor {
     return PrintVisitor(os, 0, "", "", "");
   }
 
-  VISIT_DECL(ArrayIndexExpr, expr) {
-    expr.Base().AcceptVisitor(this);
+  VISIT_DECL2(ArrayIndexExpr, expr) {
+    Visit(this, expr.BasePtr());
     *os_ << '[';
-    expr.Index().AcceptVisitor(this);
+    Visit(this, expr.IndexPtr());
     *os_ << ']';
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(BinExpr, expr) {
+  VISIT_DECL2(BinExpr, expr) {
     *os_ << '(';
-    expr.Lhs().AcceptVisitor(this);
+    Visit(this, expr.LhsPtr());
     *os_ << ' ' << expr.Op().TypeInfo() << ' ';
-    expr.Rhs().AcceptVisitor(this);
+    Visit(this, expr.RhsPtr());
     *os_ << ')';
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(CallExpr, expr) {
-    expr.Base().AcceptVisitor(this);
+  VISIT_DECL2(CallExpr, expr) {
+    Visit(this, expr.BasePtr());
     *os_ << '(';
     PrintArgList(expr.Args());
     *os_ << ')';
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(CastExpr, expr) {
+  VISIT_DECL2(CastExpr, expr) {
     *os_ << "cast<";
     expr.GetType().PrintTo(os_);
     *os_ << ">(";
-    expr.GetExpr().AcceptVisitor(this);
+    Visit(this, expr.GetExprPtr());
     *os_ << ')';
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(InstanceOfExpr, expr) {
+  VISIT_DECL2(InstanceOfExpr, expr) {
     *os_ << '(';
-    expr.Lhs().AcceptVisitor(this);
+    Visit(this, expr.LhsPtr());
     *os_ << " instanceof ";
     expr.GetType().PrintTo(os_);
     *os_ << ')';
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(FieldDerefExpr, expr) {
-    expr.Base().AcceptVisitor(this);
+  VISIT_DECL2(FieldDerefExpr, expr) {
+    Visit(this, expr.BasePtr());
     *os_ << '.' << expr.FieldName();
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(BoolLitExpr, expr) { *os_ << expr.GetToken().TypeInfo(); }
+  VISIT_DECL2(BoolLitExpr, expr) {
+    *os_ << expr.GetToken().TypeInfo();
+    return VisitResult::SKIP;
+  }
 
-  VISIT_DECL(StringLitExpr, expr) { *os_ << expr.GetToken().TypeInfo(); }
+  VISIT_DECL2(StringLitExpr, expr) {
+    *os_ << expr.GetToken().TypeInfo();
+    return VisitResult::SKIP;
+  }
 
-  VISIT_DECL(CharLitExpr, expr) { *os_ << expr.GetToken().TypeInfo(); }
+  VISIT_DECL2(CharLitExpr, expr) {
+    *os_ << expr.GetToken().TypeInfo();
+    return VisitResult::SKIP;
+  }
 
-  VISIT_DECL(NullLitExpr, expr) { *os_ << expr.GetToken().TypeInfo(); }
+  VISIT_DECL2(NullLitExpr, expr) {
+    *os_ << expr.GetToken().TypeInfo();
+    return VisitResult::SKIP;
+  }
 
-  VISIT_DECL(IntLitExpr, expr) { *os_ << expr.GetToken().TypeInfo(); }
+  VISIT_DECL2(IntLitExpr, expr) {
+    *os_ << expr.GetToken().TypeInfo();
+    return VisitResult::SKIP;
+  }
 
-  VISIT_DECL(NameExpr, expr) { *os_ << expr.Name().Name(); }
+  VISIT_DECL2(NameExpr, expr) {
+    *os_ << expr.Name().Name();
+    return VisitResult::SKIP;
+  }
 
-  VISIT_DECL(NewArrayExpr, expr) {
+  VISIT_DECL2(NewArrayExpr, expr) {
     *os_ << "new<array<";
     expr.GetType().PrintTo(os_);
 
     *os_ << ">>(";
     if (expr.GetExprPtr() != nullptr) {
-      expr.GetExprPtr()->AcceptVisitor(this);
+      Visit(this, expr.GetExprPtr());
     }
     *os_ << ")";
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(NewClassExpr, expr) {
+  VISIT_DECL2(NewClassExpr, expr) {
     *os_ << "new<";
     expr.GetType().PrintTo(os_);
     *os_ << ">(";
     PrintArgList(expr.Args());
     *os_ << ")";
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(ParenExpr, expr) {
+  VISIT_DECL2(ParenExpr, expr) {
     *os_ << "(";
-    expr.Nested().AcceptVisitor(this);
+    Visit(this, expr.NestedPtr());
     *os_ << ")";
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(ThisExpr, ) { *os_ << "this"; }
+  VISIT_DECL2(ThisExpr, ) {
+    *os_ << "this";
+    return VisitResult::SKIP;
+  }
 
-  VISIT_DECL(UnaryExpr, expr) {
+  VISIT_DECL2(UnaryExpr, expr) {
     *os_ << '(' << expr.Op().TypeInfo() << ' ';
-    expr.Rhs().AcceptVisitor(this);
+    Visit(this, expr.RhsPtr());
     *os_ << ')';
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(BlockStmt, stmt) {
+  VISIT_DECL2(BlockStmt, stmt) {
     *os_ << "{" << newline_;
 
     PrintVisitor nested = Indent();
-    for (const auto& substmt : stmt.Stmts()) {
+    for (const auto& substmt : stmt.Stmts().Vec()) {
       PutIndent(depth_ + 1);
-      substmt.AcceptVisitor(&nested);
+      Visit(this, substmt);
       *os_ << newline_;
     }
 
     PutIndent(depth_);
     *os_ << '}';
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(EmptyStmt, ) { *os_ << ';'; }
-
-  VISIT_DECL(ExprStmt, stmt) {
-    stmt.GetExpr().AcceptVisitor(this);
+  VISIT_DECL2(EmptyStmt, ) {
     *os_ << ';';
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(LocalDeclStmt, stmt) {
+  VISIT_DECL2(ExprStmt, stmt) {
+    Visit(this, stmt.GetExprPtr());
+    *os_ << ';';
+    return VisitResult::SKIP;
+  }
+
+  VISIT_DECL2(LocalDeclStmt, stmt) {
     stmt.GetType().PrintTo(os_);
     *os_ << ' ' << stmt.Ident().TypeInfo() << space_ << '=' << space_;
-    stmt.GetExpr().AcceptVisitor(this);
+    Visit(this, stmt.GetExprPtr());
     *os_ << ';';
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(ReturnStmt, stmt) {
+  VISIT_DECL2(ReturnStmt, stmt) {
     *os_ << "return";
     if (stmt.GetExprPtr() != nullptr) {
       *os_ << ' ';
-      stmt.GetExprPtr()->AcceptVisitor(this);
+      Visit(this, stmt.GetExprPtr());
     }
     *os_ << ';';
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(IfStmt, stmt) {
+  VISIT_DECL2(IfStmt, stmt) {
     *os_ << "if" << space_ << '(';
-    stmt.Cond().AcceptVisitor(this);
+    Visit(this, stmt.CondPtr());
     *os_ << ')' << space_ << '{';
-    stmt.TrueBody().AcceptVisitor(this);
+    Visit(this, stmt.TrueBodyPtr());
     *os_ << '}' << space_ << "else" << space_ << '{';
-    stmt.FalseBody().AcceptVisitor(this);
+    Visit(this, stmt.FalseBodyPtr());
     *os_ << '}';
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(ForStmt, stmt) {
+  VISIT_DECL2(ForStmt, stmt) {
     *os_ << "for" << space_ << '(';
-    stmt.Init().AcceptVisitor(this);
+    Visit(this, stmt.InitPtr());
     if (stmt.CondPtr() != nullptr) {
       *os_ << space_;
-      stmt.CondPtr()->AcceptVisitor(this);
+      Visit(this, stmt.CondPtr());
     }
     *os_ << ';';
     if (stmt.UpdatePtr() != nullptr) {
       *os_ << space_;
-      stmt.UpdatePtr()->AcceptVisitor(this);
+      Visit(this, stmt.UpdatePtr());
     }
     *os_ << ')' << space_ << '{';
-    stmt.Body().AcceptVisitor(this);
+    Visit(this, stmt.BodyPtr());
     *os_ << '}';
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(WhileStmt, stmt) {
+  VISIT_DECL2(WhileStmt, stmt) {
     *os_ << "while" << space_ << '(';
-    stmt.Cond().AcceptVisitor(this);
+    Visit(this, stmt.CondPtr());
     *os_ << ')' << space_ << '{';
-    stmt.Body().AcceptVisitor(this);
+    Visit(this, stmt.BodyPtr());
     *os_ << '}';
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(ParamList, params) {
+  VISIT_DECL2(ParamList, params) {
     for (int i = 0; i < params.Params().Size(); ++i) {
       if (i > 0) {
         *os_ << ',' << space_;
       }
-      params.Params().At(i)->AcceptVisitor(this);
+      Visit(this, params.Params().At(i));
     }
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(Param, param) {
+  VISIT_DECL2(Param, param) {
     param.GetType().PrintTo(os_);
     *os_ << ' ' << param.Ident().TypeInfo();
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(FieldDecl, field) {
+  VISIT_DECL2(FieldDecl, field) {
     field.Mods().PrintTo(os_);
     field.GetType().PrintTo(os_);
     *os_ << ' ';
     *os_ << field.Ident().TypeInfo();
     if (field.ValPtr() != nullptr) {
       *os_ << space_ << '=' << space_;
-      field.ValPtr()->AcceptVisitor(this);
+      Visit(this, field.ValPtr());
     }
     *os_ << ';';
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(ConstructorDecl, meth) {
+  VISIT_DECL2(ConstructorDecl, meth) {
     meth.Mods().PrintTo(os_);
     *os_ << meth.Ident().TypeInfo();
     *os_ << '(';
-    meth.Params().AcceptVisitor(this);
+    Visit(this, meth.ParamsPtr());
     *os_ << ')' << space_;
-    meth.Body().AcceptVisitor(this);
+    Visit(this, meth.BodyPtr());
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(MethodDecl, meth) {
+  VISIT_DECL2(MethodDecl, meth) {
     meth.Mods().PrintTo(os_);
     meth.GetType().PrintTo(os_);
     *os_ << ' ';
     *os_ << meth.Ident().TypeInfo();
     *os_ << '(';
-    meth.Params().AcceptVisitor(this);
+    Visit(this, meth.ParamsPtr());
     *os_ << ')' << space_;
-    meth.Body().AcceptVisitor(this);
+    Visit(this, meth.BodyPtr());
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(ClassDecl, type) {
+  VISIT_DECL2(ClassDecl, type) {
     type.Mods().PrintTo(os_);
     *os_ << "class ";
     *os_ << type.NameToken().TypeInfo();
@@ -244,14 +290,15 @@ class PrintVisitor final : public Visitor {
     PrintVisitor nested = Indent();
     for (int i = 0; i < type.Members().Size(); ++i) {
       PutIndent(depth_ + 1);
-      type.Members().At(i)->AcceptVisitor(&nested);
+      Visit(&nested, type.Members().At(i));
       *os_ << newline_;
     }
     PutIndent(depth_);
     *os_ << '}';
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(InterfaceDecl, type) {
+  VISIT_DECL2(InterfaceDecl, type) {
     type.Mods().PrintTo(os_);
     *os_ << "interface ";
     *os_ << type.NameToken().TypeInfo();
@@ -269,14 +316,15 @@ class PrintVisitor final : public Visitor {
     PrintVisitor nested = Indent();
     for (int i = 0; i < type.Members().Size(); ++i) {
       PutIndent(depth_ + 1);
-      type.Members().At(i)->AcceptVisitor(&nested);
+      Visit(&nested, type.Members().At(i));
       *os_ << newline_;
     }
     PutIndent(depth_);
     *os_ << '}';
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(CompUnit, unit) {
+  VISIT_DECL2(CompUnit, unit) {
     if (unit.PackagePtr() != nullptr) {
       *os_ << "package ";
       unit.PackagePtr()->PrintTo(os_);
@@ -293,23 +341,24 @@ class PrintVisitor final : public Visitor {
     }
 
     for (int i = 0; i < unit.Types().Size(); ++i) {
-      unit.Types().At(i)->AcceptVisitor(this);
+      Visit(this, unit.Types().At(i));
       *os_ << newline_;
     }
+    return VisitResult::SKIP;
   }
 
-  VISIT_DECL(Program, prog) {
+  VISIT_DECL2(Program, prog) {
     // TODO: print the file name?
     for (int i = 0; i < prog.CompUnits().Size(); ++i) {
-      prog.CompUnits().At(i)->AcceptVisitor(this);
+      Visit(this, prog.CompUnits().At(i));
     }
+    return VisitResult::SKIP;
   }
 
  private:
   PrintVisitor(std::ostream* os, int depth, const string& newline,
                const string& tab, const string& space)
-      : Visitor(),
-        os_(os),
+      : os_(os),
         depth_(depth),
         newline_(newline),
         tab_(tab),
@@ -321,12 +370,12 @@ class PrintVisitor final : public Visitor {
 
   void PrintArgList(const base::SharedPtrVector<const Expr>& args) {
     bool first = true;
-    for (const auto& arg : args) {
+    for (const auto& arg : args.Vec()) {
       if (!first) {
         *os_ << ',' << space_;
       }
       first = false;
-      arg.AcceptVisitor(this);
+      Visit(this, arg);
     }
   }
 

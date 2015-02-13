@@ -6,6 +6,9 @@
 namespace base {
 
 template <typename T>
+struct SharedPtrVectorPtrIter;
+
+template <typename T>
 class SharedPtrVector {
  public:
   SharedPtrVector() = default;
@@ -27,6 +30,10 @@ class SharedPtrVector {
     sptr<T> ret = vec_.at(vec_.size() - 1);
     vec_.pop_back();
     return ret;
+  }
+
+  const vector<sptr<T>>& Vec() const {
+    return vec_;
   }
 
  private:
