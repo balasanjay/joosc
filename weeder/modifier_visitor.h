@@ -11,7 +11,7 @@ namespace weeder {
 // CompilationUnit contains a ClassDecl or an InterfaceDecl, it will select one
 // of ClassModifierVisitor or InterfaceModifier visitor, and traverse the
 // declaration using that visitor.
-class ModifierVisitor : public ast::Visitor2 {
+class ModifierVisitor : public ast::Visitor {
  public:
   ModifierVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}
@@ -36,7 +36,7 @@ class ModifierVisitor : public ast::Visitor2 {
 //   9) A constructor must have a body; i.e. it can't be ";".
 //   10) A class must be public.
 //   11) A member must be public or protected.
-class ClassModifierVisitor : public ast::Visitor2 {
+class ClassModifierVisitor : public ast::Visitor {
  public:
   ClassModifierVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}
@@ -57,7 +57,7 @@ class ClassModifierVisitor : public ast::Visitor2 {
 //   4) An interface cannot be protected, static, final, or native.
 //   5) An interface must be public.
 //   6) An interface method must be public.
-class InterfaceModifierVisitor : public ast::Visitor2 {
+class InterfaceModifierVisitor : public ast::Visitor {
  public:
   InterfaceModifierVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}

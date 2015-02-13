@@ -11,7 +11,7 @@ namespace weeder {
 //   1) "void" is only valid as the return type of a method.
 //   2) NewClassExpr must have a non-primitive type. i.e. no "new int(1)".
 //   3) RHS of an instanceof must be a NameExpr.
-class TypeVisitor : public ast::Visitor2 {
+class TypeVisitor : public ast::Visitor {
  public:
   TypeVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}

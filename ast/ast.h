@@ -12,10 +12,10 @@
 namespace ast {
 
 #define ACCEPT_VISITOR_ABSTRACT(type) \
-  virtual sptr<const type> Accept2(Visitor2* visitor, sptr<const type> ptr) const = 0
+  virtual sptr<const type> Accept2(Visitor* visitor, sptr<const type> ptr) const = 0
 
 #define ACCEPT_VISITOR(type, ret_type) \
-  virtual sptr<const ret_type> Accept2(Visitor2* visitor, sptr<const ret_type> ptr) const { \
+  virtual sptr<const ret_type> Accept2(Visitor* visitor, sptr<const ret_type> ptr) const { \
     sptr<const type> downcasted = std::dynamic_pointer_cast<const type, const ret_type>(ptr); \
     assert(downcasted != nullptr); \
     assert(downcasted.get() == this); \

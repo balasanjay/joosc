@@ -9,7 +9,7 @@ namespace weeder {
 
 // CallVisitor checks that the left-hand-side of a method call is one of
 // NameExpr, or FieldDerefExpr.
-class CallVisitor : public ast::Visitor2 {
+class CallVisitor : public ast::Visitor {
  public:
   CallVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}

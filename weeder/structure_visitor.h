@@ -10,7 +10,7 @@ namespace weeder {
 // StructureVisitor checks that the a compilation unit has at most 1 type
 // declaration; it also verifies that a type declaration T is declared in a
 // file T.java.
-class StructureVisitor : public ast::Visitor2 {
+class StructureVisitor : public ast::Visitor {
  public:
   StructureVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}

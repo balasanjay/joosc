@@ -49,7 +49,7 @@ enum class VisitResult {
   RECURSE_PRUNE, // Visit children, and then prune this subtree from AST.
 };
 
-class Visitor2 {
+class Visitor {
 public:
 #define _REWRITE_DECL(type, rettype, name) virtual sptr<const rettype> Rewrite##type(const type& name, sptr<const type> name##ptr);
   FOR_EACH_VISITABLE(_REWRITE_DECL)
@@ -84,7 +84,7 @@ private:
 #undef FOR_EACH_VISITABLE
 
 template <typename T>
-auto Visit(Visitor2* visitor, const sptr<T> t) -> decltype(t->Accept2(visitor, t)) {
+auto Visit(Visitor* visitor, const sptr<T> t) -> decltype(t->Accept2(visitor, t)) {
   return t->Accept2(visitor, t);
 }
 

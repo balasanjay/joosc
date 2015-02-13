@@ -9,7 +9,7 @@
 
 namespace types {
 
-class DeclResolver : public ast::Visitor2 {
+class DeclResolver : public ast::Visitor {
  public:
   DeclResolver(TypeInfoMapBuilder* builder, const TypeSet& typeset,
                const base::FileSet* fs, base::ErrorList* errors, sptr<const ast::QualifiedName> package = nullptr, ast::TypeId curtype = ast::TypeId::Unassigned())

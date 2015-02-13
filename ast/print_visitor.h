@@ -6,7 +6,7 @@
 
 namespace ast {
 
-class PrintVisitor final : public Visitor2 {
+class PrintVisitor final : public Visitor {
  public:
   static PrintVisitor Pretty(std::ostream* os) {
     return PrintVisitor(os, 0, "\n", "  ", " ");

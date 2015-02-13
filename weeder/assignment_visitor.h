@@ -9,7 +9,7 @@ namespace weeder {
 
 // AssignmentVisitor checks that the left-hand-side of an assignment is one of
 // NameExpr, FieldDerefExpr, or ArrayIndexExpr.
-class AssignmentVisitor : public ast::Visitor2 {
+class AssignmentVisitor : public ast::Visitor {
  public:
   AssignmentVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}
