@@ -24,7 +24,7 @@ class StructureVisitorTest : public WeederTest {
       return nullptr;
     }
 
-    SharedPtrVector<CompUnit> units;
+    SharedPtrVector<const CompUnit> units;
     units.Append(unit.Get());
 
     return uptr<Program>(new Program(units));

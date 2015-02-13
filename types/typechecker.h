@@ -7,7 +7,7 @@
 
 namespace types {
 
-const sptr<ast::Program> TypecheckProgram(const sptr<ast::Program> prog,
+sptr<const ast::Program> TypecheckProgram(sptr<const ast::Program> prog,
                                           const base::FileSet* fs,
                                           base::ErrorList* out);
 

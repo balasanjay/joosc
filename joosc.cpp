@@ -90,7 +90,7 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
   }
 
   // Parse.
-  sptr<Program> program;
+  sptr<const Program> program;
   {
     ErrorList errors;
     program = Parse(fs, filtered_tokens, &errors);
@@ -105,7 +105,7 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
   // Weed.
   {
     ErrorList errors;
-    WeedProgram(fs, program.get(), &errors);
+    program = WeedProgram(fs, program, &errors);
     if (PrintErrors(errors, err)) {
       return false;
     }

@@ -13,7 +13,7 @@ using base::FileSet;
 
 namespace weeder {
 
-void WeedProgram(const FileSet* fs, const Program* prog, ErrorList* out) {
+sptr<const Program> WeedProgram(const FileSet* fs, sptr<const Program> prog, ErrorList* out) {
   AssignmentVisitor assignmentChecker(fs, out);
   prog->AcceptVisitor(&assignmentChecker);
 
@@ -24,7 +24,8 @@ void WeedProgram(const FileSet* fs, const Program* prog, ErrorList* out) {
   prog->AcceptVisitor(&typeChecker);
 
   ModifierVisitor modifierChecker(fs, out);
-  prog->AcceptVisitor(&modifierChecker);
+  // const sptr<Program> prog2 = ast::Visit(&modifierChecker, prog);
+  prog = Visit(&modifierChecker, prog);
 
   IntRangeVisitor intRangeChecker(fs, out);
   prog->AcceptVisitor(&intRangeChecker);
@@ -33,6 +34,8 @@ void WeedProgram(const FileSet* fs, const Program* prog, ErrorList* out) {
   prog->AcceptVisitor(&structureChecker);
 
   // More weeding required.
+
+  return prog;
 }
 
 }  // namespace weeder

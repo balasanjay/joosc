@@ -319,7 +319,7 @@ class PrintVisitor final : public Visitor {
     return PrintVisitor(os_, depth_ + 1, newline_, tab_, space_);
   }
 
-  void PrintArgList(const base::SharedPtrVector<Expr>& args) {
+  void PrintArgList(const base::SharedPtrVector<const Expr>& args) {
     bool first = true;
     for (const auto& arg : args) {
       if (!first) {

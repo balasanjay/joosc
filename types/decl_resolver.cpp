@@ -70,7 +70,7 @@ TypeId DeclResolver::MustResolveType(const Type& type) {
 }
 
 REWRITE_DEFN2(DeclResolver, CompUnit, CompUnit, unit,) {
-  sptr<QualifiedName> package = nullptr;
+  sptr<const QualifiedName> package = nullptr;
   if (unit.PackagePtr() != nullptr) {
     package = unit.PackagePtr();
   }
@@ -78,10 +78,10 @@ REWRITE_DEFN2(DeclResolver, CompUnit, CompUnit, unit,) {
   TypeSet scopedTypeSet = typeset_.WithImports(unit.Imports(), fs_, errors_);
   DeclResolver scopedResolver(builder_, scopedTypeSet, fs_, errors_, package);
 
-  base::SharedPtrVector<TypeDecl> decls;
+  base::SharedPtrVector<const TypeDecl> decls;
   for (int i = 0; i < unit.Types().Size(); ++i) {
-    sptr<TypeDecl> oldtype = unit.Types().At(i);
-    sptr<TypeDecl> newtype = Visit(&scopedResolver, oldtype);
+    sptr<const TypeDecl> oldtype = unit.Types().At(i);
+    sptr<const TypeDecl> newtype = Visit(&scopedResolver, oldtype);
     if (newtype != nullptr) {
       decls.Append(newtype);
     }
@@ -117,10 +117,10 @@ REWRITE_DEFN2(DeclResolver, ClassDecl, TypeDecl, type, ) {
   // TODO: handle super.
   // TODO: put into builder_.
   DeclResolver memberResolver(builder_, typeset_, fs_, errors_, package_, curtid);
-  SharedPtrVector<MemberDecl> members;
+  SharedPtrVector<const MemberDecl> members;
   for (int i = 0; i < type.Members().Size(); ++i) {
-    sptr<MemberDecl> oldMem = type.Members().At(i);
-    sptr<MemberDecl> newMem = Visit(&memberResolver, oldMem);
+    sptr<const MemberDecl> oldMem = type.Members().At(i);
+    sptr<const MemberDecl> newMem = Visit(&memberResolver, oldMem);
     if (newMem != nullptr) {
       members.Append(newMem);
     }

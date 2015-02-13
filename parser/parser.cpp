@@ -98,12 +98,12 @@ TYPE_INFO_PRED(IsPrimitive);
 TYPE_INFO_PRED(IsModifier);
 #undef TYPE_INFO_PRED
 
-sptr<Expr> FixPrecedence(const SharedPtrVector<Expr>& owned_exprs,
+sptr<const Expr> FixPrecedence(const SharedPtrVector<const Expr>& owned_exprs,
                     const vector<Token>& ops) {
-  vector<sptr<Expr>> outstack;
+  vector<sptr<const Expr>> outstack;
   vector<Token> opstack;
 
-  vector<sptr<Expr>> exprs;
+  vector<sptr<const Expr>> exprs;
   for (int i = 0; i < owned_exprs.Size(); ++i) {
     exprs.push_back(owned_exprs.At(i));
   }
@@ -115,7 +115,7 @@ sptr<Expr> FixPrecedence(const SharedPtrVector<Expr>& owned_exprs,
     if (i < exprs.size() + ops.size()) {
       if (i % 2 == 0) {
         // Expr off input.
-        sptr<Expr> e = exprs.at(i / 2);
+        sptr<const Expr> e = exprs.at(i / 2);
         outstack.push_back(e);
         i++;
         continue;
@@ -139,8 +139,8 @@ sptr<Expr> FixPrecedence(const SharedPtrVector<Expr>& owned_exprs,
 
     assert(outstack.size() >= 2);
 
-    sptr<Expr> rhs = *outstack.rbegin();
-    sptr<Expr> lhs = *(outstack.rbegin() + 1);
+    sptr<const Expr> rhs = *outstack.rbegin();
+    sptr<const Expr> lhs = *(outstack.rbegin() + 1);
     Token nextop = *opstack.rbegin();
 
     outstack.pop_back();
@@ -347,7 +347,7 @@ Parser Parser::ParseExpression(Result<Expr>* out) const {
   // TODO: Regrammarize.
   SHORT_CIRCUIT;
 
-  SharedPtrVector<Expr> exprs;
+  SharedPtrVector<const Expr> exprs;
   vector<Token> operators;
 
   Result<Expr> expr;
@@ -379,7 +379,7 @@ Parser Parser::ParseExpression(Result<Expr>* out) const {
         instanceOfType.ReleaseErrors(&errors);
         return Fail(move(errors), out);
       }
-      sptr<Expr> instanceOfLhs = exprs.PopBack();
+      sptr<const Expr> instanceOfLhs = exprs.PopBack();
       exprs.Append(make_shared<InstanceOfExpr>(instanceOfLhs, *binOp.Get(),
                                       instanceOfType.Get()));
     } else {
@@ -475,7 +475,7 @@ Parser Parser::ParsePrimary(Result<Expr>* out) const {
 
   // We retain ownership IF ParsePrimaryEnd fails. If it succeeds, the
   // expectation is that it will take ownership.
-  sptr<Expr> baseExpr = base.Get();
+  sptr<const Expr> baseExpr = base.Get();
   Result<Expr> baseWithEnds;
   Parser afterEnds = afterBase.ParsePrimaryEnd(baseExpr, &baseWithEnds);
   RETURN_IF_GOOD(afterEnds, baseWithEnds.Get(), out);
@@ -513,7 +513,7 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
 
   if (afterType.IsNext(LPAREN)) {
     Result<Token> lparen;
-    Result<SharedPtrVector<Expr>> args;
+    Result<SharedPtrVector<const Expr>> args;
     Result<Token> rparen;
     Parser afterCall = afterType.ParseTokenIf(ExactType(LPAREN), &lparen)
                            .ParseArgumentList(&args)
@@ -526,7 +526,7 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
       return Fail(move(errors), out);
     }
 
-    sptr<Expr> newExpr =
+    sptr<const Expr> newExpr =
         make_shared<NewClassExpr>(*newTok.Get(), type.Get(), *args.Get());
     Result<Expr> nested;
     Parser afterEnd = afterCall.ParsePrimaryEnd(newExpr, &nested);
@@ -536,7 +536,7 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
   }
 
   assert(afterType.IsNext(LBRACK));
-  sptr<Expr> sizeExpr = nullptr;
+  sptr<const Expr> sizeExpr = nullptr;
   Parser after = *this;
 
   if (afterType.Advance().IsNext(RBRACK)) {
@@ -559,7 +559,7 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
     after = fullAfter;
   }
 
-  sptr<Expr> newExpr = make_shared<NewArrayExpr>(type.Get(), sizeExpr);
+  sptr<const Expr> newExpr = make_shared<NewArrayExpr>(type.Get(), sizeExpr);
   Result<Expr> nested;
   Parser afterEnd = after.ParsePrimaryEndNoArrayAccess(newExpr, &nested);
   RETURN_IF_GOOD(afterEnd, nested.Get(), out);
@@ -634,7 +634,7 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
   return Fail(MakeUnexpectedTokenError(GetNext()), out);
 }
 
-Parser Parser::ParsePrimaryEnd(sptr<Expr> base, Result<Expr>* out) const {
+Parser Parser::ParsePrimaryEnd(sptr<const Expr> base, Result<Expr>* out) const {
   // PrimaryEnd:
   //   "[" Expression "]" [ PrimaryEndNoArrayAccess ]
   //   PrimaryEndNoArrayAccess
@@ -657,7 +657,7 @@ Parser Parser::ParsePrimaryEnd(sptr<Expr> base, Result<Expr>* out) const {
     }
 
     // Try optional PrimaryEndNoArrayAccess.
-    sptr<Expr> index = make_shared<ArrayIndexExpr>(base, expr.Get());
+    sptr<const Expr> index = make_shared<ArrayIndexExpr>(base, expr.Get());
     Result<Expr> nested;
     Parser afterEnd = after.ParsePrimaryEndNoArrayAccess(index, &nested);
     RETURN_IF_GOOD(afterEnd, nested.Get(), out);
@@ -669,7 +669,7 @@ Parser Parser::ParsePrimaryEnd(sptr<Expr> base, Result<Expr>* out) const {
   return ParsePrimaryEndNoArrayAccess(base, out);
 }
 
-Parser Parser::ParsePrimaryEndNoArrayAccess(sptr<Expr> base,
+Parser Parser::ParsePrimaryEndNoArrayAccess(sptr<const Expr> base,
                                             Result<Expr>* out) const {
   // PrimaryEndNoArrayAccess:
   //   "." Identifier [ PrimaryEnd ]
@@ -696,7 +696,7 @@ Parser Parser::ParsePrimaryEndNoArrayAccess(sptr<Expr> base,
       return Fail(move(errors), out);
     }
 
-    sptr<Expr> deref = make_shared<FieldDerefExpr>(base, TokenString(GetFile(), *ident.Get()),
+    sptr<const Expr> deref = make_shared<FieldDerefExpr>(base, TokenString(GetFile(), *ident.Get()),
                                      *ident.Get());
     Result<Expr> nested;
     Parser afterEnd = after.ParsePrimaryEnd(deref, &nested);
@@ -707,7 +707,7 @@ Parser Parser::ParsePrimaryEndNoArrayAccess(sptr<Expr> base,
 
   {
     Result<Token> lparen;
-    Result<SharedPtrVector<Expr>> args;
+    Result<SharedPtrVector<const Expr>> args;
     Result<Token> rparen;
 
     Parser after = (*this)
@@ -721,7 +721,7 @@ Parser Parser::ParsePrimaryEndNoArrayAccess(sptr<Expr> base,
       return Fail(move(errors), out);
     }
 
-    sptr<Expr> call = make_shared<CallExpr>(base, *lparen.Get(), *args.Get());
+    sptr<const Expr> call = make_shared<CallExpr>(base, *lparen.Get(), *args.Get());
     Result<Expr> nested;
     Parser afterEnd = after.ParsePrimaryEnd(call, &nested);
     RETURN_IF_GOOD(afterEnd, nested.Get(), out);
@@ -730,16 +730,16 @@ Parser Parser::ParsePrimaryEndNoArrayAccess(sptr<Expr> base,
   }
 }
 
-Parser Parser::ParseArgumentList(Result<SharedPtrVector<Expr>>* out) const {
+Parser Parser::ParseArgumentList(Result<SharedPtrVector<const Expr>>* out) const {
   // ArgumentList:
   //   [Expression {"," Expression}]
   SHORT_CIRCUIT;
 
-  SharedPtrVector<Expr> args;
+  SharedPtrVector<const Expr> args;
   Result<Expr> first;
   Parser cur = ParseExpression(&first);
   if (!cur) {
-    return Success(new SharedPtrVector<Expr>(args), out);
+    return Success(new SharedPtrVector<const Expr>(args), out);
   }
   args.Append(first.Get());
 
@@ -760,7 +760,7 @@ Parser Parser::ParseArgumentList(Result<SharedPtrVector<Expr>>* out) const {
     cur = next;
   }
 
-  return cur.Success(new SharedPtrVector<Expr>(args), out);
+  return cur.Success(new SharedPtrVector<const Expr>(args), out);
 }
 
 Parser Parser::ParseStmt(Result<Stmt>* out) const {
@@ -868,7 +868,7 @@ Parser Parser::ParseBlock(Result<Stmt>* out) const {
   //   Statement
   SHORT_CIRCUIT;
 
-  SharedPtrVector<Stmt> stmts;
+  SharedPtrVector<const Stmt> stmts;
   if (IsAtEnd()) {
     return Fail(MakeUnexpectedEOFError(), out);
   }
@@ -989,7 +989,7 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   // TODO: Make emptystmt not print anything.
 
   // Parse optional for initializer.
-  sptr<Stmt> forInit;
+  sptr<const Stmt> forInit;
   if (next.IsNext(SEMI)) {
     forInit.reset(new EmptyStmt());
     next = next.Advance();
@@ -1008,7 +1008,7 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   }
 
   // Parse optional for condition.
-  sptr<Expr> forCond = nullptr;
+  sptr<const Expr> forCond = nullptr;
   if (next.IsNext(SEMI)) {
     next = next.Advance();
   } else {
@@ -1026,7 +1026,7 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   }
 
   // Parse optional for update.
-  sptr<Expr> forUpdate;
+  sptr<const Expr> forUpdate;
   if (!next.IsNext(RPAREN)) {
     Result<Expr> update;
     Parser afterUpdate = next.ParseExpression(&update);
@@ -1156,7 +1156,7 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
       return afterCommon.Fail(move(errors), out);
     }
 
-    sptr<Stmt> bodyPtr(nullptr);
+    sptr<const Stmt> bodyPtr(nullptr);
     Parser afterBody = afterParams;
     if (afterParams.IsNext(SEMI)) {
       bodyPtr.reset(new EmptyStmt());
@@ -1216,7 +1216,7 @@ Parser Parser::ParseParamList(Result<ParamList>* out) const {
   //   Type Identifier
   SHORT_CIRCUIT;
 
-  SharedPtrVector<Param> params;
+  SharedPtrVector<const Param> params;
   Parser cur = *this;
   bool firstParam = true;
   while (true) {
@@ -1296,7 +1296,7 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
   }
 
   Parser afterSuper = afterIdent;
-  sptr<ReferenceType> super(nullptr);
+  sptr<const ReferenceType> super(nullptr);
   if (isClass && afterIdent.IsNext(K_EXTENDS)) {
     Result<QualifiedName> superName;
 
@@ -1348,7 +1348,7 @@ Parser Parser::ParseTypeDecl(Result<TypeDecl>* out) const {
     return afterInterfaces.Fail(move(errors), out);
   }
 
-  SharedPtrVector<MemberDecl> members;
+  SharedPtrVector<const MemberDecl> members;
 
   Parser afterBody = afterBrace;
   while (!afterBody.IsNext(RBRACE)) {
@@ -1456,13 +1456,13 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
   SHORT_CIRCUIT;
 
   vector<ImportDecl> imports;
-  SharedPtrVector<TypeDecl> types;
+  SharedPtrVector<const TypeDecl> types;
 
   if (IsAtEnd()) {
     return Success(new CompUnit(nullptr, imports, types), out);
   }
 
-  sptr<QualifiedName> packageName(nullptr);
+  sptr<const QualifiedName> packageName(nullptr);
   Parser afterPackage = *this;
   if (IsNext(K_PACKAGE)) {
     Result<Token> package;
@@ -1515,12 +1515,12 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
       new CompUnit(packageName, imports, types), out);
 }
 
-sptr<Program> Parse(const FileSet* fs,
+sptr<const Program> Parse(const FileSet* fs,
                           const vector<vector<lexer::Token>>& tokens,
                           ErrorList* error_out) {
   assert((uint)fs->Size() == tokens.size());
 
-  SharedPtrVector<CompUnit> units;
+  SharedPtrVector<const CompUnit> units;
   bool failed = false;
 
   for (int i = 0; i < fs->Size(); ++i) {

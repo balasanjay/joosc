@@ -21,7 +21,7 @@ class Result final {
 
   bool IsSuccess() const { return !errors_.IsFatal(); }
 
-  sptr<T> Get() const {
+  sptr<const T> Get() const {
     if (!IsSuccess()) {
       throw "Get() from non-successful result.";
     }
@@ -41,16 +41,16 @@ class Result final {
  private:
   DISALLOW_COPY_AND_ASSIGN(Result);
 
-  Result(sptr<T> data) : success_(true), data_(data) {}
+  Result(sptr<const T> data) : success_(true), data_(data) {}
   Result(base::Error* err) { errors_.Append(err); }
   Result(base::ErrorList&& errors)
       : success_(false), errors_(std::forward<base::ErrorList>(errors)) {}
 
   template <typename U>
-  friend Result<U> MakeSuccess(U* t);
+  friend Result<U> MakeSuccess(const U* t);
 
   template <typename U>
-  friend Result<U> MakeSuccess(sptr<U> t);
+  friend Result<U> MakeSuccess(sptr<const U> t);
 
   template <typename U>
   friend Result<U> Failure(base::Error* e);
@@ -62,16 +62,16 @@ class Result final {
   friend Result<T2> ConvertError(Result<T1>&&);
 
   bool success_ = false;
-  sptr<T> data_;
+  sptr<const T> data_;
   base::ErrorList errors_;
 };
 
 template <typename T>
-Result<T> MakeSuccess(T* t) {
-  return Result<T>(sptr<T>(t));
+Result<T> MakeSuccess(const T* t) {
+  return Result<T>(sptr<const T>(t));
 }
 template <typename T>
-Result<T> MakeSuccess(sptr<T> t) {
+Result<T> MakeSuccess(sptr<const T> t) {
   return Result<T>(t);
 }
 template <typename T>
@@ -128,12 +128,12 @@ struct Parser {
   Parser ParsePrimary(internal::Result<ast::Expr>* out) const;
   Parser ParseNewExpression(internal::Result<ast::Expr>* out) const;
   Parser ParsePrimaryBase(internal::Result<ast::Expr>* out) const;
-  Parser ParsePrimaryEnd(sptr<ast::Expr> base, internal::Result<ast::Expr>* out) const;
-  Parser ParsePrimaryEndNoArrayAccess(sptr<ast::Expr> base,
+  Parser ParsePrimaryEnd(sptr<const ast::Expr> base, internal::Result<ast::Expr>* out) const;
+  Parser ParsePrimaryEndNoArrayAccess(sptr<const ast::Expr> base,
                                       internal::Result<ast::Expr>* out) const;
 
   // Other parsers.
-  Parser ParseArgumentList(internal::Result<base::SharedPtrVector<ast::Expr>>*) const;
+  Parser ParseArgumentList(internal::Result<base::SharedPtrVector<const ast::Expr>>*) const;
 
   // Statement parsers.
   Parser ParseStmt(internal::Result<ast::Stmt>* out) const;

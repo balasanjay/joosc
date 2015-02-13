@@ -27,8 +27,8 @@ TypeSet BuildTypeSet(const Program& prog, const FileSet* fs, ErrorList* out) {
   return typeSetBuilder.Build(fs, out);
 }
 
-TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, const sptr<Program> prog,
-                             const FileSet* fs, sptr<Program>* new_prog,
+TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, sptr<const Program> prog,
+                             const FileSet* fs, sptr<const Program>* new_prog,
                              ErrorList* error_out) {
   TypeInfoMapBuilder builder;
   DeclResolver resolver(&builder, typeset, fs, error_out);
@@ -40,16 +40,15 @@ TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, const sptr<Program> prog,
 
 }  // namespace
 
-const sptr<Program> TypecheckProgram(const sptr<Program> prog, const FileSet* fs,
+sptr<const Program> TypecheckProgram(sptr<const Program> prog, const FileSet* fs,
                                ErrorList* out) {
   // Phase 1: build a typeset.
   TypeSet typeset = BuildTypeSet(*prog, fs, out);
 
   // Phase 2: build a type info map.
-  sptr<Program> prog2;
-  TypeInfoMap typeInfoMap = BuildTypeInfoMap(typeset, prog, fs, &prog2, out);
+  TypeInfoMap typeInfoMap = BuildTypeInfoMap(typeset, prog, fs, &prog, out);
 
-  return prog2;
+  return prog;
 
   // TODO: this function needs to return all the data structures it has built.
 }

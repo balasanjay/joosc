@@ -68,20 +68,20 @@ string Str(const T& t) {
 }
 
 template <typename T>
-string Str(sptr<T> t) {
+string Str(sptr<const T> t) {
   std::stringstream s;
   PrintVisitor visitor = PrintVisitor::Compact(&s);
   t->AcceptVisitor(&visitor);
   return s.str();
 }
 
-string TypeStr(sptr<Type> type) {
+string TypeStr(sptr<const Type> type) {
   std::stringstream s;
   type->PrintTo(&s);
   return s.str();
 }
 
-string TypeStr(sptr<QualifiedName> qn) {
+string TypeStr(sptr<const QualifiedName> qn) {
   std::stringstream s;
   qn->PrintTo(&s);
   return s.str();
@@ -244,7 +244,7 @@ TEST_F(ParserTest, TypeArrayFail) {
 
 TEST_F(ParserTest, ArgumentListNone) {
   MakeParser(")");
-  Result<SharedPtrVector<Expr>> args;
+  Result<SharedPtrVector<const Expr>> args;
   Parser after = parser_->ParseArgumentList(&args);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(args));
@@ -253,7 +253,7 @@ TEST_F(ParserTest, ArgumentListNone) {
 
 TEST_F(ParserTest, ArgumentListOne) {
   MakeParser("foo.bar");
-  Result<SharedPtrVector<Expr>> args;
+  Result<SharedPtrVector<const Expr>> args;
   Parser after = parser_->ParseArgumentList(&args);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(args));
@@ -262,7 +262,7 @@ TEST_F(ParserTest, ArgumentListOne) {
 
 TEST_F(ParserTest, ArgumentListMany) {
   MakeParser("a,b, c, d  , e");
-  Result<SharedPtrVector<Expr>> args;
+  Result<SharedPtrVector<const Expr>> args;
   Parser after = parser_->ParseArgumentList(&args);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(args));
@@ -271,7 +271,7 @@ TEST_F(ParserTest, ArgumentListMany) {
 
 TEST_F(ParserTest, ArgumentListHangingComma) {
   MakeParser("a, b,)");
-  Result<SharedPtrVector<Expr>> args;
+  Result<SharedPtrVector<const Expr>> args;
   Parser after = parser_->ParseArgumentList(&args);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(args));
@@ -279,7 +279,7 @@ TEST_F(ParserTest, ArgumentListHangingComma) {
 
 TEST_F(ParserTest, ArgumentListNestedExpr) {
   MakeParser("a, (1 + b))");
-  Result<SharedPtrVector<Expr>> args;
+  Result<SharedPtrVector<const Expr>> args;
   Parser after = parser_->ParseArgumentList(&args);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(args));
@@ -287,7 +287,7 @@ TEST_F(ParserTest, ArgumentListNestedExpr) {
 
 TEST_F(ParserTest, ArgumentListBadExpr) {
   MakeParser("a, ;)");
-  Result<SharedPtrVector<Expr>> args;
+  Result<SharedPtrVector<const Expr>> args;
   Parser after = parser_->ParseArgumentList(&args);
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(args));
@@ -297,7 +297,7 @@ TEST_F(ParserTest, ArgumentListBadExpr) {
 
 TEST_F(ParserTest, ArgumentListStartingComma) {
   MakeParser(", a, b, c)");
-  Result<SharedPtrVector<Expr>> args;
+  Result<SharedPtrVector<const Expr>> args;
   Parser after = parser_->ParseArgumentList(&args);
   // Shouldn't parse anything, since arg list is optional.
   // TODO: Do we actually want this to fail if it doesn't stop at at an
@@ -403,7 +403,7 @@ TEST_F(ParserTest, PrimaryBaseAbort) {
 
 TEST_F(ParserTest, PrimaryEndFailedArrayAccess) {
   MakeParser("[;]");
-  sptr<Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after = parser_->ParsePrimaryEnd(primary, &primaryEnd);
 
@@ -415,7 +415,7 @@ TEST_F(ParserTest, PrimaryEndFailedArrayAccess) {
 
 TEST_F(ParserTest, PrimaryEndArrayAccessWithField) {
   MakeParser("[3].f");
-  sptr<Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after = parser_->ParsePrimaryEnd(primary, &primaryEnd);
 
@@ -426,7 +426,7 @@ TEST_F(ParserTest, PrimaryEndArrayAccessWithField) {
 
 TEST_F(ParserTest, PrimaryEndArrayAccessNoTrailing) {
   MakeParser("[3]+5");
-  sptr<Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after = parser_->ParsePrimaryEnd(primary, &primaryEnd);
 
@@ -437,7 +437,7 @@ TEST_F(ParserTest, PrimaryEndArrayAccessNoTrailing) {
 
 TEST_F(ParserTest, PrimaryEndNoAccess) {
   MakeParser(".f");
-  sptr<Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after = parser_->ParsePrimaryEnd(primary, &primaryEnd);
 
@@ -448,7 +448,7 @@ TEST_F(ParserTest, PrimaryEndNoAccess) {
 
 TEST_F(ParserTest, DISABLED_PrimaryEndNoArrayShortCircuit) {
   MakeParser("");
-  sptr<Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
@@ -461,7 +461,7 @@ TEST_F(ParserTest, DISABLED_PrimaryEndNoArrayShortCircuit) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayUnexpectedToken) {
   MakeParser(";");
-  sptr<Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
@@ -474,7 +474,7 @@ TEST_F(ParserTest, PrimaryEndNoArrayUnexpectedToken) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayFieldFail) {
   MakeParser(".;");
-  sptr<Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
@@ -487,7 +487,7 @@ TEST_F(ParserTest, PrimaryEndNoArrayFieldFail) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEnd) {
   MakeParser(".f[0]");
-  sptr<Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
@@ -499,7 +499,7 @@ TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEnd) {
 
 TEST_F(ParserTest, PrimaryEndDoubleArrayAccess) {
   MakeParser("[0][1]");
-  sptr<Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after = parser_->ParsePrimaryEnd(primary, &primaryEnd);
 
@@ -510,7 +510,7 @@ TEST_F(ParserTest, PrimaryEndDoubleArrayAccess) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEndFail) {
   MakeParser(".f;");
-  sptr<Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
@@ -522,7 +522,7 @@ TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEndFail) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayMethodFail) {
   MakeParser("(;)");
-  sptr<Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
@@ -535,7 +535,7 @@ TEST_F(ParserTest, PrimaryEndNoArrayMethodFail) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayMethodWithEnd) {
   MakeParser("().f");
-  sptr<Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
@@ -547,7 +547,7 @@ TEST_F(ParserTest, PrimaryEndNoArrayMethodWithEnd) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayMethodWithEndFail) {
   MakeParser("();");
-  sptr<Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr());
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);

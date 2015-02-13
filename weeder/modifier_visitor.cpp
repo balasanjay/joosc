@@ -6,7 +6,7 @@
 
 using std::function;
 using std::initializer_list;
-
+using ast::VisitResult;
 using ast::EmptyStmt;
 using ast::FieldDecl;
 using ast::MethodDecl;
@@ -156,7 +156,6 @@ inline void VerifyNoneOf(const FileSet* fs, const ModifierList& mods,
   }
 }
 
-template <typename... T>
 inline void VerifyOneOf(const FileSet* fs, const ModifierList& mods,
                         ErrorList* out, Token token,
                         function<Error*(const FileSet*, Token)> error_maker,
@@ -182,7 +181,7 @@ void VerifyNoConflictingAccessMods(const FileSet* fs, const ModifierList& mods,
 
 }  // namespace
 
-REC_VISIT_DEFN(ClassModifierVisitor, ConstructorDecl, decl) {
+VISIT_DEFN2(ClassModifierVisitor, ConstructorDecl, decl) {
   // Cannot be both public and protected.
   VerifyNoConflictingAccessMods(fs_, decl.Mods(), errors_);
 
@@ -199,10 +198,10 @@ REC_VISIT_DEFN(ClassModifierVisitor, ConstructorDecl, decl) {
     errors_->Append(MakeClassConstructorEmptyError(fs_, decl.Ident()));
   }
 
-  return false;
+  return VisitResult::SKIP;
 }
 
-REC_VISIT_DEFN(ClassModifierVisitor, FieldDecl, decl) {
+VISIT_DEFN2(ClassModifierVisitor, FieldDecl, decl) {
   // Cannot be both public and protected.
   VerifyNoConflictingAccessMods(fs_, decl.Mods(), errors_);
 
@@ -213,10 +212,11 @@ REC_VISIT_DEFN(ClassModifierVisitor, FieldDecl, decl) {
   // Can't be abstract, final, or native.
   VerifyNoneOf(fs_, decl.Mods(), errors_, MakeClassFieldModifierError,
                {ABSTRACT, FINAL, NATIVE});
-  return false;
+
+  return VisitResult::SKIP;
 }
 
-REC_VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
+VISIT_DEFN2(ClassModifierVisitor, MethodDecl, decl) {
   // Cannot be both public and protected.
   VerifyNoConflictingAccessMods(fs_, decl.Mods(), errors_);
 
@@ -259,22 +259,22 @@ REC_VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
         fs_, mods.GetModifierToken(NATIVE)));
   }
 
-  return false;
+  return VisitResult::SKIP;
 }
 
-REC_VISIT_DEFN(InterfaceModifierVisitor, ConstructorDecl, decl) {
+VISIT_DEFN2(InterfaceModifierVisitor, ConstructorDecl, decl) {
   // An interface cannot contain constructors.
   errors_->Append(MakeInterfaceConstructorError(fs_, decl.Ident()));
-  return false;
+  return VisitResult::SKIP;
 }
 
-REC_VISIT_DEFN(InterfaceModifierVisitor, FieldDecl, decl) {
+VISIT_DEFN2(InterfaceModifierVisitor, FieldDecl, decl) {
   // An interface cannot contain fields.
   errors_->Append(MakeInterfaceFieldError(fs_, decl.Ident()));
-  return false;
+  return VisitResult::SKIP;
 }
 
-REC_VISIT_DEFN(InterfaceModifierVisitor, MethodDecl, decl) {
+VISIT_DEFN2(InterfaceModifierVisitor, MethodDecl, decl) {
   // An interface method cannot be static, final, native, or protected.
   VerifyNoneOf(fs_, decl.Mods(), errors_, MakeInterfaceMethodModifierError,
                {PROTECTED, STATIC, FINAL, NATIVE});
@@ -288,10 +288,10 @@ REC_VISIT_DEFN(InterfaceModifierVisitor, MethodDecl, decl) {
     errors_->Append(MakeInterfaceMethodImplError(fs_, decl.Ident()));
   }
 
-  return false;
+  return VisitResult::SKIP;
 }
 
-REC_VISIT_DEFN(ModifierVisitor, ClassDecl, decl) {
+REWRITE_DEFN2(ModifierVisitor, ClassDecl, TypeDecl, decl, declptr) {
   // A class cannot be protected, static, or native.
   VerifyNoneOf(fs_, decl.Mods(), errors_, MakeClassModifierError,
                {PROTECTED, STATIC, NATIVE});
@@ -306,11 +306,10 @@ REC_VISIT_DEFN(ModifierVisitor, ClassDecl, decl) {
   }
 
   ClassModifierVisitor visitor(fs_, errors_);
-  decl.AcceptVisitor(&visitor);
-  return false;
+  return Visit(&visitor, declptr);
 }
 
-REC_VISIT_DEFN(ModifierVisitor, InterfaceDecl, decl) {
+REWRITE_DEFN2(ModifierVisitor, InterfaceDecl, TypeDecl, decl, declptr) {
   // An interface cannot be protected, static, final, or native.
   VerifyNoneOf(fs_, decl.Mods(), errors_, MakeInterfaceModifierError,
                {PROTECTED, STATIC, FINAL, NATIVE});
@@ -320,8 +319,7 @@ REC_VISIT_DEFN(ModifierVisitor, InterfaceDecl, decl) {
               MakeInterfaceNoAccessModError, {PUBLIC});
 
   InterfaceModifierVisitor visitor(fs_, errors_);
-  decl.AcceptVisitor(&visitor);
-  return false;
+  return Visit(&visitor, declptr);
 }
 
 }  // namespace weeder
