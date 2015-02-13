@@ -1,7 +1,7 @@
-#ifndef TYPES_TYPECHECKER_H
-#define TYPES_TYPECHECKER_H
+#ifndef TYPES_TYPES_H
+#define TYPES_TYPES_H
 
-#include "ast/ast.h"
+#include "ast/ast_fwd.h"
 #include "base/errorlist.h"
 #include "base/fileset.h"
 

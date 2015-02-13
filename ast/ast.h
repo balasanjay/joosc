@@ -121,11 +121,15 @@ class Expr {
 
   ACCEPT_VISITOR_ABSTRACT(Expr);
 
+  VAL_GETTER(TypeId, GetTypeId, tid_);
+
  protected:
-  Expr() = default;
+  Expr(TypeId tid = TypeId::Unassigned()) : tid_(tid) {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Expr);
+
+  TypeId tid_;
 };
 
 class NameExpr : public Expr {

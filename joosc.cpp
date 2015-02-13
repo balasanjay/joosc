@@ -9,7 +9,7 @@
 #include "base/fileset.h"
 #include "lexer/lexer.h"
 #include "parser/parser.h"
-#include "types/typechecker.h"
+#include "types/types.h"
 #include "weeder/weeder.h"
 
 using std::cerr;

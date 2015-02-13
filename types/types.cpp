@@ -1,4 +1,4 @@
-#include "types/typechecker.h"
+#include "types/types.h"
 
 #include "ast/ast.h"
 #include "types/decl_resolver.h"
