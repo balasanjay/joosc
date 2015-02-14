@@ -99,7 +99,7 @@ class ReferenceType : public Type {
 
 class ArrayType : public Type {
  public:
-  ArrayType(sptr<const Type> elemtype) : elemtype_(elemtype) {}
+  ArrayType(sptr<const Type> elemtype, lexer::Token lbrack, lexer::Token rbrack) : elemtype_(elemtype), lbrack_(lbrack), rbrack_(rbrack) {}
 
   void PrintTo(std::ostream* os) const override {
     *os << "array<";
@@ -108,11 +108,15 @@ class ArrayType : public Type {
   }
 
   REF_GETTER(Type, ElemType, *elemtype_);
+  VAL_GETTER(lexer::Token, Lbrack, lbrack_);
+  VAL_GETTER(lexer::Token, Rbrack, rbrack_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ArrayType);
 
   sptr<const Type> elemtype_;
+  lexer::Token lbrack_;
+  lexer::Token rbrack_;
 };
 
 class Expr {
@@ -167,14 +171,18 @@ class InstanceOfExpr : public Expr {
 
 class ParenExpr : public Expr {
  public:
-  ParenExpr(sptr<const Expr> nested) : nested_(nested) { assert(nested_ != nullptr); }
+  ParenExpr(lexer::Token lparen, sptr<const Expr> nested, lexer::Token rparen) : lparen_(lparen), nested_(nested), rparen_(rparen) { assert(nested_ != nullptr); }
 
   ACCEPT_VISITOR(ParenExpr, Expr);
 
+  VAL_GETTER(lexer::Token, Lparen, lparen_);
   SPTR_GETTER(Expr, Nested, nested_);
+  VAL_GETTER(lexer::Token, Rparen, rparen_);
 
  private:
+  lexer::Token lparen_;
   sptr<const Expr> nested_;
+  lexer::Token rparen_;
 };
 
 class BinExpr : public Expr {
@@ -268,23 +276,32 @@ class NullLitExpr : public LitExpr {
 
 class ThisExpr : public Expr {
  public:
-  ThisExpr(TypeId tid = TypeId::Unassigned()) : Expr(tid) {}
+  ThisExpr(lexer::Token thisTok, TypeId tid = TypeId::Unassigned()) : Expr(tid), thisTok_(thisTok) {}
 
   ACCEPT_VISITOR(ThisExpr, Expr);
+
+  VAL_GETTER(lexer::Token, ThisToken, thisTok_);
+
+ private:
+  lexer::Token thisTok_;
 };
 
 class ArrayIndexExpr : public Expr {
  public:
-  ArrayIndexExpr(sptr<const Expr> base, sptr<const Expr> index, TypeId tid = TypeId::Unassigned()) : Expr(tid), base_(base), index_(index) {}
+  ArrayIndexExpr(sptr<const Expr> base, lexer::Token lbrack, sptr<const Expr> index, lexer::Token rbrack, TypeId tid = TypeId::Unassigned()) : Expr(tid), base_(base), lbrack_(lbrack), index_(index), rbrack_(rbrack) {}
 
   ACCEPT_VISITOR(ArrayIndexExpr, Expr);
 
   SPTR_GETTER(Expr, Base, base_);
+  VAL_GETTER(lexer::Token, Lbrack, lbrack_);
   SPTR_GETTER(Expr, Index, index_);
+  VAL_GETTER(lexer::Token, Rbrack, rbrack_);
 
  private:
   sptr<const Expr> base_;
+  lexer::Token lbrack_;
   sptr<const Expr> index_;
+  lexer::Token rbrack_;
 };
 
 class FieldDerefExpr : public Expr {
@@ -306,70 +323,86 @@ class FieldDerefExpr : public Expr {
 
 class CallExpr : public Expr {
  public:
-  CallExpr(sptr<const Expr> base, lexer::Token lparen, const base::SharedPtrVector<const Expr>& args)
-      : base_(base), lparen_(lparen), args_(args) {}
+  CallExpr(sptr<const Expr> base, lexer::Token lparen, const base::SharedPtrVector<const Expr>& args, lexer::Token rparen)
+      : base_(base), lparen_(lparen), args_(args), rparen_(rparen) {}
 
   ACCEPT_VISITOR(CallExpr, Expr);
 
   SPTR_GETTER(Expr, Base, base_);
   VAL_GETTER(lexer::Token, Lparen, lparen_);
   REF_GETTER(base::SharedPtrVector<const Expr>, Args, args_);
+  VAL_GETTER(lexer::Token, Rparen, rparen_);
 
  private:
   sptr<const Expr> base_;
   lexer::Token lparen_;
   base::SharedPtrVector<const Expr> args_;
+  lexer::Token rparen_;
 };
 
 class CastExpr : public Expr {
  public:
-  CastExpr(sptr<const Type> type, sptr<const Expr> expr) : type_(type), expr_(expr) {}
+  CastExpr(lexer::Token lparen, sptr<const Type> type, lexer::Token rparen, sptr<const Expr> expr) : lparen_(lparen), type_(type), rparen_(rparen), expr_(expr) {}
 
   ACCEPT_VISITOR(CastExpr, Expr);
 
+  VAL_GETTER(lexer::Token, Lparen, lparen_);
   SPTR_GETTER(Type, GetType, type_);
+  VAL_GETTER(lexer::Token, Rparen, rparen_);
   SPTR_GETTER(Expr, GetExpr, expr_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CastExpr);
 
+  lexer::Token lparen_;
   sptr<const Type> type_;
+  lexer::Token rparen_;
   sptr<const Expr> expr_;
 };
 
 class NewClassExpr : public Expr {
  public:
-  NewClassExpr(lexer::Token newTok, sptr<const Type> type, const base::SharedPtrVector<const Expr>& args)
-      : newTok_(newTok), type_(type), args_(args) {}
+  NewClassExpr(lexer::Token newTok, sptr<const Type> type, lexer::Token lparen, const base::SharedPtrVector<const Expr>& args, lexer::Token rparen)
+      : newTok_(newTok), type_(type), lparen_(lparen), args_(args), rparen_(rparen) {}
 
   ACCEPT_VISITOR(NewClassExpr, Expr);
 
   VAL_GETTER(lexer::Token, NewToken, newTok_);
   SPTR_GETTER(Type, GetType, type_);
+  VAL_GETTER(lexer::Token, Lparen, lparen_);
   REF_GETTER(base::SharedPtrVector<const Expr>, Args, args_);
+  VAL_GETTER(lexer::Token, Rparen, rparen_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NewClassExpr);
 
   lexer::Token newTok_;
   sptr<const Type> type_;
+  lexer::Token lparen_;
   base::SharedPtrVector<const Expr> args_;
+  lexer::Token rparen_;
 };
 
 class NewArrayExpr : public Expr {
  public:
-  NewArrayExpr(sptr<const Type> type, sptr<const Expr> expr, TypeId tid = TypeId::Unassigned()) : Expr(tid), type_(type), expr_(expr){}
+  NewArrayExpr(lexer::Token newTok, sptr<const Type> type, lexer::Token lbrack, sptr<const Expr> expr, lexer::Token rbrack, TypeId tid = TypeId::Unassigned()) : Expr(tid), newTok_(newTok), type_(type), lbrack_(lbrack), expr_(expr), rbrack_(rbrack) {}
 
   ACCEPT_VISITOR(NewArrayExpr, Expr);
 
+  VAL_GETTER(lexer::Token, NewToken, newTok_);
   SPTR_GETTER(Type, GetType, type_);
+  VAL_GETTER(lexer::Token, Lbrack, lbrack_);
   VAL_GETTER(sptr<const Expr>, GetExprPtr, expr_);
+  VAL_GETTER(lexer::Token, Rbrack, rbrack_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NewArrayExpr);
 
+  lexer::Token newTok_;
   sptr<const Type> type_;
+  lexer::Token lbrack_;
   sptr<const Expr> expr_; // Can be nullptr.
+  lexer::Token rbrack_;
 };
 
 class Stmt {

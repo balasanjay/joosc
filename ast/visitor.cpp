@@ -37,7 +37,7 @@ REWRITE_DEFN(Visitor, ArrayIndexExpr, Expr, expr, exprptr) {
   if (base == expr.BasePtr() && index == expr.IndexPtr()) {
     return exprptr;
   }
-  return make_shared<ArrayIndexExpr>(base, index);
+  return make_shared<ArrayIndexExpr>(base, expr.Lbrack(), index, expr.Rbrack());
 }
 
 REWRITE_DEFN(Visitor, BinExpr, Expr, expr, exprptr) {
@@ -69,7 +69,7 @@ REWRITE_DEFN(Visitor, CallExpr, Expr, expr, exprptr) {
     return exprptr;
   }
 
-  return make_shared<CallExpr>(base, expr.Lparen(), args);
+  return make_shared<CallExpr>(base, expr.Lparen(), args, expr.Rparen());
 }
 
 REWRITE_DEFN(Visitor, CastExpr, Expr, expr, exprptr) {
@@ -81,7 +81,7 @@ REWRITE_DEFN(Visitor, CastExpr, Expr, expr, exprptr) {
   } else if (castedExpr == expr.GetExprPtr()) {
     return exprptr;
   }
-  return make_shared<CastExpr>(expr.GetTypePtr(), castedExpr);
+  return make_shared<CastExpr>(expr.Lparen(), expr.GetTypePtr(), expr.Rparen(), castedExpr);
 }
 
 REWRITE_DEFN(Visitor, FieldDerefExpr, Expr, expr, exprptr) {
@@ -153,7 +153,7 @@ REWRITE_DEFN(Visitor, NewArrayExpr, Expr, expr, exprptr) {
   } else if (arrayExpr == expr.GetExprPtr()) {
     return exprptr;
   }
-  return make_shared<NewArrayExpr>(expr.GetTypePtr(), arrayExpr);
+  return make_shared<NewArrayExpr>(expr.NewToken(), expr.GetTypePtr(), expr.Lbrack(), arrayExpr, expr.Rbrack());
 }
 
 REWRITE_DEFN(Visitor, NewClassExpr, Expr, expr, exprptr) {
@@ -168,7 +168,7 @@ REWRITE_DEFN(Visitor, NewClassExpr, Expr, expr, exprptr) {
   if (!argsChanged) {
     return exprptr;
   }
-  return make_shared<NewClassExpr>(expr.NewToken(), expr.GetTypePtr(), args);
+  return make_shared<NewClassExpr>(expr.NewToken(), expr.GetTypePtr(), expr.Lparen(), args, expr.Rparen());
 }
 
 REWRITE_DEFN(Visitor, ParenExpr, Expr, expr, exprptr) {
@@ -179,7 +179,7 @@ REWRITE_DEFN(Visitor, ParenExpr, Expr, expr, exprptr) {
   } else if (nested == expr.NestedPtr()) {
     return exprptr;
   }
-  return make_shared<ParenExpr>(nested);
+  return make_shared<ParenExpr>(expr.Lparen(), nested, expr.Rparen());
 }
 
 REWRITE_DEFN(Visitor, ThisExpr, Expr, expr, exprptr) {

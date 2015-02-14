@@ -69,8 +69,8 @@ REWRITE_DEFN(TypeChecker, IntLitExpr, Expr, expr, ) {
   return make_shared<IntLitExpr>(expr.GetToken(), expr.Value(), TypeId{TypeId::kIntBase, 0});
 }
 
-REWRITE_DEFN(TypeChecker, ThisExpr, Expr,,) {
-  return make_shared<ThisExpr>(curtype_);
+REWRITE_DEFN(TypeChecker, ThisExpr, Expr, expr,) {
+  return make_shared<ThisExpr>(expr.ThisToken(), curtype_);
 }
 
 REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
@@ -91,7 +91,7 @@ REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
     return nullptr;
   }
 
-  return make_shared<NewArrayExpr>(expr.GetTypePtr(), index, TypeId{tid.base, tid.ndims + 1});
+  return make_shared<NewArrayExpr>(expr.NewToken(), expr.GetTypePtr(), expr.Lbrack(), index, expr.Rbrack(), TypeId{tid.base, tid.ndims + 1});
 }
 
 REWRITE_DEFN(TypeChecker, ArrayIndexExpr, Expr, expr,) {
@@ -114,7 +114,7 @@ REWRITE_DEFN(TypeChecker, ArrayIndexExpr, Expr, expr,) {
   }
 
   TypeId tid = TypeId{base->GetTypeId().base, base->GetTypeId().ndims - 1};
-  return make_shared<ArrayIndexExpr>(base, index, tid);
+  return make_shared<ArrayIndexExpr>(base, expr.Lbrack(), index, expr.Rbrack(), tid);
 }
 
 

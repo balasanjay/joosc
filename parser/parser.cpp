@@ -329,7 +329,7 @@ Parser Parser::ParseType(Result<Type>* out) const {
 
     Parser afterArray = afterSingle.ParseTokenIf(ExactType(LBRACK), &lbrack)
                             .ParseTokenIf(ExactType(RBRACK), &rbrack);
-    RETURN_IF_GOOD(afterArray, new ArrayType(single.Get()), out);
+    RETURN_IF_GOOD(afterArray, new ArrayType(single.Get(), *lbrack.Get(), *rbrack.Get()), out);
 
     *out = ConvertError<Token, Type>(move(rbrack));
     return Fail();
@@ -448,7 +448,7 @@ Parser Parser::ParseCastExpression(Result<Expr>* out) const {
                      .ParseType(&type)
                      .ParseTokenIf(ExactType(RPAREN), &rparen)
                      .ParseUnaryExpression(&expr);
-  RETURN_IF_GOOD(after, new CastExpr(type.Get(), expr.Get()), out);
+  RETURN_IF_GOOD(after, new CastExpr(*lparen.Get(), type.Get(), *rparen.Get(), expr.Get()), out);
 
   // Collect the first error, and use that.
   ErrorList errors;
@@ -527,7 +527,7 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
     }
 
     sptr<const Expr> newExpr =
-        make_shared<NewClassExpr>(*newTok.Get(), type.Get(), *args.Get());
+        make_shared<NewClassExpr>(*newTok.Get(), type.Get(), *lparen.Get(), *args.Get(), *rparen.Get());
     Result<Expr> nested;
     Parser afterEnd = afterCall.ParsePrimaryEnd(newExpr, &nested);
     RETURN_IF_GOOD(afterEnd, nested.Get(), out);
@@ -536,16 +536,21 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
   }
 
   assert(afterType.IsNext(LBRACK));
+  Result<Token> lbrack;
   sptr<const Expr> sizeExpr = nullptr;
+  Result<Token> rbrack;
   Parser after = *this;
 
   if (afterType.Advance().IsNext(RBRACK)) {
+    after = afterType
+      .ParseTokenIf(ExactType(LBRACK), &lbrack)
+      .ParseTokenIf(ExactType(RBRACK), &rbrack);
     after = afterType.Advance().Advance();
   } else {
     Result<Expr> nested;
-    Result<Token> rbrack;
 
-    Parser fullAfter = afterType.Advance()  // LBRACK.
+    Parser fullAfter = afterType
+                           .ParseTokenIf(ExactType(LBRACK), &lbrack)
                            .ParseExpression(&nested)
                            .ParseTokenIf(ExactType(RBRACK), &rbrack);
     if (!fullAfter) {
@@ -559,7 +564,7 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
     after = fullAfter;
   }
 
-  sptr<const Expr> newExpr = make_shared<NewArrayExpr>(type.Get(), sizeExpr);
+  sptr<const Expr> newExpr = make_shared<NewArrayExpr>(*newTok.Get(), type.Get(), *lbrack.Get(), sizeExpr, *rbrack.Get());
   Result<Expr> nested;
   Parser afterEnd = after.ParsePrimaryEndNoArrayAccess(newExpr, &nested);
   RETURN_IF_GOOD(afterEnd, nested.Get(), out);
@@ -601,9 +606,9 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
   }
 
   {
-    Result<Token> thisExpr;
-    Parser after = ParseTokenIf(ExactType(K_THIS), &thisExpr);
-    RETURN_IF_GOOD(after, new ThisExpr(), out);
+    Result<Token> thisTok;
+    Parser after = ParseTokenIf(ExactType(K_THIS), &thisTok);
+    RETURN_IF_GOOD(after, new ThisExpr(*thisTok.Get()), out);
   }
 
   if (IsNext(LPAREN)) {
@@ -615,7 +620,7 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
                        .ParseTokenIf(ExactType(LPAREN), &lparen)
                        .ParseExpression(&expr)
                        .ParseTokenIf(ExactType(RPAREN), &rparen);
-    RETURN_IF_GOOD(after, new ParenExpr(expr.Get()), out);
+    RETURN_IF_GOOD(after, new ParenExpr(*lparen.Get(), expr.Get(), *rparen.Get()), out);
 
     ErrorList errors;
     FirstOf(&errors, &lparen, &expr, &rparen);
@@ -657,7 +662,7 @@ Parser Parser::ParsePrimaryEnd(sptr<const Expr> base, Result<Expr>* out) const {
     }
 
     // Try optional PrimaryEndNoArrayAccess.
-    sptr<const Expr> index = make_shared<ArrayIndexExpr>(base, expr.Get());
+    sptr<const Expr> index = make_shared<ArrayIndexExpr>(base, *lbrack.Get(), expr.Get(), *rbrack.Get());
     Result<Expr> nested;
     Parser afterEnd = after.ParsePrimaryEndNoArrayAccess(index, &nested);
     RETURN_IF_GOOD(afterEnd, nested.Get(), out);
@@ -721,7 +726,7 @@ Parser Parser::ParsePrimaryEndNoArrayAccess(sptr<const Expr> base,
       return Fail(move(errors), out);
     }
 
-    sptr<const Expr> call = make_shared<CallExpr>(base, *lparen.Get(), *args.Get());
+    sptr<const Expr> call = make_shared<CallExpr>(base, *lparen.Get(), *args.Get(), *rparen.Get());
     Result<Expr> nested;
     Parser afterEnd = after.ParsePrimaryEnd(call, &nested);
     RETURN_IF_GOOD(afterEnd, nested.Get(), out);
