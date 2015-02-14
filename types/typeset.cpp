@@ -61,8 +61,9 @@ Error* MakeDuplicateTypeDefinitionError(const FileSet* fs, const string& name, c
 TypeSet::TypeSet(const vector<string>& qualifiedTypes) {
   // Get list of all types.
   vector<string> predefs = {
-    "!!unassigned!!",
-    "!!error!!",
+    "<unassigned>",
+    "<error>",
+    "<null>",
     "void",
     "boolean",
     "byte",

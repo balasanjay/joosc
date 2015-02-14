@@ -3,6 +3,7 @@
 #include "ast/ast.h"
 #include "types/decl_resolver.h"
 #include "types/type_info_map.h"
+#include "types/typechecker.h"
 #include "types/typeset.h"
 
 using ast::Program;
@@ -47,6 +48,12 @@ sptr<const Program> TypecheckProgram(sptr<const Program> prog, const FileSet* fs
 
   // Phase 2: build a type info map.
   TypeInfoMap typeInfoMap = BuildTypeInfoMap(typeset, prog, fs, &prog, out);
+
+  // Phase 3: typecheck.
+  {
+    TypeChecker typechecker(typeInfoMap, typeset, fs, out);
+    prog = Visit(&typechecker, prog);
+  }
 
   return prog;
 

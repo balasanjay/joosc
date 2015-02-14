@@ -217,7 +217,7 @@ class UnaryExpr : public Expr {
 
 class LitExpr : public Expr {
  public:
-  LitExpr(lexer::Token token) : token_(token) {}
+  LitExpr(lexer::Token token, TypeId tid = TypeId::Unassigned()) : Expr(tid), token_(token) {}
 
   VAL_GETTER(lexer::Token, GetToken, token_);
 
@@ -234,8 +234,8 @@ class BoolLitExpr : public LitExpr {
 
 class IntLitExpr : public LitExpr {
  public:
-  IntLitExpr(lexer::Token token, const string& value)
-      : LitExpr(token), value_(value) {}
+  IntLitExpr(lexer::Token token, const string& value, TypeId tid = TypeId::Unassigned())
+      : LitExpr(token, tid), value_(value) {}
 
   ACCEPT_VISITOR(IntLitExpr, Expr);
 
@@ -268,12 +268,14 @@ class NullLitExpr : public LitExpr {
 
 class ThisExpr : public Expr {
  public:
+  ThisExpr(TypeId tid = TypeId::Unassigned()) : Expr(tid) {}
+
   ACCEPT_VISITOR(ThisExpr, Expr);
 };
 
 class ArrayIndexExpr : public Expr {
  public:
-  ArrayIndexExpr(sptr<const Expr> base, sptr<const Expr> index) : base_(base), index_(index) {}
+  ArrayIndexExpr(sptr<const Expr> base, sptr<const Expr> index, TypeId tid = TypeId::Unassigned()) : Expr(tid), base_(base), index_(index) {}
 
   ACCEPT_VISITOR(ArrayIndexExpr, Expr);
 
@@ -356,7 +358,7 @@ class NewClassExpr : public Expr {
 
 class NewArrayExpr : public Expr {
  public:
-  NewArrayExpr(sptr<const Type> type, sptr<const Expr> expr) : type_(type), expr_(expr) {}
+  NewArrayExpr(sptr<const Type> type, sptr<const Expr> expr, TypeId tid = TypeId::Unassigned()) : Expr(tid), type_(type), expr_(expr){}
 
   ACCEPT_VISITOR(NewArrayExpr, Expr);
 
