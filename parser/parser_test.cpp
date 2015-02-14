@@ -11,6 +11,7 @@ using base::FileSet;
 using base::PosRange;
 using base::SharedPtrVector;
 using lexer::DOT;
+using lexer::K_THIS;
 using lexer::Token;
 using parser::internal::Result;
 
@@ -395,7 +396,7 @@ TEST_F(ParserTest, PrimaryBaseAbort) {
 
 TEST_F(ParserTest, PrimaryEndFailedArrayAccess) {
   MakeParser("[;]");
-  sptr<const Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr(Token(K_THIS, PosRange(0, 0, 4))));
   Result<Expr> primaryEnd;
   Parser after = parser_->ParsePrimaryEnd(primary, &primaryEnd);
 
@@ -407,7 +408,7 @@ TEST_F(ParserTest, PrimaryEndFailedArrayAccess) {
 
 TEST_F(ParserTest, PrimaryEndArrayAccessWithField) {
   MakeParser("[3].f");
-  sptr<const Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr(Token(K_THIS, PosRange(0, 0, 4))));
   Result<Expr> primaryEnd;
   Parser after = parser_->ParsePrimaryEnd(primary, &primaryEnd);
 
@@ -418,7 +419,7 @@ TEST_F(ParserTest, PrimaryEndArrayAccessWithField) {
 
 TEST_F(ParserTest, PrimaryEndArrayAccessNoTrailing) {
   MakeParser("[3]+5");
-  sptr<const Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr(Token(K_THIS, PosRange(0, 0, 4))));
   Result<Expr> primaryEnd;
   Parser after = parser_->ParsePrimaryEnd(primary, &primaryEnd);
 
@@ -429,7 +430,7 @@ TEST_F(ParserTest, PrimaryEndArrayAccessNoTrailing) {
 
 TEST_F(ParserTest, PrimaryEndNoAccess) {
   MakeParser(".f");
-  sptr<const Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr(Token(K_THIS, PosRange(0, 0, 4))));
   Result<Expr> primaryEnd;
   Parser after = parser_->ParsePrimaryEnd(primary, &primaryEnd);
 
@@ -440,7 +441,7 @@ TEST_F(ParserTest, PrimaryEndNoAccess) {
 
 TEST_F(ParserTest, DISABLED_PrimaryEndNoArrayShortCircuit) {
   MakeParser("");
-  sptr<const Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr(Token(K_THIS, PosRange(0, 0, 4))));
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
@@ -453,7 +454,7 @@ TEST_F(ParserTest, DISABLED_PrimaryEndNoArrayShortCircuit) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayUnexpectedToken) {
   MakeParser(";");
-  sptr<const Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr(Token(K_THIS, PosRange(0, 0, 4))));
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
@@ -466,7 +467,7 @@ TEST_F(ParserTest, PrimaryEndNoArrayUnexpectedToken) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayFieldFail) {
   MakeParser(".;");
-  sptr<const Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr(Token(K_THIS, PosRange(0, 0, 4))));
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
@@ -479,7 +480,7 @@ TEST_F(ParserTest, PrimaryEndNoArrayFieldFail) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEnd) {
   MakeParser(".f[0]");
-  sptr<const Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr(Token(K_THIS, PosRange(0, 0, 4))));
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
@@ -491,7 +492,7 @@ TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEnd) {
 
 TEST_F(ParserTest, PrimaryEndDoubleArrayAccess) {
   MakeParser("[0][1]");
-  sptr<const Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr(Token(K_THIS, PosRange(0, 0, 4))));
   Result<Expr> primaryEnd;
   Parser after = parser_->ParsePrimaryEnd(primary, &primaryEnd);
 
@@ -502,7 +503,7 @@ TEST_F(ParserTest, PrimaryEndDoubleArrayAccess) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEndFail) {
   MakeParser(".f;");
-  sptr<const Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr(Token(K_THIS, PosRange(0, 0, 4))));
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
@@ -514,7 +515,7 @@ TEST_F(ParserTest, PrimaryEndNoArrayFieldWithEndFail) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayMethodFail) {
   MakeParser("(;)");
-  sptr<const Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr(Token(K_THIS, PosRange(0, 0, 4))));
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
@@ -527,7 +528,7 @@ TEST_F(ParserTest, PrimaryEndNoArrayMethodFail) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayMethodWithEnd) {
   MakeParser("().f");
-  sptr<const Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr(Token(K_THIS, PosRange(0, 0, 4))));
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);
@@ -539,7 +540,7 @@ TEST_F(ParserTest, PrimaryEndNoArrayMethodWithEnd) {
 
 TEST_F(ParserTest, PrimaryEndNoArrayMethodWithEndFail) {
   MakeParser("();");
-  sptr<const Expr> primary(new ThisExpr());
+  sptr<const Expr> primary(new ThisExpr(Token(K_THIS, PosRange(0, 0, 4))));
   Result<Expr> primaryEnd;
   Parser after =
       parser_->ParsePrimaryEndNoArrayAccess(primary, &primaryEnd);

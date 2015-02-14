@@ -1,6 +1,7 @@
 #include "weeder/type_visitor.h"
 
 #include "ast/ast.h"
+#include "ast/extent.h"
 #include "base/macros.h"
 #include "lexer/lexer.h"
 
@@ -12,6 +13,7 @@ using ast::CastExpr;
 using ast::EmptyStmt;
 using ast::Expr;
 using ast::ExprStmt;
+using ast::ExtentOf;
 using ast::FieldDecl;
 using ast::LocalDeclStmt;
 using ast::NameExpr;
@@ -27,6 +29,7 @@ using base::Error;
 using base::ErrorList;
 using base::FileSet;
 using base::Pos;
+using base::PosRange;
 using lexer::ASSG;
 using lexer::K_VOID;
 using lexer::Token;
@@ -84,8 +87,8 @@ Error* MakeInvalidInstanceOfType(const FileSet* fs, Token token) {
       "Right-hand-side of 'instanceof' must be a reference type or an array.");
 }
 
-Error* MakeInvalidTopLevelStatement(const FileSet* fs, Token token) {
-  return MakeSimplePosRangeError(fs, token.pos, "InvalidTopLevelStatement",
+Error* MakeInvalidTopLevelStatement(const FileSet* fs, PosRange pos) {
+  return MakeSimplePosRangeError(fs, pos, "InvalidTopLevelStatement",
                                  "A top level statement can only be an "
                                  "assignment, a method call, or a class "
                                  "instantiation.");
@@ -187,29 +190,24 @@ VISIT_DEFN(TypeVisitor, Param, param) {
 }
 
 VISIT_DEFN(TypeVisitor, ForStmt, stmt) {
+  VisitResult result = VisitResult::RECURSE;
   if (!IS_CONST_REF(LocalDeclStmt, stmt.Init()) &&
       !IsTopLevelExpr(&stmt.Init())) {
-    // TODO: Error.
-    Token tok(K_VOID, Pos(0, 1));
-    errors_->Append(MakeInvalidTopLevelStatement(fs_, tok));
-    return VisitResult::RECURSE_PRUNE;
+    errors_->Append(MakeInvalidTopLevelStatement(fs_, ExtentOf(stmt.InitPtr())));
+    result = VisitResult::RECURSE_PRUNE;
   }
   if (!IsTopLevelExpr(stmt.UpdatePtr().get())) {
-    // TODO: Error.
-    Token tok(K_VOID, Pos(0, 1));
-    errors_->Append(MakeInvalidTopLevelStatement(fs_, tok));
-    return VisitResult::RECURSE_PRUNE;
+    errors_->Append(MakeInvalidTopLevelStatement(fs_, ExtentOf(stmt.UpdatePtr())));
+    result = VisitResult::RECURSE_PRUNE;
   }
-  return VisitResult::RECURSE;
+  return result;
 }
 
 VISIT_DEFN(TypeVisitor, BlockStmt, block) {
   VisitResult result = VisitResult::RECURSE;
   for (int i = 0; i < block.Stmts().Size(); ++i) {
     if (!IsTopLevelStmt(block.Stmts().At(i).get())) {
-      // TODO: Error.
-      Token tok(K_VOID, Pos(0, 1));
-      errors_->Append(MakeInvalidTopLevelStatement(fs_, tok));
+      errors_->Append(MakeInvalidTopLevelStatement(fs_, ExtentOf(block.Stmts().At(i))));
       result = VisitResult::RECURSE_PRUNE;
     }
   }

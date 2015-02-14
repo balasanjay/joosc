@@ -13,6 +13,8 @@ using base::ErrorList;
 using base::Pos;
 using lexer::K_INT;
 using lexer::K_VOID;
+using lexer::LBRACK;
+using lexer::RBRACK;
 using lexer::Token;
 using parser::internal::Result;
 
@@ -26,10 +28,10 @@ TEST_F(TypeVisitorTest, HasVoidReferenceFalse) {
   sptr<Type> reference = make_shared<ReferenceType>(QualifiedName());
   EXPECT_FALSE(HasVoid(*reference, nullptr));
 
-  sptr<Type> array = make_shared<ArrayType>(reference);
+  sptr<Type> array = make_shared<ArrayType>(reference, Token(LBRACK, Pos(-1, -1)), Token(RBRACK, Pos(-1, -1)));
   EXPECT_FALSE(HasVoid(*array, nullptr));
 
-  sptr<Type> array2 = make_shared<ArrayType>(array);
+  sptr<Type> array2 = make_shared<ArrayType>(array, Token(LBRACK, Pos(-1, -1)), Token(RBRACK, Pos(-1, -1)));
   EXPECT_FALSE(HasVoid(*array2, nullptr));
 }
 
@@ -37,10 +39,10 @@ TEST_F(TypeVisitorTest, HasVoidPrimitiveFalse) {
   sptr<Type> primitive = make_shared<PrimitiveType>(Token(K_INT, Pos(0, 0)));
   EXPECT_FALSE(HasVoid(*primitive, nullptr));
 
-  sptr<Type> array = make_shared<ArrayType>(primitive);
+  sptr<Type> array = make_shared<ArrayType>(primitive, Token(LBRACK, Pos(-1, -1)), Token(RBRACK, Pos(-1, -1)));
   EXPECT_FALSE(HasVoid(*array, nullptr));
 
-  sptr<Type> array2 = make_shared<ArrayType>(array);
+  sptr<Type> array2 = make_shared<ArrayType>(array, Token(LBRACK, Pos(-1, -1)), Token(RBRACK, Pos(-1, -1)));
   EXPECT_FALSE(HasVoid(*array2, nullptr));
 }
 
@@ -52,11 +54,11 @@ TEST_F(TypeVisitorTest, HasVoidTrue) {
   EXPECT_TRUE(HasVoid(*voidType, &tokOut));
   EXPECT_EQ(tok, tokOut);
 
-  sptr<Type> array = make_shared<ArrayType>(voidType);
+  sptr<Type> array = make_shared<ArrayType>(voidType, Token(LBRACK, Pos(-1, -1)), Token(RBRACK, Pos(-1, -1)));
   EXPECT_TRUE(HasVoid(*array, &tokOut));
   EXPECT_EQ(tok, tokOut);
 
-  sptr<Type> array2 = make_shared<ArrayType>(array);
+  sptr<Type> array2 = make_shared<ArrayType>(array, Token(LBRACK, Pos(-1, -1)), Token(RBRACK, Pos(-1, -1)));
   EXPECT_TRUE(HasVoid(*array, &tokOut));
   EXPECT_EQ(tok, tokOut);
 }
@@ -262,7 +264,7 @@ TEST_F(TypeVisitorTest, ForInitNotValid) {
   Visit(&visitor, stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("InvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
+  EXPECT_EQ("InvalidTopLevelStatement(0:4-9)\n", testing::PrintToString(errors));
 }
 
 TEST_F(TypeVisitorTest, ForInitNotArrayAccess) {
@@ -275,7 +277,7 @@ TEST_F(TypeVisitorTest, ForInitNotArrayAccess) {
   Visit(&visitor, stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("InvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
+  EXPECT_EQ("InvalidTopLevelStatement(0:4-8)\n", testing::PrintToString(errors));
 }
 
 TEST_F(TypeVisitorTest, ForInitNewClassAllowed) {
@@ -324,7 +326,7 @@ TEST_F(TypeVisitorTest, ForInitJustIdNotAllowed) {
   Visit(&visitor, stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("InvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
+  EXPECT_EQ("InvalidTopLevelStatement(0:4)\n", testing::PrintToString(errors));
 }
 
 TEST_F(TypeVisitorTest, ForInitAssignmentInParensDisallowed) {
@@ -337,7 +339,7 @@ TEST_F(TypeVisitorTest, ForInitAssignmentInParensDisallowed) {
   Visit(&visitor, stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("InvalidTopLevelStatement(0:1)\n", testing::PrintToString(errors));
+  EXPECT_EQ("InvalidTopLevelStatement(0:4-11)\n", testing::PrintToString(errors));
 }
 
 TEST_F(TypeVisitorTest, BlockNotStmt) {
@@ -350,7 +352,7 @@ TEST_F(TypeVisitorTest, BlockNotStmt) {
   Visit(&visitor, stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());
-  EXPECT_EQ("InvalidTopLevelStatement(0:1)\nInvalidTopLevelStatement(0:1)\n",
+  EXPECT_EQ("InvalidTopLevelStatement(0:19)\nInvalidTopLevelStatement(0:22)\n",
             testing::PrintToString(errors));
 }
 
