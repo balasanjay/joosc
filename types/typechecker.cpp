@@ -1,6 +1,7 @@
 #include "types/typechecker.h"
 
 #include "ast/ast.h"
+#include "ast/extent.h"
 #include "base/error.h"
 #include "base/macros.h"
 #include "types/types_internal.h"
@@ -86,8 +87,7 @@ REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
     index = Visit(this, expr.GetExprPtr());
   }
   if (index != nullptr && index->GetTypeId() != expectedIndexType) {
-    // TODO: get real PosRange.
-    errors_->Append(MakeTypeMismatchError(expectedIndexType, index->GetTypeId(), Pos(0, 0)));
+    errors_->Append(MakeTypeMismatchError(expectedIndexType, index->GetTypeId(), ExtentOf(index)));
     return nullptr;
   }
 
@@ -103,13 +103,11 @@ REWRITE_DEFN(TypeChecker, ArrayIndexExpr, Expr, expr,) {
 
   TypeId expectedIndexType = TypeId{TypeId::kIntBase, 0};
   if (index->GetTypeId() != expectedIndexType) {
-    // TODO: get real PosRange.
-    errors_->Append(MakeTypeMismatchError(expectedIndexType, index->GetTypeId(), Pos(0, 0)));
+    errors_->Append(MakeTypeMismatchError(expectedIndexType, index->GetTypeId(), ExtentOf(index)));
     return nullptr;
   }
   if (base->GetTypeId().ndims < 1) {
-    // TODO: get real PosRange.
-    errors_->Append(MakeIndexNonArrayError(Pos(0, 0)));
+    errors_->Append(MakeIndexNonArrayError(ExtentOf(base)));
     return nullptr;
   }
 
