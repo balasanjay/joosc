@@ -1243,7 +1243,7 @@ Parser Parser::ParseParamList(Result<ParamList>* out) const {
       return afterType.Fail(MakeParamRequiresNameError(cur.GetNext()), out);
     }
     cur = afterIdent;
-    params.Append(make_shared<Param>(type.Get(), *ident.Get()));
+    params.Append(make_shared<Param>(type.Get(), TokenString(file_, *ident.Get()), *ident.Get()));
 
     if (cur.IsNext(COMMA)) {
       cur = cur.Advance();

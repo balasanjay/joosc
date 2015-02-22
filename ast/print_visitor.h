@@ -229,7 +229,7 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(Param, param) {
     param.GetType().PrintTo(os_);
-    *os_ << ' ' << param.Ident().TypeInfo();
+    *os_ << ' ' << param.Name();
     return VisitResult::SKIP;
   }
 

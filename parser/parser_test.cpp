@@ -1270,7 +1270,7 @@ TEST_F(ParserTest, ParamListBasic) {
   Parser after = parser_->ParseParamList(&params);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(params));
-  EXPECT_EQ("K_INT IDENTIFIER,String IDENTIFIER,a.b.c.d.e IDENTIFIER",
+  EXPECT_EQ("K_INT a,String b,a.b.c.d.e foo",
             Str(params.Get()));
 }
 
@@ -1280,7 +1280,7 @@ TEST_F(ParserTest, ParamListOne) {
   Parser after = parser_->ParseParamList(&params);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(params));
-  EXPECT_EQ("K_INT IDENTIFIER", Str(params.Get()));
+  EXPECT_EQ("K_INT a", Str(params.Get()));
 }
 
 TEST_F(ParserTest, ParamListEmpty) {
@@ -1408,8 +1408,8 @@ TEST_F(ParserTest, MethodDeclParamsBlock) {
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
   EXPECT_EQ(
-      "K_PUBLIC K_INT main(K_INT IDENTIFIER,array<String> "
-      "IDENTIFIER){foo;}",
+      "K_PUBLIC K_INT main(K_INT argc,array<String> "
+      "argv){foo;}",
       Str(decl.Get()));
 }
 
@@ -1437,7 +1437,7 @@ TEST_F(ParserTest, MethodConstDeclMembers) {
   Parser after = parser_->ParseMemberDecl(&decl);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
-  EXPECT_EQ("foo(K_INT IDENTIFIER,K_INT IDENTIFIER){}", Str(decl.Get()));
+  EXPECT_EQ("foo(K_INT a,K_INT b){}", Str(decl.Get()));
 }
 
 TEST_F(ParserTest, TypeDeclBadModifierList) {

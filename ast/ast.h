@@ -579,18 +579,20 @@ class ModifierList {
 
 class Param final {
  public:
-  Param(sptr<const Type> type, lexer::Token ident) : type_(type), ident_(ident) {}
+  Param(sptr<const Type> type, const string& name, lexer::Token nameToken) : type_(type), name_(name), nameToken_(nameToken) {}
 
   ACCEPT_VISITOR(Param, Param);
 
   REF_GETTER(Type, GetType, *type_);
-  VAL_GETTER(lexer::Token, Ident, ident_);
+  REF_GETTER(string, Name, name_);
+  VAL_GETTER(lexer::Token, NameToken, nameToken_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Param);
 
   sptr<const Type> type_;
-  lexer::Token ident_;
+  string name_;
+  lexer::Token nameToken_;
 };
 
 class ParamList final {
