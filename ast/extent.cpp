@@ -34,7 +34,7 @@ class ExtentVisitor final : public Visitor {
 
   VISIT_DECL(InstanceOfExpr, expr) {
     Visit(this, expr.LhsPtr());
-    UpdateType(expr.GetType());
+    UpdatePosFromType(expr.GetType());
     return VisitResult::SKIP;
   }
 
@@ -106,10 +106,10 @@ class ExtentVisitor final : public Visitor {
   }
 
  private:
-  void UpdateType(const Type& type) {
+  void UpdatePosFromType(const Type& type) {
     if (IS_CONST_REF(ArrayType, type)) {
       const ArrayType& arr = dynamic_cast<const ArrayType&>(type);
-      UpdateType(arr.ElemType());
+      UpdatePosFromType(arr.ElemType());
       UpdatePos(arr.Rbrack().pos);
       return;
     }
@@ -157,7 +157,6 @@ PosRange ExtentOf(sptr<const Stmt> stmt) {
   assert(stmt != nullptr);
   ExtentVisitor visitor;
   assert(stmt == Visit(&visitor, stmt));
-  assert(visitor.Extent().fileid != -1);
   return visitor.Extent();
 }
 
