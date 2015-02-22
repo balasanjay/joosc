@@ -221,9 +221,10 @@ class UnaryExpr : public Expr {
 
 class LitExpr : public Expr {
  public:
-  LitExpr(lexer::Token token) : token_(token) {}
-
   VAL_GETTER(lexer::Token, GetToken, token_);
+
+ protected:
+  LitExpr(lexer::Token token) : token_(token) {}
 
  private:
   lexer::Token token_;
