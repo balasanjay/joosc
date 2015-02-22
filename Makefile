@@ -22,10 +22,18 @@ DEFAULT_BUILD_TARGETS := joosc test
 
 # CXX is the C++ compiler.
 CXX := /usr/local/clang-3.4/bin/clang++
-
 # CXXFLAGS are the flags passed to the C++ compiler.
 CXXFLAGS := -Wall -Wextra -std=c++11 -MMD -MP -g -pedantic -I ./ -include std.h
+# LDFLAGS are the flags passed to the C++ linker.
 LDFLAGS := -lpthread
+
+# If one of the sanitizers are enabled, then append the appropriate thing to
+# CXXFLAGS and LDFLAGS. Note that we do this before genering BUILD_CACHE_KEY,
+# so we don't re-use values across different kinds of builds.
+ifneq (${SANITIZER},)
+	CXXFLAGS := ${CXXFLAGS} -fsanitize=${SANITIZER}
+	LDFLAGS := ${LDFLAGS} -fsanitize=${SANITIZER}
+endif
 
 # BUILD_CACHE_KEY should contain all variables that are used when building your
 # source files.  This ensures that changing a variable like CXXFLAGS will
