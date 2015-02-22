@@ -22,27 +22,40 @@ DEFAULT_BUILD_TARGETS := joosc test
 
 # CXX is the C++ compiler.
 CXX := /usr/local/clang-3.4/bin/clang++
-
 # CXXFLAGS are the flags passed to the C++ compiler.
 CXXFLAGS := -Wall -Wextra -std=c++11 -MMD -MP -g -pedantic -I ./ -include std.h
+# LDFLAGS are the flags passed to the C++ linker.
 LDFLAGS := -lpthread
 
-# BUILD_CACHE_KEY should contain all variables that are used when building your
-# source files.  This ensures that changing a variable like CXXFLAGS will
+# If one of the sanitizers are enabled, then append the appropriate thing to
+# CXXFLAGS and LDFLAGS. Note that we do this before genering BUILD_CACHE_KEY,
+# so we don't re-use values across different kinds of builds.
+ifneq (${SANITIZER},)
+	CXXFLAGS := ${CXXFLAGS} -fsanitize=${SANITIZER}
+	LDFLAGS := ${LDFLAGS} -fsanitize=${SANITIZER}
+endif
+
+# BUILD_CACHE_KEY_FILE should contain all variables that are used when building
+# your source files.  This ensures that changing a variable like CXXFLAGS will
 # automatically cause a fresh compilation, rather than reusing previous
-# compilation artifacts.
-BUILD_CACHE_KEY := ${CXX} ${CXXFLAGS} ${LDFLAGS}
+# compilation artifacts. We currently use the contents of the Makefile and the
+# SANITIZER variable as the build cache key.
+BUILD_CACHE_KEY_FILE := ${shell tempfile}
+UNUSED := ${shell echo ${SANITIZER} >> ${BUILD_CACHE_KEY_FILE}}
+UNUSED := ${shell cat Makefile >> ${BUILD_CACHE_KEY_FILE}}
+BUILD_CACHE_KEY := ${shell md5sum ${BUILD_CACHE_KEY_FILE} | head -c 32}
+UNUSED := ${shell rm ${BUILD_CACHE_KEY_FILE}}
 
 # Compute some other helpful variables.
 BUILD_ROOT := .build
-BUILD_DIR := ${BUILD_ROOT}/${shell cat Makefile | md5sum | head -c 32}
+BUILD_DIR := ${BUILD_ROOT}/${BUILD_CACHE_KEY}
 TO_BUILD_DIR = ${patsubst %,${BUILD_DIR}/%,${1}}
 
 CORE_SOURCES := ${filter-out ${MAIN_SOURCES},${FULL_SOURCES}}
 FULL_OBJECTS := ${call TO_BUILD_DIR,${FULL_SOURCES:.cpp=.o}}
 CORE_OBJECTS := ${call TO_BUILD_DIR,${CORE_SOURCES:.cpp=.o}}
 
-.PHONY: default all clean format dist
+.PHONY: default all clean format dist ${TARGETS}
 
 default: ${DEFAULT_BUILD_TARGETS}
 all: ${TARGETS}
@@ -56,9 +69,13 @@ ${FULL_OBJECTS}: ${BUILD_DIR}/%.o: ./%.cpp
 	${CXX} ${CXXFLAGS} -o $@ $< -c;
 
 # Link.
-${TARGETS}:
+${call TO_BUILD_DIR,${TARGETS}}:
 	@mkdir -p ${dir $@};
 	${CXX} -o $@ $^ ${LDFLAGS};
+
+# Copy.
+${TARGETS}: %: ${call TO_BUILD_DIR,%}
+	cp $^ $@;
 
 # Clang-format source files.
 format: ${FULL_SOURCES} ${FULL_HEADERS}
@@ -86,8 +103,8 @@ FULL_DEPENDS := ${call TO_BUILD_DIR,${FULL_SOURCES:.cpp=.d}}
 TEST_OBJECTS := ${filter %_test.o,${CORE_OBJECTS}}
 NON_TEST_OBJECTS := ${filter-out ${TEST_OBJECTS},${CORE_OBJECTS}}
 
-${TARGETS}: %: ${call TO_BUILD_DIR,%_main.o} ${NON_TEST_OBJECTS}
-test: ${call TO_BUILD_DIR,test_main.o} ${CORE_OBJECTS}
+${call TO_BUILD_DIR,${TARGETS}}: %: %_main.o ${NON_TEST_OBJECTS}
+${call TO_BUILD_DIR,test}: ${CORE_OBJECTS}
 
 dist: clean
 	zip -r submit.zip . -x '*.git*' -x '*.build*' -x '*third_party/cs444*'

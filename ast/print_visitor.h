@@ -163,7 +163,7 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(LocalDeclStmt, stmt) {
     stmt.GetType().PrintTo(os_);
-    *os_ << ' ' << stmt.Ident().TypeInfo() << space_ << '=' << space_;
+    *os_ << ' ' << stmt.Name() << space_ << '=' << space_;
     Visit(this, stmt.GetExprPtr());
     *os_ << ';';
     return VisitResult::SKIP;
@@ -229,7 +229,7 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(Param, param) {
     param.GetType().PrintTo(os_);
-    *os_ << ' ' << param.Ident().TypeInfo();
+    *os_ << ' ' << param.Name();
     return VisitResult::SKIP;
   }
 
@@ -237,7 +237,7 @@ class PrintVisitor final : public Visitor {
     field.Mods().PrintTo(os_);
     field.GetType().PrintTo(os_);
     *os_ << ' ';
-    *os_ << field.Ident().TypeInfo();
+    *os_ << field.Name();
     if (field.ValPtr() != nullptr) {
       *os_ << space_ << '=' << space_;
       Visit(this, field.ValPtr());
@@ -252,7 +252,7 @@ class PrintVisitor final : public Visitor {
       meth.TypePtr()->PrintTo(os_);
       *os_ << ' ';
     }
-    *os_ << meth.Ident().TypeInfo();
+    *os_ << meth.Name();
     *os_ << '(';
     Visit(this, meth.ParamsPtr());
     *os_ << ')' << space_;
@@ -267,7 +267,7 @@ class PrintVisitor final : public Visitor {
     } else {
       *os_ << "interface ";
     }
-    *os_ << type.NameToken().TypeInfo();
+    *os_ << type.Name();
 
     auto printNameList = [&](const string& label, const vector<QualifiedName>& elems) {
       bool first = true;
