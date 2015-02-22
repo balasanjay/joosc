@@ -35,15 +35,20 @@ ifneq (${SANITIZER},)
 	LDFLAGS := ${LDFLAGS} -fsanitize=${SANITIZER}
 endif
 
-# BUILD_CACHE_KEY should contain all variables that are used when building your
-# source files.  This ensures that changing a variable like CXXFLAGS will
+# BUILD_CACHE_KEY_FILE should contain all variables that are used when building
+# your source files.  This ensures that changing a variable like CXXFLAGS will
 # automatically cause a fresh compilation, rather than reusing previous
-# compilation artifacts.
-BUILD_CACHE_KEY := ${CXX} ${CXXFLAGS} ${LDFLAGS}
+# compilation artifacts. We currently use the contents of the Makefile and the
+# SANITIZER variable as the build cache key.
+BUILD_CACHE_KEY_FILE := ${shell tempfile}
+UNUSED := ${shell echo ${SANITIZER} >> ${BUILD_CACHE_KEY_FILE}}
+UNUSED := ${shell cat Makefile >> ${BUILD_CACHE_KEY_FILE}}
+BUILD_CACHE_KEY := ${shell md5sum ${BUILD_CACHE_KEY_FILE} | head -c 32}
+UNUSED := ${shell rm ${BUILD_CACHE_KEY_FILE}}
 
 # Compute some other helpful variables.
 BUILD_ROOT := .build
-BUILD_DIR := ${BUILD_ROOT}/${shell cat Makefile | md5sum | head -c 32}
+BUILD_DIR := ${BUILD_ROOT}/${BUILD_CACHE_KEY}
 TO_BUILD_DIR = ${patsubst %,${BUILD_DIR}/%,${1}}
 
 CORE_SOURCES := ${filter-out ${MAIN_SOURCES},${FULL_SOURCES}}
