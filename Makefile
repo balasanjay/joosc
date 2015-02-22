@@ -23,7 +23,7 @@ DEFAULT_BUILD_TARGETS := joosc test
 # CXX is the C++ compiler.
 CXX := /usr/local/clang-3.4/bin/clang++
 # CXXFLAGS are the flags passed to the C++ compiler.
-CXXFLAGS := -Wall -Wextra -std=c++11 -MMD -MP -g -pedantic -I ./ -include std.h
+CXXFLAGS := -Wall -Wextra -std=c++11 -MMD -MP -g -pedantic -I third_party/stdlib/ -I ./ -include std.h
 # LDFLAGS are the flags passed to the C++ linker.
 LDFLAGS := -lpthread
 
