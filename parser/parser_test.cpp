@@ -1328,7 +1328,7 @@ TEST_F(ParserTest, FieldDeclSimple) {
   Parser after = parser_->ParseMemberDecl(&decl);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
-  EXPECT_EQ("K_INT IDENTIFIER;", Str(decl.Get()));
+  EXPECT_EQ("K_INT foo;", Str(decl.Get()));
 }
 
 TEST_F(ParserTest, FieldDeclModsOrdered) {
@@ -1339,7 +1339,7 @@ TEST_F(ParserTest, FieldDeclModsOrdered) {
   EXPECT_TRUE(b(decl));
   EXPECT_EQ(
       "K_PUBLIC K_PROTECTED K_ABSTRACT K_STATIC K_FINAL K_NATIVE K_INT "
-      "IDENTIFIER;",
+      "foo;",
       Str(decl.Get()));
 }
 
@@ -1349,7 +1349,7 @@ TEST_F(ParserTest, FieldDeclWithAssign) {
   Parser after = parser_->ParseMemberDecl(&decl);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
-  EXPECT_EQ("K_INT IDENTIFIER=INTEGER;", Str(decl.Get()));
+  EXPECT_EQ("K_INT foo=INTEGER;", Str(decl.Get()));
 }
 
 TEST_F(ParserTest, FieldDeclExprError) {
@@ -1398,7 +1398,7 @@ TEST_F(ParserTest, MethodDeclNoBody) {
   Parser after = parser_->ParseMemberDecl(&decl);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
-  EXPECT_EQ("K_INT IDENTIFIER();", Str(decl.Get()));
+  EXPECT_EQ("K_INT foo();", Str(decl.Get()));
 }
 
 TEST_F(ParserTest, MethodDeclParamsBlock) {
@@ -1408,7 +1408,7 @@ TEST_F(ParserTest, MethodDeclParamsBlock) {
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
   EXPECT_EQ(
-      "K_PUBLIC K_INT IDENTIFIER(K_INT IDENTIFIER,array<String> "
+      "K_PUBLIC K_INT main(K_INT IDENTIFIER,array<String> "
       "IDENTIFIER){foo;}",
       Str(decl.Get()));
 }
@@ -1419,7 +1419,7 @@ TEST_F(ParserTest, MethodConstDeclNoBody) {
   Parser after = parser_->ParseMemberDecl(&decl);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
-  EXPECT_EQ("IDENTIFIER();", Str(decl.Get()));
+  EXPECT_EQ("foo();", Str(decl.Get()));
 }
 
 TEST_F(ParserTest, MethodConstDeclBody) {
@@ -1428,7 +1428,7 @@ TEST_F(ParserTest, MethodConstDeclBody) {
   Parser after = parser_->ParseMemberDecl(&decl);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
-  EXPECT_EQ("IDENTIFIER(){a;}", Str(decl.Get()));
+  EXPECT_EQ("foo(){a;}", Str(decl.Get()));
 }
 
 TEST_F(ParserTest, MethodConstDeclMembers) {
@@ -1437,7 +1437,7 @@ TEST_F(ParserTest, MethodConstDeclMembers) {
   Parser after = parser_->ParseMemberDecl(&decl);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
-  EXPECT_EQ("IDENTIFIER(K_INT IDENTIFIER,K_INT IDENTIFIER){}", Str(decl.Get()));
+  EXPECT_EQ("foo(K_INT IDENTIFIER,K_INT IDENTIFIER){}", Str(decl.Get()));
 }
 
 TEST_F(ParserTest, TypeDeclBadModifierList) {
@@ -1538,8 +1538,8 @@ TEST_F(ParserTest, TypeDeclClassManySemis) {
   EXPECT_TRUE(b(decl));
   EXPECT_TRUE(after.IsAtEnd());
   EXPECT_EQ(
-      "K_PUBLIC class IDENTIFIER extends Bar implements Baz,Buh {K_INT "
-      "IDENTIFIER=INTEGER;}",
+      "K_PUBLIC class Foo extends Bar implements Baz,Buh {K_INT "
+      "i=INTEGER;}",
       Str(decl.Get()));
 }
 
@@ -1571,8 +1571,8 @@ TEST_F(ParserTest, TypeDeclInterfaceManySemis) {
   EXPECT_TRUE(b(decl));
   EXPECT_TRUE(after.IsAtEnd());
   EXPECT_EQ(
-      "K_PUBLIC interface IDENTIFIER extends Bar,Baz,Buh {K_INT "
-      "IDENTIFIER=INTEGER;}",
+      "K_PUBLIC interface Foo extends Bar,Baz,Buh {K_INT "
+      "i=INTEGER;}",
       Str(decl.Get()));
 }
 
@@ -1682,7 +1682,7 @@ TEST_F(ParserTest, CompUnitSuccess) {
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(unit));
-  EXPECT_EQ("package foo;import bar.baz.*;K_PUBLIC class IDENTIFIER {}",
+  EXPECT_EQ("package foo;import bar.baz.*;K_PUBLIC class foo {}",
             Str(unit.Get()));
 }
 
@@ -1710,7 +1710,7 @@ TEST_F(ParserTest, CompUnitOnlyTypeSuccess) {
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(unit));
-  EXPECT_EQ("class IDENTIFIER {}", Str(unit.Get()));
+  EXPECT_EQ("class Foo {}", Str(unit.Get()));
 }
 
 TEST_F(ParserTest, CompUnitOnlySemiSuccess) {
@@ -1730,7 +1730,7 @@ TEST_F(ParserTest, CompUnitManySemisSuccess) {
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(unit));
-  EXPECT_EQ("package foo;import bar.baz.*;K_PUBLIC class IDENTIFIER {}",
+  EXPECT_EQ("package foo;import bar.baz.*;K_PUBLIC class foo {}",
             Str(unit.Get()));
 }
 

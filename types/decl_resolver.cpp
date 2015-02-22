@@ -148,7 +148,7 @@ REWRITE_DEFN(DeclResolver, FieldDecl, MemberDecl, field, ) {
 
   // TODO: put field in table keyed by (curtid_, field.Name()).
   // TODO: assign member id to field.
-  return make_shared<FieldDecl>(field.Mods(), field.GetTypePtr(), field.Ident(), field.ValPtr());
+  return make_shared<FieldDecl>(field.Mods(), field.GetTypePtr(), field.Name(), field.NameToken(), field.ValPtr());
 }
 
 REWRITE_DEFN(DeclResolver, MethodDecl, MemberDecl, meth,) {
@@ -177,7 +177,7 @@ REWRITE_DEFN(DeclResolver, MethodDecl, MemberDecl, meth,) {
   // TODO: put method in table keyed by (curtid_, meth.Name(), paramtids).
   // TODO: assign member id to method.
 
-  return make_shared<MethodDecl>(meth.Mods(), meth.TypePtr(), meth.Ident(), meth.ParamsPtr(), meth.BodyPtr());
+  return make_shared<MethodDecl>(meth.Mods(), meth.TypePtr(), meth.Name(), meth.NameToken(), meth.ParamsPtr(), meth.BodyPtr());
 }
 
 } // namespace types
