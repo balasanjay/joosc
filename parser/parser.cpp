@@ -832,7 +832,7 @@ Parser Parser::ParseVarDecl(Result<Stmt>* out) const {
                      .ParseTokenIf(ExactType(ASSG), &eq)
                      .ParseExpression(&expr);
   RETURN_IF_GOOD(
-      after, new LocalDeclStmt(type.Get(), *ident.Get(), expr.Get()),
+      after, new LocalDeclStmt(type.Get(), TokenString(file_, *ident.Get()), *ident.Get(), expr.Get()),
       out);
 
   // TODO: Make it fatal error only after we find equals?
@@ -1182,15 +1182,16 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
       typeptr = type.Get();
     }
     return afterBody.Success(
-        new MethodDecl(*mods.Get(), typeptr, *ident.Get(), params.Get(),
-            bodyPtr), out);
+        new MethodDecl(*mods.Get(), typeptr, TokenString(file_, *ident.Get()),
+            *ident.Get(), params.Get(), bodyPtr),
+        out);
   }
 
   // Parse field.
   if (afterCommon.IsNext(SEMI)) {
     return afterCommon.Advance().Success(
-        new FieldDecl(*mods.Get(), type.Get(), *ident.Get(),
-                      nullptr),
+        new FieldDecl(*mods.Get(), type.Get(), TokenString(file_, *ident.Get()),
+            *ident.Get(), nullptr),
         out);
   }
 
@@ -1202,7 +1203,7 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
                         .ParseTokenIf(ExactType(SEMI), &semi);
 
   RETURN_IF_GOOD(afterVal, new FieldDecl(*mods.Get(), type.Get(),
-                                         *ident.Get(), val.Get()),
+        TokenString(file_, *ident.Get()), *ident.Get(), val.Get()),
                  out);
 
   ErrorList errors;
@@ -1242,7 +1243,7 @@ Parser Parser::ParseParamList(Result<ParamList>* out) const {
       return afterType.Fail(MakeParamRequiresNameError(cur.GetNext()), out);
     }
     cur = afterIdent;
-    params.Append(make_shared<Param>(type.Get(), *ident.Get()));
+    params.Append(make_shared<Param>(type.Get(), TokenString(file_, *ident.Get()), *ident.Get()));
 
     if (cur.IsNext(COMMA)) {
       cur = cur.Advance();

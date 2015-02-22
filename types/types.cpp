@@ -34,7 +34,7 @@ TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, sptr<const Program> prog,
   TypeInfoMapBuilder builder;
   DeclResolver resolver(&builder, typeset, fs, error_out);
 
-  *new_prog = Visit(&resolver, prog);
+  *new_prog = resolver.Visit(prog);
 
   return builder.Build(fs, error_out);
 }
@@ -52,7 +52,7 @@ sptr<const Program> TypecheckProgram(sptr<const Program> prog, const FileSet* fs
   // Phase 3: typecheck.
   {
     TypeChecker typechecker(typeInfoMap, typeset, fs, out);
-    prog = Visit(&typechecker, prog);
+    prog = typechecker.Visit(prog);
   }
 
   return prog;

@@ -45,7 +45,7 @@ REWRITE_DEFN(TypeChecker, CompUnit, CompUnit, unit, unitptr) {
   TypeSet scopedTypeSet = typeset_.WithImports(unit.Imports(), fs_, errors_);
   TypeChecker below(typeinfo_, scopedTypeSet, fs_, errors_, true, unit.PackagePtr());
 
-  return Visit(&below, unitptr);
+  return below.Visit(unitptr);
 }
 
 REWRITE_DEFN(TypeChecker, TypeDecl, TypeDecl, type, typeptr) {
@@ -63,7 +63,7 @@ REWRITE_DEFN(TypeChecker, TypeDecl, TypeDecl, type, typeptr) {
   assert(!curtid.IsError()); // Pruned in DeclResolver.
 
   TypeChecker below(typeinfo_, typeset_, fs_, errors_, true, package_, true, curtid);
-  return Visit(&below, typeptr);
+  return below.Visit(typeptr);
 }
 
 REWRITE_DEFN(TypeChecker, IntLitExpr, Expr, expr, ) {
@@ -84,7 +84,7 @@ REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
   TypeId expectedIndexType = TypeId{TypeId::kIntBase, 0};
 
   if (expr.GetExprPtr() != nullptr) {
-    index = Visit(this, expr.GetExprPtr());
+    index = Visit(expr.GetExprPtr());
   }
   if (index != nullptr && index->GetTypeId() != expectedIndexType) {
     errors_->Append(MakeTypeMismatchError(expectedIndexType, index->GetTypeId(), ExtentOf(index)));
@@ -95,8 +95,8 @@ REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
 }
 
 REWRITE_DEFN(TypeChecker, ArrayIndexExpr, Expr, expr,) {
-  sptr<const Expr> base = Visit(this, expr.BasePtr());
-  sptr<const Expr> index = Visit(this, expr.IndexPtr());
+  sptr<const Expr> base = Visit(expr.BasePtr());
+  sptr<const Expr> index = Visit(expr.IndexPtr());
   if (base == nullptr || index == nullptr) {
     return nullptr;
   }

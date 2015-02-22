@@ -225,9 +225,10 @@ class UnaryExpr : public Expr {
 
 class LitExpr : public Expr {
  public:
-  LitExpr(lexer::Token token, TypeId tid = TypeId::Unassigned()) : Expr(tid), token_(token) {}
-
   VAL_GETTER(lexer::Token, GetToken, token_);
+
+ protected:
+  LitExpr(lexer::Token token, TypeId tid = TypeId::Unassigned()) : Expr(tid), token_(token) {}
 
  private:
   lexer::Token token_;
@@ -427,20 +428,22 @@ class EmptyStmt : public Stmt {
 
 class LocalDeclStmt : public Stmt {
  public:
-  LocalDeclStmt(sptr<const Type> type, lexer::Token ident, sptr<const Expr> expr)
-      : type_(type), ident_(ident), expr_(expr) {}
+  LocalDeclStmt(sptr<const Type> type, const string& name, lexer::Token nameToken, sptr<const Expr> expr)
+      : type_(type), name_(name), nameToken_(nameToken), expr_(expr) {}
 
   ACCEPT_VISITOR(LocalDeclStmt, Stmt);
 
   SPTR_GETTER(Type, GetType, type_);
-  VAL_GETTER(lexer::Token, Ident, ident_);
+  REF_GETTER(string, Name, name_);
+  VAL_GETTER(lexer::Token, NameToken, nameToken_);
   SPTR_GETTER(Expr, GetExpr, expr_);
 
   // TODO: get the identifier as a string.
 
  private:
   sptr<const Type> type_;
-  lexer::Token ident_;
+  string name_;
+  lexer::Token nameToken_;
   sptr<const Expr> expr_;
 };
 
@@ -582,18 +585,20 @@ class ModifierList {
 
 class Param final {
  public:
-  Param(sptr<const Type> type, lexer::Token ident) : type_(type), ident_(ident) {}
+  Param(sptr<const Type> type, const string& name, lexer::Token nameToken) : type_(type), name_(name), nameToken_(nameToken) {}
 
   ACCEPT_VISITOR(Param, Param);
 
   REF_GETTER(Type, GetType, *type_);
-  VAL_GETTER(lexer::Token, Ident, ident_);
+  REF_GETTER(string, Name, name_);
+  VAL_GETTER(lexer::Token, NameToken, nameToken_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Param);
 
   sptr<const Type> type_;
-  lexer::Token ident_;
+  string name_;
+  lexer::Token nameToken_;
 };
 
 class ParamList final {
@@ -613,26 +618,30 @@ class ParamList final {
 
 class MemberDecl {
  public:
-  MemberDecl(const ModifierList& mods, lexer::Token ident)
-      : mods_(mods), ident_(ident) {}
   virtual ~MemberDecl() = default;
 
   ACCEPT_VISITOR_ABSTRACT(MemberDecl);
 
   REF_GETTER(ModifierList, Mods, mods_);
-  VAL_GETTER(lexer::Token, Ident, ident_);
+  REF_GETTER(string, Name, name_);
+  REF_GETTER(lexer::Token, NameToken, nameToken_);
+
+ protected:
+  MemberDecl(const ModifierList& mods, const string& name, lexer::Token nameToken)
+      : mods_(mods), name_(name), nameToken_(nameToken) {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MemberDecl);
 
   ModifierList mods_;
-  lexer::Token ident_;
+  string name_;
+  lexer::Token nameToken_;
 };
 
 class FieldDecl : public MemberDecl {
  public:
-  FieldDecl(const ModifierList& mods, sptr<const Type> type, lexer::Token ident, sptr<const Expr> val)
-      : MemberDecl(mods, ident),
+  FieldDecl(const ModifierList& mods, sptr<const Type> type, const string& name, lexer::Token nameToken, sptr<const Expr> val)
+      : MemberDecl(mods, name, nameToken),
         type_(type),
         val_(val) {}
 
@@ -650,9 +659,9 @@ class FieldDecl : public MemberDecl {
 
 class MethodDecl : public MemberDecl {
  public:
-  MethodDecl(const ModifierList& mods, sptr<const Type> type, lexer::Token ident,
+  MethodDecl(const ModifierList& mods, sptr<const Type> type, const string& name, lexer::Token nameToken,
              sptr<const ParamList> params, sptr<const Stmt> body)
-      : MemberDecl(mods, ident),
+      : MemberDecl(mods, name, nameToken),
         type_(type),
         params_(params),
         body_(body) {}

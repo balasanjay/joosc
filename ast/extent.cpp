@@ -15,31 +15,31 @@ class ExtentVisitor final : public Visitor {
   PosRange Extent() const { return extent_; }
 
   VISIT_DECL(ArrayIndexExpr, expr) {
-    Visit(this, expr.BasePtr());
+    Visit(expr.BasePtr());
     UpdatePos(expr.Rbrack().pos);
     return VisitResult::SKIP;
   }
 
   VISIT_DECL(CallExpr, expr) {
-    Visit(this, expr.BasePtr());
+    Visit(expr.BasePtr());
     UpdatePos(expr.Rparen().pos);
     return VisitResult::SKIP;
   }
 
   VISIT_DECL(CastExpr, expr) {
     UpdatePos(expr.Lparen().pos);
-    Visit(this, expr.GetExprPtr());
+    Visit(expr.GetExprPtr());
     return VisitResult::SKIP;
   }
 
   VISIT_DECL(InstanceOfExpr, expr) {
-    Visit(this, expr.LhsPtr());
+    Visit(expr.LhsPtr());
     UpdatePosFromType(expr.GetType());
     return VisitResult::SKIP;
   }
 
   VISIT_DECL(FieldDerefExpr, expr) {
-    Visit(this, expr.BasePtr());
+    Visit(expr.BasePtr());
     UpdatePos(expr.GetToken().pos);
     return VisitResult::SKIP;
   }
@@ -101,7 +101,7 @@ class ExtentVisitor final : public Visitor {
 
   VISIT_DECL(UnaryExpr, expr) {
     UpdatePos(expr.Op().pos);
-    Visit(this, expr.RhsPtr());
+    Visit(expr.RhsPtr());
     return VisitResult::SKIP;
   }
 
@@ -148,7 +148,7 @@ class ExtentVisitor final : public Visitor {
 PosRange ExtentOf(sptr<const Expr> expr) {
   assert(expr != nullptr);
   ExtentVisitor visitor;
-  assert(expr == Visit(&visitor, expr));
+  assert(expr == visitor.Visit(expr));
   assert(visitor.Extent().fileid != -1);
   return visitor.Extent();
 }
@@ -156,7 +156,7 @@ PosRange ExtentOf(sptr<const Expr> expr) {
 PosRange ExtentOf(sptr<const Stmt> stmt) {
   assert(stmt != nullptr);
   ExtentVisitor visitor;
-  assert(stmt == Visit(&visitor, stmt));
+  assert(stmt == visitor.Visit(stmt));
   return visitor.Extent();
 }
 
