@@ -15,22 +15,22 @@ namespace weeder {
 
 sptr<const Program> WeedProgram(const FileSet* fs, sptr<const Program> prog, ErrorList* out) {
   AssignmentVisitor assignmentChecker(fs, out);
-  prog = Visit(&assignmentChecker, prog);
+  prog = assignmentChecker.Visit(prog);
 
   CallVisitor callChecker(fs, out);
-  prog = Visit(&callChecker, prog);
+  prog = callChecker.Visit(prog);
 
   TypeVisitor typeChecker(fs, out);
-  prog = Visit(&typeChecker, prog);
+  prog = typeChecker.Visit(prog);
 
   ModifierVisitor modifierChecker(fs, out);
-  prog = Visit(&modifierChecker, prog);
+  prog = modifierChecker.Visit(prog);
 
   IntRangeVisitor intRangeChecker(fs, out);
-  prog = Visit(&intRangeChecker, prog);
+  prog = intRangeChecker.Visit(prog);
 
   StructureVisitor structureChecker(fs, out);
-  prog = Visit(&structureChecker, prog);
+  prog = structureChecker.Visit(prog);
 
   // More weeding required.
 

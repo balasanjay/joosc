@@ -33,7 +33,7 @@ TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, sptr<const Program> prog,
   TypeInfoMapBuilder builder;
   DeclResolver resolver(&builder, typeset, fs, error_out);
 
-  *new_prog = Visit(&resolver, prog);
+  *new_prog = resolver.Visit(prog);
 
   return builder.Build(fs, error_out);
 }
