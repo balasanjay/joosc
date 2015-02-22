@@ -1,6 +1,7 @@
 #include "parser/parser.h"
 
 #include "ast/ast.h"
+#include "base/thread_pool.h"
 #include "base/unique_ptr_vector.h"
 #include "lexer/lexer.h"
 #include "parser/parser_internal.h"
@@ -1528,17 +1529,30 @@ sptr<const Program> Parse(const FileSet* fs,
                           ErrorList* error_out) {
   assert((uint)fs->Size() == tokens.size());
 
-  SharedPtrVector<const CompUnit> units;
-  bool failed = false;
+  base::ThreadPool pool(1);
+  vector<base::Future<int>> futures;
+  vector<Result<CompUnit>> results(fs->Size());
 
   for (int i = 0; i < fs->Size(); ++i) {
     const File* file = fs->Get(i);
     const vector<Token>& filetoks = tokens[i];
-    Result<CompUnit> unit;
+    Result<CompUnit>* unit = &results[i];
 
-    Parser parser(fs, file, &filetoks, 0);
-    parser.ParseCompUnit(&unit);
+    futures.push_back(pool.Accept<int>([fs, file, unit, filetoks] {
+      Parser parser(fs, file, &filetoks, 0);
+      parser.ParseCompUnit(unit);
+      return 0;
+    }));
+  }
 
+  SharedPtrVector<const CompUnit> units;
+  bool failed = false;
+
+  for (uint i = 0; i < results.size(); ++i) {
+    // First block until this compilation unit is parsed.
+    futures.at(i).Get();
+
+    Result<CompUnit>& unit = results[i];
     if (unit) {
       units.Append(unit.Get());
     } else {
