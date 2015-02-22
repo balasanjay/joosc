@@ -424,20 +424,22 @@ class EmptyStmt : public Stmt {
 
 class LocalDeclStmt : public Stmt {
  public:
-  LocalDeclStmt(sptr<const Type> type, lexer::Token ident, sptr<const Expr> expr)
-      : type_(type), ident_(ident), expr_(expr) {}
+  LocalDeclStmt(sptr<const Type> type, const string& name, lexer::Token nameToken, sptr<const Expr> expr)
+      : type_(type), name_(name), nameToken_(nameToken), expr_(expr) {}
 
   ACCEPT_VISITOR(LocalDeclStmt, Stmt);
 
   SPTR_GETTER(Type, GetType, type_);
-  VAL_GETTER(lexer::Token, Ident, ident_);
+  REF_GETTER(string, Name, name_);
+  VAL_GETTER(lexer::Token, NameToken, nameToken_);
   SPTR_GETTER(Expr, GetExpr, expr_);
 
   // TODO: get the identifier as a string.
 
  private:
   sptr<const Type> type_;
-  lexer::Token ident_;
+  string name_;
+  lexer::Token nameToken_;
   sptr<const Expr> expr_;
 };
 

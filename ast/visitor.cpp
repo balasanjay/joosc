@@ -259,7 +259,7 @@ REWRITE_DEFN(Visitor, LocalDeclStmt, Stmt, stmt, stmtptr) {
     return stmtptr;
   }
 
-  return make_shared<LocalDeclStmt>(stmt.GetTypePtr(), stmt.Ident(), expr);
+  return make_shared<LocalDeclStmt>(stmt.GetTypePtr(), stmt.Name(), stmt.NameToken(), expr);
 }
 
 REWRITE_DEFN(Visitor, ReturnStmt, Stmt, stmt, stmtptr) {

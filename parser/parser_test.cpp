@@ -776,7 +776,7 @@ TEST_F(ParserTest, VarDecl) {
 
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("java.lang.Integer IDENTIFIER=INTEGER;", Str(stmt.Get()));
+  EXPECT_EQ("java.lang.Integer foobar=INTEGER;", Str(stmt.Get()));
 }
 
 TEST_F(ParserTest, VarDeclBadIdentifier) {
@@ -1261,7 +1261,7 @@ TEST_F(ParserTest, WhileStmtSuccess) {
   Parser after = parser_->ParseWhileStmt(&stmt);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(stmt));
-  EXPECT_EQ("while(INTEGER){{K_INT IDENTIFIER=INTEGER;}}", Str(stmt.Get()));
+  EXPECT_EQ("while(INTEGER){{K_INT i=INTEGER;}}", Str(stmt.Get()));
 }
 
 TEST_F(ParserTest, ParamListBasic) {

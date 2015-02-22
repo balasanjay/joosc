@@ -163,7 +163,7 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(LocalDeclStmt, stmt) {
     stmt.GetType().PrintTo(os_);
-    *os_ << ' ' << stmt.Ident().TypeInfo() << space_ << '=' << space_;
+    *os_ << ' ' << stmt.Name() << space_ << '=' << space_;
     Visit(this, stmt.GetExprPtr());
     *os_ << ';';
     return VisitResult::SKIP;

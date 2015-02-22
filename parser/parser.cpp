@@ -832,7 +832,7 @@ Parser Parser::ParseVarDecl(Result<Stmt>* out) const {
                      .ParseTokenIf(ExactType(ASSG), &eq)
                      .ParseExpression(&expr);
   RETURN_IF_GOOD(
-      after, new LocalDeclStmt(type.Get(), *ident.Get(), expr.Get()),
+      after, new LocalDeclStmt(type.Get(), TokenString(file_, *ident.Get()), *ident.Get(), expr.Get()),
       out);
 
   // TODO: Make it fatal error only after we find equals?
