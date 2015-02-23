@@ -9,28 +9,28 @@ namespace ast {
 #define FOR_EACH_VISITABLE(code) \
   code(ArrayIndexExpr, Expr, expr) \
   code(BinExpr, Expr, expr) \
+  code(BoolLitExpr, Expr, expr) \
   code(CallExpr, Expr, expr) \
   code(CastExpr, Expr, expr) \
-  code(FieldDerefExpr, Expr, expr) \
-  code(BoolLitExpr, Expr, expr) \
-  code(StringLitExpr, Expr, expr) \
   code(CharLitExpr, Expr, expr) \
+  code(FieldDerefExpr, Expr, expr) \
+  code(InstanceOfExpr, Expr, expr) \
   code(IntLitExpr, Expr, expr) \
-  code(NullLitExpr, Expr, expr) \
   code(NameExpr, Expr, expr) \
   code(NewArrayExpr, Expr, expr) \
   code(NewClassExpr, Expr, expr) \
+  code(NullLitExpr, Expr, expr) \
   code(ParenExpr, Expr, expr) \
+  code(StringLitExpr, Expr, expr) \
   code(ThisExpr, Expr, expr) \
   code(UnaryExpr, Expr, expr) \
-  code(InstanceOfExpr, Expr, expr) \
   code(BlockStmt, Stmt, stmt) \
   code(EmptyStmt, Stmt, stmt) \
   code(ExprStmt, Stmt, stmt) \
+  code(ForStmt, Stmt, stmt) \
+  code(IfStmt, Stmt, stmt) \
   code(LocalDeclStmt, Stmt, stmt) \
   code(ReturnStmt, Stmt, stmt) \
-  code(IfStmt, Stmt, stmt) \
-  code(ForStmt, Stmt, stmt) \
   code(WhileStmt, Stmt, stmt) \
   code(ParamList, ParamList, params) \
   code(Param, Param, param) \

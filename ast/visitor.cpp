@@ -276,7 +276,7 @@ REWRITE_DEFN(Visitor, ReturnStmt, Stmt, stmt, stmtptr) {
     return stmtptr;
   }
 
-  return make_shared<ReturnStmt>(expr);
+  return make_shared<ReturnStmt>(stmt.ReturnToken(), expr);
 }
 
 REWRITE_DEFN(Visitor, IfStmt, Stmt, stmt, stmtptr) {

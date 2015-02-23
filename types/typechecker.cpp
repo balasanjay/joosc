@@ -13,66 +13,222 @@ using base::FileSet;
 using base::Pos;
 using base::PosRange;
 using base::SharedPtrVector;
-using base::UniquePtrVector;
+using lexer::TokenType;
 
 namespace types {
 
-TypeId TypeChecker::MustResolveType(const Type& type) {
-  PosRange pos(-1, -1, -1);
-  TypeId tid = ResolveType(type, typeset_, &pos);
-  if (tid.IsError()) {
-    errors_->Append(MakeUnknownTypenameError(fs_, pos));
-  }
-  return tid;
-}
-
-Error* TypeChecker::MakeTypeMismatchError(TypeId expected, TypeId got, PosRange pos) {
-  // TODO: lookup expected and got in typeinfo_ and get a name.
-  stringstream ss;
-  ss << "Type mismatch; expected " << expected.base << ", got " << got.base;
-  return MakeSimplePosRangeError(fs_, pos, "TypeMismatchError", ss.str());
-}
-
-Error* TypeChecker::MakeIndexNonArrayError(PosRange pos) {
-  return MakeSimplePosRangeError(fs_, pos, "IndexNonArrayError", "Cannot index non-array.");
-}
-
-REWRITE_DEFN(TypeChecker, CompUnit, CompUnit, unit, unitptr) {
-  if (belowCompUnit_) {
-    return Visitor::RewriteCompUnit(unit, unitptr);
+REWRITE_DEFN(TypeChecker, ArrayIndexExpr, Expr, expr,) {
+  sptr<const Expr> base = Visit(expr.BasePtr());
+  sptr<const Expr> index = Visit(expr.IndexPtr());
+  if (base == nullptr || index == nullptr) {
+    return nullptr;
   }
 
-  TypeSet scopedTypeSet = typeset_.WithImports(unit.Imports(), fs_, errors_);
-  TypeChecker below(typeinfo_, scopedTypeSet, fs_, errors_, true, unit.PackagePtr());
+  if (!IsNumeric(index->GetTypeId())) {
+    errors_->Append(MakeTypeMismatchError(TypeId{TypeId::kIntBase, 0}, index->GetTypeId(), ExtentOf(index)));
+    return nullptr;
+  }
+  if (base->GetTypeId().ndims < 1) {
+    errors_->Append(MakeIndexNonArrayError(ExtentOf(base)));
+    return nullptr;
+  }
 
-  return below.Visit(unitptr);
+  TypeId tid = TypeId{base->GetTypeId().base, base->GetTypeId().ndims - 1};
+  return make_shared<ArrayIndexExpr>(base, expr.Lbrack(), index, expr.Rbrack(), tid);
 }
 
-REWRITE_DEFN(TypeChecker, TypeDecl, TypeDecl, type, typeptr) {
-  if (belowTypeDecl_) {
-    return Visitor::RewriteTypeDecl(type, typeptr);
+bool IsBoolOp(TokenType op) {
+  switch (op) {
+    case lexer::BAND:
+    case lexer::BOR:
+    case lexer::AND:
+    case lexer::OR:
+    case lexer::XOR:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool IsRelationalOp(TokenType op) {
+  switch (op) {
+    case lexer::LE:
+    case lexer::GE:
+    case lexer::LT:
+    case lexer::GT:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool IsEqualityOp(TokenType op) {
+  switch (op) {
+    case lexer::EQ:
+    case lexer::NEQ:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool IsNumericOp(TokenType op) {
+  switch (op) {
+    case lexer::ADD:
+    case lexer::SUB:
+    case lexer::MUL:
+    case lexer::DIV:
+    case lexer::MOD:
+      return true;
+    default:
+      return false;
+  }
+}
+
+REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
+  const TypeId kBoolTypeId = TypeId{TypeId::kBoolBase, 0};
+  const TypeId kIntTypeId = TypeId{TypeId::kIntBase, 0};
+
+  sptr<const Expr> lhs = Visit(expr.LhsPtr());
+  sptr<const Expr> rhs = Visit(expr.RhsPtr());
+  if (lhs == nullptr || rhs == nullptr) {
+    return nullptr;
   }
 
-  vector<string> classname;
-  if (package_ != nullptr) {
-    classname = package_->Parts();
+  TypeId lhsType = lhs->GetTypeId();
+  TypeId rhsType = rhs->GetTypeId();
+  TokenType op = expr.Op().type;
+
+  if (op == lexer::ASSG) {
+    // TODO: implement assignment.
+    return nullptr;
   }
-  classname.push_back(type.Name());
 
-  TypeId curtid = typeset_.Get(classname);
-  assert(!curtid.IsError()); // Pruned in DeclResolver.
+  if (IsBoolOp(op)) {
+    if (lhsType == kBoolTypeId && rhsType == kBoolTypeId) {
+      return make_shared<BinExpr>(lhs, expr.Op(), rhs, kBoolTypeId);
+    }
 
-  TypeChecker below(typeinfo_, typeset_, fs_, errors_, true, package_, true, curtid);
-  return below.Visit(typeptr);
+    if (lhsType != kBoolTypeId) {
+      errors_->Append(MakeTypeMismatchError(kBoolTypeId, lhsType, ExtentOf(expr.LhsPtr())));
+    }
+    if (rhsType != kBoolTypeId) {
+      errors_->Append(MakeTypeMismatchError(kBoolTypeId, rhsType, ExtentOf(expr.RhsPtr())));
+    }
+    return nullptr;
+  }
+
+  if (IsRelationalOp(op)) {
+    if (IsNumeric(lhsType) && IsNumeric(rhsType)) {
+      return make_shared<BinExpr>(lhs, expr.Op(), rhs, kBoolTypeId);
+    }
+
+    if (!IsNumeric(lhsType)) {
+      errors_->Append(MakeTypeMismatchError(kIntTypeId, lhsType, ExtentOf(expr.LhsPtr())));
+    }
+    if (!IsNumeric(rhsType)) {
+      errors_->Append(MakeTypeMismatchError(kIntTypeId, rhsType, ExtentOf(expr.RhsPtr())));
+    }
+    return nullptr;
+  }
+
+  if (IsEqualityOp(op)) {
+    if (!IsComparable(lhsType, rhsType)) {
+      errors_->Append(MakeIncomparableTypeError(lhsType, rhsType, expr.Op().pos));
+      return nullptr;
+    }
+    return make_shared<BinExpr>(lhs, expr.Op(), rhs, kBoolTypeId);
+  }
+
+  const TypeId kStrType = typeset_.Get({"java", "lang", "String"});
+  if (op == lexer::ADD && !kStrType.IsError() && (lhsType == kStrType || rhsType == kStrType)) {
+    return make_shared<BinExpr>(lhs, expr.Op(), rhs, kStrType);
+  }
+
+  assert(IsNumericOp(op));
+  if (IsNumeric(lhsType) && IsNumeric(rhsType)) {
+    return make_shared<BinExpr>(lhs, expr.Op(), rhs, kIntTypeId);
+  }
+
+  if (!IsNumeric(lhsType)) {
+    errors_->Append(MakeTypeMismatchError(kIntTypeId, lhsType, ExtentOf(expr.LhsPtr())));
+  }
+  if (!IsNumeric(rhsType)) {
+    errors_->Append(MakeTypeMismatchError(kIntTypeId, rhsType, ExtentOf(expr.RhsPtr())));
+  }
+  return nullptr;
+}
+
+REWRITE_DEFN(TypeChecker, BoolLitExpr, Expr, expr, ) {
+  return make_shared<BoolLitExpr>(expr.GetToken(), TypeId{TypeId::kBoolBase, 0});
+}
+
+// TODO: CallExpr
+
+REWRITE_DEFN(TypeChecker, CastExpr, Expr, expr, exprptr) {
+  sptr<const Expr> castedExpr = Visit(expr.GetExprPtr());
+  if (castedExpr == nullptr) {
+    return nullptr;
+  }
+  TypeId exprType = castedExpr->GetTypeId();
+
+  TypeId castType = MustResolveType(expr.GetType());
+  if (castType.IsError()) {
+    return nullptr;
+  }
+
+  if ((IsPrimitive(castType) && IsReference(exprType)) ||
+      (IsReference(castType) && IsPrimitive(exprType))) {
+    errors_->Append(MakeIncompatibleCastError(castType, exprType, ExtentOf(exprptr)));
+    return nullptr;
+  }
+
+  // If either way is assignable, then this is allowed. Simplification for Joos.
+  if (!IsAssignable(castType, exprType) && !IsAssignable(exprType, castType)) {
+    errors_->Append(MakeIncompatibleCastError(castType, exprType, ExtentOf(exprptr)));
+    return nullptr;
+  }
+
+  return make_shared<CastExpr>(expr.Lparen(), expr.GetTypePtr(), expr.Rparen(), castedExpr, castType);
+}
+
+REWRITE_DEFN(TypeChecker, CharLitExpr, Expr, expr, ) {
+  return make_shared<CharLitExpr>(expr.GetToken(), TypeId{TypeId::kCharBase, 0});
+}
+
+// TODO: FieldDerefExpr
+
+REWRITE_DEFN(TypeChecker, InstanceOfExpr, Expr, expr, exprptr) {
+  sptr<const Expr> lhs = Visit(expr.LhsPtr());
+  if (lhs == nullptr) {
+    return nullptr;
+  }
+  TypeId lhsType = lhs->GetTypeId();
+
+  TypeId instanceOfType = MustResolveType(expr.GetType());
+  if (instanceOfType.IsError()) {
+    return nullptr;
+  }
+
+  if (IsPrimitive(lhsType) || IsPrimitive(instanceOfType)) {
+    errors_->Append(MakeInstanceOfPrimitiveError(ExtentOf(exprptr)));
+    return nullptr;
+  }
+
+  // If either way is assignable, then this is allowed. Simplification for Joos.
+  if (!IsAssignable(lhsType, instanceOfType) && !IsAssignable(instanceOfType, lhsType)) {
+    errors_->Append(MakeIncompatibleInstanceOfError(lhsType, instanceOfType, ExtentOf(exprptr)));
+    return nullptr;
+  }
+
+  return make_shared<InstanceOfExpr>(lhs, expr.InstanceOf(), expr.GetTypePtr(), TypeId{TypeId::kBoolBase, 0});
 }
 
 REWRITE_DEFN(TypeChecker, IntLitExpr, Expr, expr, ) {
   return make_shared<IntLitExpr>(expr.GetToken(), expr.Value(), TypeId{TypeId::kIntBase, 0});
 }
 
-REWRITE_DEFN(TypeChecker, ThisExpr, Expr, expr,) {
-  return make_shared<ThisExpr>(expr.ThisToken(), curtype_);
-}
+// TODO: NameExpr
 
 REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
   TypeId tid = MustResolveType(expr.GetType());
@@ -94,26 +250,230 @@ REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
   return make_shared<NewArrayExpr>(expr.NewToken(), expr.GetTypePtr(), expr.Lbrack(), index, expr.Rbrack(), TypeId{tid.base, tid.ndims + 1});
 }
 
-REWRITE_DEFN(TypeChecker, ArrayIndexExpr, Expr, expr,) {
-  sptr<const Expr> base = Visit(expr.BasePtr());
-  sptr<const Expr> index = Visit(expr.IndexPtr());
-  if (base == nullptr || index == nullptr) {
-    return nullptr;
-  }
+// TODO: NewClassExpr
 
-  TypeId expectedIndexType = TypeId{TypeId::kIntBase, 0};
-  if (index->GetTypeId() != expectedIndexType) {
-    errors_->Append(MakeTypeMismatchError(expectedIndexType, index->GetTypeId(), ExtentOf(index)));
-    return nullptr;
-  }
-  if (base->GetTypeId().ndims < 1) {
-    errors_->Append(MakeIndexNonArrayError(ExtentOf(base)));
-    return nullptr;
-  }
-
-  TypeId tid = TypeId{base->GetTypeId().base, base->GetTypeId().ndims - 1};
-  return make_shared<ArrayIndexExpr>(base, expr.Lbrack(), index, expr.Rbrack(), tid);
+REWRITE_DEFN(TypeChecker, NullLitExpr, Expr, expr, ) {
+  return make_shared<NullLitExpr>(expr.GetToken(), TypeId{TypeId::kNullBase, 0});
 }
 
+REWRITE_DEFN(TypeChecker, ParenExpr, Expr, expr,) {
+  return Visit(expr.NestedPtr());
+}
+
+REWRITE_DEFN(TypeChecker, StringLitExpr, Expr, expr,) {
+  TypeId strType = typeset_.Get({"java", "lang", "String"});
+  if (strType.IsError()) {
+    errors_->Append(MakeNoStringError(expr.GetToken().pos));
+    return nullptr;
+  }
+
+  return make_shared<StringLitExpr>(expr.GetToken(), strType);
+}
+
+REWRITE_DEFN(TypeChecker, ThisExpr, Expr, expr,) {
+  return make_shared<ThisExpr>(expr.ThisToken(), curtype_);
+}
+
+REWRITE_DEFN(TypeChecker, UnaryExpr, Expr, expr, exprptr) {
+  sptr<const Expr> rhs = Visit(expr.RhsPtr());
+  if (rhs == nullptr) {
+    return nullptr;
+  }
+  TypeId rhsType = rhs->GetTypeId();
+
+  TokenType op = expr.Op().type;
+
+  if (op == lexer::SUB) {
+    if (!IsNumeric(rhsType)) {
+      errors_->Append(MakeUnaryNonNumericError(rhsType, ExtentOf(exprptr)));
+      return nullptr;
+    }
+    return make_shared<UnaryExpr>(expr.Op(), rhs, TypeId{TypeId::kIntBase, 0});
+  }
+
+  assert(op == lexer::NOT);
+  TypeId expected = TypeId{TypeId::kBoolBase, 0};
+  if (rhsType != expected) {
+    errors_->Append(MakeUnaryNonBoolError(rhsType, ExtentOf(exprptr)));
+    return nullptr;
+  }
+  return make_shared<UnaryExpr>(expr.Op(), rhs, TypeId{TypeId::kBoolBase, 0});
+}
+
+REWRITE_DEFN(TypeChecker, ForStmt, Stmt, stmt,) {
+  sptr<const Stmt> init = Visit(stmt.InitPtr());
+
+  sptr<const Expr> cond = nullptr;
+  if (stmt.CondPtr() != nullptr) {
+    cond = Visit(stmt.CondPtr());
+  }
+
+  sptr<const Expr> update = nullptr;
+  if (stmt.UpdatePtr() != nullptr) {
+    update = Visit(stmt.UpdatePtr());
+  }
+
+  sptr<const Stmt> body = Visit(stmt.BodyPtr());
+
+  if (init == nullptr || body == nullptr) {
+    return nullptr;
+  }
+
+  TypeId expected = TypeId{TypeId::kBoolBase, 0};
+  if (cond != nullptr && cond->GetTypeId() != expected) {
+    errors_->Append(MakeTypeMismatchError(expected, cond->GetTypeId(), ExtentOf(stmt.CondPtr())));
+    return nullptr;
+  }
+
+  return make_shared<ForStmt>(init, cond, update, body);
+}
+
+REWRITE_DEFN(TypeChecker, IfStmt, Stmt, stmt,) {
+  sptr<const Expr> cond = Visit(stmt.CondPtr());
+  sptr<const Stmt> trueBody = Visit(stmt.TrueBodyPtr());
+  sptr<const Stmt> falseBody = Visit(stmt.FalseBodyPtr());
+
+  if (cond == nullptr || trueBody == nullptr || falseBody == nullptr) {
+    return nullptr;
+  }
+
+  TypeId expected = TypeId{TypeId::kBoolBase, 0};
+  if (cond->GetTypeId() != expected) {
+    errors_->Append(MakeTypeMismatchError(expected, cond->GetTypeId(), ExtentOf(stmt.CondPtr())));
+    return nullptr;
+  }
+
+  return make_shared<IfStmt>(cond, trueBody, falseBody);
+}
+
+REWRITE_DEFN(TypeChecker, LocalDeclStmt, Stmt, stmt,) {
+  sptr<const Expr> expr = Visit(stmt.GetExprPtr());
+  TypeId lhsType = MustResolveType(stmt.GetType());
+
+  if (lhsType.IsError() || expr == nullptr) {
+    return nullptr;
+  }
+
+  if (!IsAssignable(lhsType, expr->GetTypeId())) {
+    errors_->Append(MakeUnassignableError(lhsType, expr->GetTypeId(), ExtentOf(expr)));
+    return nullptr;
+  }
+
+  // TODO: put into symbol table, and assign local variable id.
+
+  return make_shared<LocalDeclStmt>(stmt.GetTypePtr(), stmt.Name(), stmt.NameToken(), expr);
+}
+
+REWRITE_DEFN(TypeChecker, ReturnStmt, Stmt, stmt,) {
+  sptr<const Expr> expr = nullptr;
+  if (stmt.GetExprPtr() != nullptr) {
+    expr = Visit(stmt.GetExprPtr());
+    if (expr == nullptr) {
+      return nullptr;
+    }
+  }
+
+  TypeId exprType = TypeId{TypeId::kVoidBase, 0};
+  if (expr != nullptr) {
+    exprType = expr->GetTypeId();
+  }
+
+  assert(belowMethodDecl_);
+  if (!IsAssignable(curMethRet_, exprType)) {
+    errors_->Append(MakeInvalidReturnError(curMethRet_, exprType, stmt.ReturnToken().pos));
+    return nullptr;
+  }
+
+  return make_shared<ReturnStmt>(stmt.ReturnToken(), expr);
+}
+
+
+REWRITE_DEFN(TypeChecker, WhileStmt, Stmt, stmt,) {
+  sptr<const Expr> cond = Visit(stmt.CondPtr());
+  sptr<const Stmt> body = Visit(stmt.BodyPtr());
+
+  if (cond == nullptr || body == nullptr) {
+    return nullptr;
+  }
+
+  TypeId expected = TypeId{TypeId::kBoolBase, 0};
+  if (cond->GetTypeId() != expected) {
+    errors_->Append(MakeTypeMismatchError(expected, cond->GetTypeId(), ExtentOf(stmt.CondPtr())));
+    return nullptr;
+  }
+
+  return make_shared<WhileStmt>(cond, body);
+}
+
+REWRITE_DEFN(TypeChecker, FieldDecl, MemberDecl, decl,) {
+  TypeId lhsType = MustResolveType(decl.GetType());
+  if (lhsType.IsError()) {
+    return nullptr;
+  }
+
+  sptr<const Expr> val;
+  if (decl.ValPtr() != nullptr) {
+    val = Visit(decl.ValPtr());
+    if (val == nullptr) {
+      return nullptr;
+    }
+
+    if (!IsAssignable(lhsType, val->GetTypeId())) {
+      errors_->Append(MakeUnassignableError(lhsType, val->GetTypeId(), ExtentOf(decl.ValPtr())));
+      return nullptr;
+    }
+  }
+
+  // TODO: When we start putting field-ids into FieldDecl, then this should
+  // also populate it.
+
+  return make_shared<FieldDecl>(decl.Mods(), decl.GetTypePtr(), decl.Name(), decl.NameToken(), val);
+}
+
+REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
+  if (belowMethodDecl_) {
+    return Visitor::RewriteMethodDecl(decl, declptr);
+  }
+
+  TypeId rettype = TypeId{TypeId::kVoidBase, 0};
+  if (decl.TypePtr() != nullptr) {
+    rettype = MustResolveType(*decl.TypePtr());
+
+    // This should have been pruned by previous pass if the type is invalid.
+    assert(!rettype.IsError());
+  }
+
+  TypeChecker below(typeinfo_, typeset_, fs_, errors_, true, package_, true, curtype_, true, rettype);
+  return below.Visit(declptr);
+}
+
+REWRITE_DEFN(TypeChecker, TypeDecl, TypeDecl, type, typeptr) {
+  if (belowTypeDecl_) {
+    return Visitor::RewriteTypeDecl(type, typeptr);
+  }
+
+  vector<string> classname;
+  if (package_ != nullptr) {
+    classname = package_->Parts();
+  }
+  classname.push_back(type.Name());
+
+  TypeId curtid = typeset_.Get(classname);
+  assert(!curtid.IsError()); // Pruned in DeclResolver.
+
+  TypeChecker below(typeinfo_, typeset_, fs_, errors_, true, package_, true, curtid);
+  return below.Visit(typeptr);
+}
+
+REWRITE_DEFN(TypeChecker, CompUnit, CompUnit, unit, unitptr) {
+  if (belowCompUnit_) {
+    return Visitor::RewriteCompUnit(unit, unitptr);
+  }
+
+  TypeSet scopedTypeSet = typeset_.WithImports(unit.Imports(), fs_, errors_);
+  TypeChecker below(typeinfo_, scopedTypeSet, fs_, errors_, true, unit.PackagePtr());
+
+  return below.Visit(unitptr);
+}
 
 } // namespace types
