@@ -49,6 +49,11 @@ enum class VisitResult {
 
 class Visitor {
 public:
+  template <typename T>
+  auto Visit(const sptr<T> t) -> decltype(t->Accept(this, t)) {
+    return t->Accept(this, t);
+  }
+
 #define _REWRITE_DECL(type, rettype, name) virtual sptr<const rettype> Rewrite##type(const type& name, sptr<const type> name##ptr);
   FOR_EACH_VISITABLE(_REWRITE_DECL)
 #undef _REWRITE_DECL
@@ -80,11 +85,6 @@ private:
 };
 
 #undef FOR_EACH_VISITABLE
-
-template <typename T>
-auto Visit(Visitor* visitor, const sptr<T> t) -> decltype(t->Accept(visitor, t)) {
-  return t->Accept(visitor, t);
-}
 
 #define VISIT_DECL(type, var) ast::VisitResult Visit##type(const ast::type& var) override
 #define VISIT_DEFN(cls, type, var) ast::VisitResult cls::Visit##type(const ast::type& var)

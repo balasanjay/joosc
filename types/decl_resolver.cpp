@@ -21,7 +21,6 @@ using ast::Type;
 using ast::TypeDecl;
 using ast::TypeId;
 using ast::TypeKind;
-using ast::Visit;
 using base::Error;
 using base::FileSet;
 using base::PosRange;
@@ -80,7 +79,7 @@ REWRITE_DEFN(DeclResolver, CompUnit, CompUnit, unit,) {
   base::SharedPtrVector<const TypeDecl> decls;
   for (int i = 0; i < unit.Types().Size(); ++i) {
     sptr<const TypeDecl> oldtype = unit.Types().At(i);
-    sptr<const TypeDecl> newtype = Visit(&scopedResolver, oldtype);
+    sptr<const TypeDecl> newtype = scopedResolver.Visit(oldtype);
     if (newtype != nullptr) {
       decls.Append(newtype);
     }
@@ -129,7 +128,7 @@ REWRITE_DEFN(DeclResolver, TypeDecl, TypeDecl, type, ) {
   SharedPtrVector<const MemberDecl> members;
   for (int i = 0; i < type.Members().Size(); ++i) {
     sptr<const MemberDecl> oldMem = type.Members().At(i);
-    sptr<const MemberDecl> newMem = Visit(&memberResolver, oldMem);
+    sptr<const MemberDecl> newMem = memberResolver.Visit(oldMem);
     if (newMem != nullptr) {
       members.Append(newMem);
     }
