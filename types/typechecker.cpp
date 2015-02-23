@@ -18,8 +18,8 @@ using lexer::TokenType;
 namespace types {
 
 REWRITE_DEFN(TypeChecker, ArrayIndexExpr, Expr, expr,) {
-  sptr<const Expr> base = Visit(expr.BasePtr());
-  sptr<const Expr> index = Visit(expr.IndexPtr());
+  sptr<const Expr> base = Rewrite(expr.BasePtr());
+  sptr<const Expr> index = Rewrite(expr.IndexPtr());
   if (base == nullptr || index == nullptr) {
     return nullptr;
   }
@@ -89,8 +89,8 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
   const TypeId kBoolTypeId = TypeId{TypeId::kBoolBase, 0};
   const TypeId kIntTypeId = TypeId{TypeId::kIntBase, 0};
 
-  sptr<const Expr> lhs = Visit(expr.LhsPtr());
-  sptr<const Expr> rhs = Visit(expr.RhsPtr());
+  sptr<const Expr> lhs = Rewrite(expr.LhsPtr());
+  sptr<const Expr> rhs = Rewrite(expr.RhsPtr());
   if (lhs == nullptr || rhs == nullptr) {
     return nullptr;
   }
@@ -166,7 +166,7 @@ REWRITE_DEFN(TypeChecker, BoolLitExpr, Expr, expr, ) {
 // TODO: CallExpr
 
 REWRITE_DEFN(TypeChecker, CastExpr, Expr, expr, exprptr) {
-  sptr<const Expr> castedExpr = Visit(expr.GetExprPtr());
+  sptr<const Expr> castedExpr = Rewrite(expr.GetExprPtr());
   if (castedExpr == nullptr) {
     return nullptr;
   }
@@ -199,7 +199,7 @@ REWRITE_DEFN(TypeChecker, CharLitExpr, Expr, expr, ) {
 // TODO: FieldDerefExpr
 
 REWRITE_DEFN(TypeChecker, InstanceOfExpr, Expr, expr, exprptr) {
-  sptr<const Expr> lhs = Visit(expr.LhsPtr());
+  sptr<const Expr> lhs = Rewrite(expr.LhsPtr());
   if (lhs == nullptr) {
     return nullptr;
   }
@@ -240,7 +240,7 @@ REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
   TypeId expectedIndexType = TypeId{TypeId::kIntBase, 0};
 
   if (expr.GetExprPtr() != nullptr) {
-    index = Visit(expr.GetExprPtr());
+    index = Rewrite(expr.GetExprPtr());
   }
   if (index != nullptr && index->GetTypeId() != expectedIndexType) {
     errors_->Append(MakeTypeMismatchError(expectedIndexType, index->GetTypeId(), ExtentOf(index)));
@@ -257,7 +257,7 @@ REWRITE_DEFN(TypeChecker, NullLitExpr, Expr, expr, ) {
 }
 
 REWRITE_DEFN(TypeChecker, ParenExpr, Expr, expr,) {
-  return Visit(expr.NestedPtr());
+  return Rewrite(expr.NestedPtr());
 }
 
 REWRITE_DEFN(TypeChecker, StringLitExpr, Expr, expr,) {
@@ -275,7 +275,7 @@ REWRITE_DEFN(TypeChecker, ThisExpr, Expr, expr,) {
 }
 
 REWRITE_DEFN(TypeChecker, UnaryExpr, Expr, expr, exprptr) {
-  sptr<const Expr> rhs = Visit(expr.RhsPtr());
+  sptr<const Expr> rhs = Rewrite(expr.RhsPtr());
   if (rhs == nullptr) {
     return nullptr;
   }
@@ -301,19 +301,19 @@ REWRITE_DEFN(TypeChecker, UnaryExpr, Expr, expr, exprptr) {
 }
 
 REWRITE_DEFN(TypeChecker, ForStmt, Stmt, stmt,) {
-  sptr<const Stmt> init = Visit(stmt.InitPtr());
+  sptr<const Stmt> init = Rewrite(stmt.InitPtr());
 
   sptr<const Expr> cond = nullptr;
   if (stmt.CondPtr() != nullptr) {
-    cond = Visit(stmt.CondPtr());
+    cond = Rewrite(stmt.CondPtr());
   }
 
   sptr<const Expr> update = nullptr;
   if (stmt.UpdatePtr() != nullptr) {
-    update = Visit(stmt.UpdatePtr());
+    update = Rewrite(stmt.UpdatePtr());
   }
 
-  sptr<const Stmt> body = Visit(stmt.BodyPtr());
+  sptr<const Stmt> body = Rewrite(stmt.BodyPtr());
 
   if (init == nullptr || body == nullptr) {
     return nullptr;
@@ -329,9 +329,9 @@ REWRITE_DEFN(TypeChecker, ForStmt, Stmt, stmt,) {
 }
 
 REWRITE_DEFN(TypeChecker, IfStmt, Stmt, stmt,) {
-  sptr<const Expr> cond = Visit(stmt.CondPtr());
-  sptr<const Stmt> trueBody = Visit(stmt.TrueBodyPtr());
-  sptr<const Stmt> falseBody = Visit(stmt.FalseBodyPtr());
+  sptr<const Expr> cond = Rewrite(stmt.CondPtr());
+  sptr<const Stmt> trueBody = Rewrite(stmt.TrueBodyPtr());
+  sptr<const Stmt> falseBody = Rewrite(stmt.FalseBodyPtr());
 
   if (cond == nullptr || trueBody == nullptr || falseBody == nullptr) {
     return nullptr;
@@ -347,7 +347,7 @@ REWRITE_DEFN(TypeChecker, IfStmt, Stmt, stmt,) {
 }
 
 REWRITE_DEFN(TypeChecker, LocalDeclStmt, Stmt, stmt,) {
-  sptr<const Expr> expr = Visit(stmt.GetExprPtr());
+  sptr<const Expr> expr = Rewrite(stmt.GetExprPtr());
   TypeId lhsType = MustResolveType(stmt.GetType());
 
   if (lhsType.IsError() || expr == nullptr) {
@@ -367,7 +367,7 @@ REWRITE_DEFN(TypeChecker, LocalDeclStmt, Stmt, stmt,) {
 REWRITE_DEFN(TypeChecker, ReturnStmt, Stmt, stmt,) {
   sptr<const Expr> expr = nullptr;
   if (stmt.GetExprPtr() != nullptr) {
-    expr = Visit(stmt.GetExprPtr());
+    expr = Rewrite(stmt.GetExprPtr());
     if (expr == nullptr) {
       return nullptr;
     }
@@ -389,8 +389,8 @@ REWRITE_DEFN(TypeChecker, ReturnStmt, Stmt, stmt,) {
 
 
 REWRITE_DEFN(TypeChecker, WhileStmt, Stmt, stmt,) {
-  sptr<const Expr> cond = Visit(stmt.CondPtr());
-  sptr<const Stmt> body = Visit(stmt.BodyPtr());
+  sptr<const Expr> cond = Rewrite(stmt.CondPtr());
+  sptr<const Stmt> body = Rewrite(stmt.BodyPtr());
 
   if (cond == nullptr || body == nullptr) {
     return nullptr;
@@ -413,7 +413,7 @@ REWRITE_DEFN(TypeChecker, FieldDecl, MemberDecl, decl,) {
 
   sptr<const Expr> val;
   if (decl.ValPtr() != nullptr) {
-    val = Visit(decl.ValPtr());
+    val = Rewrite(decl.ValPtr());
     if (val == nullptr) {
       return nullptr;
     }
@@ -444,7 +444,7 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
   }
 
   TypeChecker below(typeinfo_, typeset_, fs_, errors_, true, package_, true, curtype_, true, rettype);
-  return below.Visit(declptr);
+  return below.Rewrite(declptr);
 }
 
 REWRITE_DEFN(TypeChecker, TypeDecl, TypeDecl, type, typeptr) {
@@ -462,7 +462,7 @@ REWRITE_DEFN(TypeChecker, TypeDecl, TypeDecl, type, typeptr) {
   assert(!curtid.IsError()); // Pruned in DeclResolver.
 
   TypeChecker below(typeinfo_, typeset_, fs_, errors_, true, package_, true, curtid);
-  return below.Visit(typeptr);
+  return below.Rewrite(typeptr);
 }
 
 REWRITE_DEFN(TypeChecker, CompUnit, CompUnit, unit, unitptr) {
@@ -473,7 +473,7 @@ REWRITE_DEFN(TypeChecker, CompUnit, CompUnit, unit, unitptr) {
   TypeSet scopedTypeSet = typeset_.WithImports(unit.Imports(), fs_, errors_);
   TypeChecker below(typeinfo_, scopedTypeSet, fs_, errors_, true, unit.PackagePtr());
 
-  return below.Visit(unitptr);
+  return below.Rewrite(unitptr);
 }
 
 } // namespace types

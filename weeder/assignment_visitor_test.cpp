@@ -16,7 +16,7 @@ TEST_F(AssignmentVisitorTest, Name) {
 
   ErrorList errors;
   AssignmentVisitor visitor(fs_.get(), &errors);
-  visitor.Visit(stmt.Get());
+  visitor.Rewrite(stmt.Get());
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -28,7 +28,7 @@ TEST_F(AssignmentVisitorTest, FieldDeref) {
 
   ErrorList errors;
   AssignmentVisitor visitor(fs_.get(), &errors);
-  visitor.Visit(stmt.Get());
+  visitor.Rewrite(stmt.Get());
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -40,7 +40,7 @@ TEST_F(AssignmentVisitorTest, ArrayIndex) {
 
   ErrorList errors;
   AssignmentVisitor visitor(fs_.get(), &errors);
-  visitor.Visit(stmt.Get());
+  visitor.Rewrite(stmt.Get());
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -52,7 +52,7 @@ TEST_F(AssignmentVisitorTest, Fail) {
 
   ErrorList errors;
   AssignmentVisitor visitor(fs_.get(), &errors);
-  visitor.Visit(stmt.Get());
+  visitor.Rewrite(stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidLHSError(0:4)\n", testing::PrintToString(errors));

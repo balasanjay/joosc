@@ -17,24 +17,24 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(ArrayIndexExpr, expr) {
-    Visit(expr.BasePtr());
+    Rewrite(expr.BasePtr());
     *os_ << '[';
-    Visit(expr.IndexPtr());
+    Rewrite(expr.IndexPtr());
     *os_ << ']';
     return VisitResult::SKIP;
   }
 
   VISIT_DECL(BinExpr, expr) {
     *os_ << '(';
-    Visit(expr.LhsPtr());
+    Rewrite(expr.LhsPtr());
     *os_ << ' ' << expr.Op().TypeInfo() << ' ';
-    Visit(expr.RhsPtr());
+    Rewrite(expr.RhsPtr());
     *os_ << ')';
     return VisitResult::SKIP;
   }
 
   VISIT_DECL(CallExpr, expr) {
-    Visit(expr.BasePtr());
+    Rewrite(expr.BasePtr());
     *os_ << '(';
     PrintArgList(expr.Args());
     *os_ << ')';
@@ -45,14 +45,14 @@ class PrintVisitor final : public Visitor {
     *os_ << "cast<";
     expr.GetType().PrintTo(os_);
     *os_ << ">(";
-    Visit(expr.GetExprPtr());
+    Rewrite(expr.GetExprPtr());
     *os_ << ')';
     return VisitResult::SKIP;
   }
 
   VISIT_DECL(InstanceOfExpr, expr) {
     *os_ << '(';
-    Visit(expr.LhsPtr());
+    Rewrite(expr.LhsPtr());
     *os_ << " instanceof ";
     expr.GetType().PrintTo(os_);
     *os_ << ')';
@@ -60,7 +60,7 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(FieldDerefExpr, expr) {
-    Visit(expr.BasePtr());
+    Rewrite(expr.BasePtr());
     *os_ << '.' << expr.FieldName();
     return VisitResult::SKIP;
   }
@@ -101,7 +101,7 @@ class PrintVisitor final : public Visitor {
 
     *os_ << ">>(";
     if (expr.GetExprPtr() != nullptr) {
-      Visit(expr.GetExprPtr());
+      Rewrite(expr.GetExprPtr());
     }
     *os_ << ")";
     return VisitResult::SKIP;
@@ -118,7 +118,7 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(ParenExpr, expr) {
     *os_ << "(";
-    Visit(expr.NestedPtr());
+    Rewrite(expr.NestedPtr());
     *os_ << ")";
     return VisitResult::SKIP;
   }
@@ -130,7 +130,7 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(UnaryExpr, expr) {
     *os_ << '(' << expr.Op().TypeInfo() << ' ';
-    Visit(expr.RhsPtr());
+    Rewrite(expr.RhsPtr());
     *os_ << ')';
     return VisitResult::SKIP;
   }
@@ -141,7 +141,7 @@ class PrintVisitor final : public Visitor {
     PrintVisitor nested = Indent();
     for (const auto& substmt : stmt.Stmts().Vec()) {
       PutIndent(depth_ + 1);
-      Visit(substmt);
+      Rewrite(substmt);
       *os_ << newline_;
     }
 
@@ -156,7 +156,7 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(ExprStmt, stmt) {
-    Visit(stmt.GetExprPtr());
+    Rewrite(stmt.GetExprPtr());
     *os_ << ';';
     return VisitResult::SKIP;
   }
@@ -164,7 +164,7 @@ class PrintVisitor final : public Visitor {
   VISIT_DECL(LocalDeclStmt, stmt) {
     stmt.GetType().PrintTo(os_);
     *os_ << ' ' << stmt.Name() << space_ << '=' << space_;
-    Visit(stmt.GetExprPtr());
+    Rewrite(stmt.GetExprPtr());
     *os_ << ';';
     return VisitResult::SKIP;
   }
@@ -173,7 +173,7 @@ class PrintVisitor final : public Visitor {
     *os_ << "return";
     if (stmt.GetExprPtr() != nullptr) {
       *os_ << ' ';
-      Visit(stmt.GetExprPtr());
+      Rewrite(stmt.GetExprPtr());
     }
     *os_ << ';';
     return VisitResult::SKIP;
@@ -181,38 +181,38 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(IfStmt, stmt) {
     *os_ << "if" << space_ << '(';
-    Visit(stmt.CondPtr());
+    Rewrite(stmt.CondPtr());
     *os_ << ')' << space_ << '{';
-    Visit(stmt.TrueBodyPtr());
+    Rewrite(stmt.TrueBodyPtr());
     *os_ << '}' << space_ << "else" << space_ << '{';
-    Visit(stmt.FalseBodyPtr());
+    Rewrite(stmt.FalseBodyPtr());
     *os_ << '}';
     return VisitResult::SKIP;
   }
 
   VISIT_DECL(ForStmt, stmt) {
     *os_ << "for" << space_ << '(';
-    Visit(stmt.InitPtr());
+    Rewrite(stmt.InitPtr());
     if (stmt.CondPtr() != nullptr) {
       *os_ << space_;
-      Visit(stmt.CondPtr());
+      Rewrite(stmt.CondPtr());
     }
     *os_ << ';';
     if (stmt.UpdatePtr() != nullptr) {
       *os_ << space_;
-      Visit(stmt.UpdatePtr());
+      Rewrite(stmt.UpdatePtr());
     }
     *os_ << ')' << space_ << '{';
-    Visit(stmt.BodyPtr());
+    Rewrite(stmt.BodyPtr());
     *os_ << '}';
     return VisitResult::SKIP;
   }
 
   VISIT_DECL(WhileStmt, stmt) {
     *os_ << "while" << space_ << '(';
-    Visit(stmt.CondPtr());
+    Rewrite(stmt.CondPtr());
     *os_ << ')' << space_ << '{';
-    Visit(stmt.BodyPtr());
+    Rewrite(stmt.BodyPtr());
     *os_ << '}';
     return VisitResult::SKIP;
   }
@@ -222,7 +222,7 @@ class PrintVisitor final : public Visitor {
       if (i > 0) {
         *os_ << ',' << space_;
       }
-      Visit(params.Params().At(i));
+      Rewrite(params.Params().At(i));
     }
     return VisitResult::SKIP;
   }
@@ -240,7 +240,7 @@ class PrintVisitor final : public Visitor {
     *os_ << field.Name();
     if (field.ValPtr() != nullptr) {
       *os_ << space_ << '=' << space_;
-      Visit(field.ValPtr());
+      Rewrite(field.ValPtr());
     }
     *os_ << ';';
     return VisitResult::SKIP;
@@ -254,9 +254,9 @@ class PrintVisitor final : public Visitor {
     }
     *os_ << meth.Name();
     *os_ << '(';
-    Visit(meth.ParamsPtr());
+    Rewrite(meth.ParamsPtr());
     *os_ << ')' << space_;
-    Visit(meth.BodyPtr());
+    Rewrite(meth.BodyPtr());
     return VisitResult::SKIP;
   }
 
@@ -288,7 +288,7 @@ class PrintVisitor final : public Visitor {
     PrintVisitor nested = Indent();
     for (int i = 0; i < type.Members().Size(); ++i) {
       PutIndent(depth_ + 1);
-      nested.Visit(type.Members().At(i));
+      nested.Rewrite(type.Members().At(i));
       *os_ << newline_;
     }
     PutIndent(depth_);
@@ -313,7 +313,7 @@ class PrintVisitor final : public Visitor {
     }
 
     for (int i = 0; i < unit.Types().Size(); ++i) {
-      Visit(unit.Types().At(i));
+      Rewrite(unit.Types().At(i));
       *os_ << newline_;
     }
     return VisitResult::SKIP;
@@ -322,7 +322,7 @@ class PrintVisitor final : public Visitor {
   VISIT_DECL(Program, prog) {
     // TODO: print the file name?
     for (int i = 0; i < prog.CompUnits().Size(); ++i) {
-      Visit(prog.CompUnits().At(i));
+      Rewrite(prog.CompUnits().At(i));
     }
     return VisitResult::SKIP;
   }
@@ -347,7 +347,7 @@ class PrintVisitor final : public Visitor {
         *os_ << ',' << space_;
       }
       first = false;
-      Visit(arg);
+      Rewrite(arg);
     }
   }
 
