@@ -50,7 +50,7 @@ enum class VisitResult {
 class Visitor {
 public:
   template <typename T>
-  auto Rewrite(const sptr<T> t) -> decltype(t->Accept(this, t)) {
+  auto Rewrite(sptr<const T> t) -> decltype(t->Accept(this, t)) {
     return t->Accept(this, t);
   }
 
