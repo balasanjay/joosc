@@ -17,7 +17,7 @@ TEST_F(IntRangeVisitorTest, IntTooNegative) {
 
   ErrorList errors;
   IntRangeVisitor visitor(fs_.get(), &errors);
-  visitor.Rewrite(expr.Get());
+  auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidIntRangeError(0:1-13)\n", testing::PrintToString(errors));
@@ -30,7 +30,7 @@ TEST_F(IntRangeVisitorTest, IntExactNegative) {
 
   ErrorList errors;
   IntRangeVisitor visitor(fs_.get(), &errors);
-  visitor.Rewrite(expr.Get());
+  auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -42,7 +42,7 @@ TEST_F(IntRangeVisitorTest, IntOneOffNegative) {
 
   ErrorList errors;
   IntRangeVisitor visitor(fs_.get(), &errors);
-  visitor.Rewrite(expr.Get());
+  auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidIntRangeError(0:1-11)\n", testing::PrintToString(errors));
@@ -55,7 +55,7 @@ TEST_F(IntRangeVisitorTest, IntTooPositive) {
 
   ErrorList errors;
   IntRangeVisitor visitor(fs_.get(), &errors);
-  visitor.Rewrite(expr.Get());
+  auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidIntRangeError(0:0-12)\n", testing::PrintToString(errors));
@@ -68,7 +68,7 @@ TEST_F(IntRangeVisitorTest, IntExactPositive) {
 
   ErrorList errors;
   IntRangeVisitor visitor(fs_.get(), &errors);
-  visitor.Rewrite(expr.Get());
+  auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -80,7 +80,7 @@ TEST_F(IntRangeVisitorTest, IntOneOffPositive) {
 
   ErrorList errors;
   IntRangeVisitor visitor(fs_.get(), &errors);
-  visitor.Rewrite(expr.Get());
+  auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidIntRangeError(0:0-10)\n", testing::PrintToString(errors));
@@ -93,7 +93,7 @@ TEST_F(IntRangeVisitorTest, Int64Overflow) {
 
   ErrorList errors;
   IntRangeVisitor visitor(fs_.get(), &errors);
-  visitor.Rewrite(expr.Get());
+  auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidIntRangeError(0:0-43)\n", testing::PrintToString(errors));

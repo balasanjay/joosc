@@ -64,7 +64,7 @@ template <typename T>
 string Str(sptr<const T> t) {
   std::stringstream s;
   PrintVisitor visitor = PrintVisitor::Compact(&s);
-  visitor.Rewrite(t);
+  visitor.Visit(t);
   return s.str();
 }
 
