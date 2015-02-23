@@ -123,7 +123,7 @@ struct Parser {
   // Expression parsers.
   Parser ParseExpression(internal::Result<ast::Expr>*) const;
   Parser ParseParenExpression(internal::Result<ast::Expr>*) const;
-  Parser ParseUnaryExpression(internal::Result<ast::Expr>*) const;
+  Parser ParseUnaryExpression(internal::Result<ast::Expr>*, bool allowSub = true) const;
   Parser ParseCastExpression(internal::Result<ast::Expr>* out) const;
   Parser ParsePrimary(internal::Result<ast::Expr>* out) const;
   Parser ParseNewExpression(internal::Result<ast::Expr>* out) const;

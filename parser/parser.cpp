@@ -1,6 +1,7 @@
 #include "parser/parser.h"
 
 #include "ast/ast.h"
+#include "base/macros.h"
 #include "base/unique_ptr_vector.h"
 #include "lexer/lexer.h"
 #include "parser/parser_internal.h"
@@ -180,6 +181,28 @@ QualifiedName MakeQualifiedName(const File* file,
   }
 
   return QualifiedName(tokens, parts, fullname.str());
+}
+
+bool HasPrimitive(const Type& type) {
+  const Type* cur = &type;
+
+  while (true) {
+    // Reference types.
+    if (IS_CONST_PTR(ReferenceType, cur)) {
+      return false;
+    }
+
+    // Array types.
+    if (IS_CONST_PTR(ArrayType, cur)) {
+      const Type& array = dynamic_cast<const ArrayType*>(cur)->ElemType();
+      cur = &array;
+      continue;
+    }
+
+    // Primitive types.
+    assert(IS_CONST_PTR(PrimitiveType, cur));
+    return true;
+  }
 }
 
 }  // namespace
@@ -399,7 +422,7 @@ Parser Parser::ParseExpression(Result<Expr>* out) const {
   return cur.Success(FixPrecedence(exprs, operators), out);
 }
 
-Parser Parser::ParseUnaryExpression(Result<Expr>* out) const {
+Parser Parser::ParseUnaryExpression(Result<Expr>* out, bool allowSub) const {
   // UnaryExpression:
   //   "-" UnaryExpression
   //   "!" UnaryExpression
@@ -412,16 +435,19 @@ Parser Parser::ParseUnaryExpression(Result<Expr>* out) const {
     return Fail(MakeUnexpectedEOFError(), out);
   }
 
-  if (IsNext(IsUnaryOp)) {
+  {
     Result<Token> unaryOp;
-    Result<Expr> expr;
-    Parser after =
-        ParseTokenIf(IsUnaryOp, &unaryOp).ParseUnaryExpression(&expr);
-    RETURN_IF_GOOD(after, new UnaryExpr(*unaryOp.Get(), expr.Get()), out);
+    Parser afterUnaryOp = ParseTokenIf(IsUnaryOp, &unaryOp);
+    // Disallow a sub UnaryExpression after a CastExpression of ReferenceType.
+    if (afterUnaryOp && (allowSub || unaryOp.Get()->type != lexer::SUB)) {
+      Result<Expr> expr;
+      Parser after = afterUnaryOp.ParseUnaryExpression(&expr);
+      RETURN_IF_GOOD(after, new UnaryExpr(*unaryOp.Get(), expr.Get()), out);
 
-    ErrorList errors;
-    FirstOf(&errors, &unaryOp, &expr);
-    return Fail(move(errors), out);
+      ErrorList errors;
+      FirstOf(&errors, &unaryOp, &expr);
+      return Fail(move(errors), out);
+    }
   }
 
   {
@@ -443,16 +469,25 @@ Parser Parser::ParseCastExpression(Result<Expr>* out) const {
   Result<Token> rparen;
   Result<Expr> expr;
 
-  Parser after = (*this)
+  Parser afterType = (*this)
                      .ParseTokenIf(ExactType(LPAREN), &lparen)
-                     .ParseType(&type)
-                     .ParseTokenIf(ExactType(RPAREN), &rparen)
-                     .ParseUnaryExpression(&expr);
+                     .ParseType(&type);
+
+  if (!afterType) {
+    ErrorList errors;
+    FirstOf(&errors, &lparen, &type);
+    return Fail(move(errors), out);
+  }
+
+  bool isPrimitive = HasPrimitive(*type.Get());
+  Parser after = afterType
+                 .ParseTokenIf(ExactType(RPAREN), &rparen)
+                 .ParseUnaryExpression(&expr, isPrimitive);
   RETURN_IF_GOOD(after, new CastExpr(*lparen.Get(), type.Get(), *rparen.Get(), expr.Get()), out);
 
   // Collect the first error, and use that.
   ErrorList errors;
-  FirstOf(&errors, &lparen, &type, &rparen, &expr);
+  FirstOf(&errors, &rparen, &expr);
   return Fail(move(errors), out);
 }
 
@@ -1566,7 +1601,5 @@ sptr<const Program> Parse(const FileSet* fs,
 // update.
 // TODO: "Integer[] a;" gives strange error - should say requires
 // initialization.
-// TODO: Fix cast expression parsing. '(gee)-d' should be a subtraction, not a
-// cast.
 
 }  // namespace parser

@@ -618,6 +618,28 @@ TEST_F(ParserTest, CastSuccess) {
   EXPECT_EQ("cast<K_INT>(INTEGER)", Str(cast.Get()));
 }
 
+TEST_F(ParserTest, CastSuccessPrimitiveSub) {
+  MakeParser("(int) -3");
+
+  Result<Expr> cast;
+  Parser after = parser_->ParseCastExpression(&cast);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(cast));
+  EXPECT_EQ("cast<K_INT>((SUB INTEGER))", Str(cast.Get()));
+}
+
+TEST_F(ParserTest, CastSuccessPrimitiveArraySub) {
+  MakeParser("(int[]) -3");
+
+  Result<Expr> cast;
+  Parser after = parser_->ParseCastExpression(&cast);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(cast));
+  EXPECT_EQ("cast<array<K_INT>>((SUB INTEGER))", Str(cast.Get()));
+}
+
 TEST_F(ParserTest, CastTypeFail) {
   MakeParser("(;) 3");
 
@@ -639,6 +661,18 @@ TEST_F(ParserTest, CastExprFail) {
   EXPECT_FALSE(b(after));
   EXPECT_FALSE(b(cast));
   EXPECT_EQ("UnexpectedTokenError(0:6)\n",
+            testing::PrintToString(cast.Errors()));
+}
+
+TEST_F(ParserTest, CastReferenceSubFail) {
+  MakeParser("(A) -1");
+
+  Result<Expr> cast;
+  Parser after = parser_->ParseCastExpression(&cast);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(cast));
+  EXPECT_EQ("UnexpectedTokenError(0:4)\n",
             testing::PrintToString(cast.Errors()));
 }
 
@@ -766,6 +800,28 @@ TEST_F(ParserTest, ExprPrecedence) {
       "(a ASSG (b OR (c AND (d BOR (e XOR (f BAND (g EQ (h LE (i ADD (j MUL "
       "k))))))))))",
       Str(expr.Get()));
+}
+
+TEST_F(ParserTest, ExprLooksLikeCast) {
+  MakeParser("(a)-b");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseExpression(&expr);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(expr));
+  EXPECT_EQ("((a) SUB b)", Str(expr.Get()));
+}
+
+TEST_F(ParserTest, ExprIsCast) {
+  MakeParser("(byte)-b");
+
+  Result<Expr> expr;
+  Parser after = parser_->ParseExpression(&expr);
+
+  EXPECT_TRUE(b(after));
+  EXPECT_TRUE(b(expr));
+  EXPECT_EQ("cast<K_BYTE>((SUB b))", Str(expr.Get()));
 }
 
 TEST_F(ParserTest, VarDecl) {
