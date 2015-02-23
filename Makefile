@@ -28,7 +28,7 @@ CXXFLAGS := -Wall -Wextra -std=c++11 -MMD -MP -g -pedantic -I ./ -include std.h
 LDFLAGS := -lpthread
 
 # If one of the sanitizers are enabled, then append the appropriate thing to
-# CXXFLAGS and LDFLAGS. Note that we do this before genering BUILD_CACHE_KEY,
+# CXXFLAGS and LDFLAGS. Note that we do this before generating BUILD_CACHE_KEY,
 # so we don't re-use values across different kinds of builds.
 ifneq (${SANITIZER},)
 	CXXFLAGS := ${CXXFLAGS} -fsanitize=${SANITIZER}
