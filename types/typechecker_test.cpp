@@ -99,19 +99,37 @@ TEST_F(TypeCheckerTest, BinExprBoolOp) {
   EXPECT_EQ(TypeId::kBool, after->GetTypeId());
 }
 
-// TODO: BoolLitExpr
+TEST_F(TypeCheckerTest, BoolLitExpr) {
+  sptr<const Expr> before = ParseExpr("true");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(TypeId::kBool, after->GetTypeId());
+  EXPECT_NO_ERRS;
+}
 
 // TODO: CallExpr
 
 // TODO: CastExpr
 
-// TODO: CharLitExpr
+TEST_F(TypeCheckerTest, CharLitExpr) {
+  sptr<const Expr> before = ParseExpr("'0'");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(TypeId::kChar, after->GetTypeId());
+  EXPECT_NO_ERRS;
+}
 
 // TODO: FieldDerefExpr
 
 // TODO: InstanceOfExpr
 
-// TODO: IntLitExpr
+TEST_F(TypeCheckerTest, IntLitExpr) {
+  sptr<const Expr> before = ParseExpr("0");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(TypeId::kInt, after->GetTypeId());
+  EXPECT_NO_ERRS;
+}
 
 // TODO: NameExpr
 
@@ -119,7 +137,13 @@ TEST_F(TypeCheckerTest, BinExprBoolOp) {
 
 // TODO: NewClassExpr
 
-// TODO: NullLitExpr
+TEST_F(TypeCheckerTest, NullLitExpr) {
+  sptr<const Expr> before = ParseExpr("null");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(TypeId::kNull, after->GetTypeId());
+  EXPECT_NO_ERRS;
+}
 
 // TODO: ParenExpr
 
