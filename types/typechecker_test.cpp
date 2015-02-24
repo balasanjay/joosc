@@ -11,6 +11,9 @@ using base::Pos;
 using lexer::Token;
 using parser::internal::Result;
 
+#define EXPECT_ERRS(msg) EXPECT_EQ(msg, testing::PrintToString(errors_))
+#define EXPECT_NO_ERRS EXPECT_EQ(0, errors_.Size())
+
 namespace types {
 
 class TypeCheckerTest : public ::testing::Test {
