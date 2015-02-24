@@ -384,7 +384,6 @@ REWRITE_DEFN(TypeChecker, ReturnStmt, Stmt, stmt,) {
   return make_shared<ReturnStmt>(stmt.ReturnToken(), expr);
 }
 
-
 REWRITE_DEFN(TypeChecker, WhileStmt, Stmt, stmt,) {
   sptr<const Expr> cond = Rewrite(stmt.CondPtr());
   sptr<const Stmt> body = Rewrite(stmt.BodyPtr());
