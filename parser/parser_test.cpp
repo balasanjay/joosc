@@ -676,6 +676,18 @@ TEST_F(ParserTest, CastReferenceSubFail) {
             testing::PrintToString(cast.Errors()));
 }
 
+TEST_F(ParserTest, CastReferenceArraySubFail) {
+  MakeParser("(A[]) -1");
+
+  Result<Expr> cast;
+  Parser after = parser_->ParseCastExpression(&cast);
+
+  EXPECT_FALSE(b(after));
+  EXPECT_FALSE(b(cast));
+  EXPECT_EQ("UnexpectedTokenError(0:6)\n",
+            testing::PrintToString(cast.Errors()));
+}
+
 TEST_F(ParserTest, InstanceOfRefType) {
   MakeParser("a instanceof String");
 

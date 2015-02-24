@@ -435,19 +435,17 @@ Parser Parser::ParseUnaryExpression(Result<Expr>* out, bool allowSub) const {
     return Fail(MakeUnexpectedEOFError(), out);
   }
 
-  {
-    Result<Token> unaryOp;
-    Parser afterUnaryOp = ParseTokenIf(IsUnaryOp, &unaryOp);
-    // Disallow a sub UnaryExpression after a CastExpression of ReferenceType.
-    if (afterUnaryOp && (allowSub || unaryOp.Get()->type != lexer::SUB)) {
-      Result<Expr> expr;
-      Parser after = afterUnaryOp.ParseUnaryExpression(&expr);
-      RETURN_IF_GOOD(after, new UnaryExpr(*unaryOp.Get(), expr.Get()), out);
 
-      ErrorList errors;
-      FirstOf(&errors, &unaryOp, &expr);
-      return Fail(move(errors), out);
-    }
+  if (IsNext(IsUnaryOp) && (allowSub || GetNext().type != lexer::SUB)) {
+    Result<Token> unaryOp;
+    Result<Expr> expr;
+    Parser after =
+        ParseTokenIf(IsUnaryOp, &unaryOp).ParseUnaryExpression(&expr);
+    RETURN_IF_GOOD(after, new UnaryExpr(*unaryOp.Get(), expr.Get()), out);
+
+    ErrorList errors;
+    FirstOf(&errors, &unaryOp, &expr);
+    return Fail(move(errors), out);
   }
 
   {
