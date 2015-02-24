@@ -11,15 +11,34 @@ namespace types {
 
 class TypeChecker final : public ast::Visitor {
  public:
-  TypeChecker(const TypeInfoMap& typeinfo, const TypeSet& typeset,
-              const base::FileSet* fs, base::ErrorList* errors,
-              bool belowCompUnit = false, sptr<const ast::QualifiedName> package = nullptr,
-              bool belowTypeDecl = false, ast::TypeId curtype = ast::TypeId::Unassigned(),
-              bool belowMethodDecl = false, ast::TypeId curMethRet = ast::TypeId::Unassigned())
-      : typeinfo_(typeinfo), typeset_(typeset), fs_(fs), errors_(errors),
-        belowCompUnit_(belowCompUnit), package_(package),
-        belowTypeDecl_(belowTypeDecl), curtype_(curtype),
-        belowMethodDecl_(belowMethodDecl), curMethRet_(curMethRet) {}
+   TypeChecker(const base::FileSet* fs, base::ErrorList* errors) : TypeChecker(fs, errors, TypeSet::Empty(), TypeInfoMap::Empty()) {}
+
+  TypeChecker WithTypeSet(const TypeSet& typeset) const {
+    assert(!belowCompUnit_);
+    return TypeChecker(fs_, errors_, typeset, typeinfo_);
+  }
+
+  TypeChecker WithTypeInfoMap(const TypeInfoMap& typeinfo) const {
+    assert(!belowCompUnit_);
+    return TypeChecker(fs_, errors_, typeset_, typeinfo);
+  }
+
+  TypeChecker InsideCompUnit(sptr<const ast::QualifiedName> package) const {
+    assert(!belowCompUnit_);
+    return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package);
+  }
+
+  TypeChecker InsideTypeDecl(ast::TypeId curtype) const {
+    assert(belowCompUnit_);
+    assert(!belowTypeDecl_);
+    return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package_, true, curtype);
+  }
+
+  TypeChecker InsideMethodDecl(ast::TypeId curMethRet) const {
+    assert(belowTypeDecl_);
+    assert(!belowMethodDecl_);
+    return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package_, true, curtype_, true, curMethRet);
+  }
 
   REWRITE_DECL(ArrayIndexExpr, Expr, expr, exprptr);
   REWRITE_DECL(BinExpr, Expr, expr, exprptr);
@@ -49,6 +68,16 @@ class TypeChecker final : public ast::Visitor {
   REWRITE_DECL(CompUnit, CompUnit, args, argsptr);
 
  private:
+  TypeChecker(const base::FileSet* fs, base::ErrorList* errors,
+              const TypeSet& typeset, const TypeInfoMap& typeinfo,
+              bool belowCompUnit = false, sptr<const ast::QualifiedName> package = nullptr,
+              bool belowTypeDecl = false, ast::TypeId curtype = ast::TypeId::Unassigned(),
+              bool belowMethodDecl = false, ast::TypeId curMethRet = ast::TypeId::Unassigned())
+      : fs_(fs), errors_(errors), typeset_(typeset), typeinfo_(typeinfo),
+        belowCompUnit_(belowCompUnit), package_(package),
+        belowTypeDecl_(belowTypeDecl), curtype_(curtype),
+        belowMethodDecl_(belowMethodDecl), curMethRet_(curMethRet) {}
+
   ast::TypeId MustResolveType(const ast::Type& type);
   bool IsNumeric(ast::TypeId tid) const;
   bool IsPrimitive(ast::TypeId tid) const;
@@ -70,10 +99,11 @@ class TypeChecker final : public ast::Visitor {
   base::Error* MakeInvalidReturnError(ast::TypeId ret, ast::TypeId expr, base::PosRange pos);
   base::Error* MakeIncomparableTypeError(ast::TypeId lhs, ast::TypeId rhs, base::PosRange pos);
 
-  const TypeInfoMap& typeinfo_;
-  const TypeSet& typeset_;
   const base::FileSet* fs_;
   base::ErrorList* errors_;
+
+  const TypeSet& typeset_;
+  const TypeInfoMap& typeinfo_;
 
   const bool belowCompUnit_ = false;
   const sptr<const ast::QualifiedName> package_; // Only populated if below CompUnit and the CompUnit has a package statement.

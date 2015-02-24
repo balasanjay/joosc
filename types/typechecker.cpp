@@ -448,7 +448,7 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
     assert(!rettype.IsError());
   }
 
-  TypeChecker below(typeinfo_, typeset_, fs_, errors_, true, package_, true, curtype_, true, rettype);
+  TypeChecker below = InsideMethodDecl(rettype);
   return below.Rewrite(declptr);
 }
 
@@ -471,7 +471,7 @@ REWRITE_DEFN(TypeChecker, TypeDecl, TypeDecl, type, typeptr) {
   TypeId curtid = typeset_.Get(classname);
   assert(!curtid.IsError()); // Pruned in DeclResolver.
 
-  TypeChecker below(typeinfo_, typeset_, fs_, errors_, true, package_, true, curtid);
+  TypeChecker below = InsideTypeDecl(curtid);
   return below.Rewrite(typeptr);
 }
 
@@ -484,9 +484,8 @@ REWRITE_DEFN(TypeChecker, CompUnit, CompUnit, unit, unitptr) {
 
   // Otherwise create a sub-visitor that has the import info, and let it
   // rewrite this node.
-
   TypeSet scopedTypeSet = typeset_.WithImports(unit.Imports(), fs_, errors_);
-  TypeChecker below(typeinfo_, scopedTypeSet, fs_, errors_, true, unit.PackagePtr());
+  TypeChecker below = WithTypeSet(scopedTypeSet).InsideCompUnit(unit.PackagePtr());
 
   return below.Rewrite(unitptr);
 }

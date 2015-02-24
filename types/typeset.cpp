@@ -58,6 +58,8 @@ Error* MakeDuplicateTypeDefinitionError(const FileSet* fs, const string& name, c
 
 } // namespace
 
+TypeSet TypeSet::kEmptyTypeSet = TypeSet();
+
 TypeSet::TypeSet(const vector<string>& qualifiedTypes) {
   // Get list of all types.
   vector<string> predefs = {

@@ -44,14 +44,17 @@ TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, sptr<const Program> prog,
 sptr<const Program> TypecheckProgram(sptr<const Program> prog, const FileSet* fs,
                                ErrorList* out) {
   // Phase 1: build a typeset.
-  TypeSet typeset = BuildTypeSet(*prog, fs, out);
+  TypeSet typeSet = BuildTypeSet(*prog, fs, out);
 
   // Phase 2: build a type info map.
-  TypeInfoMap typeInfoMap = BuildTypeInfoMap(typeset, prog, fs, &prog, out);
+  TypeInfoMap typeInfo = BuildTypeInfoMap(typeSet, prog, fs, &prog, out);
 
   // Phase 3: typecheck.
   {
-    TypeChecker typechecker(typeInfoMap, typeset, fs, out);
+    TypeChecker typechecker = TypeChecker(fs, out)
+        .WithTypeSet(typeSet)
+        .WithTypeInfoMap(typeInfo);
+
     prog = typechecker.Rewrite(prog);
   }
 
