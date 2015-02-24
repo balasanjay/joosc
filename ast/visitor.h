@@ -2,6 +2,7 @@
 #define AST_VISITOR2_H
 
 #include "ast/ast_fwd.h"
+#include "base/macros.h"
 #include "base/shared_ptr_vector.h"
 
 namespace ast {
@@ -50,8 +51,14 @@ enum class VisitResult {
 class Visitor {
 public:
   template <typename T>
-  auto Visit(const sptr<T> t) -> decltype(t->Accept(this, t)) {
+  auto WARN_UNUSED Rewrite(sptr<const T> t) -> decltype(t->Accept(this, t)) {
+    assert(t != nullptr);
     return t->Accept(this, t);
+  }
+
+  template <typename T>
+  void Visit(sptr<const T> t) {
+    assert(t == Rewrite(t));
   }
 
 #define _REWRITE_DECL(type, rettype, name) virtual sptr<const rettype> Rewrite##type(const type& name, sptr<const type> name##ptr);

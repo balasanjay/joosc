@@ -45,7 +45,7 @@ REWRITE_DEFN(DeclResolver, CompUnit, CompUnit, unit,) {
   base::SharedPtrVector<const TypeDecl> decls;
   for (int i = 0; i < unit.Types().Size(); ++i) {
     sptr<const TypeDecl> oldtype = unit.Types().At(i);
-    sptr<const TypeDecl> newtype = scopedResolver.Visit(oldtype);
+    sptr<const TypeDecl> newtype = scopedResolver.Rewrite(oldtype);
     if (newtype != nullptr) {
       decls.Append(newtype);
     }
@@ -94,7 +94,7 @@ REWRITE_DEFN(DeclResolver, TypeDecl, TypeDecl, type, ) {
   SharedPtrVector<const MemberDecl> members;
   for (int i = 0; i < type.Members().Size(); ++i) {
     sptr<const MemberDecl> oldMem = type.Members().At(i);
-    sptr<const MemberDecl> newMem = memberResolver.Visit(oldMem);
+    sptr<const MemberDecl> newMem = memberResolver.Rewrite(oldMem);
     if (newMem != nullptr) {
       members.Append(newMem);
     }

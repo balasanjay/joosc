@@ -302,7 +302,7 @@ REWRITE_DEFN(ModifierVisitor, TypeDecl, TypeDecl, decl, declptr) {
     }
 
     ClassModifierVisitor visitor(fs_, errors_);
-    return visitor.Visit(declptr);
+    return visitor.Rewrite(declptr);
   }
 
   assert(decl.Kind() == TypeKind::INTERFACE);
@@ -315,7 +315,7 @@ REWRITE_DEFN(ModifierVisitor, TypeDecl, TypeDecl, decl, declptr) {
               MakeInterfaceNoAccessModError, {PUBLIC});
 
   InterfaceModifierVisitor visitor(fs_, errors_);
-  return visitor.Visit(declptr);
+  return visitor.Rewrite(declptr);
 }
 
 }  // namespace weeder
