@@ -16,7 +16,7 @@ namespace weeder {
 
 class StructureVisitorTest : public WeederTest {
  protected:
-  sptr<Program> ParseProgram(const string& program) {
+  sptr<const Program> ParseProgram(const string& program) {
     MakeParser(program);
 
     Result<CompUnit> unit;
@@ -32,7 +32,7 @@ class StructureVisitorTest : public WeederTest {
 };
 
 TEST_F(StructureVisitorTest, MultipleTypesInFile) {
-  sptr<Program> prog = ParseProgram("class foo{}; interface bar{}");
+  sptr<const Program> prog = ParseProgram("class foo{}; interface bar{}");
   ASSERT_TRUE(prog != nullptr);
 
   ErrorList errors;
@@ -48,7 +48,7 @@ TEST_F(StructureVisitorTest, MultipleTypesInFile) {
 }
 
 TEST_F(StructureVisitorTest, DifferentFileName) {
-  sptr<Program> prog = ParseProgram("class bar{}");
+  sptr<const Program> prog = ParseProgram("class bar{}");
   ASSERT_TRUE(prog != nullptr);
 
   ErrorList errors;
@@ -60,7 +60,7 @@ TEST_F(StructureVisitorTest, DifferentFileName) {
 }
 
 TEST_F(StructureVisitorTest, StructureOk) {
-  sptr<Program> prog = ParseProgram("class foo{}");
+  sptr<const Program> prog = ParseProgram("class foo{}");
   ASSERT_TRUE(prog != nullptr);
 
   ErrorList errors;

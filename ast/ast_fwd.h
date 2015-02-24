@@ -3,6 +3,11 @@
 
 namespace ast {
 
+class Type;
+class ReferenceType;
+class ArrayType;
+class PrimitiveType;
+
 class Expr;
 class ArrayIndexExpr;
 class BinExpr;

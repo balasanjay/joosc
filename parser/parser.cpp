@@ -885,7 +885,7 @@ Parser Parser::ParseReturnStmt(Result<Stmt>* out) const {
   Parser afterRet = ParseTokenIf(ExactType(K_RETURN), &ret);
 
   if (afterRet && afterRet.IsNext(SEMI)) {
-    return afterRet.Advance().Success(new ReturnStmt(nullptr), out);
+    return afterRet.Advance().Success(new ReturnStmt(*ret.Get(), nullptr), out);
   }
 
   Result<Expr> expr;
@@ -893,7 +893,7 @@ Parser Parser::ParseReturnStmt(Result<Stmt>* out) const {
   Parser afterAll =
       afterRet.ParseExpression(&expr).ParseTokenIf(ExactType(SEMI), &semi);
 
-  RETURN_IF_GOOD(afterAll, new ReturnStmt(expr.Get()), out);
+  RETURN_IF_GOOD(afterAll, new ReturnStmt(*ret.Get(), expr.Get()), out);
 
   ErrorList errors;
   FirstOf(&errors, &ret, &expr, &semi);
