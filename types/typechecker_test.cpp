@@ -166,19 +166,37 @@ TEST_F(TypeCheckerTest, BinExprNumericOpOperandsNotNumeric) {
   EXPECT_ERRS("TypeMismatchError(0:0-4)\nTypeMismatchError(0:7-11)\n");
 }
 
-// TODO: BoolLitExpr
+TEST_F(TypeCheckerTest, BoolLitExpr) {
+  sptr<const Expr> before = ParseExpr("true");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(TypeId::kBool, after->GetTypeId());
+  EXPECT_NO_ERRS;
+}
 
 // TODO: CallExpr
 
 // TODO: CastExpr
 
-// TODO: CharLitExpr
+TEST_F(TypeCheckerTest, CharLitExpr) {
+  sptr<const Expr> before = ParseExpr("'0'");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(TypeId::kChar, after->GetTypeId());
+  EXPECT_NO_ERRS;
+}
 
 // TODO: FieldDerefExpr
 
 // TODO: InstanceOfExpr
 
-// TODO: IntLitExpr
+TEST_F(TypeCheckerTest, IntLitExpr) {
+  sptr<const Expr> before = ParseExpr("0");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(TypeId::kInt, after->GetTypeId());
+  EXPECT_NO_ERRS;
+}
 
 // TODO: NameExpr
 
@@ -186,13 +204,33 @@ TEST_F(TypeCheckerTest, BinExprNumericOpOperandsNotNumeric) {
 
 // TODO: NewClassExpr
 
-// TODO: NullLitExpr
+TEST_F(TypeCheckerTest, NullLitExpr) {
+  sptr<const Expr> before = ParseExpr("null");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(TypeId::kNull, after->GetTypeId());
+  EXPECT_NO_ERRS;
+}
 
 // TODO: ParenExpr
 
 // TODO: StringLitExpr
 
-// TODO: ThisExpr
+TEST_F(TypeCheckerTest, ThisLitExpr) {
+  const auto insideType = TypeId{100, 0};
+
+  sptr<const Expr> before = ParseExpr("this");
+
+  auto typeChecker = (*typeChecker_.get())
+    .InsideCompUnit(nullptr)
+    .InsideTypeDecl(insideType)
+    .InsideMethodDecl(TypeId::kVoid);
+
+  auto after = typeChecker.Rewrite(before);
+
+  EXPECT_EQ(insideType, after->GetTypeId());
+  EXPECT_NO_ERRS;
+}
 
 // TODO: UnaryExpr
 
