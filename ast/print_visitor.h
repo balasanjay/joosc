@@ -35,7 +35,7 @@ class PrintVisitor final : public Visitor {
   VISIT_DECL(BinExpr, expr) {
     *os_ << '(';
     Visit(expr.LhsPtr());
-    *os_ << ' ' << expr.Op().TypeInfo() << ' ';
+    *os_ << RepStr(NumDelimiters(1), " ") << expr.Op().TypeInfo() << RepStr(NumDelimiters(1), " ");
     Visit(expr.RhsPtr());
     *os_ << ')';
     return VisitResult::SKIP;
@@ -137,7 +137,7 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(UnaryExpr, expr) {
-    *os_ << '(' << expr.Op().TypeInfo() << ' ';
+    *os_ << '(' << expr.Op().TypeInfo() << RepStr(NumDelimiters(1), " ");
     Visit(expr.RhsPtr());
     *os_ << ')';
     return VisitResult::SKIP;
@@ -170,7 +170,7 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(LocalDeclStmt, stmt) {
     stmt.GetType().PrintTo(os_);
-    *os_ << ' ' << stmt.Name() << RepStr(NumDelimiters(), space_)
+    *os_ << RepStr(NumDelimiters(1), " ") << stmt.Name() << RepStr(NumDelimiters(), space_)
          << '=' << RepStr(NumDelimiters(), space_);
     Visit(stmt.GetExprPtr());
     *os_ << ';';
@@ -180,7 +180,7 @@ class PrintVisitor final : public Visitor {
   VISIT_DECL(ReturnStmt, stmt) {
     *os_ << "return";
     if (stmt.GetExprPtr() != nullptr) {
-      *os_ << ' ';
+      *os_ << RepStr(NumDelimiters(1), " ");
       Visit(stmt.GetExprPtr());
     }
     *os_ << ';';
@@ -238,14 +238,14 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(Param, param) {
     param.GetType().PrintTo(os_);
-    *os_ << ' ' << param.Name();
+    *os_ << RepStr(NumDelimiters(1), " ") << param.Name();
     return VisitResult::SKIP;
   }
 
   VISIT_DECL(FieldDecl, field) {
     field.Mods().PrintTo(os_);
     field.GetType().PrintTo(os_);
-    *os_ << ' ';
+    *os_ << RepStr(NumDelimiters(1), " ");
     *os_ << field.Name();
     if (field.ValPtr() != nullptr) {
       *os_ << RepStr(NumDelimiters(), space_) << '='
@@ -260,7 +260,7 @@ class PrintVisitor final : public Visitor {
     meth.Mods().PrintTo(os_);
     if (meth.TypePtr() != nullptr) {
       meth.TypePtr()->PrintTo(os_);
-      *os_ << ' ';
+      *os_ << RepStr(NumDelimiters(1), " ");
     }
     *os_ << meth.Name();
     *os_ << '(';
@@ -283,7 +283,7 @@ class PrintVisitor final : public Visitor {
       bool first = true;
       for (const auto& elem : elems) {
         if (first) {
-          *os_ << ' ' << label << ' ';
+          *os_ << RepStr(NumDelimiters(1), " ") << label << RepStr(NumDelimiters(1), " ");
         } else {
           *os_ << ',' << RepStr(NumDelimiters(), space_);
         }
