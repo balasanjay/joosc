@@ -71,8 +71,8 @@ class TypeChecker final : public ast::Visitor {
   TypeChecker(const base::FileSet* fs, base::ErrorList* errors,
               const TypeSet& typeset, const TypeInfoMap& typeinfo,
               bool belowCompUnit = false, sptr<const ast::QualifiedName> package = nullptr,
-              bool belowTypeDecl = false, ast::TypeId curtype = ast::TypeId::Unassigned(),
-              bool belowMethodDecl = false, ast::TypeId curMethRet = ast::TypeId::Unassigned())
+              bool belowTypeDecl = false, ast::TypeId curtype = ast::TypeId::kUnassigned,
+              bool belowMethodDecl = false, ast::TypeId curMethRet = ast::TypeId::kUnassigned)
       : fs_(fs), errors_(errors), typeset_(typeset), typeinfo_(typeinfo),
         belowCompUnit_(belowCompUnit), package_(package),
         belowTypeDecl_(belowTypeDecl), curtype_(curtype),

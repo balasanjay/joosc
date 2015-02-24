@@ -92,7 +92,7 @@ TypeId TypeSet::Get(const vector<string>& qualifiedname) const {
   u64 typelen = -1;
   TypeId ret = GetPrefix(qualifiedname, &typelen);
   if ((uint)typelen < qualifiedname.size() || ret.base == TypeId::kErrorBase) {
-    return TypeId::Error();
+    return TypeId::kError;
   }
   return ret;
 }
@@ -126,7 +126,7 @@ TypeId TypeSet::GetPrefix(const vector<string>& qualifiedname, u64* typelen) con
     return TypeId{iter->second, 0};
   }
 
-  return TypeId::Error();
+  return TypeId::kError;
 }
 
 void TypeSet::InsertName(QualifiedNameBaseMap* m, string name, TypeId::Base base) {
