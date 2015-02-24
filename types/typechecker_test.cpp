@@ -149,7 +149,21 @@ TEST_F(TypeCheckerTest, NullLitExpr) {
 
 // TODO: StringLitExpr
 
-// TODO: ThisExpr
+TEST_F(TypeCheckerTest, ThisLitExpr) {
+  const auto insideType = TypeId{100, 0};
+
+  sptr<const Expr> before = ParseExpr("this");
+
+  auto typeChecker = (*typeChecker_.get())
+    .InsideCompUnit(nullptr)
+    .InsideTypeDecl(insideType)
+    .InsideMethodDecl(TypeId::kVoid);
+
+  auto after = typeChecker.Rewrite(before);
+
+  EXPECT_EQ(insideType, after->GetTypeId());
+  EXPECT_NO_ERRS;
+}
 
 // TODO: UnaryExpr
 
