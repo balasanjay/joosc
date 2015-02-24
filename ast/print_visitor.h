@@ -50,9 +50,9 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(CastExpr, expr) {
-    *os_ << "cast<";
+    *os_ << "cast<" << RepStr(NumDelimiters(), " ");
     expr.GetType().PrintTo(os_);
-    *os_ << ">(";
+    *os_ << RepStr(NumDelimiters(), " ") << ">(";
     Visit(expr.GetExprPtr());
     *os_ << ')';
     return VisitResult::SKIP;
@@ -61,9 +61,9 @@ class PrintVisitor final : public Visitor {
   VISIT_DECL(InstanceOfExpr, expr) {
     *os_ << '(';
     Visit(expr.LhsPtr());
-    *os_ << " instanceof ";
+    *os_ << RepStr(NumDelimiters(1), " ") << "instanceof" << RepStr(NumDelimiters(1), " ");
     expr.GetType().PrintTo(os_);
-    *os_ << ')';
+    *os_ << RepStr(NumDelimiters(), " ") << ')';
     return VisitResult::SKIP;
   }
 
@@ -104,10 +104,9 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(NewArrayExpr, expr) {
-    *os_ << "new<array<";
+    *os_ << "new<array<" << RepStr(NumDelimiters(), " ");
     expr.GetType().PrintTo(os_);
-
-    *os_ << ">>(";
+    *os_ << RepStr(NumDelimiters(), " ") << ">>(";
     if (expr.GetExprPtr() != nullptr) {
       Visit(expr.GetExprPtr());
     }
@@ -116,9 +115,9 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(NewClassExpr, expr) {
-    *os_ << "new<";
+    *os_ << "new<" << RepStr(NumDelimiters(), " ");
     expr.GetType().PrintTo(os_);
-    *os_ << ">(";
+    *os_ << RepStr(NumDelimiters(), " ") << ">(";
     PrintArgList(expr.Args());
     *os_ << ")";
     return VisitResult::SKIP;
@@ -169,6 +168,7 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(LocalDeclStmt, stmt) {
+    *os_ << RepStr(NumDelimiters(), " ");
     stmt.GetType().PrintTo(os_);
     *os_ << RepStr(NumDelimiters(1), " ") << stmt.Name() << RepStr(NumDelimiters(), space_)
          << '=' << RepStr(NumDelimiters(), space_);
@@ -237,13 +237,16 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(Param, param) {
+    *os_ << RepStr(NumDelimiters(), " ");
     param.GetType().PrintTo(os_);
     *os_ << RepStr(NumDelimiters(1), " ") << param.Name();
     return VisitResult::SKIP;
   }
 
   VISIT_DECL(FieldDecl, field) {
+    *os_ << RepStr(NumDelimiters(), " ");
     field.Mods().PrintTo(os_);
+    *os_ << RepStr(NumDelimiters(), " ");
     field.GetType().PrintTo(os_);
     *os_ << RepStr(NumDelimiters(1), " ");
     *os_ << field.Name();
@@ -257,8 +260,10 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(MethodDecl, meth) {
+    *os_ << RepStr(NumDelimiters(), " ");
     meth.Mods().PrintTo(os_);
     if (meth.TypePtr() != nullptr) {
+      *os_ << RepStr(NumDelimiters(), " ");
       meth.TypePtr()->PrintTo(os_);
       *os_ << RepStr(NumDelimiters(1), " ");
     }
@@ -271,12 +276,14 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(TypeDecl, type) {
+    *os_ << RepStr(NumDelimiters(), " ");
     type.Mods().PrintTo(os_);
     if (type.Kind() == TypeKind::CLASS) {
-      *os_ << "class ";
+      *os_ << "class";
     } else {
-      *os_ << "interface ";
+      *os_ << "interface";
     }
+    *os_ << RepStr(NumDelimiters(1), " ");
     *os_ << type.Name();
 
     auto printNameList = [&](const string& label, const vector<QualifiedName>& elems) {
@@ -294,7 +301,7 @@ class PrintVisitor final : public Visitor {
     printNameList("extends", type.Extends());
     printNameList("implements", type.Implements());
 
-    *os_ << " {" << RepStr(NumDelimiters(), newline_);
+    *os_ << RepStr(NumDelimiters(1), " ") << "{" << RepStr(NumDelimiters(), newline_);
     PrintVisitor nested = Indent();
     for (int i = 0; i < type.Members().Size(); ++i) {
       PutIndent(depth_ + 1);
@@ -308,13 +315,14 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(CompUnit, unit) {
     if (unit.PackagePtr() != nullptr) {
-      *os_ << "package ";
+      *os_ << "package" << RepStr(NumDelimiters(1), " ");
       unit.PackagePtr()->PrintTo(os_);
+      *os_ << RepStr(NumDelimiters(), " ");
       *os_ << ";" << RepStr(NumDelimiters(), newline_);
     }
 
     for (const auto& import : unit.Imports()) {
-      *os_ << "import ";
+      *os_ << "import" << RepStr(NumDelimiters(1), " ");
       import.Name().PrintTo(os_);
       if (import.IsWildCard()) {
         *os_ << ".*";
