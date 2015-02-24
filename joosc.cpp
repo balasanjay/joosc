@@ -9,7 +9,7 @@
 #include "base/fileset.h"
 #include "lexer/lexer.h"
 #include "parser/parser.h"
-#include "types/typechecker.h"
+#include "types/types.h"
 #include "weeder/weeder.h"
 
 using std::cerr;
@@ -90,14 +90,13 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
   }
 
   // Parse.
-  uptr<Program> program;
+  sptr<const Program> program;
   {
     ErrorList errors;
-    uptr<Program> prog = Parse(fs, filtered_tokens, &errors);
+    program = Parse(fs, filtered_tokens, &errors);
     if (PrintErrors(errors, err)) {
       return false;
     }
-    program.swap(prog);
   }
   if (stage == CompilerStage::PARSE) {
     return true;
@@ -106,7 +105,7 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
   // Weed.
   {
     ErrorList errors;
-    WeedProgram(fs, program.get(), &errors);
+    program = WeedProgram(fs, program, &errors);
     if (PrintErrors(errors, err)) {
       return false;
     }
@@ -118,7 +117,7 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
   // Type-checking.
   {
     ErrorList errors;
-    program = TypecheckProgram(*program.get(), fs, &errors);
+    program = TypecheckProgram(program, fs, &errors);
 
     if (PrintErrors(errors, err)) {
       return false;
@@ -131,7 +130,7 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
   // Print out the AST.
   {
     PrintVisitor printer = PrintVisitor::Josh(out);
-    program.get()->AcceptVisitor(&printer);
+    printer.Visit(program);
   }
 
   return true;

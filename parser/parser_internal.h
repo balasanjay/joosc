@@ -21,18 +21,11 @@ class Result final {
 
   bool IsSuccess() const { return !errors_.IsFatal(); }
 
-  T* Get() const {
+  sptr<const T> Get() const {
     if (!IsSuccess()) {
       throw "Get() from non-successful result.";
     }
-    return data_.get();
-  }
-
-  T* Release() {
-    if (!IsSuccess()) {
-      throw "Release() from non-successful result.";
-    }
-    return data_.release();
+    return data_;
   }
 
   void ReleaseErrors(base::ErrorList* out) {
@@ -48,13 +41,16 @@ class Result final {
  private:
   DISALLOW_COPY_AND_ASSIGN(Result);
 
-  Result(T* data) : success_(true), data_(data) {}
+  Result(sptr<const T> data) : success_(true), data_(data) {}
   Result(base::Error* err) { errors_.Append(err); }
   Result(base::ErrorList&& errors)
       : success_(false), errors_(std::forward<base::ErrorList>(errors)) {}
 
   template <typename U>
-  friend Result<U> MakeSuccess(U* t);
+  friend Result<U> MakeSuccess(const U* t);
+
+  template <typename U>
+  friend Result<U> MakeSuccess(sptr<const U> t);
 
   template <typename U>
   friend Result<U> Failure(base::Error* e);
@@ -66,12 +62,16 @@ class Result final {
   friend Result<T2> ConvertError(Result<T1>&&);
 
   bool success_ = false;
-  uptr<T> data_;
+  sptr<const T> data_;
   base::ErrorList errors_;
 };
 
 template <typename T>
-Result<T> MakeSuccess(T* t) {
+Result<T> MakeSuccess(const T* t) {
+  return Result<T>(sptr<const T>(t));
+}
+template <typename T>
+Result<T> MakeSuccess(sptr<const T> t) {
   return Result<T>(t);
 }
 template <typename T>
@@ -123,17 +123,17 @@ struct Parser {
   // Expression parsers.
   Parser ParseExpression(internal::Result<ast::Expr>*) const;
   Parser ParseParenExpression(internal::Result<ast::Expr>*) const;
-  Parser ParseUnaryExpression(internal::Result<ast::Expr>*) const;
+  Parser ParseUnaryExpression(internal::Result<ast::Expr>*, bool allowSub = true) const;
   Parser ParseCastExpression(internal::Result<ast::Expr>* out) const;
   Parser ParsePrimary(internal::Result<ast::Expr>* out) const;
   Parser ParseNewExpression(internal::Result<ast::Expr>* out) const;
   Parser ParsePrimaryBase(internal::Result<ast::Expr>* out) const;
-  Parser ParsePrimaryEnd(ast::Expr* base, internal::Result<ast::Expr>* out) const;
-  Parser ParsePrimaryEndNoArrayAccess(ast::Expr* base,
+  Parser ParsePrimaryEnd(sptr<const ast::Expr> base, internal::Result<ast::Expr>* out) const;
+  Parser ParsePrimaryEndNoArrayAccess(sptr<const ast::Expr> base,
                                       internal::Result<ast::Expr>* out) const;
 
   // Other parsers.
-  Parser ParseArgumentList(internal::Result<ast::ArgumentList>*) const;
+  Parser ParseArgumentList(internal::Result<base::SharedPtrVector<const ast::Expr>>*) const;
 
   // Statement parsers.
   Parser ParseStmt(internal::Result<ast::Stmt>* out) const;
@@ -203,6 +203,12 @@ struct Parser {
 
   template <typename T, typename U>
   Parser Success(T* t, internal::Result<U>* out) const {
+    *out = internal::MakeSuccess<U>(t);
+    return *this;
+  }
+
+  template <typename T, typename U>
+  Parser Success(T t, internal::Result<U>* out) const {
     *out = internal::MakeSuccess<U>(t);
     return *this;
   }

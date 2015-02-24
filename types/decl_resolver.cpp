@@ -3,11 +3,10 @@
 #include "ast/ast.h"
 #include "base/error.h"
 #include "base/macros.h"
+#include "types/types_internal.h"
 
 using ast::ArrayType;
-using ast::ClassDecl;
 using ast::CompUnit;
-using ast::ConstructorDecl;
 using ast::Expr;
 using ast::FieldDecl;
 using ast::MemberDecl;
@@ -17,45 +16,18 @@ using ast::ParamList;
 using ast::PrimitiveType;
 using ast::QualifiedName;
 using ast::ReferenceType;
-using ast::ReferenceType;
 using ast::Stmt;
 using ast::Type;
 using ast::TypeDecl;
 using ast::TypeId;
+using ast::TypeKind;
 using base::Error;
 using base::FileSet;
 using base::PosRange;
+using base::SharedPtrVector;
 using base::UniquePtrVector;
 
 namespace types {
-
-namespace {
-
-Error* MakeUnknownTypenameError(const FileSet* fs, PosRange pos) {
-  return MakeSimplePosRangeError(fs, pos, "UnknownTypenameError",
-                                 "Unknown type name.");
-}
-
-TypeId ResolveType(const Type& type, TypeSet typeset, PosRange* pos_out) {
-  const Type* cur = &type;
-  if (IS_CONST_PTR(ReferenceType, cur)) {
-    const ReferenceType* ref = dynamic_cast<const ReferenceType*>(cur);
-    *pos_out = ref->Name().Tokens().back().pos;
-    return typeset.Get(ref->Name().Parts());
-  } else if (IS_CONST_PTR(PrimitiveType, cur)) {
-    const PrimitiveType* prim = dynamic_cast<const PrimitiveType*>(cur);
-    *pos_out = prim->GetToken().pos;
-    return typeset.Get({prim->GetToken().TypeInfo().Value()});
-  }
-
-  assert(IS_CONST_PTR(ArrayType, cur));
-  const ArrayType* arr = dynamic_cast<const ArrayType*>(cur);
-  TypeId nested = ResolveType(arr->ElemType(), typeset, pos_out);
-  return TypeId{nested.base, nested.ndims + 1};
-}
-
-
-} // namespace
 
 TypeId DeclResolver::MustResolveType(const Type& type) {
   PosRange pos(-1, -1, -1);
@@ -66,26 +38,22 @@ TypeId DeclResolver::MustResolveType(const Type& type) {
   return tid;
 }
 
-REWRITE_DEFN(DeclResolver, CompUnit, CompUnit, unit) {
-  QualifiedName* package = nullptr;
-  if (unit.Package() != nullptr) {
-    package = new QualifiedName(*unit.Package());
-  }
+REWRITE_DEFN(DeclResolver, CompUnit, CompUnit, unit,) {
+  TypeSet scopedTypeSet = typeset_.WithImports(unit.Imports(), fs_, errors_);
+  DeclResolver scopedResolver(builder_, scopedTypeSet, fs_, errors_, unit.PackagePtr());
 
-  TypeSet scopedTypeSet = typeset_.WithImports(unit.Imports());
-  DeclResolver scopedResolver(builder_, scopedTypeSet, fs_, errors_, package);
-
-  base::UniquePtrVector<TypeDecl> decls;
-  for (const auto& type : unit.Types()) {
-    TypeDecl* newtype = type.AcceptRewriter(&scopedResolver);
+  base::SharedPtrVector<const TypeDecl> decls;
+  for (int i = 0; i < unit.Types().Size(); ++i) {
+    sptr<const TypeDecl> oldtype = unit.Types().At(i);
+    sptr<const TypeDecl> newtype = scopedResolver.Rewrite(oldtype);
     if (newtype != nullptr) {
       decls.Append(newtype);
     }
   }
-  return new CompUnit(package, unit.Imports(), std::move(decls));
+  return make_shared<CompUnit>(unit.PackagePtr(), unit.Imports(), decls);
 }
 
-REWRITE_DEFN(DeclResolver, ClassDecl, TypeDecl, type) {
+REWRITE_DEFN(DeclResolver, TypeDecl, TypeDecl, type, ) {
   // Try and resolve TypeId of this class. If this fails, that means that this
   // class has some previously discovered error, and we prune this subtree.
   vector<string> classname;
@@ -99,39 +67,45 @@ REWRITE_DEFN(DeclResolver, ClassDecl, TypeDecl, type) {
     return nullptr;
   }
 
-  vector<TypeId> interfaces;
-  for (const auto& iface : type.Interfaces()) {
-    TypeId tid = typeset_.Get(iface.Parts());
+  vector<TypeId> extends;
+  for (const auto& name : type.Extends()) {
+    TypeId tid = typeset_.Get(name.Parts());
     if (!tid.IsError()) {
-      interfaces.push_back(tid);
+      extends.push_back(tid);
       continue;
     }
 
-    errors_->Append(MakeUnknownTypenameError(fs_, iface.Tokens().back().pos));
+    errors_->Append(MakeUnknownTypenameError(fs_, name.Tokens().back().pos));
   }
 
-  // TODO: handle super.
+  vector<TypeId> implements;
+  for (const auto& name : type.Implements()) {
+    TypeId tid = typeset_.Get(name.Parts());
+    if (!tid.IsError()) {
+      implements.push_back(tid);
+      continue;
+    }
+
+    errors_->Append(MakeUnknownTypenameError(fs_, name.Tokens().back().pos));
+  }
+
   // TODO: put into builder_.
   DeclResolver memberResolver(builder_, typeset_, fs_, errors_, package_, curtid);
-  ModifierList mods(type.Mods());
-  base::UniquePtrVector<MemberDecl> members;
-  for (const auto& member : type.Members()) {
-    MemberDecl* decl = member.AcceptRewriter(&memberResolver);
-    if (decl != nullptr) {
-      members.Append(decl);
+  SharedPtrVector<const MemberDecl> members;
+  for (int i = 0; i < type.Members().Size(); ++i) {
+    sptr<const MemberDecl> oldMem = type.Members().At(i);
+    sptr<const MemberDecl> newMem = memberResolver.Rewrite(oldMem);
+    if (newMem != nullptr) {
+      members.Append(newMem);
     }
   }
-  ReferenceType* super = nullptr;
-  if (type.Super() != nullptr) {
-    super = static_cast<ReferenceType*>(type.Super()->Clone());
-  }
-  return new ClassDecl(std::move(mods), type.Name(), type.NameToken(), type.Interfaces(), std::move(members), super, curtid);
+  return make_shared<TypeDecl>(type.Mods(), type.Kind(), type.Name(), type.NameToken(), type.Extends(), type.Implements(), members, curtid);
 }
 
 // TODO: we are skipping interfaces; waiting until after the AST merge.
 // TODO: we are skipping constructors; waiting until after the AST merge.
 
-REWRITE_DEFN(DeclResolver, FieldDecl, MemberDecl, field) {
+REWRITE_DEFN(DeclResolver, FieldDecl, MemberDecl, field, ) {
   TypeId tid = MustResolveType(field.GetType());
   if (tid.IsError()) {
     return nullptr;
@@ -139,20 +113,21 @@ REWRITE_DEFN(DeclResolver, FieldDecl, MemberDecl, field) {
 
   // TODO: put field in table keyed by (curtid_, field.Name()).
   // TODO: assign member id to field.
-
-  ModifierList mods(field.Mods());
-  Type* type = field.GetType().Clone();
-  Expr* val = nullptr;
-  if (field.Val() != nullptr) {
-    val = field.Val()->AcceptRewriter(this);
-  }
-  return new FieldDecl(std::move(mods), type, field.Ident(), val);
+  return make_shared<FieldDecl>(field.Mods(), field.GetTypePtr(), field.Name(), field.NameToken(), field.ValPtr());
 }
 
-REWRITE_DEFN(DeclResolver, MethodDecl, MemberDecl, meth) {
-  TypeId rettid = MustResolveType(meth.GetType());
-  if (rettid.IsError()) {
-    return nullptr;
+REWRITE_DEFN(DeclResolver, MethodDecl, MemberDecl, meth,) {
+  TypeId rettid = TypeId::Unassigned();
+  if (meth.TypePtr() == nullptr) {
+    // Handle constructor.
+    // The return type of a constructor is the containing class.
+    rettid = curtype_;
+  } else {
+    // Handle method.
+    rettid = MustResolveType(*meth.TypePtr());
+    if (rettid.IsError()) {
+      return nullptr;
+    }
   }
 
   vector<TypeId> paramtids;
@@ -167,11 +142,7 @@ REWRITE_DEFN(DeclResolver, MethodDecl, MemberDecl, meth) {
   // TODO: put method in table keyed by (curtid_, meth.Name(), paramtids).
   // TODO: assign member id to method.
 
-  ModifierList mods(meth.Mods());
-  Type* type = meth.GetType().Clone();
-  uptr<ParamList> params(meth.Params().AcceptRewriter(this));
-  Stmt* body = meth.Body().AcceptRewriter(this);
-  return new MethodDecl(std::move(mods), type, meth.Ident(), std::move(*params), body);
+  return make_shared<MethodDecl>(meth.Mods(), meth.TypePtr(), meth.Name(), meth.NameToken(), meth.ParamsPtr(), meth.BodyPtr());
 }
 
 } // namespace types

@@ -18,7 +18,7 @@ TEST_F(ModifierVisitorTest, ClassConstructorDeclConflicting) {
 
   ErrorList errors;
   ClassModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   string expected =
       "ConflictingAccessModError(0:0-6)\n"
@@ -35,7 +35,7 @@ TEST_F(ModifierVisitorTest, ClassConstructorDeclDisallowed) {
 
   ErrorList errors;
   ClassModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   string expected =
       "ClassConstructorModifierError(0:0-8)\n"
@@ -54,7 +54,7 @@ TEST_F(ModifierVisitorTest, ClassConstructorDeclInvalidEmpty) {
 
   ErrorList errors;
   ClassModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("ClassConstructorEmptyError(0:7)\n",
@@ -68,7 +68,7 @@ TEST_F(ModifierVisitorTest, ClassConstructorOk) {
 
   ErrorList errors;
   ClassModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -80,7 +80,7 @@ TEST_F(ModifierVisitorTest, ClassFieldDeclConflicting) {
 
   ErrorList errors;
   ClassModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   string expected =
       "ConflictingAccessModError(0:0-6)\n"
@@ -97,7 +97,7 @@ TEST_F(ModifierVisitorTest, ClassFieldDeclDisallowed) {
 
   ErrorList errors;
   ClassModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   string expected =
       "ClassFieldModifierError(0:0-8)\n"
@@ -115,7 +115,7 @@ TEST_F(ModifierVisitorTest, ClassFieldOk) {
 
   ErrorList errors;
   ClassModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -127,7 +127,7 @@ TEST_F(ModifierVisitorTest, ClassMethodDeclConflicting) {
 
   ErrorList errors;
   ClassModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   string expected =
       "ConflictingAccessModError(0:0-6)\n"
@@ -144,7 +144,7 @@ TEST_F(ModifierVisitorTest, ClassMethodDeclInvalidEmpty) {
 
   ErrorList errors;
   ClassModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("ClassMethodEmptyError(0:11)\n", testing::PrintToString(errors));
@@ -157,7 +157,7 @@ TEST_F(ModifierVisitorTest, ClassMethodDeclInvalidBody) {
 
   ErrorList errors;
   ClassModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("ClassMethodNotEmptyError(0:20)\n", testing::PrintToString(errors));
@@ -170,7 +170,7 @@ TEST_F(ModifierVisitorTest, ClassMethodAbstractStatic) {
 
   ErrorList errors;
   ClassModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("ClassMethodAbstractModifierError(0:9-15)\n",
@@ -184,7 +184,7 @@ TEST_F(ModifierVisitorTest, ClassMethodAbstractFinal) {
 
   ErrorList errors;
   ClassModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("ClassMethodAbstractModifierError(0:9-14)\n",
@@ -198,7 +198,7 @@ TEST_F(ModifierVisitorTest, ClassMethodStaticFinal) {
 
   ErrorList errors;
   ClassModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("ClassMethodStaticFinalError(0:7-12)\n",
@@ -212,7 +212,7 @@ TEST_F(ModifierVisitorTest, ClassMethodNativeNotStatic) {
 
   ErrorList errors;
   ClassModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("ClassMethodNativeNotStaticError(0:0-6)\n",
@@ -226,7 +226,7 @@ TEST_F(ModifierVisitorTest, ClassMethodOk) {
 
   ErrorList errors;
   ClassModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -238,7 +238,7 @@ TEST_F(ModifierVisitorTest, InterfaceConstructorDeclFail) {
 
   ErrorList errors;
   InterfaceModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InterfaceConstructorError(0:0-3)\n",
@@ -252,7 +252,7 @@ TEST_F(ModifierVisitorTest, InterfaceFieldDeclFail) {
 
   ErrorList errors;
   InterfaceModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InterfaceFieldError(0:4)\n", testing::PrintToString(errors));
@@ -265,7 +265,7 @@ TEST_F(ModifierVisitorTest, InterfaceMethodDisallowed) {
 
   ErrorList errors;
   InterfaceModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   string expected =
       "InterfaceMethodModifierError(0:0-9)\n"
@@ -284,7 +284,7 @@ TEST_F(ModifierVisitorTest, InterfaceMethodDeclInvalidBody) {
 
   ErrorList errors;
   InterfaceModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InterfaceMethodImplError(0:11)\n", testing::PrintToString(errors));
@@ -297,7 +297,7 @@ TEST_F(ModifierVisitorTest, InterfaceMethodOk) {
 
   ErrorList errors;
   InterfaceModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -309,7 +309,7 @@ TEST_F(ModifierVisitorTest, ClassBadModifiers) {
 
   ErrorList errors;
   ModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   string expected =
       "ClassModifierError(0:0-9)\n"
@@ -327,7 +327,7 @@ TEST_F(ModifierVisitorTest, ClassBadAbstractFinal) {
 
   ErrorList errors;
   ModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("AbstractFinalClass(0:28-31)\n", testing::PrintToString(errors));
@@ -340,7 +340,7 @@ TEST_F(ModifierVisitorTest, ClassOk) {
 
   ErrorList errors;
   ModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -352,7 +352,7 @@ TEST_F(ModifierVisitorTest, InterfaceBadModifiers) {
 
   ErrorList errors;
   ModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   string expected =
       "InterfaceModifierError(0:0-9)\n"
@@ -371,7 +371,7 @@ TEST_F(ModifierVisitorTest, InterfaceOk) {
 
   ErrorList errors;
   ModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -383,7 +383,7 @@ TEST_F(ModifierVisitorTest, RecursionInterfaceOk) {
 
   ErrorList errors;
   ModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InterfaceMethodImplError(0:35-38)\n",
@@ -397,7 +397,7 @@ TEST_F(ModifierVisitorTest, RecursionClassOk) {
 
   ErrorList errors;
   ModifierVisitor visitor(fs_.get(), &errors);
-  decl.Get()->AcceptVisitor(&visitor);
+  visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("ClassMethodEmptyError(0:31-34)\n", testing::PrintToString(errors));

@@ -8,7 +8,7 @@
 
 namespace parser {
 
-uptr<ast::Program> Parse(const base::FileSet* fs,
+sptr<const ast::Program> Parse(const base::FileSet* fs,
                           const vector<vector<lexer::Token>>& tokens,
                           base::ErrorList* out);
 

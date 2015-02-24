@@ -7,7 +7,7 @@
 
 namespace weeder {
 
-void WeedProgram(const base::FileSet* fs, const ast::Program* prog,
+sptr<const ast::Program> WeedProgram(const base::FileSet* fs, sptr<const ast::Program> prog,
                  base::ErrorList* out);
 
 }  // namespace weeder

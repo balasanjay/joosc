@@ -13,26 +13,28 @@ using base::FileSet;
 
 namespace weeder {
 
-void WeedProgram(const FileSet* fs, const Program* prog, ErrorList* out) {
+sptr<const Program> WeedProgram(const FileSet* fs, sptr<const Program> prog, ErrorList* out) {
   AssignmentVisitor assignmentChecker(fs, out);
-  prog->AcceptVisitor(&assignmentChecker);
+  prog = assignmentChecker.Rewrite(prog);
 
   CallVisitor callChecker(fs, out);
-  prog->AcceptVisitor(&callChecker);
+  prog = callChecker.Rewrite(prog);
 
   TypeVisitor typeChecker(fs, out);
-  prog->AcceptVisitor(&typeChecker);
+  prog = typeChecker.Rewrite(prog);
 
   ModifierVisitor modifierChecker(fs, out);
-  prog->AcceptVisitor(&modifierChecker);
+  prog = modifierChecker.Rewrite(prog);
 
   IntRangeVisitor intRangeChecker(fs, out);
-  prog->AcceptVisitor(&intRangeChecker);
+  prog = intRangeChecker.Rewrite(prog);
 
   StructureVisitor structureChecker(fs, out);
-  prog->AcceptVisitor(&structureChecker);
+  prog = structureChecker.Rewrite(prog);
 
   // More weeding required.
+
+  return prog;
 }
 
 }  // namespace weeder

@@ -8,6 +8,7 @@ using ast::CompUnit;
 using ast::Program;
 using ast::Stmt;
 using base::ErrorList;
+using base::SharedPtrVector;
 using base::UniquePtrVector;
 using parser::internal::Result;
 
@@ -15,7 +16,7 @@ namespace weeder {
 
 class StructureVisitorTest : public WeederTest {
  protected:
-  uptr<Program> ParseProgram(const string& program) {
+  sptr<const Program> ParseProgram(const string& program) {
     MakeParser(program);
 
     Result<CompUnit> unit;
@@ -23,20 +24,20 @@ class StructureVisitorTest : public WeederTest {
       return nullptr;
     }
 
-    UniquePtrVector<CompUnit> units;
-    units.Append(unit.Release());
+    SharedPtrVector<const CompUnit> units;
+    units.Append(unit.Get());
 
-    return uptr<Program>(new Program(move(units)));
+    return make_shared<Program>(units);
   }
 };
 
 TEST_F(StructureVisitorTest, MultipleTypesInFile) {
-  uptr<Program> prog = ParseProgram("class foo{}; interface bar{}");
+  sptr<const Program> prog = ParseProgram("class foo{}; interface bar{}");
   ASSERT_TRUE(prog != nullptr);
 
   ErrorList errors;
   StructureVisitor visitor(fs_.get(), &errors);
-  prog->AcceptVisitor(&visitor);
+  visitor.Visit(prog);
 
   string expected =
       "MultipleTypesPerCompUnitError(0:6-9)\n"
@@ -47,24 +48,24 @@ TEST_F(StructureVisitorTest, MultipleTypesInFile) {
 }
 
 TEST_F(StructureVisitorTest, DifferentFileName) {
-  uptr<Program> prog = ParseProgram("class bar{}");
+  sptr<const Program> prog = ParseProgram("class bar{}");
   ASSERT_TRUE(prog != nullptr);
 
   ErrorList errors;
   StructureVisitor visitor(fs_.get(), &errors);
-  prog->AcceptVisitor(&visitor);
+  visitor.Visit(prog);
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("IncorrectFileNameError(0:6-9)\n", testing::PrintToString(errors));
 }
 
 TEST_F(StructureVisitorTest, StructureOk) {
-  uptr<Program> prog = ParseProgram("class foo{}");
+  sptr<const Program> prog = ParseProgram("class foo{}");
   ASSERT_TRUE(prog != nullptr);
 
   ErrorList errors;
   StructureVisitor visitor(fs_.get(), &errors);
-  prog->AcceptVisitor(&visitor);
+  visitor.Visit(prog);
 
   EXPECT_EQ(errors.Size(), 0);
 }

@@ -1,64 +1,104 @@
-#ifndef AST_VISITOR_H
-#define AST_VISITOR_H
+#ifndef AST_VISITOR2_H
+#define AST_VISITOR2_H
 
 #include "ast/ast_fwd.h"
+#include "base/macros.h"
+#include "base/shared_ptr_vector.h"
 
 namespace ast {
 
-class Visitor {
- public:
-  virtual ~Visitor() = default;
+#define FOR_EACH_VISITABLE(code) \
+  code(ArrayIndexExpr, Expr, expr) \
+  code(BinExpr, Expr, expr) \
+  code(BoolLitExpr, Expr, expr) \
+  code(CallExpr, Expr, expr) \
+  code(CastExpr, Expr, expr) \
+  code(CharLitExpr, Expr, expr) \
+  code(FieldDerefExpr, Expr, expr) \
+  code(InstanceOfExpr, Expr, expr) \
+  code(IntLitExpr, Expr, expr) \
+  code(NameExpr, Expr, expr) \
+  code(NewArrayExpr, Expr, expr) \
+  code(NewClassExpr, Expr, expr) \
+  code(NullLitExpr, Expr, expr) \
+  code(ParenExpr, Expr, expr) \
+  code(StringLitExpr, Expr, expr) \
+  code(ThisExpr, Expr, expr) \
+  code(UnaryExpr, Expr, expr) \
+  code(BlockStmt, Stmt, stmt) \
+  code(EmptyStmt, Stmt, stmt) \
+  code(ExprStmt, Stmt, stmt) \
+  code(ForStmt, Stmt, stmt) \
+  code(IfStmt, Stmt, stmt) \
+  code(LocalDeclStmt, Stmt, stmt) \
+  code(ReturnStmt, Stmt, stmt) \
+  code(WhileStmt, Stmt, stmt) \
+  code(ParamList, ParamList, params) \
+  code(Param, Param, param) \
+  code(FieldDecl, MemberDecl, field) \
+  code(MethodDecl, MemberDecl, meth) \
+  code(TypeDecl, TypeDecl, decl) \
+  code(CompUnit, CompUnit, unit) \
+  code(Program, Program, prog)
 
-#define ABSTRACT_VISIT(type) virtual void Visit##type(const ast::type&) = 0
-
-  ABSTRACT_VISIT(ArrayIndexExpr);
-  ABSTRACT_VISIT(BinExpr);
-  ABSTRACT_VISIT(CallExpr);
-  ABSTRACT_VISIT(CastExpr);
-  ABSTRACT_VISIT(FieldDerefExpr);
-  ABSTRACT_VISIT(BoolLitExpr);
-  ABSTRACT_VISIT(StringLitExpr);
-  ABSTRACT_VISIT(CharLitExpr);
-  ABSTRACT_VISIT(IntLitExpr);
-  ABSTRACT_VISIT(NullLitExpr);
-  ABSTRACT_VISIT(NameExpr);
-  ABSTRACT_VISIT(NewArrayExpr);
-  ABSTRACT_VISIT(NewClassExpr);
-  ABSTRACT_VISIT(ThisExpr);
-  ABSTRACT_VISIT(ParenExpr);
-  ABSTRACT_VISIT(UnaryExpr);
-  ABSTRACT_VISIT(InstanceOfExpr);
-
-  ABSTRACT_VISIT(BlockStmt);
-  ABSTRACT_VISIT(EmptyStmt);
-  ABSTRACT_VISIT(ExprStmt);
-  ABSTRACT_VISIT(LocalDeclStmt);
-  ABSTRACT_VISIT(ReturnStmt);
-  ABSTRACT_VISIT(IfStmt);
-  ABSTRACT_VISIT(ForStmt);
-  ABSTRACT_VISIT(WhileStmt);
-
-  ABSTRACT_VISIT(ArgumentList);
-  ABSTRACT_VISIT(Param);
-  ABSTRACT_VISIT(ParamList);
-  ABSTRACT_VISIT(FieldDecl);
-  ABSTRACT_VISIT(MethodDecl);
-  ABSTRACT_VISIT(ConstructorDecl);
-  ABSTRACT_VISIT(ClassDecl);
-  ABSTRACT_VISIT(InterfaceDecl);
-  ABSTRACT_VISIT(CompUnit);
-  ABSTRACT_VISIT(Program);
-
-#undef ABSTRACT_VISIT
-
- protected:
-  Visitor() = default;
+enum class VisitResult {
+  SKIP, // Don't visit children; keep them in resulting AST.
+  RECURSE, // Visit children.
+  SKIP_PRUNE, // Don't visit children, prune this subtree from AST.
+  RECURSE_PRUNE, // Visit children, and then prune this subtree from AST.
 };
 
-#define VISIT_DECL(type, var) void Visit##type(const ast::type& var) override
-#define VISIT_DEFN(cls, type, var) \
-  void cls::Visit##type(const ast::type& var)
+class Visitor {
+public:
+  template <typename T>
+  auto WARN_UNUSED Rewrite(sptr<const T> t) -> decltype(t->Accept(this, t)) {
+    assert(t != nullptr);
+    return t->Accept(this, t);
+  }
 
-}  // namespace ast
+  template <typename T>
+  void Visit(sptr<const T> t) {
+    assert(t == Rewrite(t));
+  }
+
+#define _REWRITE_DECL(type, rettype, name) virtual sptr<const rettype> Rewrite##type(const type& name, sptr<const type> name##ptr);
+  FOR_EACH_VISITABLE(_REWRITE_DECL)
+#undef _REWRITE_DECL
+
+protected:
+#define _VISIT_DECL(type, rettype, name) virtual VisitResult Visit##type(const type&) { return VisitResult::RECURSE; }
+  FOR_EACH_VISITABLE(_VISIT_DECL)
+#undef _VISIT_DECL
+
+private:
+  template <typename T>
+  base::SharedPtrVector<const T> AcceptMulti(const base::SharedPtrVector<const T>& oldVec, bool* changed_out) {
+    base::SharedPtrVector<const T> newVec;
+    *changed_out = false;
+    for (int i = 0; i < oldVec.Size(); ++i) {
+      sptr<const T> oldVal = oldVec.At(i);
+      sptr<const T> newVal = oldVal->Accept(this, oldVal);
+      if (newVal == nullptr) {
+        *changed_out = true;
+        continue;
+      }
+      if (newVal != oldVal) {
+        *changed_out = true;
+      }
+      newVec.Append(newVal);
+    }
+    return newVec;
+  }
+};
+
+#undef FOR_EACH_VISITABLE
+
+#define VISIT_DECL(type, var) ast::VisitResult Visit##type(const ast::type& var) override
+#define VISIT_DEFN(cls, type, var) ast::VisitResult cls::Visit##type(const ast::type& var)
+
+#define REWRITE_DECL(type, rettype, var, varptr) sptr<const ast::rettype> Rewrite##type(const ast::type& var, sptr<const ast::type> varptr) override
+#define REWRITE_DEFN(cls, type, rettype, var, varptr) sptr<const ast::rettype> cls::Rewrite##type(const ast::type& var, sptr<const ast::type> varptr)
+
+} // namespace ast
 
 #endif

@@ -11,6 +11,8 @@ using ast::EmptyStmt;
 using ast::FieldDecl;
 using ast::MethodDecl;
 using ast::ModifierList;
+using ast::TypeKind;
+using ast::VisitResult;
 using base::Error;
 using base::ErrorList;
 using base::FileSet;
@@ -156,7 +158,6 @@ inline void VerifyNoneOf(const FileSet* fs, const ModifierList& mods,
   }
 }
 
-template <typename... T>
 inline void VerifyOneOf(const FileSet* fs, const ModifierList& mods,
                         ErrorList* out, Token token,
                         function<Error*(const FileSet*, Token)> error_maker,
@@ -182,146 +183,139 @@ void VerifyNoConflictingAccessMods(const FileSet* fs, const ModifierList& mods,
 
 }  // namespace
 
-REC_VISIT_DEFN(ClassModifierVisitor, ConstructorDecl, decl) {
+VISIT_DEFN(ClassModifierVisitor, FieldDecl, decl) {
   // Cannot be both public and protected.
   VerifyNoConflictingAccessMods(fs_, decl.Mods(), errors_);
 
   // Must be at least one of public or protected.
-  VerifyOneOf(fs_, decl.Mods(), errors_, decl.Ident(),
-              MakeClassMemberNoAccessModError, {PUBLIC, PROTECTED});
-
-  // A constructor cannot be abstract, static, final, or native.
-  VerifyNoneOf(fs_, decl.Mods(), errors_, MakeClassConstructorModifierError,
-               {ABSTRACT, STATIC, FINAL, NATIVE});
-
-  // A constructor must have a body; i.e. it can't be ";".
-  if (IS_CONST_REF(EmptyStmt, decl.Body())) {
-    errors_->Append(MakeClassConstructorEmptyError(fs_, decl.Ident()));
-  }
-
-  return false;
-}
-
-REC_VISIT_DEFN(ClassModifierVisitor, FieldDecl, decl) {
-  // Cannot be both public and protected.
-  VerifyNoConflictingAccessMods(fs_, decl.Mods(), errors_);
-
-  // Must be at least one of public or protected.
-  VerifyOneOf(fs_, decl.Mods(), errors_, decl.Ident(),
+  VerifyOneOf(fs_, decl.Mods(), errors_, decl.NameToken(),
               MakeClassMemberNoAccessModError, {PUBLIC, PROTECTED});
 
   // Can't be abstract, final, or native.
   VerifyNoneOf(fs_, decl.Mods(), errors_, MakeClassFieldModifierError,
                {ABSTRACT, FINAL, NATIVE});
-  return false;
+
+  return VisitResult::SKIP;
 }
 
-REC_VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
+VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
+  bool constructor = decl.TypePtr() == nullptr;
+
   // Cannot be both public and protected.
   VerifyNoConflictingAccessMods(fs_, decl.Mods(), errors_);
 
   // Must be at least one of public or protected.
-  VerifyOneOf(fs_, decl.Mods(), errors_, decl.Ident(),
+  VerifyOneOf(fs_, decl.Mods(), errors_, decl.NameToken(),
               MakeClassMemberNoAccessModError, {PUBLIC, PROTECTED});
 
   const ModifierList& mods = decl.Mods();
 
   // A method has a body if and only if it is neither abstract nor native.
-  {
+  if (!constructor) {
     if (IS_CONST_REF(EmptyStmt, decl.Body())) {
       // Has an empty body; this implies it must be either abstract or native.
       if (!mods.HasModifier(ABSTRACT) && !mods.HasModifier(NATIVE)) {
-        errors_->Append(MakeClassMethodEmptyError(fs_, decl.Ident()));
+        errors_->Append(MakeClassMethodEmptyError(fs_, decl.NameToken()));
       }
     } else {
       // Has a non-empty body; this implies it must not be abstract or native.
       if (mods.HasModifier(ABSTRACT) || mods.HasModifier(NATIVE)) {
-        errors_->Append(MakeClassMethodNotEmptyError(fs_, decl.Ident()));
+        errors_->Append(MakeClassMethodNotEmptyError(fs_, decl.NameToken()));
       }
     }
   }
 
+  // A constructor cannot be abstract, static, final, or native.
+  if (constructor) {
+    VerifyNoneOf(fs_, decl.Mods(), errors_, MakeClassConstructorModifierError,
+                 {ABSTRACT, STATIC, FINAL, NATIVE});
+  }
+
+  // A constructor must have a body; i.e. it can't be ";".
+  if (constructor && IS_CONST_REF(EmptyStmt, decl.Body())) {
+    errors_->Append(MakeClassConstructorEmptyError(fs_, decl.NameToken()));
+  }
+
   // An abstract method cannot be static or final.
-  if (mods.HasModifier(ABSTRACT)) {
+  if (!constructor && mods.HasModifier(ABSTRACT)) {
     VerifyNoneOf(fs_, mods, errors_, MakeClassMethodAbstractModifierError,
                  {STATIC, FINAL});
   }
 
   // A static method cannot be final.
-  if (mods.HasModifier(STATIC) && mods.HasModifier(FINAL)) {
+  if (!constructor && mods.HasModifier(STATIC) && mods.HasModifier(FINAL)) {
     errors_->Append(
         MakeClassMethodStaticFinalError(fs_, mods.GetModifierToken(FINAL)));
   }
 
   // A native method must be static.
-  if (mods.HasModifier(NATIVE) && !mods.HasModifier(STATIC)) {
+  if (!constructor && mods.HasModifier(NATIVE) && !mods.HasModifier(STATIC)) {
     errors_->Append(MakeClassMethodNativeNotStaticError(
         fs_, mods.GetModifierToken(NATIVE)));
   }
 
-  return false;
+  return VisitResult::SKIP;
 }
 
-REC_VISIT_DEFN(InterfaceModifierVisitor, ConstructorDecl, decl) {
-  // An interface cannot contain constructors.
-  errors_->Append(MakeInterfaceConstructorError(fs_, decl.Ident()));
-  return false;
-}
-
-REC_VISIT_DEFN(InterfaceModifierVisitor, FieldDecl, decl) {
+VISIT_DEFN(InterfaceModifierVisitor, FieldDecl, decl) {
   // An interface cannot contain fields.
-  errors_->Append(MakeInterfaceFieldError(fs_, decl.Ident()));
-  return false;
+  errors_->Append(MakeInterfaceFieldError(fs_, decl.NameToken()));
+  return VisitResult::SKIP;
 }
 
-REC_VISIT_DEFN(InterfaceModifierVisitor, MethodDecl, decl) {
+VISIT_DEFN(InterfaceModifierVisitor, MethodDecl, decl) {
+  // An interface cannot contain constructors.
+  if (decl.TypePtr() == nullptr) {
+    errors_->Append(MakeInterfaceConstructorError(fs_, decl.NameToken()));
+    return VisitResult::SKIP;
+  }
+
   // An interface method cannot be static, final, native, or protected.
   VerifyNoneOf(fs_, decl.Mods(), errors_, MakeInterfaceMethodModifierError,
                {PROTECTED, STATIC, FINAL, NATIVE});
 
   // Must be public.
-  VerifyOneOf(fs_, decl.Mods(), errors_, decl.Ident(),
+  VerifyOneOf(fs_, decl.Mods(), errors_, decl.NameToken(),
               MakeInterfaceMethodNoAccessModError, {PUBLIC});
 
   // An interface method cannot have a body.
   if (!IS_CONST_REF(EmptyStmt, decl.Body())) {
-    errors_->Append(MakeInterfaceMethodImplError(fs_, decl.Ident()));
+    errors_->Append(MakeInterfaceMethodImplError(fs_, decl.NameToken()));
   }
 
-  return false;
+  return VisitResult::SKIP;
 }
 
-REC_VISIT_DEFN(ModifierVisitor, ClassDecl, decl) {
-  // A class cannot be protected, static, or native.
-  VerifyNoneOf(fs_, decl.Mods(), errors_, MakeClassModifierError,
-               {PROTECTED, STATIC, NATIVE});
+REWRITE_DEFN(ModifierVisitor, TypeDecl, TypeDecl, decl, declptr) {
+  if (decl.Kind() == TypeKind::CLASS) {
+    // A class cannot be protected, static, or native.
+    VerifyNoneOf(fs_, decl.Mods(), errors_, MakeClassModifierError,
+                 {PROTECTED, STATIC, NATIVE});
 
-  // Must be public.
-  VerifyOneOf(fs_, decl.Mods(), errors_, decl.NameToken(),
-              MakeClassNoAccessModError, {PUBLIC});
+    // Must be public.
+    VerifyOneOf(fs_, decl.Mods(), errors_, decl.NameToken(),
+                MakeClassNoAccessModError, {PUBLIC});
 
-  // A class cannot be both abstract and final.
-  if (decl.Mods().HasModifier(ABSTRACT) && decl.Mods().HasModifier(FINAL)) {
-    errors_->Append(MakeAbstractFinalClassError(fs_, decl.NameToken()));
+    // A class cannot be both abstract and final.
+    if (decl.Mods().HasModifier(ABSTRACT) && decl.Mods().HasModifier(FINAL)) {
+      errors_->Append(MakeAbstractFinalClassError(fs_, decl.NameToken()));
+    }
+
+    ClassModifierVisitor visitor(fs_, errors_);
+    return visitor.Rewrite(declptr);
   }
 
-  ClassModifierVisitor visitor(fs_, errors_);
-  decl.AcceptVisitor(&visitor);
-  return false;
-}
-
-REC_VISIT_DEFN(ModifierVisitor, InterfaceDecl, decl) {
+  assert(decl.Kind() == TypeKind::INTERFACE);
   // An interface cannot be protected, static, final, or native.
   VerifyNoneOf(fs_, decl.Mods(), errors_, MakeInterfaceModifierError,
                {PROTECTED, STATIC, FINAL, NATIVE});
 
-  // Must be public.
+  // An interface must be public.
   VerifyOneOf(fs_, decl.Mods(), errors_, decl.NameToken(),
               MakeInterfaceNoAccessModError, {PUBLIC});
 
   InterfaceModifierVisitor visitor(fs_, errors_);
-  decl.AcceptVisitor(&visitor);
-  return false;
+  return visitor.Rewrite(declptr);
 }
 
 }  // namespace weeder
