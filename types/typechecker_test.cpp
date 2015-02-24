@@ -149,11 +149,11 @@ TEST_F(TypeCheckerTest, UnaryExprErrorFromRHS) {
 }
 
 TEST_F(TypeCheckerTest, UnaryExprSubNonNumeric) {
-  sptr<const Expr> before = ParseExpr("-A");
+  sptr<const Expr> before = ParseExpr("-true");
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(nullptr, after);
-  EXPECT_ERRS("UnaryNonNumericError(0:0-2)\n");
+  EXPECT_ERRS("UnaryNonNumericError(0:0-5)\n");
 }
 
 TEST_F(TypeCheckerTest, UnaryExprSubNumeric) {
@@ -164,7 +164,7 @@ TEST_F(TypeCheckerTest, UnaryExprSubNumeric) {
 }
 
 TEST_F(TypeCheckerTest, UnaryExprNotNonBool) {
-  sptr<const Expr> before = ParseExpr("!A");
+  sptr<const Expr> before = ParseExpr("!1");
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(nullptr, after);
