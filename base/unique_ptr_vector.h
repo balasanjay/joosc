@@ -37,6 +37,10 @@ class UniquePtrVector {
     vec_.clear();
   }
 
+  void Clear() {
+    vec_.clear();
+  }
+
  private:
   DISALLOW_COPY_AND_ASSIGN(UniquePtrVector);
 

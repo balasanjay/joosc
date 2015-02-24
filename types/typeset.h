@@ -13,6 +13,10 @@ namespace types {
 
 class TypeSet {
 public:
+  static const TypeSet& Empty() {
+    return kEmptyTypeSet;
+  }
+
   // Provides a `view' into the TypeSet assuming the provided imports are in
   // scope. Note that these do not `stack'; i.e.
   // `a.WithImports(bimports).WithImports(cimports)' is equivalent to
@@ -46,6 +50,8 @@ public:
 
   void InsertImport(const ast::ImportDecl& import, const base::FileSet* fs, base::ErrorList* errors);
   void InsertWildcardImport(const string& base);
+
+  static TypeSet kEmptyTypeSet;
 
   // Changed depending on provided Imports.
   QualifiedNameBaseMap available_names_;

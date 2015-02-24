@@ -8,7 +8,19 @@
 
 namespace types {
 
-class TypeInfoMap {};
+class TypeInfoMap {
+public:
+  static const TypeInfoMap& Empty() {
+    return kEmptyTypeInfoMap;
+  }
+
+private:
+  friend class TypeInfoMapBuilder;
+
+  TypeInfoMap() = default;
+
+  static TypeInfoMap kEmptyTypeInfoMap;
+};
 
 class TypeInfoMapBuilder {
 public:
