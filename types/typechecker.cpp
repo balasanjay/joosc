@@ -431,9 +431,14 @@ REWRITE_DEFN(TypeChecker, FieldDecl, MemberDecl, decl,) {
 }
 
 REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
+  // If we have method info, then just use the default implementation of
+  // RewriteMethodDecl.
   if (belowMethodDecl_) {
     return Visitor::RewriteMethodDecl(decl, declptr);
   }
+
+  // Otherwise create a sub-visitor that has the method info, and let it
+  // rewrite this node.
 
   TypeId rettype = TypeId{TypeId::kVoidBase, 0};
   if (decl.TypePtr() != nullptr) {
@@ -448,9 +453,14 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
 }
 
 REWRITE_DEFN(TypeChecker, TypeDecl, TypeDecl, type, typeptr) {
+  // If we have method info, then just use the default implementation of
+  // RewriteTypeDecl.
   if (belowTypeDecl_) {
     return Visitor::RewriteTypeDecl(type, typeptr);
   }
+
+  // Otherwise create a sub-visitor that has the type info, and let it rewrite
+  // this node.
 
   vector<string> classname;
   if (package_ != nullptr) {
@@ -466,9 +476,14 @@ REWRITE_DEFN(TypeChecker, TypeDecl, TypeDecl, type, typeptr) {
 }
 
 REWRITE_DEFN(TypeChecker, CompUnit, CompUnit, unit, unitptr) {
+  // If we have import info, then just use the default implementation of
+  // RewriteCompUnit.
   if (belowCompUnit_) {
     return Visitor::RewriteCompUnit(unit, unitptr);
   }
+
+  // Otherwise create a sub-visitor that has the import info, and let it
+  // rewrite this node.
 
   TypeSet scopedTypeSet = typeset_.WithImports(unit.Imports(), fs_, errors_);
   TypeChecker below(typeinfo_, scopedTypeSet, fs_, errors_, true, unit.PackagePtr());
