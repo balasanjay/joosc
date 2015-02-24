@@ -13,9 +13,6 @@ using parser::internal::Result;
 
 namespace types {
 
-// TODO: move me somewhere common.
-const TypeId kBoolTypeId = TypeId{TypeId::kBoolBase, 0};
-
 class TypeCheckerTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
@@ -96,7 +93,7 @@ TEST_F(TypeCheckerTest, BinExprBoolOp) {
   sptr<const Expr> before = ParseExpr("true || false");
   auto after = typeChecker_->Rewrite(before);
 
-  EXPECT_EQ(kBoolTypeId, after->GetTypeId());
+  EXPECT_EQ(TypeId::kBool, after->GetTypeId());
 }
 
 // TODO: BoolLitExpr

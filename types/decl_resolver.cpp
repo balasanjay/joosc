@@ -117,7 +117,7 @@ REWRITE_DEFN(DeclResolver, FieldDecl, MemberDecl, field, ) {
 }
 
 REWRITE_DEFN(DeclResolver, MethodDecl, MemberDecl, meth,) {
-  TypeId rettid = TypeId::Unassigned();
+  TypeId rettid = TypeId::kUnassigned;
   if (meth.TypePtr() == nullptr) {
     // Handle constructor.
     // The return type of a constructor is the containing class.

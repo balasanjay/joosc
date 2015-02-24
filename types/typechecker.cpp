@@ -25,7 +25,7 @@ REWRITE_DEFN(TypeChecker, ArrayIndexExpr, Expr, expr,) {
   }
 
   if (!IsNumeric(index->GetTypeId())) {
-    errors_->Append(MakeTypeMismatchError(TypeId{TypeId::kIntBase, 0}, index->GetTypeId(), ExtentOf(index)));
+    errors_->Append(MakeTypeMismatchError(TypeId::kInt, index->GetTypeId(), ExtentOf(index)));
     return nullptr;
   }
   if (base->GetTypeId().ndims < 1) {
@@ -86,9 +86,6 @@ bool IsNumericOp(TokenType op) {
 }
 
 REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
-  const TypeId kBoolTypeId = TypeId{TypeId::kBoolBase, 0};
-  const TypeId kIntTypeId = TypeId{TypeId::kIntBase, 0};
-
   sptr<const Expr> lhs = Rewrite(expr.LhsPtr());
   sptr<const Expr> rhs = Rewrite(expr.RhsPtr());
   if (lhs == nullptr || rhs == nullptr) {
@@ -105,29 +102,29 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
   }
 
   if (IsBoolOp(op)) {
-    if (lhsType == kBoolTypeId && rhsType == kBoolTypeId) {
-      return make_shared<BinExpr>(lhs, expr.Op(), rhs, kBoolTypeId);
+    if (lhsType == TypeId::kBool && rhsType == TypeId::kBool) {
+      return make_shared<BinExpr>(lhs, expr.Op(), rhs, TypeId::kBool);
     }
 
-    if (lhsType != kBoolTypeId) {
-      errors_->Append(MakeTypeMismatchError(kBoolTypeId, lhsType, ExtentOf(expr.LhsPtr())));
+    if (lhsType != TypeId::kBool) {
+      errors_->Append(MakeTypeMismatchError(TypeId::kBool, lhsType, ExtentOf(expr.LhsPtr())));
     }
-    if (rhsType != kBoolTypeId) {
-      errors_->Append(MakeTypeMismatchError(kBoolTypeId, rhsType, ExtentOf(expr.RhsPtr())));
+    if (rhsType != TypeId::kBool) {
+      errors_->Append(MakeTypeMismatchError(TypeId::kBool, rhsType, ExtentOf(expr.RhsPtr())));
     }
     return nullptr;
   }
 
   if (IsRelationalOp(op)) {
     if (IsNumeric(lhsType) && IsNumeric(rhsType)) {
-      return make_shared<BinExpr>(lhs, expr.Op(), rhs, kBoolTypeId);
+      return make_shared<BinExpr>(lhs, expr.Op(), rhs, TypeId::kBool);
     }
 
     if (!IsNumeric(lhsType)) {
-      errors_->Append(MakeTypeMismatchError(kIntTypeId, lhsType, ExtentOf(expr.LhsPtr())));
+      errors_->Append(MakeTypeMismatchError(TypeId::kInt, lhsType, ExtentOf(expr.LhsPtr())));
     }
     if (!IsNumeric(rhsType)) {
-      errors_->Append(MakeTypeMismatchError(kIntTypeId, rhsType, ExtentOf(expr.RhsPtr())));
+      errors_->Append(MakeTypeMismatchError(TypeId::kInt, rhsType, ExtentOf(expr.RhsPtr())));
     }
     return nullptr;
   }
@@ -137,7 +134,7 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
       errors_->Append(MakeIncomparableTypeError(lhsType, rhsType, expr.Op().pos));
       return nullptr;
     }
-    return make_shared<BinExpr>(lhs, expr.Op(), rhs, kBoolTypeId);
+    return make_shared<BinExpr>(lhs, expr.Op(), rhs, TypeId::kBool);
   }
 
   const TypeId kStrType = typeset_.Get({"java", "lang", "String"});
@@ -147,20 +144,20 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
 
   assert(IsNumericOp(op));
   if (IsNumeric(lhsType) && IsNumeric(rhsType)) {
-    return make_shared<BinExpr>(lhs, expr.Op(), rhs, kIntTypeId);
+    return make_shared<BinExpr>(lhs, expr.Op(), rhs, TypeId::kInt);
   }
 
   if (!IsNumeric(lhsType)) {
-    errors_->Append(MakeTypeMismatchError(kIntTypeId, lhsType, ExtentOf(expr.LhsPtr())));
+    errors_->Append(MakeTypeMismatchError(TypeId::kInt, lhsType, ExtentOf(expr.LhsPtr())));
   }
   if (!IsNumeric(rhsType)) {
-    errors_->Append(MakeTypeMismatchError(kIntTypeId, rhsType, ExtentOf(expr.RhsPtr())));
+    errors_->Append(MakeTypeMismatchError(TypeId::kInt, rhsType, ExtentOf(expr.RhsPtr())));
   }
   return nullptr;
 }
 
 REWRITE_DEFN(TypeChecker, BoolLitExpr, Expr, expr, ) {
-  return make_shared<BoolLitExpr>(expr.GetToken(), TypeId{TypeId::kBoolBase, 0});
+  return make_shared<BoolLitExpr>(expr.GetToken(), TypeId::kBool);
 }
 
 // TODO: CallExpr
@@ -193,7 +190,7 @@ REWRITE_DEFN(TypeChecker, CastExpr, Expr, expr, exprptr) {
 }
 
 REWRITE_DEFN(TypeChecker, CharLitExpr, Expr, expr, ) {
-  return make_shared<CharLitExpr>(expr.GetToken(), TypeId{TypeId::kCharBase, 0});
+  return make_shared<CharLitExpr>(expr.GetToken(), TypeId::kChar);
 }
 
 // TODO: FieldDerefExpr
@@ -221,11 +218,11 @@ REWRITE_DEFN(TypeChecker, InstanceOfExpr, Expr, expr, exprptr) {
     return nullptr;
   }
 
-  return make_shared<InstanceOfExpr>(lhs, expr.InstanceOf(), expr.GetTypePtr(), TypeId{TypeId::kBoolBase, 0});
+  return make_shared<InstanceOfExpr>(lhs, expr.InstanceOf(), expr.GetTypePtr(), TypeId::kBool);
 }
 
 REWRITE_DEFN(TypeChecker, IntLitExpr, Expr, expr, ) {
-  return make_shared<IntLitExpr>(expr.GetToken(), expr.Value(), TypeId{TypeId::kIntBase, 0});
+  return make_shared<IntLitExpr>(expr.GetToken(), expr.Value(), TypeId::kInt);
 }
 
 // TODO: NameExpr
@@ -237,13 +234,13 @@ REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
   }
 
   sptr<const Expr> index;
-  TypeId expectedIndexType = TypeId{TypeId::kIntBase, 0};
-
   if (expr.GetExprPtr() != nullptr) {
     index = Rewrite(expr.GetExprPtr());
   }
-  if (index != nullptr && index->GetTypeId() != expectedIndexType) {
-    errors_->Append(MakeTypeMismatchError(expectedIndexType, index->GetTypeId(), ExtentOf(index)));
+
+  // TODO: are we supposed to allow any numeric here?
+  if (index != nullptr && index->GetTypeId() != TypeId::kInt) {
+    errors_->Append(MakeTypeMismatchError(TypeId::kInt, index->GetTypeId(), ExtentOf(index)));
     return nullptr;
   }
 
@@ -253,7 +250,7 @@ REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
 // TODO: NewClassExpr
 
 REWRITE_DEFN(TypeChecker, NullLitExpr, Expr, expr, ) {
-  return make_shared<NullLitExpr>(expr.GetToken(), TypeId{TypeId::kNullBase, 0});
+  return make_shared<NullLitExpr>(expr.GetToken(), TypeId::kNull);
 }
 
 REWRITE_DEFN(TypeChecker, ParenExpr, Expr, expr,) {
@@ -288,16 +285,16 @@ REWRITE_DEFN(TypeChecker, UnaryExpr, Expr, expr, exprptr) {
       errors_->Append(MakeUnaryNonNumericError(rhsType, ExtentOf(exprptr)));
       return nullptr;
     }
-    return make_shared<UnaryExpr>(expr.Op(), rhs, TypeId{TypeId::kIntBase, 0});
+    return make_shared<UnaryExpr>(expr.Op(), rhs, TypeId::kInt);
   }
 
   assert(op == lexer::NOT);
-  TypeId expected = TypeId{TypeId::kBoolBase, 0};
+  TypeId expected = TypeId::kBool;
   if (rhsType != expected) {
     errors_->Append(MakeUnaryNonBoolError(rhsType, ExtentOf(exprptr)));
     return nullptr;
   }
-  return make_shared<UnaryExpr>(expr.Op(), rhs, TypeId{TypeId::kBoolBase, 0});
+  return make_shared<UnaryExpr>(expr.Op(), rhs, TypeId::kBool);
 }
 
 REWRITE_DEFN(TypeChecker, ForStmt, Stmt, stmt,) {
@@ -319,7 +316,7 @@ REWRITE_DEFN(TypeChecker, ForStmt, Stmt, stmt,) {
     return nullptr;
   }
 
-  TypeId expected = TypeId{TypeId::kBoolBase, 0};
+  TypeId expected = TypeId::kBool;
   if (cond != nullptr && cond->GetTypeId() != expected) {
     errors_->Append(MakeTypeMismatchError(expected, cond->GetTypeId(), ExtentOf(stmt.CondPtr())));
     return nullptr;
@@ -337,7 +334,7 @@ REWRITE_DEFN(TypeChecker, IfStmt, Stmt, stmt,) {
     return nullptr;
   }
 
-  TypeId expected = TypeId{TypeId::kBoolBase, 0};
+  TypeId expected = TypeId::kBool;
   if (cond->GetTypeId() != expected) {
     errors_->Append(MakeTypeMismatchError(expected, cond->GetTypeId(), ExtentOf(stmt.CondPtr())));
     return nullptr;
@@ -373,7 +370,7 @@ REWRITE_DEFN(TypeChecker, ReturnStmt, Stmt, stmt,) {
     }
   }
 
-  TypeId exprType = TypeId{TypeId::kVoidBase, 0};
+  TypeId exprType = TypeId::kVoid;
   if (expr != nullptr) {
     exprType = expr->GetTypeId();
   }
@@ -396,9 +393,8 @@ REWRITE_DEFN(TypeChecker, WhileStmt, Stmt, stmt,) {
     return nullptr;
   }
 
-  TypeId expected = TypeId{TypeId::kBoolBase, 0};
-  if (cond->GetTypeId() != expected) {
-    errors_->Append(MakeTypeMismatchError(expected, cond->GetTypeId(), ExtentOf(stmt.CondPtr())));
+  if (cond->GetTypeId() != TypeId::kBool) {
+    errors_->Append(MakeTypeMismatchError(TypeId::kBool, cond->GetTypeId(), ExtentOf(stmt.CondPtr())));
     return nullptr;
   }
 
@@ -440,7 +436,7 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
   // Otherwise create a sub-visitor that has the method info, and let it
   // rewrite this node.
 
-  TypeId rettype = TypeId{TypeId::kVoidBase, 0};
+  TypeId rettype = TypeId::kVoid;
   if (decl.TypePtr() != nullptr) {
     rettype = MustResolveType(*decl.TypePtr());
 
