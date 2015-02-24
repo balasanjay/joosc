@@ -81,7 +81,7 @@ TEST_F(TypeCheckerTest, BinExprLhsFail) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(nullptr, after);
-  EXPECT_EQ("UnaryNonNumericError(0:1-6)\n", testing::PrintToString(errors_));
+  EXPECT_ERRS("UnaryNonNumericError(0:1-6)\n");
 }
 
 TEST_F(TypeCheckerTest, BinExprRhsFail) {
@@ -89,14 +89,81 @@ TEST_F(TypeCheckerTest, BinExprRhsFail) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(nullptr, after);
-  EXPECT_EQ("UnaryNonNumericError(0:5-10)\n", testing::PrintToString(errors_));
+  EXPECT_ERRS("UnaryNonNumericError(0:5-10)\n");
 }
 
-TEST_F(TypeCheckerTest, BinExprBoolOp) {
+TEST_F(TypeCheckerTest, BinExprBoolOpSuccess) {
   sptr<const Expr> before = ParseExpr("true || false");
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kBool, after->GetTypeId());
+  EXPECT_NO_ERRS;
+}
+
+TEST_F(TypeCheckerTest, BinExprBoolOpOperandsNotBool) {
+  sptr<const Expr> before = ParseExpr("3 && 3");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("TypeMismatchError(0:0)\nTypeMismatchError(0:5)\n");
+}
+
+TEST_F(TypeCheckerTest, BinExprRelationalOpSuccess) {
+  sptr<const Expr> before = ParseExpr("3 < 4");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(TypeId::kBool, after->GetTypeId());
+  EXPECT_NO_ERRS;
+}
+
+TEST_F(TypeCheckerTest, BinExprRelationalOperandsNotNumeric) {
+  sptr<const Expr> before = ParseExpr("true >= false");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("TypeMismatchError(0:0-4)\nTypeMismatchError(0:8-13)\n");
+}
+
+TEST_F(TypeCheckerTest, BinExprEqualityOpSuccess) {
+  sptr<const Expr> before = ParseExpr("3 == 3");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(TypeId::kBool, after->GetTypeId());
+  EXPECT_NO_ERRS;
+}
+
+TEST_F(TypeCheckerTest, BinExprEqualityOpIncomparable) {
+  sptr<const Expr> before = ParseExpr("true != 3");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("IncomparableTypeError(0:5-7)\n");
+}
+
+// TODO: Need fake TypeSet to test String concatenation.
+
+TEST_F(TypeCheckerTest, BinExprNumericOpSuccess) {
+  sptr<const Expr> before = ParseExpr("3 + 3");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(TypeId::kInt, after->GetTypeId());
+  EXPECT_NO_ERRS;
+}
+
+TEST_F(TypeCheckerTest, BinExprNumericOpPromotion) {
+  sptr<const Expr> before = ParseExpr("'3' + '3'");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(TypeId::kInt, after->GetTypeId());
+  EXPECT_NO_ERRS;
+}
+
+TEST_F(TypeCheckerTest, BinExprNumericOpOperandsNotNumeric) {
+  sptr<const Expr> before = ParseExpr("true - null");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("TypeMismatchError(0:0-4)\nTypeMismatchError(0:7-11)\n");
 }
 
 // TODO: BoolLitExpr
