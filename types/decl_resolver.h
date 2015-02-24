@@ -12,7 +12,7 @@ namespace types {
 class DeclResolver : public ast::Visitor {
  public:
   DeclResolver(TypeInfoMapBuilder* builder, const TypeSet& typeset,
-               const base::FileSet* fs, base::ErrorList* errors, sptr<const ast::QualifiedName> package = nullptr, ast::TypeId curtype = ast::TypeId::Unassigned())
+               const base::FileSet* fs, base::ErrorList* errors, sptr<const ast::QualifiedName> package = nullptr, ast::TypeId curtype = ast::TypeId::kUnassigned)
       : builder_(builder), typeset_(typeset), fs_(fs), errors_(errors), package_(package), curtype_(curtype) {}
 
   REWRITE_DECL(FieldDecl, MemberDecl, args, argsptr);

@@ -13,9 +13,6 @@ using parser::internal::Result;
 
 namespace types {
 
-// TODO: move me somewhere common.
-const TypeId kBoolTypeId = TypeId{TypeId::kBoolBase, 0};
-
 class TypeCheckerTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
@@ -72,6 +69,10 @@ class TypeCheckerTest : public ::testing::Test {
   uptr<TypeChecker> typeChecker_;
 };
 
+// TODO: ArrayIndexExpr
+
+// TODO: BinExpr
+
 TEST_F(TypeCheckerTest, BinExprLhsFail) {
   sptr<const Expr> before = ParseExpr("(-null) + 3");
   auto after = typeChecker_->Rewrite(before);
@@ -92,7 +93,66 @@ TEST_F(TypeCheckerTest, BinExprBoolOp) {
   sptr<const Expr> before = ParseExpr("true || false");
   auto after = typeChecker_->Rewrite(before);
 
-  EXPECT_EQ(kBoolTypeId, after->GetTypeId());
+  EXPECT_EQ(TypeId::kBool, after->GetTypeId());
 }
+
+// TODO: BoolLitExpr
+
+// TODO: CallExpr
+
+// TODO: CastExpr
+
+// TODO: CharLitExpr
+
+// TODO: FieldDerefExpr
+
+// TODO: InstanceOfExpr
+
+// TODO: IntLitExpr
+
+// TODO: NameExpr
+
+// TODO: NewArrayExpr
+
+// TODO: NewClassExpr
+
+// TODO: NullLitExpr
+
+// TODO: ParenExpr
+
+// TODO: StringLitExpr
+
+// TODO: ThisExpr
+
+// TODO: UnaryExpr
+
+
+// TODO: BlockStmt
+
+// TODO: EmptyStmt
+
+// TODO: ExprStmt
+
+// TODO: ForStmt
+
+// TODO: IfStmt
+
+// TODO: LocalDeclStmt
+
+// TODO: ReturnStmt
+
+// TODO: WhileStmt
+
+
+// TODO: FieldDecl
+
+// TODO: MethodDecl
+
+
+// TODO: TypeDecl
+
+
+// TODO: CompUnit
+
 
 }  // namespace types

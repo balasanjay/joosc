@@ -16,12 +16,15 @@ struct TypeId {
   static const Base kShortBase = 7;
   static const Base kIntBase = 8;
 
-  static TypeId Error() {
-    return TypeId{kErrorBase, 0};
-  }
-  static TypeId Unassigned() {
-    return TypeId{kUnassignedBase, 0};
-  }
+  static const TypeId kUnassigned;
+  static const TypeId kError;
+  static const TypeId kNull;
+  static const TypeId kVoid;
+  static const TypeId kBool;
+  static const TypeId kByte;
+  static const TypeId kChar;
+  static const TypeId kShort;
+  static const TypeId kInt;
 
   bool IsUnassigned() const {
     return base == kUnassignedBase;
