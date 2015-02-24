@@ -146,17 +146,15 @@ class ExtentVisitor final : public Visitor {
 };
 
 PosRange ExtentOf(sptr<const Expr> expr) {
-  assert(expr != nullptr);
   ExtentVisitor visitor;
-  assert(expr == visitor.Visit(expr));
+  visitor.Visit(expr);
   assert(visitor.Extent().fileid != -1);
   return visitor.Extent();
 }
 
 PosRange ExtentOf(sptr<const Stmt> stmt) {
-  assert(stmt != nullptr);
   ExtentVisitor visitor;
-  assert(stmt == visitor.Visit(stmt));
+  visitor.Visit(stmt);
   return visitor.Extent();
 }
 

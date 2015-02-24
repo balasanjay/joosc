@@ -125,11 +125,15 @@ class Expr {
 
   ACCEPT_VISITOR_ABSTRACT(Expr);
 
+  VAL_GETTER(TypeId, GetTypeId, tid_);
+
  protected:
-  Expr() = default;
+  Expr(TypeId tid = TypeId::Unassigned()) : tid_(tid) {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Expr);
+
+  TypeId tid_;
 };
 
 class NameExpr : public Expr {
@@ -148,8 +152,8 @@ class NameExpr : public Expr {
 
 class InstanceOfExpr : public Expr {
  public:
-  InstanceOfExpr(sptr<const Expr> lhs, lexer::Token instanceof, sptr<const Type> type)
-      : lhs_(lhs), instanceof_(instanceof), type_(type) {}
+  InstanceOfExpr(sptr<const Expr> lhs, lexer::Token instanceof, sptr<const Type> type, TypeId tid = TypeId::Unassigned())
+      : Expr(tid), lhs_(lhs), instanceof_(instanceof), type_(type) {}
 
   ACCEPT_VISITOR(InstanceOfExpr, Expr);
 
@@ -183,8 +187,8 @@ class ParenExpr : public Expr {
 
 class BinExpr : public Expr {
  public:
-  BinExpr(sptr<const Expr> lhs, lexer::Token op, sptr<const Expr> rhs)
-      : op_(op), lhs_(lhs), rhs_(rhs) {
+  BinExpr(sptr<const Expr> lhs, lexer::Token op, sptr<const Expr> rhs, TypeId tid = TypeId::Unassigned())
+      : Expr(tid), op_(op), lhs_(lhs), rhs_(rhs) {
     assert(lhs != nullptr);
     assert(op.TypeInfo().IsBinOp());
     assert(rhs != nullptr);
@@ -204,7 +208,7 @@ class BinExpr : public Expr {
 
 class UnaryExpr : public Expr {
  public:
-  UnaryExpr(lexer::Token op, sptr<const Expr> rhs) : op_(op), rhs_(rhs) {
+  UnaryExpr(lexer::Token op, sptr<const Expr> rhs, TypeId tid = TypeId::Unassigned()) : Expr(tid), op_(op), rhs_(rhs) {
     assert(op.TypeInfo().IsUnaryOp());
     assert(rhs != nullptr);
   }
@@ -224,7 +228,7 @@ class LitExpr : public Expr {
   VAL_GETTER(lexer::Token, GetToken, token_);
 
  protected:
-  LitExpr(lexer::Token token) : token_(token) {}
+  LitExpr(lexer::Token token, TypeId tid = TypeId::Unassigned()) : Expr(tid), token_(token) {}
 
  private:
   lexer::Token token_;
@@ -232,15 +236,15 @@ class LitExpr : public Expr {
 
 class BoolLitExpr : public LitExpr {
  public:
-  BoolLitExpr(lexer::Token token) : LitExpr(token) {}
+  BoolLitExpr(lexer::Token token, TypeId tid = TypeId::Unassigned()) : LitExpr(token, tid) {}
 
   ACCEPT_VISITOR(BoolLitExpr, Expr);
 };
 
 class IntLitExpr : public LitExpr {
  public:
-  IntLitExpr(lexer::Token token, const string& value)
-      : LitExpr(token), value_(value) {}
+  IntLitExpr(lexer::Token token, const string& value, TypeId tid = TypeId::Unassigned())
+      : LitExpr(token, tid), value_(value) {}
 
   ACCEPT_VISITOR(IntLitExpr, Expr);
 
@@ -252,28 +256,28 @@ class IntLitExpr : public LitExpr {
 
 class StringLitExpr : public LitExpr {
  public:
-  StringLitExpr(lexer::Token token) : LitExpr(token) {}
+  StringLitExpr(lexer::Token token, TypeId tid = TypeId::Unassigned()) : LitExpr(token, tid) {}
 
   ACCEPT_VISITOR(StringLitExpr, Expr);
 };
 
 class CharLitExpr : public LitExpr {
  public:
-  CharLitExpr(lexer::Token token) : LitExpr(token) {}
+  CharLitExpr(lexer::Token token, TypeId tid = TypeId::Unassigned()) : LitExpr(token, tid) {}
 
   ACCEPT_VISITOR(CharLitExpr, Expr);
 };
 
 class NullLitExpr : public LitExpr {
  public:
-  NullLitExpr(lexer::Token token) : LitExpr(token) {}
+  NullLitExpr(lexer::Token token, TypeId tid = TypeId::Unassigned()) : LitExpr(token, tid) {}
 
   ACCEPT_VISITOR(NullLitExpr, Expr);
 };
 
 class ThisExpr : public Expr {
  public:
-  ThisExpr(lexer::Token thisTok) : thisTok_(thisTok) {}
+  ThisExpr(lexer::Token thisTok, TypeId tid = TypeId::Unassigned()) : Expr(tid), thisTok_(thisTok) {}
 
   ACCEPT_VISITOR(ThisExpr, Expr);
 
@@ -285,7 +289,7 @@ class ThisExpr : public Expr {
 
 class ArrayIndexExpr : public Expr {
  public:
-  ArrayIndexExpr(sptr<const Expr> base, lexer::Token lbrack, sptr<const Expr> index, lexer::Token rbrack) : base_(base), lbrack_(lbrack), index_(index), rbrack_(rbrack) {}
+  ArrayIndexExpr(sptr<const Expr> base, lexer::Token lbrack, sptr<const Expr> index, lexer::Token rbrack, TypeId tid = TypeId::Unassigned()) : Expr(tid), base_(base), lbrack_(lbrack), index_(index), rbrack_(rbrack) {}
 
   ACCEPT_VISITOR(ArrayIndexExpr, Expr);
 
@@ -339,7 +343,7 @@ class CallExpr : public Expr {
 
 class CastExpr : public Expr {
  public:
-  CastExpr(lexer::Token lparen, sptr<const Type> type, lexer::Token rparen, sptr<const Expr> expr) : lparen_(lparen), type_(type), rparen_(rparen), expr_(expr) {}
+  CastExpr(lexer::Token lparen, sptr<const Type> type, lexer::Token rparen, sptr<const Expr> expr, TypeId tid = TypeId::Unassigned()) : Expr(tid), lparen_(lparen), type_(type), rparen_(rparen), expr_(expr) {}
 
   ACCEPT_VISITOR(CastExpr, Expr);
 
@@ -382,7 +386,7 @@ class NewClassExpr : public Expr {
 
 class NewArrayExpr : public Expr {
  public:
-  NewArrayExpr(lexer::Token newTok, sptr<const Type> type, lexer::Token lbrack, sptr<const Expr> expr, lexer::Token rbrack) : newTok_(newTok), type_(type), lbrack_(lbrack), expr_(expr), rbrack_(rbrack) {}
+  NewArrayExpr(lexer::Token newTok, sptr<const Type> type, lexer::Token lbrack, sptr<const Expr> expr, lexer::Token rbrack, TypeId tid = TypeId::Unassigned()) : Expr(tid), newTok_(newTok), type_(type), lbrack_(lbrack), expr_(expr), rbrack_(rbrack) {}
 
   ACCEPT_VISITOR(NewArrayExpr, Expr);
 
@@ -445,13 +449,15 @@ class LocalDeclStmt : public Stmt {
 
 class ReturnStmt : public Stmt {
  public:
-  ReturnStmt(sptr<const Expr> expr) : expr_(expr) {}
+  ReturnStmt(lexer::Token returnToken, sptr<const Expr> expr) : returnToken_(returnToken), expr_(expr) {}
 
   ACCEPT_VISITOR(ReturnStmt, Stmt);
 
+  VAL_GETTER(lexer::Token, ReturnToken, returnToken_);
   VAL_GETTER(sptr<const Expr>, GetExprPtr, expr_);
 
  private:
+  lexer::Token returnToken_;
   sptr<const Expr> expr_; // Can be nullptr.
 };
 

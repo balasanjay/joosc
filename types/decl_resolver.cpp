@@ -3,6 +3,7 @@
 #include "ast/ast.h"
 #include "base/error.h"
 #include "base/macros.h"
+#include "types/types_internal.h"
 
 using ast::ArrayType;
 using ast::CompUnit;
@@ -14,7 +15,6 @@ using ast::ModifierList;
 using ast::ParamList;
 using ast::PrimitiveType;
 using ast::QualifiedName;
-using ast::ReferenceType;
 using ast::ReferenceType;
 using ast::Stmt;
 using ast::Type;
@@ -29,35 +29,6 @@ using base::UniquePtrVector;
 
 namespace types {
 
-namespace {
-
-Error* MakeUnknownTypenameError(const FileSet* fs, PosRange pos) {
-  return MakeSimplePosRangeError(fs, pos, "UnknownTypenameError",
-                                 "Unknown type name.");
-
-} // namespace
-
-TypeId ResolveType(const Type& type, TypeSet typeset, PosRange* pos_out) {
-  const Type* cur = &type;
-  if (IS_CONST_PTR(ReferenceType, cur)) {
-    const ReferenceType* ref = dynamic_cast<const ReferenceType*>(cur);
-    *pos_out = ref->Name().Tokens().back().pos;
-    return typeset.Get(ref->Name().Parts());
-  } else if (IS_CONST_PTR(PrimitiveType, cur)) {
-    const PrimitiveType* prim = dynamic_cast<const PrimitiveType*>(cur);
-    *pos_out = prim->GetToken().pos;
-    return typeset.Get({prim->GetToken().TypeInfo().Value()});
-  }
-
-  assert(IS_CONST_PTR(ArrayType, cur));
-  const ArrayType* arr = dynamic_cast<const ArrayType*>(cur);
-  TypeId nested = ResolveType(arr->ElemType(), typeset, pos_out);
-  return TypeId{nested.base, nested.ndims + 1};
-}
-
-
-} // namespace
-
 TypeId DeclResolver::MustResolveType(const Type& type) {
   PosRange pos(-1, -1, -1);
   TypeId tid = ResolveType(type, typeset_, &pos);
@@ -68,23 +39,18 @@ TypeId DeclResolver::MustResolveType(const Type& type) {
 }
 
 REWRITE_DEFN(DeclResolver, CompUnit, CompUnit, unit,) {
-  sptr<const QualifiedName> package = nullptr;
-  if (unit.PackagePtr() != nullptr) {
-    package = unit.PackagePtr();
-  }
-
   TypeSet scopedTypeSet = typeset_.WithImports(unit.Imports(), fs_, errors_);
-  DeclResolver scopedResolver(builder_, scopedTypeSet, fs_, errors_, package);
+  DeclResolver scopedResolver(builder_, scopedTypeSet, fs_, errors_, unit.PackagePtr());
 
   base::SharedPtrVector<const TypeDecl> decls;
   for (int i = 0; i < unit.Types().Size(); ++i) {
     sptr<const TypeDecl> oldtype = unit.Types().At(i);
-    sptr<const TypeDecl> newtype = scopedResolver.Visit(oldtype);
+    sptr<const TypeDecl> newtype = scopedResolver.Rewrite(oldtype);
     if (newtype != nullptr) {
       decls.Append(newtype);
     }
   }
-  return make_shared<CompUnit>(package, unit.Imports(), decls);
+  return make_shared<CompUnit>(unit.PackagePtr(), unit.Imports(), decls);
 }
 
 REWRITE_DEFN(DeclResolver, TypeDecl, TypeDecl, type, ) {
@@ -128,7 +94,7 @@ REWRITE_DEFN(DeclResolver, TypeDecl, TypeDecl, type, ) {
   SharedPtrVector<const MemberDecl> members;
   for (int i = 0; i < type.Members().Size(); ++i) {
     sptr<const MemberDecl> oldMem = type.Members().At(i);
-    sptr<const MemberDecl> newMem = memberResolver.Visit(oldMem);
+    sptr<const MemberDecl> newMem = memberResolver.Rewrite(oldMem);
     if (newMem != nullptr) {
       members.Append(newMem);
     }

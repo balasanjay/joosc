@@ -2,6 +2,7 @@
 #define AST_VISITOR2_H
 
 #include "ast/ast_fwd.h"
+#include "base/macros.h"
 #include "base/shared_ptr_vector.h"
 
 namespace ast {
@@ -9,28 +10,28 @@ namespace ast {
 #define FOR_EACH_VISITABLE(code) \
   code(ArrayIndexExpr, Expr, expr) \
   code(BinExpr, Expr, expr) \
+  code(BoolLitExpr, Expr, expr) \
   code(CallExpr, Expr, expr) \
   code(CastExpr, Expr, expr) \
-  code(FieldDerefExpr, Expr, expr) \
-  code(BoolLitExpr, Expr, expr) \
-  code(StringLitExpr, Expr, expr) \
   code(CharLitExpr, Expr, expr) \
+  code(FieldDerefExpr, Expr, expr) \
+  code(InstanceOfExpr, Expr, expr) \
   code(IntLitExpr, Expr, expr) \
-  code(NullLitExpr, Expr, expr) \
   code(NameExpr, Expr, expr) \
   code(NewArrayExpr, Expr, expr) \
   code(NewClassExpr, Expr, expr) \
+  code(NullLitExpr, Expr, expr) \
   code(ParenExpr, Expr, expr) \
+  code(StringLitExpr, Expr, expr) \
   code(ThisExpr, Expr, expr) \
   code(UnaryExpr, Expr, expr) \
-  code(InstanceOfExpr, Expr, expr) \
   code(BlockStmt, Stmt, stmt) \
   code(EmptyStmt, Stmt, stmt) \
   code(ExprStmt, Stmt, stmt) \
+  code(ForStmt, Stmt, stmt) \
+  code(IfStmt, Stmt, stmt) \
   code(LocalDeclStmt, Stmt, stmt) \
   code(ReturnStmt, Stmt, stmt) \
-  code(IfStmt, Stmt, stmt) \
-  code(ForStmt, Stmt, stmt) \
   code(WhileStmt, Stmt, stmt) \
   code(ParamList, ParamList, params) \
   code(Param, Param, param) \
@@ -50,8 +51,14 @@ enum class VisitResult {
 class Visitor {
 public:
   template <typename T>
-  auto Visit(const sptr<T> t) -> decltype(t->Accept(this, t)) {
+  auto WARN_UNUSED Rewrite(sptr<const T> t) -> decltype(t->Accept(this, t)) {
+    assert(t != nullptr);
     return t->Accept(this, t);
+  }
+
+  template <typename T>
+  void Visit(sptr<const T> t) {
+    assert(t == Rewrite(t));
   }
 
 #define _REWRITE_DECL(type, rettype, name) virtual sptr<const rettype> Rewrite##type(const type& name, sptr<const type> name##ptr);
