@@ -72,6 +72,10 @@ class TypeCheckerTest : public ::testing::Test {
   uptr<TypeChecker> typeChecker_;
 };
 
+// TODO: ArrayIndexExpr
+
+// TODO: BinExpr
+
 TEST_F(TypeCheckerTest, BinExprLhsFail) {
   sptr<const Expr> before = ParseExpr("(-null) + 3");
   auto after = typeChecker_->Rewrite(before);
@@ -94,5 +98,64 @@ TEST_F(TypeCheckerTest, BinExprBoolOp) {
 
   EXPECT_EQ(kBoolTypeId, after->GetTypeId());
 }
+
+// TODO: BoolLitExpr
+
+// TODO: CallExpr
+
+// TODO: CastExpr
+
+// TODO: CharLitExpr
+
+// TODO: FieldDerefExpr
+
+// TODO: InstanceOfExpr
+
+// TODO: IntLitExpr
+
+// TODO: NameExpr
+
+// TODO: NewArrayExpr
+
+// TODO: NewClassExpr
+
+// TODO: NullLitExpr
+
+// TODO: ParenExpr
+
+// TODO: StringLitExpr
+
+// TODO: ThisExpr
+
+// TODO: UnaryExpr
+
+
+// TODO: BlockStmt
+
+// TODO: EmptyStmt
+
+// TODO: ExprStmt
+
+// TODO: ForStmt
+
+// TODO: IfStmt
+
+// TODO: LocalDeclStmt
+
+// TODO: ReturnStmt
+
+// TODO: WhileStmt
+
+
+// TODO: FieldDecl
+
+// TODO: MethodDecl
+
+
+// TODO: TypeDecl
+
+
+// TODO: CompUnit
+
 
 }  // namespace types
