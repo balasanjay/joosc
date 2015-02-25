@@ -164,22 +164,19 @@ REWRITE_DEFN(TypeChecker, BoolLitExpr, Expr, expr, ) {
 
 REWRITE_DEFN(TypeChecker, CastExpr, Expr, expr, exprptr) {
   sptr<const Expr> castedExpr = Rewrite(expr.GetExprPtr());
-  if (castedExpr == nullptr) {
+  sptr<const Type> type = MustResolveType(expr.GetTypePtr());
+  if (castedExpr == nullptr || type == nullptr) {
     return nullptr;
   }
   TypeId exprType = castedExpr->GetTypeId();
-
-  TypeId castType = MustResolveType(expr.GetType());
-  if (castType.IsError()) {
-    return nullptr;
-  }
+  TypeId castType = type->GetTypeId();
 
   if (!IsCastable(castType, exprType)) {
     errors_->Append(MakeIncompatibleCastError(castType, exprType, ExtentOf(exprptr)));
     return nullptr;
   }
 
-  return make_shared<CastExpr>(expr.Lparen(), expr.GetTypePtr(), expr.Rparen(), castedExpr, castType);
+  return make_shared<CastExpr>(expr.Lparen(), type, expr.Rparen(), castedExpr, castType);
 }
 
 REWRITE_DEFN(TypeChecker, CharLitExpr, Expr, expr, ) {
@@ -190,27 +187,24 @@ REWRITE_DEFN(TypeChecker, CharLitExpr, Expr, expr, ) {
 
 REWRITE_DEFN(TypeChecker, InstanceOfExpr, Expr, expr, exprptr) {
   sptr<const Expr> lhs = Rewrite(expr.LhsPtr());
-  if (lhs == nullptr) {
+  sptr<const Type> rhs = MustResolveType(expr.GetTypePtr());
+  if (lhs == nullptr || rhs == nullptr) {
     return nullptr;
   }
   TypeId lhsType = lhs->GetTypeId();
+  TypeId rhsType = rhs->GetTypeId();
 
-  TypeId instanceOfType = MustResolveType(expr.GetType());
-  if (instanceOfType.IsError()) {
-    return nullptr;
-  }
-
-  if (IsPrimitive(lhsType) || IsPrimitive(instanceOfType)) {
+  if (IsPrimitive(lhsType) || IsPrimitive(rhsType)) {
     errors_->Append(MakeInstanceOfPrimitiveError(ExtentOf(exprptr)));
     return nullptr;
   }
 
-  if (!IsCastable(instanceOfType, lhsType)) {
-    errors_->Append(MakeIncompatibleInstanceOfError(lhsType, instanceOfType, ExtentOf(exprptr)));
+  if (!IsCastable(lhsType, rhsType)) {
+    errors_->Append(MakeIncompatibleInstanceOfError(lhsType, rhsType, ExtentOf(exprptr)));
     return nullptr;
   }
 
-  return make_shared<InstanceOfExpr>(lhs, expr.InstanceOf(), expr.GetTypePtr(), TypeId::kBool);
+  return make_shared<InstanceOfExpr>(lhs, expr.InstanceOf(), rhs, TypeId::kBool);
 }
 
 REWRITE_DEFN(TypeChecker, IntLitExpr, Expr, expr, ) {
@@ -220,14 +214,14 @@ REWRITE_DEFN(TypeChecker, IntLitExpr, Expr, expr, ) {
 // TODO: NameExpr
 
 REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
-  TypeId tid = MustResolveType(expr.GetType());
-  if (tid.IsError()) {
-    return nullptr;
-  }
-
+  sptr<const Type> elemtype = MustResolveType(expr.GetTypePtr());
   sptr<const Expr> index;
   if (expr.GetExprPtr() != nullptr) {
     index = Rewrite(expr.GetExprPtr());
+  }
+
+  if (elemtype == nullptr) {
+    return nullptr;
   }
 
   // TODO: are we supposed to allow any numeric here?
@@ -236,13 +230,16 @@ REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
     return nullptr;
   }
 
-  return make_shared<NewArrayExpr>(expr.NewToken(), expr.GetTypePtr(), expr.Lbrack(), index, expr.Rbrack(), TypeId{tid.base, tid.ndims + 1});
+  TypeId elem_tid = elemtype->GetTypeId();
+  TypeId expr_tid = TypeId{elem_tid.base, elem_tid.ndims + 1};
+
+  return make_shared<NewArrayExpr>(expr.NewToken(), elemtype, expr.Lbrack(), index, expr.Rbrack(), expr_tid);
 }
 
 REWRITE_DEFN(TypeChecker, NewClassExpr, Expr, expr, ) {
   // TODO: Lookup constructor with arg types.
-  TypeId objType = MustResolveType(expr.GetType());
-  return make_shared<NewClassExpr>(expr.NewToken(), expr.GetTypePtr(), expr.Lparen(), expr.Args(), expr.Rparen(), objType);
+  sptr<const Type> objType = MustResolveType(expr.GetTypePtr());
+  return make_shared<NewClassExpr>(expr.NewToken(), expr.GetTypePtr(), expr.Lparen(), expr.Args(), expr.Rparen(), objType->GetTypeId());
 }
 
 REWRITE_DEFN(TypeChecker, NullLitExpr, Expr, expr, ) {
@@ -343,21 +340,21 @@ REWRITE_DEFN(TypeChecker, IfStmt, Stmt, stmt,) {
 }
 
 REWRITE_DEFN(TypeChecker, LocalDeclStmt, Stmt, stmt,) {
+  sptr<const Type> type = MustResolveType(stmt.GetTypePtr());
   sptr<const Expr> expr = Rewrite(stmt.GetExprPtr());
-  TypeId lhsType = MustResolveType(stmt.GetType());
 
-  if (lhsType.IsError() || expr == nullptr) {
+  if (type == nullptr || expr == nullptr) {
     return nullptr;
   }
 
-  if (!IsAssignable(lhsType, expr->GetTypeId())) {
-    errors_->Append(MakeUnassignableError(lhsType, expr->GetTypeId(), ExtentOf(expr)));
+  if (!IsAssignable(type->GetTypeId(), expr->GetTypeId())) {
+    errors_->Append(MakeUnassignableError(type->GetTypeId(), expr->GetTypeId(), ExtentOf(expr)));
     return nullptr;
   }
 
   // TODO: put into symbol table, and assign local variable id.
 
-  return make_shared<LocalDeclStmt>(stmt.GetTypePtr(), stmt.Name(), stmt.NameToken(), expr);
+  return make_shared<LocalDeclStmt>(type, stmt.Name(), stmt.NameToken(), expr);
 }
 
 REWRITE_DEFN(TypeChecker, ReturnStmt, Stmt, stmt,) {
@@ -400,28 +397,28 @@ REWRITE_DEFN(TypeChecker, WhileStmt, Stmt, stmt,) {
 }
 
 REWRITE_DEFN(TypeChecker, FieldDecl, MemberDecl, decl,) {
-  TypeId lhsType = MustResolveType(decl.GetType());
-  if (lhsType.IsError()) {
+  sptr<const Type> type = MustResolveType(decl.GetTypePtr());
+  sptr<const Expr> val = nullptr;
+  if (decl.ValPtr() != nullptr) {
+    val = Rewrite(decl.ValPtr());
+  }
+
+  if (type == nullptr || (decl.ValPtr() != nullptr && val == nullptr)) {
     return nullptr;
   }
 
-  sptr<const Expr> val;
-  if (decl.ValPtr() != nullptr) {
-    val = Rewrite(decl.ValPtr());
-    if (val == nullptr) {
-      return nullptr;
-    }
-
-    if (!IsAssignable(lhsType, val->GetTypeId())) {
-      errors_->Append(MakeUnassignableError(lhsType, val->GetTypeId(), ExtentOf(decl.ValPtr())));
+  if (val != nullptr) {
+    if (!IsAssignable(type->GetTypeId(), val->GetTypeId())) {
+      errors_->Append(MakeUnassignableError(type->GetTypeId(), val->GetTypeId(), ExtentOf(decl.ValPtr())));
       return nullptr;
     }
   }
+
 
   // TODO: When we start putting field-ids into FieldDecl, then this should
   // also populate it.
 
-  return make_shared<FieldDecl>(decl.Mods(), decl.GetTypePtr(), decl.Name(), decl.NameToken(), val);
+  return make_shared<FieldDecl>(decl.Mods(), type, decl.Name(), decl.NameToken(), val);
 }
 
 REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
@@ -436,7 +433,7 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
 
   TypeId rettype = TypeId::kVoid;
   if (decl.TypePtr() != nullptr) {
-    rettype = MustResolveType(*decl.TypePtr());
+    rettype = decl.TypePtr()->GetTypeId();
 
     // This should have been pruned by previous pass if the type is invalid.
     assert(!rettype.IsError());

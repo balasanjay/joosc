@@ -12,16 +12,18 @@ using base::PosRange;
 
 namespace types {
 
-TypeId TypeChecker::MustResolveType(const Type& type) {
+sptr<const Type> TypeChecker::MustResolveType(sptr<const Type> type) {
   PosRange pos(-1, -1, -1);
-  TypeId tid = ResolveType(type, typeset_, &pos);
-  if (tid.IsError()) {
-    errors_->Append(MakeUnknownTypenameError(fs_, pos));
+  sptr<const Type> ret = ResolveType(type, typeset_, &pos);
+  if (ret->GetTypeId().IsValid()) {
+    return ret;
   }
-  return tid;
+
+  errors_->Append(MakeUnknownTypenameError(fs_, pos));
+  return nullptr;
 }
 
-bool TypeChecker::IsNumeric(TypeId tid) {
+bool TypeChecker::IsNumeric(TypeId tid) const {
   switch (tid.base) {
     case TypeId::kByteBase:
     case TypeId::kCharBase:
@@ -33,7 +35,7 @@ bool TypeChecker::IsNumeric(TypeId tid) {
   }
 }
 
-bool TypeChecker::IsPrimitive(TypeId tid) {
+bool TypeChecker::IsPrimitive(TypeId tid) const {
   switch (tid.base) {
     case TypeId::kBoolBase:
     case TypeId::kByteBase:
@@ -46,7 +48,7 @@ bool TypeChecker::IsPrimitive(TypeId tid) {
   }
 }
 
-bool TypeChecker::IsReference(TypeId tid) {
+bool TypeChecker::IsReference(TypeId tid) const {
   // All arrays are reference types.
   if (tid.ndims > 0) {
     return true;
@@ -76,7 +78,7 @@ bool IsOneOf(TypeId::Base base, initializer_list<TypeId::Base> allowed) {
 
 // Returns true iff an assignment `lhs x = (rhs)y' is a primitive widening
 // conversion.
-bool TypeChecker::IsPrimitiveWidening(TypeId lhs, TypeId rhs) {
+bool TypeChecker::IsPrimitiveWidening(TypeId lhs, TypeId rhs) const {
   if (!IsNumeric(lhs) || !IsNumeric(rhs)) {
     return false;
   }
@@ -94,7 +96,7 @@ bool TypeChecker::IsPrimitiveWidening(TypeId lhs, TypeId rhs) {
 
 // Returns true iff an assignment `lhs x = (rhs)y' is a primitive narrowing
 // conversion.
-bool TypeChecker::IsPrimitiveNarrowing(TypeId lhs, TypeId rhs) {
+bool TypeChecker::IsPrimitiveNarrowing(TypeId lhs, TypeId rhs) const {
   if (!IsNumeric(lhs) || !IsNumeric(rhs)) {
     return false;
   }
@@ -112,7 +114,7 @@ bool TypeChecker::IsPrimitiveNarrowing(TypeId lhs, TypeId rhs) {
   }
 }
 
-bool TypeChecker::IsReferenceWidening(TypeId lhs, TypeId rhs) {
+bool TypeChecker::IsReferenceWidening(TypeId lhs, TypeId rhs) const {
   if (!IsReference(lhs) || !IsReference(rhs)) {
     return false;
   }
@@ -128,7 +130,7 @@ bool TypeChecker::IsReferenceWidening(TypeId lhs, TypeId rhs) {
   return false;
 }
 
-bool TypeChecker::IsAssignable(TypeId lhs, TypeId rhs) {
+bool TypeChecker::IsAssignable(TypeId lhs, TypeId rhs) const {
   // Identity conversion.
   if (lhs == rhs) {
     return true;
@@ -147,7 +149,7 @@ bool TypeChecker::IsAssignable(TypeId lhs, TypeId rhs) {
   return false;
 }
 
-bool TypeChecker::IsCastable(TypeId lhs, TypeId rhs) {
+bool TypeChecker::IsCastable(TypeId lhs, TypeId rhs) const {
   if (lhs == rhs) {
     return true;
   }
@@ -162,7 +164,7 @@ bool TypeChecker::IsCastable(TypeId lhs, TypeId rhs) {
 
 // Returns whether `==' and `!=' would be valid between values of type lhs and
 // rhs.
-bool TypeChecker::IsComparable(TypeId lhs, TypeId rhs) {
+bool TypeChecker::IsComparable(TypeId lhs, TypeId rhs) const {
   // Identical types can be compared.
   if (lhs == rhs) {
     return true;

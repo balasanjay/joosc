@@ -470,13 +470,14 @@ TEST_F(TypeCheckerTest, WhileStmtOk) {
 
 
 TEST(TypeCheckerUtilTest, IsCastablePrimitives) {
+  TypeChecker typeChecker(nullptr, nullptr);
   auto numTids = {TypeId::kInt, TypeId::kChar, TypeId::kShort, TypeId::kByte};
   for (TypeId tidA : numTids) {
     for (TypeId tidB : numTids) {
-      EXPECT_TRUE(TypeChecker::IsCastable(tidA, tidB));
+      EXPECT_TRUE(typeChecker.IsCastable(tidA, tidB));
     }
   }
-  EXPECT_TRUE(TypeChecker::IsCastable(TypeId::kBool, TypeId::kBool));
+  EXPECT_TRUE(typeChecker.IsCastable(TypeId::kBool, TypeId::kBool));
 }
 
 // TODO: TEST(TypeCheckerUtilTest, IsCastableReference) - with inheritance.

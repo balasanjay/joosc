@@ -62,16 +62,20 @@ class Type {
 
   virtual void PrintTo(std::ostream* os) const = 0;
 
+  VAL_GETTER(TypeId, GetTypeId, tid_);
+
  protected:
-  Type() = default;
+  Type(TypeId tid) : tid_(tid) {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Type);
+
+  TypeId tid_;
 };
 
 class PrimitiveType : public Type {
  public:
-  PrimitiveType(lexer::Token token) : token_(token) {}
+  PrimitiveType(lexer::Token token, TypeId tid = TypeId::kUnassigned) : Type(tid), token_(token) {}
 
   void PrintTo(std::ostream* os) const override { *os << token_.TypeInfo(); }
 
@@ -85,9 +89,16 @@ class PrimitiveType : public Type {
 
 class ReferenceType : public Type {
  public:
-  ReferenceType(const QualifiedName& name) : name_(name) {}
+  ReferenceType(const QualifiedName& name, TypeId tid = TypeId::kUnassigned) : Type(tid), name_(name) {}
 
-  void PrintTo(std::ostream* os) const override { name_.PrintTo(os); }
+  void PrintTo(std::ostream* os) const override {
+    name_.PrintTo(os);
+
+    assert(GetTypeId().ndims == 0);
+    if (GetTypeId() != TypeId::kUnassigned) {
+      *os << "#t" << GetTypeId().base;
+    }
+  }
 
   REF_GETTER(QualifiedName, Name, name_);
 
@@ -99,7 +110,7 @@ class ReferenceType : public Type {
 
 class ArrayType : public Type {
  public:
-  ArrayType(sptr<const Type> elemtype, lexer::Token lbrack, lexer::Token rbrack) : elemtype_(elemtype), lbrack_(lbrack), rbrack_(rbrack) {}
+  ArrayType(sptr<const Type> elemtype, lexer::Token lbrack, lexer::Token rbrack, TypeId tid = TypeId::kUnassigned) : Type(tid), elemtype_(elemtype), lbrack_(lbrack), rbrack_(rbrack) {}
 
   void PrintTo(std::ostream* os) const override {
     *os << "array<";
@@ -107,7 +118,7 @@ class ArrayType : public Type {
     *os << '>';
   }
 
-  REF_GETTER(Type, ElemType, *elemtype_);
+  SPTR_GETTER(Type, ElemType, elemtype_);
   VAL_GETTER(lexer::Token, Lbrack, lbrack_);
   VAL_GETTER(lexer::Token, Rbrack, rbrack_);
 
@@ -556,7 +567,7 @@ class ModifierList {
       if (!HasModifier((lexer::Modifier)i)) {
         continue;
       }
-      *os << mods_[i].TypeInfo() << ' ';
+      *os << mods_[i].TypeInfo().Value() << ' ';
     }
   }
 
@@ -591,7 +602,7 @@ class Param final {
 
   ACCEPT_VISITOR(Param, Param);
 
-  REF_GETTER(Type, GetType, *type_);
+  SPTR_GETTER(Type, GetType, type_);
   REF_GETTER(string, Name, name_);
   VAL_GETTER(lexer::Token, NameToken, nameToken_);
 

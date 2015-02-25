@@ -1,6 +1,7 @@
 #ifndef TYPES_TYPECHECKER_H
 #define TYPES_TYPECHECKER_H
 
+#include "third_party/gtest/gtest.h"
 #include "ast/visitor.h"
 #include "base/errorlist.h"
 #include "base/fileset.h"
@@ -40,16 +41,6 @@ class TypeChecker final : public ast::Visitor {
     return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package_, true, curtype_, true, curMethRet);
   }
 
-  static bool IsNumeric(ast::TypeId tid);
-  static bool IsPrimitive(ast::TypeId tid);
-  static bool IsReference(ast::TypeId tid);
-  static bool IsPrimitiveWidening(ast::TypeId lhs, ast::TypeId rhs);
-  static bool IsReferenceWidening(ast::TypeId lhs, ast::TypeId rhs);
-  static bool IsPrimitiveNarrowing(ast::TypeId lhs, ast::TypeId rhs);
-  static bool IsAssignable(ast::TypeId lhs, ast::TypeId rhs);
-  static bool IsCastable(ast::TypeId lhs, ast::TypeId rhs);
-  static bool IsComparable(ast::TypeId lhs, ast::TypeId rhs);
-
   REWRITE_DECL(ArrayIndexExpr, Expr, expr, exprptr);
   REWRITE_DECL(BinExpr, Expr, expr, exprptr);
   REWRITE_DECL(BoolLitExpr, Expr, expr, exprptr);
@@ -79,6 +70,8 @@ class TypeChecker final : public ast::Visitor {
   REWRITE_DECL(CompUnit, CompUnit, args, argsptr);
 
  private:
+  FRIEND_TEST(TypeCheckerUtilTest, IsCastablePrimitives);
+
   TypeChecker(const base::FileSet* fs, base::ErrorList* errors,
               const TypeSet& typeset, const TypeInfoMap& typeinfo,
               bool belowCompUnit = false, sptr<const ast::QualifiedName> package = nullptr,
@@ -89,7 +82,16 @@ class TypeChecker final : public ast::Visitor {
         belowTypeDecl_(belowTypeDecl), curtype_(curtype),
         belowMethodDecl_(belowMethodDecl), curMethRet_(curMethRet) {}
 
-  ast::TypeId MustResolveType(const ast::Type& type);
+  sptr<const ast::Type> MustResolveType(sptr<const ast::Type> type);
+  bool IsNumeric(ast::TypeId tid) const;
+  bool IsPrimitive(ast::TypeId tid) const;
+  bool IsReference(ast::TypeId tid) const;
+  bool IsPrimitiveWidening(ast::TypeId lhs, ast::TypeId rhs) const;
+  bool IsPrimitiveNarrowing(ast::TypeId lhs, ast::TypeId rhs) const;
+  bool IsReferenceWidening(ast::TypeId lhs, ast::TypeId rhs) const;
+  bool IsAssignable(ast::TypeId lhs, ast::TypeId rhs) const;
+  bool IsComparable(ast::TypeId lhs, ast::TypeId rhs) const;
+  bool IsCastable(ast::TypeId lhs, ast::TypeId rhs) const;
 
   base::Error* MakeTypeMismatchError(ast::TypeId expected, ast::TypeId got, base::PosRange pos);
   base::Error* MakeIndexNonArrayError(base::PosRange pos);

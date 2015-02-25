@@ -1406,7 +1406,7 @@ TEST_F(ParserTest, FieldDeclModsOrdered) {
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
   EXPECT_EQ(
-      "K_PUBLIC K_PROTECTED K_ABSTRACT K_STATIC K_FINAL K_NATIVE K_INT "
+      "public protected abstract static final native K_INT "
       "foo;",
       Str(decl.Get()));
 }
@@ -1476,7 +1476,7 @@ TEST_F(ParserTest, MethodDeclParamsBlock) {
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(decl));
   EXPECT_EQ(
-      "K_PUBLIC K_INT main(K_INT argc,array<String> "
+      "public K_INT main(K_INT argc,array<String> "
       "argv){foo;}",
       Str(decl.Get()));
 }
@@ -1606,7 +1606,7 @@ TEST_F(ParserTest, TypeDeclClassManySemis) {
   EXPECT_TRUE(b(decl));
   EXPECT_TRUE(after.IsAtEnd());
   EXPECT_EQ(
-      "K_PUBLIC class Foo extends Bar implements Baz,Buh {K_INT "
+      "public class Foo extends Bar implements Baz,Buh {K_INT "
       "i=INTEGER;}",
       Str(decl.Get()));
 }
@@ -1639,7 +1639,7 @@ TEST_F(ParserTest, TypeDeclInterfaceManySemis) {
   EXPECT_TRUE(b(decl));
   EXPECT_TRUE(after.IsAtEnd());
   EXPECT_EQ(
-      "K_PUBLIC interface Foo extends Bar,Baz,Buh {K_INT "
+      "public interface Foo extends Bar,Baz,Buh {K_INT "
       "i=INTEGER;}",
       Str(decl.Get()));
 }
@@ -1750,7 +1750,7 @@ TEST_F(ParserTest, CompUnitSuccess) {
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(unit));
-  EXPECT_EQ("package foo;import bar.baz.*;K_PUBLIC class foo {}",
+  EXPECT_EQ("package foo;import bar.baz.*;public class foo {}",
             Str(unit.Get()));
 }
 
@@ -1798,7 +1798,7 @@ TEST_F(ParserTest, CompUnitManySemisSuccess) {
   Parser after = parser_->ParseCompUnit(&unit);
   EXPECT_TRUE(b(after));
   EXPECT_TRUE(b(unit));
-  EXPECT_EQ("package foo;import bar.baz.*;K_PUBLIC class foo {}",
+  EXPECT_EQ("package foo;import bar.baz.*;public class foo {}",
             Str(unit.Get()));
 }
 
