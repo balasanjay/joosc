@@ -165,20 +165,26 @@ TypeSet TypeSet::WithImports(const vector<ast::ImportDecl>& imports, ErrorList* 
 }
 
 void TypeSet::InsertImport(const ImportDecl& import, ErrorList* errors) {
-  auto iter = original_names_.find(import.Name().Name());
+  const string& full = import.Name().Name();
+  const vector<string>& parts = import.Name().Parts();
+  const string& last = parts.at(parts.size() - 1);
+
+  auto iter = original_names_.find(full);
 
   if (iter == original_names_.end()) {
     errors->Append(MakeUnknownImportError(fs_, import.Name().Tokens().back().pos));
+
+    // Add both versions of the name to blacklist, without overwriting any
+    // existing entries.
+    available_names_.insert(make_pair(full, TypeId::kError.base));
+    available_names_.insert(make_pair(last, TypeId::kError.base));
+
     return;
   }
 
   // TODO: errors.
   assert(iter != original_names_.end());
   TypeId::Base tid = iter->second;
-
-  const vector<string>& parts = import.Name().Parts();
-  const string& last = parts.at(parts.size() - 1);
-
   InsertName(&available_names_, last, tid);
 }
 
