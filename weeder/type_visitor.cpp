@@ -39,34 +39,11 @@ namespace {
 
 // Accepts assignment expressions, CallExpr, NewClassExpr.
 bool IsTopLevelExpr(const Expr* expr) {
-  if (expr == nullptr) {
-    return true;
-  }
   if (IS_CONST_PTR(BinExpr, expr)) {
     const BinExpr* binExpr = dynamic_cast<const BinExpr*>(expr);
     return binExpr->Op().type == ASSG;
   }
   return IS_CONST_PTR(CallExpr, expr) || IS_CONST_PTR(NewClassExpr, expr);
-}
-
-// Accepts EmptyStmt and what IsTopLevelExpr(Expr*) accepts
-// (assignment expressions, CallExpr, NewClassExpr).
-bool IsTopLevelExpr(const Stmt* stmt) {
-  if (IS_CONST_PTR(ExprStmt, stmt)) {
-    const Expr* expr = &(dynamic_cast<const ExprStmt*>(stmt)->GetExpr());
-    return IsTopLevelExpr(expr);
-  }
-  return IS_CONST_PTR(EmptyStmt, stmt);
-}
-
-// Rejects ExprStmts that are not top level expressions.
-// Accepts all other Stmts.
-bool IsTopLevelStmt(const Stmt* stmt) {
-  // Only fail if it is an expr that is not top level.
-  if (IS_CONST_PTR(ExprStmt, stmt)) {
-    return IsTopLevelExpr(stmt);
-  }
-  return true;
 }
 
 Error* MakeInvalidVoidTypeError(const FileSet* fs, Token token) {
@@ -190,28 +167,21 @@ VISIT_DEFN(TypeVisitor, Param, param,) {
 }
 
 VISIT_DEFN(TypeVisitor, ForStmt, stmt,) {
-  VisitResult result = VisitResult::RECURSE;
-  if (!IS_CONST_REF(LocalDeclStmt, stmt.Init()) &&
-      !IsTopLevelExpr(&stmt.Init())) {
-    errors_->Append(MakeInvalidTopLevelStatement(fs_, ExtentOf(stmt.InitPtr())));
-    result = VisitResult::RECURSE_PRUNE;
-  }
-  if (!IsTopLevelExpr(stmt.UpdatePtr().get())) {
+  // Check only update expr.
+  sptr<const Expr> updatePtr = stmt.UpdatePtr();
+  if (updatePtr != nullptr && !IsTopLevelExpr(updatePtr.get())) {
     errors_->Append(MakeInvalidTopLevelStatement(fs_, ExtentOf(stmt.UpdatePtr())));
-    result = VisitResult::RECURSE_PRUNE;
+    return VisitResult::RECURSE_PRUNE;
   }
-  return result;
+  return VisitResult::RECURSE;
 }
 
-VISIT_DEFN(TypeVisitor, BlockStmt, block,) {
-  VisitResult result = VisitResult::RECURSE;
-  for (int i = 0; i < block.Stmts().Size(); ++i) {
-    if (!IsTopLevelStmt(block.Stmts().At(i).get())) {
-      errors_->Append(MakeInvalidTopLevelStatement(fs_, ExtentOf(block.Stmts().At(i))));
-      result = VisitResult::RECURSE_PRUNE;
-    }
+VISIT_DEFN(TypeVisitor, ExprStmt, stmt, stmtptr) {
+  if (!IsTopLevelExpr(stmt.GetExprPtr().get())) {
+    errors_->Append(MakeInvalidTopLevelStatement(fs_, ExtentOf(stmtptr)));
+    return VisitResult::RECURSE_PRUNE;
   }
-  return result;
+  return VisitResult::RECURSE;
 }
 
 }  // namespace weeder
