@@ -15,7 +15,7 @@ class StructureVisitor : public ast::Visitor {
   StructureVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}
 
-  VISIT_DECL(Program, prog);
+  VISIT_DECL(Program, prog,);
 
  private:
   const base::FileSet* fs_;

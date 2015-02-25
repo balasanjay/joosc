@@ -27,7 +27,7 @@ Error* MakeMultipleTypesPerCompUnitError(const FileSet* fs, Token token) {
 
 }  // namespace
 
-VISIT_DEFN(StructureVisitor, Program, prog) {
+VISIT_DEFN(StructureVisitor, Program, prog,) {
   // TODO: store fileid in CompUnit, and use that instead of this assertion.
   assert(prog.CompUnits().Size() == fs_->Size());
 

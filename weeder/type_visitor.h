@@ -16,19 +16,19 @@ class TypeVisitor : public ast::Visitor {
   TypeVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}
 
-  VISIT_DECL(CastExpr, expr);
-  VISIT_DECL(InstanceOfExpr, expr);
+  VISIT_DECL(CastExpr, expr,);
+  VISIT_DECL(InstanceOfExpr, expr,);
 
-  VISIT_DECL(NewClassExpr, expr);
-  VISIT_DECL(NewArrayExpr, expr);
+  VISIT_DECL(NewClassExpr, expr,);
+  VISIT_DECL(NewArrayExpr, expr,);
 
-  VISIT_DECL(LocalDeclStmt, stmt);
+  VISIT_DECL(LocalDeclStmt, stmt,);
 
-  VISIT_DECL(FieldDecl, decl);
-  VISIT_DECL(Param, param);
+  VISIT_DECL(FieldDecl, decl,);
+  VISIT_DECL(Param, param,);
 
-  VISIT_DECL(ForStmt, stmt);
-  VISIT_DECL(BlockStmt, stmt);
+  VISIT_DECL(ForStmt, stmt,);
+  VISIT_DECL(BlockStmt, stmt,);
 
  private:
   const base::FileSet* fs_;

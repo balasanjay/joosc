@@ -14,7 +14,7 @@ class CallVisitor : public ast::Visitor {
   CallVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}
 
-  VISIT_DECL(CallExpr, expr);
+  VISIT_DECL(CallExpr, expr,);
 
  private:
   const base::FileSet* fs_;

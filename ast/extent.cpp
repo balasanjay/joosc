@@ -14,92 +14,92 @@ class ExtentVisitor final : public Visitor {
 
   PosRange Extent() const { return extent_; }
 
-  VISIT_DECL(ArrayIndexExpr, expr) {
+  VISIT_DECL(ArrayIndexExpr, expr,) {
     Visit(expr.BasePtr());
     UpdatePos(expr.Rbrack().pos);
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(CallExpr, expr) {
+  VISIT_DECL(CallExpr, expr,) {
     Visit(expr.BasePtr());
     UpdatePos(expr.Rparen().pos);
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(CastExpr, expr) {
+  VISIT_DECL(CastExpr, expr,) {
     UpdatePos(expr.Lparen().pos);
     Visit(expr.GetExprPtr());
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(InstanceOfExpr, expr) {
+  VISIT_DECL(InstanceOfExpr, expr,) {
     Visit(expr.LhsPtr());
     UpdatePosFromType(expr.GetType());
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(FieldDerefExpr, expr) {
+  VISIT_DECL(FieldDerefExpr, expr,) {
     Visit(expr.BasePtr());
     UpdatePos(expr.GetToken().pos);
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(BoolLitExpr, expr) {
+  VISIT_DECL(BoolLitExpr, expr,) {
     UpdatePos(expr.GetToken().pos);
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(StringLitExpr, expr) {
+  VISIT_DECL(StringLitExpr, expr,) {
     UpdatePos(expr.GetToken().pos);
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(CharLitExpr, expr) {
+  VISIT_DECL(CharLitExpr, expr,) {
     UpdatePos(expr.GetToken().pos);
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(NullLitExpr, expr) {
+  VISIT_DECL(NullLitExpr, expr,) {
     UpdatePos(expr.GetToken().pos);
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(IntLitExpr, expr) {
+  VISIT_DECL(IntLitExpr, expr,) {
     UpdatePos(expr.GetToken().pos);
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(NameExpr, expr) {
+  VISIT_DECL(NameExpr, expr,) {
     const vector<lexer::Token> toks = expr.Name().Tokens();
     UpdatePos(toks.begin()->pos);
     UpdatePos(toks.rbegin()->pos);
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(NewArrayExpr, expr) {
+  VISIT_DECL(NewArrayExpr, expr,) {
     UpdatePos(expr.NewToken().pos);
     UpdatePos(expr.Rbrack().pos);
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(NewClassExpr, expr) {
+  VISIT_DECL(NewClassExpr, expr,) {
     UpdatePos(expr.NewToken().pos);
     UpdatePos(expr.Rparen().pos);
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(ParenExpr, expr) {
+  VISIT_DECL(ParenExpr, expr,) {
     UpdatePos(expr.Lparen().pos);
     UpdatePos(expr.Rparen().pos);
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(ThisExpr, expr) {
+  VISIT_DECL(ThisExpr, expr,) {
     UpdatePos(expr.ThisToken().pos);
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(UnaryExpr, expr) {
+  VISIT_DECL(UnaryExpr, expr,) {
     UpdatePos(expr.Op().pos);
     Visit(expr.RhsPtr());
     return VisitResult::SKIP;
