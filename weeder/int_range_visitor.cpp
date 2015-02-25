@@ -43,7 +43,7 @@ bool VerifyIsInRange(const string& strVal, Token token, bool isNegated,
 
 }  // namespace
 
-VISIT_DEFN(IntRangeVisitor, IntLitExpr, expr) {
+VISIT_DEFN(IntRangeVisitor, IntLitExpr, expr,) {
   const string& strVal = expr.Value();
   Token token = expr.GetToken();
 
@@ -53,7 +53,7 @@ VISIT_DEFN(IntRangeVisitor, IntLitExpr, expr) {
   return VisitResult::RECURSE;
 }
 
-VISIT_DEFN(IntRangeVisitor, UnaryExpr, expr) {
+VISIT_DEFN(IntRangeVisitor, UnaryExpr, expr,) {
   if (expr.Op().type != SUB || !IS_CONST_REF(IntLitExpr, expr.Rhs())) {
     return VisitResult::RECURSE;
   }

@@ -183,7 +183,7 @@ void VerifyNoConflictingAccessMods(const FileSet* fs, const ModifierList& mods,
 
 }  // namespace
 
-VISIT_DEFN(ClassModifierVisitor, FieldDecl, decl) {
+VISIT_DEFN(ClassModifierVisitor, FieldDecl, decl,) {
   // Cannot be both public and protected.
   VerifyNoConflictingAccessMods(fs_, decl.Mods(), errors_);
 
@@ -198,7 +198,7 @@ VISIT_DEFN(ClassModifierVisitor, FieldDecl, decl) {
   return VisitResult::SKIP;
 }
 
-VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
+VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl,) {
   bool constructor = decl.TypePtr() == nullptr;
 
   // Cannot be both public and protected.
@@ -257,13 +257,13 @@ VISIT_DEFN(ClassModifierVisitor, MethodDecl, decl) {
   return VisitResult::SKIP;
 }
 
-VISIT_DEFN(InterfaceModifierVisitor, FieldDecl, decl) {
+VISIT_DEFN(InterfaceModifierVisitor, FieldDecl, decl,) {
   // An interface cannot contain fields.
   errors_->Append(MakeInterfaceFieldError(fs_, decl.NameToken()));
   return VisitResult::SKIP;
 }
 
-VISIT_DEFN(InterfaceModifierVisitor, MethodDecl, decl) {
+VISIT_DEFN(InterfaceModifierVisitor, MethodDecl, decl,) {
   // An interface cannot contain constructors.
   if (decl.TypePtr() == nullptr) {
     errors_->Append(MakeInterfaceConstructorError(fs_, decl.NameToken()));

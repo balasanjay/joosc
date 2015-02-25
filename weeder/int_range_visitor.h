@@ -14,8 +14,8 @@ class IntRangeVisitor : public ast::Visitor {
   IntRangeVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}
 
-  VISIT_DECL(IntLitExpr, expr);
-  VISIT_DECL(UnaryExpr, expr);
+  VISIT_DECL(IntLitExpr, expr,);
+  VISIT_DECL(UnaryExpr, expr,);
 
  private:
   const base::FileSet* fs_;
