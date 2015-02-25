@@ -24,7 +24,7 @@ public:
   // `a.WithImports(bimports).WithImports(cimports)' is equivalent to
   // `a.WithImports(cimports)' regardless of the values of `bimports' and
   // `cimports'.
-  TypeSet WithImports(const vector<ast::ImportDecl>& imports, const base::FileSet* fs, base::ErrorList* errors) const;
+  TypeSet WithImports(const vector<ast::ImportDecl>& imports, base::ErrorList* errors) const;
 
   // Returns a TypeId corresponding to the entire provided qualified name. If
   // no such type exists, then kErrorTypeId will be returned.
@@ -49,7 +49,7 @@ public:
 
   static void InsertName(QualifiedNameBaseMap* m, string name, ast::TypeId::Base base);
 
-  void InsertImport(const ast::ImportDecl& import, const base::FileSet* fs, base::ErrorList* errors);
+  void InsertImport(const ast::ImportDecl& import, base::ErrorList* errors);
   void InsertWildcardImport(const string& base);
 
   static TypeSet kEmptyTypeSet;

@@ -479,7 +479,7 @@ REWRITE_DEFN(TypeChecker, CompUnit, CompUnit, unit, unitptr) {
 
   // Otherwise create a sub-visitor that has the import info, and let it
   // rewrite this node.
-  TypeSet scopedTypeSet = typeset_.WithImports(unit.Imports(), fs_, errors_);
+  TypeSet scopedTypeSet = typeset_.WithImports(unit.Imports(), errors_);
   TypeChecker below = WithTypeSet(scopedTypeSet).InsideCompUnit(unit.PackagePtr());
 
   return below.Rewrite(unitptr);

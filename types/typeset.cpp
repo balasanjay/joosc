@@ -148,7 +148,7 @@ void TypeSet::InsertName(QualifiedNameBaseMap* m, string name, TypeId::Base base
 }
 
 
-TypeSet TypeSet::WithImports(const vector<ast::ImportDecl>& imports, const FileSet* fs, ErrorList* errors) const {
+TypeSet TypeSet::WithImports(const vector<ast::ImportDecl>& imports, ErrorList* errors) const {
   TypeSet view(*this);
   view.original_names_ = original_names_;
   view.available_names_ = available_names_;
@@ -158,18 +158,18 @@ TypeSet TypeSet::WithImports(const vector<ast::ImportDecl>& imports, const FileS
     if (import.IsWildCard()) {
       view.InsertWildcardImport(import.Name().Name());
     } else {
-      view.InsertImport(import, fs, errors);
+      view.InsertImport(import, errors);
     }
   }
 
   return view;
 }
 
-void TypeSet::InsertImport(const ImportDecl& import, const FileSet* fs, ErrorList* errors) {
+void TypeSet::InsertImport(const ImportDecl& import, ErrorList* errors) {
   auto iter = original_names_.find(import.Name().Name());
 
   if (iter == original_names_.end()) {
-    errors->Append(MakeUnknownImportError(fs, import.Name().Tokens().back().pos));
+    errors->Append(MakeUnknownImportError(fs_, import.Name().Tokens().back().pos));
     return;
   }
 

@@ -40,7 +40,7 @@ sptr<const Type> DeclResolver::MustResolveType(sptr<const Type> type) {
 }
 
 REWRITE_DEFN(DeclResolver, CompUnit, CompUnit, unit,) {
-  TypeSet scopedTypeSet = typeset_.WithImports(unit.Imports(), fs_, errors_);
+  TypeSet scopedTypeSet = typeset_.WithImports(unit.Imports(), errors_);
   DeclResolver scopedResolver(builder_, scopedTypeSet, fs_, errors_, unit.PackagePtr());
 
   base::SharedPtrVector<const TypeDecl> decls;
@@ -68,29 +68,35 @@ REWRITE_DEFN(DeclResolver, TypeDecl, TypeDecl, type, ) {
     return nullptr;
   }
 
-  vector<TypeId> extends;
-  for (const auto& name : type.Extends()) {
+  // A helper function to build the extends and implements lists.
+  const auto AddToTypeIdVector = [&](const QualifiedName& name, vector<TypeId>* out) {
     TypeId tid = typeset_.Get(name.Parts());
-    if (!tid.IsError()) {
-      extends.push_back(tid);
-      continue;
+    if (tid.IsValid()) {
+      out->push_back(tid);
+      return;
     }
 
-    errors_->Append(MakeUnknownTypenameError(fs_, name.Tokens().back().pos));
+    // If we've never heard about this type before, then emit an error.
+    if (tid.IsUnassigned()) {
+      errors_->Append(MakeUnknownTypenameError(fs_, name.Tokens().back().pos));
+      return;
+    }
+
+    // This is a type we've already emitted an error about, so don't emit one again.
+    assert(tid.IsError());
+  };
+
+  vector<TypeId> extends;
+  for (const auto& name : type.Extends()) {
+    AddToTypeIdVector(name, &extends);
   }
 
   vector<TypeId> implements;
   for (const auto& name : type.Implements()) {
-    TypeId tid = typeset_.Get(name.Parts());
-    if (!tid.IsError()) {
-      implements.push_back(tid);
-      continue;
-    }
-
-    errors_->Append(MakeUnknownTypenameError(fs_, name.Tokens().back().pos));
+    AddToTypeIdVector(name, &implements);
   }
 
-  // TODO: put into builder_.
+  // TODO: put into TypeInfoMapBuilder.
   DeclResolver memberResolver(builder_, typeset_, fs_, errors_, package_, curtid);
   SharedPtrVector<const MemberDecl> members;
   for (int i = 0; i < type.Members().Size(); ++i) {
@@ -102,9 +108,6 @@ REWRITE_DEFN(DeclResolver, TypeDecl, TypeDecl, type, ) {
   }
   return make_shared<TypeDecl>(type.Mods(), type.Kind(), type.Name(), type.NameToken(), type.Extends(), type.Implements(), members, curtid);
 }
-
-// TODO: we are skipping interfaces; waiting until after the AST merge.
-// TODO: we are skipping constructors; waiting until after the AST merge.
 
 REWRITE_DEFN(DeclResolver, FieldDecl, MemberDecl, field, ) {
   sptr<const Type> type = MustResolveType(field.GetTypePtr());
