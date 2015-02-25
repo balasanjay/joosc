@@ -10,7 +10,7 @@
 namespace types {
 
 base::Error* MakeUnknownTypenameError(const base::FileSet* fs, base::PosRange pos);
-ast::TypeId ResolveType(const ast::Type& type, TypeSet typeset, base::PosRange* pos_out);
+sptr<const ast::Type> ResolveType(sptr<const ast::Type> type, TypeSet typeset, base::PosRange* pos_out);
 
 } // namespace types
 
