@@ -212,7 +212,20 @@ TEST_F(TypeCheckerTest, NullLitExpr) {
   EXPECT_NO_ERRS;
 }
 
-// TODO: ParenExpr
+TEST_F(TypeCheckerTest, ParenExprIntInside) {
+  sptr<const Expr> before = ParseExpr("(1+2)");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(TypeId::kInt, after->GetTypeId());
+}
+
+TEST_F(TypeCheckerTest, ParenExprErrorInside) {
+  sptr<const Expr> before = ParseExpr("(null-1)");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("TypeMismatchError(0:1-5)\n");
+}
 
 // TODO: StringLitExpr
 
@@ -232,8 +245,43 @@ TEST_F(TypeCheckerTest, ThisLitExpr) {
   EXPECT_NO_ERRS;
 }
 
-// TODO: UnaryExpr
+TEST_F(TypeCheckerTest, UnaryExprErrorFromRHS) {
+  sptr<const Expr> before = ParseExpr("!(null-1)");
+  auto after = typeChecker_->Rewrite(before);
 
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("TypeMismatchError(0:2-6)\n");
+}
+
+TEST_F(TypeCheckerTest, UnaryExprSubNonNumeric) {
+  sptr<const Expr> before = ParseExpr("-true");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("UnaryNonNumericError(0:0-5)\n");
+}
+
+TEST_F(TypeCheckerTest, UnaryExprSubNumeric) {
+  sptr<const Expr> before = ParseExpr("-'a'");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(TypeId::kInt, after->GetTypeId());
+}
+
+TEST_F(TypeCheckerTest, UnaryExprNotNonBool) {
+  sptr<const Expr> before = ParseExpr("!1");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("UnaryNonBoolError(0:0-2)\n");
+}
+
+TEST_F(TypeCheckerTest, UnaryExprNotIsBool) {
+  sptr<const Expr> before = ParseExpr("!false");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(TypeId::kBool, after->GetTypeId());
+}
 
 // TODO: BlockStmt
 
