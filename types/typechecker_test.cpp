@@ -12,7 +12,7 @@ using lexer::Token;
 using parser::internal::Result;
 
 #define EXPECT_ERRS(msg) EXPECT_EQ(msg, testing::PrintToString(errors_))
-#define EXPECT_NO_ERRS EXPECT_EQ(0, errors_.Size())
+#define EXPECT_NO_ERRS() EXPECT_EQ(0, errors_.Size())
 
 namespace types {
 
@@ -104,7 +104,7 @@ TEST_F(TypeCheckerTest, BinExprBoolOpSuccess) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kBool, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, BinExprBoolOpOperandsNotBool) {
@@ -120,7 +120,7 @@ TEST_F(TypeCheckerTest, BinExprRelationalOpSuccess) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kBool, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, BinExprRelationalOperandsNotNumeric) {
@@ -136,7 +136,7 @@ TEST_F(TypeCheckerTest, BinExprEqualityOpSuccess) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kBool, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, BinExprEqualityOpIncomparable) {
@@ -154,7 +154,7 @@ TEST_F(TypeCheckerTest, BinExprNumericOpSuccess) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kInt, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, BinExprNumericOpPromotion) {
@@ -162,7 +162,7 @@ TEST_F(TypeCheckerTest, BinExprNumericOpPromotion) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kInt, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, BinExprNumericOpOperandsNotNumeric) {
@@ -178,7 +178,7 @@ TEST_F(TypeCheckerTest, BoolLitExpr) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kBool, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 // TODO: CallExpr
@@ -190,7 +190,7 @@ TEST_F(TypeCheckerTest, CharLitExpr) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kChar, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 // TODO: FieldDerefExpr
@@ -202,7 +202,7 @@ TEST_F(TypeCheckerTest, IntLitExpr) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kInt, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 // TODO: NameExpr
@@ -216,7 +216,7 @@ TEST_F(TypeCheckerTest, NullLitExpr) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kNull, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, ParenExprIntInside) {
@@ -249,7 +249,7 @@ TEST_F(TypeCheckerTest, ThisLitExpr) {
   auto after = typeChecker.Rewrite(before);
 
   EXPECT_EQ(insideType, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, UnaryExprErrorFromRHS) {
@@ -333,6 +333,7 @@ TEST_F(TypeCheckerTest, ForStmtOk) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_NE(nullptr, after);
+  EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, IfStmtCondError) {
@@ -358,6 +359,7 @@ TEST_F(TypeCheckerTest, IfStmtOk) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_NE(nullptr, after);
+  EXPECT_NO_ERRS();
 }
 
 // TODO: LocalDeclStmt
@@ -387,6 +389,7 @@ TEST_F(TypeCheckerTest, WhileStmtOk) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_NE(nullptr, after);
+  EXPECT_NO_ERRS();
 }
 
 // TODO: FieldDecl
