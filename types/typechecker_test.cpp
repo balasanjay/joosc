@@ -12,7 +12,7 @@ using lexer::Token;
 using parser::internal::Result;
 
 #define EXPECT_ERRS(msg) EXPECT_EQ(msg, testing::PrintToString(errors_))
-#define EXPECT_NO_ERRS EXPECT_EQ(0, errors_.Size())
+#define EXPECT_NO_ERRS() EXPECT_EQ(0, errors_.Size())
 
 namespace types {
 
@@ -65,6 +65,13 @@ class TypeCheckerTest : public ::testing::Test {
     return exprResult.Get();
   }
 
+  sptr<const Stmt> ParseStmt(string s) {
+    MakeParser(s);
+    Result<Stmt> stmtResult;
+    assert(!parser_->ParseStmt(&stmtResult).Failed());
+    return stmtResult.Get();
+  }
+
   base::ErrorList errors_;
   uptr<base::FileSet> fs_;
   vector<vector<lexer::Token>> tokens;
@@ -97,7 +104,7 @@ TEST_F(TypeCheckerTest, BinExprBoolOpSuccess) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kBool, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, BinExprBoolOpOperandsNotBool) {
@@ -113,7 +120,7 @@ TEST_F(TypeCheckerTest, BinExprRelationalOpSuccess) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kBool, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, BinExprRelationalOperandsNotNumeric) {
@@ -129,7 +136,7 @@ TEST_F(TypeCheckerTest, BinExprEqualityOpSuccess) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kBool, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, BinExprEqualityOpIncomparable) {
@@ -147,7 +154,7 @@ TEST_F(TypeCheckerTest, BinExprNumericOpSuccess) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kInt, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, BinExprNumericOpPromotion) {
@@ -155,7 +162,7 @@ TEST_F(TypeCheckerTest, BinExprNumericOpPromotion) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kInt, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, BinExprNumericOpOperandsNotNumeric) {
@@ -171,7 +178,7 @@ TEST_F(TypeCheckerTest, BoolLitExpr) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kBool, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 // TODO: CallExpr
@@ -183,7 +190,7 @@ TEST_F(TypeCheckerTest, CharLitExpr) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kChar, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 // TODO: FieldDerefExpr
@@ -195,7 +202,7 @@ TEST_F(TypeCheckerTest, IntLitExpr) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kInt, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 // TODO: NameExpr
@@ -209,7 +216,7 @@ TEST_F(TypeCheckerTest, NullLitExpr) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kNull, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, ParenExprIntInside) {
@@ -242,7 +249,7 @@ TEST_F(TypeCheckerTest, ThisLitExpr) {
   auto after = typeChecker.Rewrite(before);
 
   EXPECT_EQ(insideType, after->GetTypeId());
-  EXPECT_NO_ERRS;
+  EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, UnaryExprErrorFromRHS) {
@@ -289,16 +296,101 @@ TEST_F(TypeCheckerTest, UnaryExprNotIsBool) {
 
 // TODO: ExprStmt
 
-// TODO: ForStmt
+TEST_F(TypeCheckerTest, ForStmtInitError) {
+  sptr<const Stmt> before = ParseStmt("for (boolean i = 1; 1 < 2;);");
+  auto after = typeChecker_->Rewrite(before);
 
-// TODO: IfStmt
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("UnassignableError(0:17)\n");
+}
+
+// TODO: error in body statement.
+
+TEST_F(TypeCheckerTest, ForStmtCondError) {
+  sptr<const Stmt> before = ParseStmt("for (int i = 1;1 + null;);");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_ERRS("TypeMismatchError(0:19-23)\n");
+}
+
+TEST_F(TypeCheckerTest, ForStmtUpdateError) {
+  sptr<const Stmt> before = ParseStmt("for (int i = 1;;1 + null);");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_ERRS("TypeMismatchError(0:20-24)\n");
+}
+
+TEST_F(TypeCheckerTest, ForStmtCondNotBool) {
+  sptr<const Stmt> before = ParseStmt("for (int i = 1;1 + 1;);");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("TypeMismatchError(0:15-20)\n");
+}
+
+TEST_F(TypeCheckerTest, ForStmtOk) {
+  sptr<const Stmt> before = ParseStmt("for (int i = 1; 1 == 1; );");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_NE(nullptr, after);
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, IfStmtCondError) {
+  sptr<const Stmt> before = ParseStmt("if(1 + null);");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("TypeMismatchError(0:7-11)\n");
+}
+
+// TODO: errors in trueBody and falseBody statements.
+
+TEST_F(TypeCheckerTest, IfStmtCondNotBool) {
+  sptr<const Stmt> before = ParseStmt("if(1 + 1);");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("TypeMismatchError(0:3-8)\n");
+}
+
+TEST_F(TypeCheckerTest, IfStmtOk) {
+  sptr<const Stmt> before = ParseStmt("if(true) {} else {}");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_NE(nullptr, after);
+  EXPECT_NO_ERRS();
+}
 
 // TODO: LocalDeclStmt
 
 // TODO: ReturnStmt
 
-// TODO: WhileStmt
+TEST_F(TypeCheckerTest, WhileStmtCondError) {
+  sptr<const Stmt> before = ParseStmt("while(true + 1);");
+  auto after = typeChecker_->Rewrite(before);
 
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("TypeMismatchError(0:6-10)\n");
+}
+
+// TODO: error in body statement.
+
+TEST_F(TypeCheckerTest, WhileStmtCondNotBool) {
+  sptr<const Stmt> before = ParseStmt("while(1);");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("TypeMismatchError(0:6)\n");
+}
+
+TEST_F(TypeCheckerTest, WhileStmtOk) {
+  sptr<const Stmt> before = ParseStmt("while(true){}");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_NE(nullptr, after);
+  EXPECT_NO_ERRS();
+}
 
 // TODO: FieldDecl
 
