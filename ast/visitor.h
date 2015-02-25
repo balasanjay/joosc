@@ -1,5 +1,5 @@
-#ifndef AST_VISITOR2_H
-#define AST_VISITOR2_H
+#ifndef AST_VISITOR_H
+#define AST_VISITOR_H
 
 #include "ast/ast_fwd.h"
 #include "base/macros.h"
@@ -66,7 +66,7 @@ public:
 #undef _REWRITE_DECL
 
 protected:
-#define _VISIT_DECL(type, rettype, name) virtual VisitResult Visit##type(const type&) { return VisitResult::RECURSE; }
+#define _VISIT_DECL(type, rettype, name) virtual VisitResult Visit##type(const type&, sptr<const type>) { return VisitResult::RECURSE; }
   FOR_EACH_VISITABLE(_VISIT_DECL)
 #undef _VISIT_DECL
 
@@ -93,8 +93,8 @@ private:
 
 #undef FOR_EACH_VISITABLE
 
-#define VISIT_DECL(type, var) ast::VisitResult Visit##type(const ast::type& var) override
-#define VISIT_DEFN(cls, type, var) ast::VisitResult cls::Visit##type(const ast::type& var)
+#define VISIT_DECL(type, var, varptr) ast::VisitResult Visit##type(const ast::type& var, sptr<const ast::type> varptr) override
+#define VISIT_DEFN(cls, type, var, varptr) ast::VisitResult cls::Visit##type(const ast::type& var, sptr<const ast::type> varptr)
 
 #define REWRITE_DECL(type, rettype, var, varptr) sptr<const ast::rettype> Rewrite##type(const ast::type& var, sptr<const ast::type> varptr) override
 #define REWRITE_DEFN(cls, type, rettype, var, varptr) sptr<const ast::rettype> cls::Rewrite##type(const ast::type& var, sptr<const ast::type> varptr)

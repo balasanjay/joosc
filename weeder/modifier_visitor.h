@@ -40,8 +40,8 @@ class ClassModifierVisitor : public ast::Visitor {
   ClassModifierVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}
 
-  VISIT_DECL(FieldDecl, decl);
-  VISIT_DECL(MethodDecl, decl);
+  VISIT_DECL(FieldDecl, decl,);
+  VISIT_DECL(MethodDecl, decl,);
 
  private:
   const base::FileSet* fs_;
@@ -60,8 +60,8 @@ class InterfaceModifierVisitor : public ast::Visitor {
   InterfaceModifierVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}
 
-  VISIT_DECL(FieldDecl, decl);
-  VISIT_DECL(MethodDecl, decl);
+  VISIT_DECL(FieldDecl, decl,);
+  VISIT_DECL(MethodDecl, decl,);
 
  private:
   const base::FileSet* fs_;
