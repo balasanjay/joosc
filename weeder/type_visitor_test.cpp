@@ -7,6 +7,7 @@ using ast::MemberDecl;
 using ast::PrimitiveType;
 using ast::QualifiedName;
 using ast::ReferenceType;
+using ast::Expr;
 using ast::Stmt;
 using ast::Type;
 using base::ErrorList;
@@ -65,24 +66,24 @@ TEST_F(TypeVisitorTest, HasVoidTrue) {
 
 TEST_F(TypeVisitorTest, CastOk) {
   MakeParser("(int)3;");
-  Result<Stmt> stmt;
-  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+  Result<Expr> expr;
+  ASSERT_FALSE(parser_->ParseExpression(&expr).Failed());
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  auto _ = visitor.Rewrite(stmt.Get());
+  auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_FALSE(errors.IsFatal());
 }
 
 TEST_F(TypeVisitorTest, CastNotOk) {
   MakeParser("(void)3;");
-  Result<Stmt> stmt;
-  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+  Result<Expr> expr;
+  ASSERT_FALSE(parser_->ParseExpression(&expr).Failed());
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  auto _ = visitor.Rewrite(stmt.Get());
+  auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidVoidTypeError(0:1-5)\n", testing::PrintToString(errors));
@@ -90,12 +91,12 @@ TEST_F(TypeVisitorTest, CastNotOk) {
 
 TEST_F(TypeVisitorTest, InstanceOfPrimitive) {
   MakeParser("a instanceof int;");
-  Result<Stmt> stmt;
-  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+  Result<Expr> expr;
+  ASSERT_FALSE(parser_->ParseExpression(&expr).Failed());
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  auto _ = visitor.Rewrite(stmt.Get());
+  auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidInstanceOfTypeError(0:2-12)\n",
@@ -104,12 +105,12 @@ TEST_F(TypeVisitorTest, InstanceOfPrimitive) {
 
 TEST_F(TypeVisitorTest, InstanceOfArray) {
   MakeParser("a instanceof int[];");
-  Result<Stmt> stmt;
-  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+  Result<Expr> expr;
+  ASSERT_FALSE(parser_->ParseExpression(&expr).Failed());
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  auto _ = visitor.Rewrite(stmt.Get());
+  auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_FALSE(errors.IsFatal());
 }
@@ -155,24 +156,24 @@ TEST_F(TypeVisitorTest, NewClassPrimitive) {
 
 TEST_F(TypeVisitorTest, NewArrayOk) {
   MakeParser("new int[3];");
-  Result<Stmt> stmt;
-  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+  Result<Expr> expr;
+  ASSERT_FALSE(parser_->ParseExpression(&expr).Failed());
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  auto _ = visitor.Rewrite(stmt.Get());
+  auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_FALSE(errors.IsFatal());
 }
 
 TEST_F(TypeVisitorTest, NewArrayNotOk) {
   MakeParser("new void[3];");
-  Result<Stmt> stmt;
-  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+  Result<Expr> expr;
+  ASSERT_FALSE(parser_->ParseExpression(&expr).Failed());
 
   ErrorList errors;
   TypeVisitor visitor(fs_.get(), &errors);
-  auto _ = visitor.Rewrite(stmt.Get());
+  auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidVoidTypeError(0:4-8)\n", testing::PrintToString(errors));
@@ -340,6 +341,57 @@ TEST_F(TypeVisitorTest, ForInitAssignmentInParensDisallowed) {
 
   EXPECT_TRUE(errors.IsFatal());
   EXPECT_EQ("InvalidTopLevelStatement(0:4-11)\n", testing::PrintToString(errors));
+}
+
+TEST_F(TypeVisitorTest, ForInitUpdateExprWorks) {
+  MakeParser("for(;;i = i+1);");
+  Result<Stmt> stmt;
+  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+
+  ErrorList errors;
+  TypeVisitor visitor(fs_.get(), &errors);
+  auto _ = visitor.Rewrite(stmt.Get());
+
+  EXPECT_FALSE(errors.IsFatal());
+}
+
+TEST_F(TypeVisitorTest, ForInitUpdateExprNotTopLevel) {
+  MakeParser("for(;;i+1);");
+  Result<Stmt> stmt;
+  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+
+  ErrorList errors;
+  TypeVisitor visitor(fs_.get(), &errors);
+  auto _ = visitor.Rewrite(stmt.Get());
+
+  EXPECT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidTopLevelStatement(0:6-9)\n", testing::PrintToString(errors));
+}
+
+TEST_F(TypeVisitorTest, ForBodyNotTopLevel) {
+  MakeParser("for(;;) true;");
+  Result<Stmt> stmt;
+  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+
+  ErrorList errors;
+  TypeVisitor visitor(fs_.get(), &errors);
+  auto _ = visitor.Rewrite(stmt.Get());
+
+  EXPECT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidTopLevelStatement(0:8-12)\n", testing::PrintToString(errors));
+}
+
+TEST_F(TypeVisitorTest, IfBodyNotTopLevel) {
+  MakeParser("if(true) true;");
+  Result<Stmt> stmt;
+  ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
+
+  ErrorList errors;
+  TypeVisitor visitor(fs_.get(), &errors);
+  auto _ = visitor.Rewrite(stmt.Get());
+
+  EXPECT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidTopLevelStatement(0:9-13)\n", testing::PrintToString(errors));
 }
 
 TEST_F(TypeVisitorTest, BlockNotStmt) {
