@@ -12,6 +12,7 @@ using ast::FieldDecl;
 using ast::MemberDecl;
 using ast::MethodDecl;
 using ast::ModifierList;
+using ast::Param;
 using ast::ParamList;
 using ast::PrimitiveType;
 using ast::QualifiedName;
@@ -29,13 +30,13 @@ using base::UniquePtrVector;
 
 namespace types {
 
-TypeId DeclResolver::MustResolveType(const Type& type) {
+sptr<const Type> DeclResolver::MustResolveType(sptr<const Type> type) {
   PosRange pos(-1, -1, -1);
-  TypeId tid = ResolveType(type, typeset_, &pos);
-  if (tid.IsError()) {
+  sptr<const Type> ret = ResolveType(type, typeset_, &pos);
+  if (ret->GetTypeId().IsError()) {
     errors_->Append(MakeUnknownTypenameError(fs_, pos));
   }
-  return tid;
+  return ret;
 }
 
 REWRITE_DEFN(DeclResolver, CompUnit, CompUnit, unit,) {
@@ -106,17 +107,18 @@ REWRITE_DEFN(DeclResolver, TypeDecl, TypeDecl, type, ) {
 // TODO: we are skipping constructors; waiting until after the AST merge.
 
 REWRITE_DEFN(DeclResolver, FieldDecl, MemberDecl, field, ) {
-  TypeId tid = MustResolveType(field.GetType());
-  if (tid.IsError()) {
+  sptr<const Type> type = MustResolveType(field.GetTypePtr());
+  if (!type->GetTypeId().IsValid()) {
     return nullptr;
   }
 
   // TODO: put field in table keyed by (curtid_, field.Name()).
   // TODO: assign member id to field.
-  return make_shared<FieldDecl>(field.Mods(), field.GetTypePtr(), field.Name(), field.NameToken(), field.ValPtr());
+  return make_shared<FieldDecl>(field.Mods(), type, field.Name(), field.NameToken(), field.ValPtr());
 }
 
 REWRITE_DEFN(DeclResolver, MethodDecl, MemberDecl, meth,) {
+  sptr<const Type> ret_type = nullptr;
   TypeId rettid = TypeId::kUnassigned;
   if (meth.TypePtr() == nullptr) {
     // Handle constructor.
@@ -124,25 +126,29 @@ REWRITE_DEFN(DeclResolver, MethodDecl, MemberDecl, meth,) {
     rettid = curtype_;
   } else {
     // Handle method.
-    rettid = MustResolveType(*meth.TypePtr());
-    if (rettid.IsError()) {
-      return nullptr;
+    ret_type = MustResolveType(meth.TypePtr());
+    rettid = ret_type->GetTypeId();
+  }
+
+  SharedPtrVector<const Param> params;
+  vector<TypeId> paramtids;
+  for (const auto& param : meth.Params().Params()) {
+    sptr<const Type> paramType = MustResolveType(param.GetTypePtr());
+    if (paramType->GetTypeId().IsValid()) {
+      paramtids.push_back(paramType->GetTypeId());
+      params.Append(make_shared<Param>(paramType, param.Name(), param.NameToken()));
     }
   }
 
-  vector<TypeId> paramtids;
-  for (const auto& param : meth.Params().Params()) {
-    TypeId tid = MustResolveType(param.GetType());
-    if (tid.IsError()) {
-      return nullptr;
-    }
-    paramtids.push_back(tid);
+  if (!rettid.IsValid() || params.Size() < meth.Params().Params().Size()) {
+    return nullptr;
   }
 
   // TODO: put method in table keyed by (curtid_, meth.Name(), paramtids).
   // TODO: assign member id to method.
 
-  return make_shared<MethodDecl>(meth.Mods(), meth.TypePtr(), meth.Name(), meth.NameToken(), meth.ParamsPtr(), meth.BodyPtr());
+  return make_shared<MethodDecl>(meth.Mods(), ret_type, meth.Name(),
+      meth.NameToken(), make_shared<ParamList>(params), meth.BodyPtr());
 }
 
 } // namespace types

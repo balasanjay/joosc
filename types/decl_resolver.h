@@ -21,7 +21,7 @@ class DeclResolver : public ast::Visitor {
   REWRITE_DECL(CompUnit, CompUnit, args, argsptr);
 
  private:
-  ast::TypeId MustResolveType(const ast::Type& type);
+  sptr<const ast::Type> MustResolveType(sptr<const ast::Type> type);
 
   TypeInfoMapBuilder* builder_;
   const TypeSet& typeset_;

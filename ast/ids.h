@@ -32,6 +32,9 @@ struct TypeId {
   bool IsError() const {
     return base == kErrorBase;
   }
+  bool IsValid() const {
+    return !IsUnassigned() && !IsError();
+  }
 
   bool operator==(const TypeId& other) const {
     return base == other.base && ndims == other.ndims;

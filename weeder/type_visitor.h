@@ -28,7 +28,7 @@ class TypeVisitor : public ast::Visitor {
   VISIT_DECL(Param, param,);
 
   VISIT_DECL(ForStmt, stmt,);
-  VISIT_DECL(BlockStmt, stmt,);
+  VISIT_DECL(ExprStmt, stmt,);
 
  private:
   const base::FileSet* fs_;
