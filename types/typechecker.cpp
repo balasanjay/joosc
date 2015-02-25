@@ -240,6 +240,7 @@ REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
 }
 
 REWRITE_DEFN(TypeChecker, NewClassExpr, Expr, expr, ) {
+  // TODO: Lookup constructor with arg types.
   TypeId objType = MustResolveType(expr.GetType());
   return make_shared<NewClassExpr>(expr.NewToken(), expr.GetTypePtr(), expr.Lparen(), expr.Args(), expr.Rparen(), objType);
 }
