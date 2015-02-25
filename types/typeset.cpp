@@ -214,37 +214,57 @@ void TypeSetBuilder::Put(const vector<string>& ns, const string& name, base::Pos
 }
 
 TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
-  // Find duplicates.
   vector<Entry> entries(entries_);
-  stable_sort(entries.begin(), entries.end(),
-      [](const Entry& lhs, const Entry& rhs) { return lhs.name < rhs.name; });
 
-  uint start = 0;
-  uint end = 1;
-  while (start < entries.size()) {
-    if (end < entries.size() && entries[start].name == entries[end].name) {
-      ++end;
-      continue;
+  // TODO: switch types to be a set.
+  vector<string> types;
+  set<string> bad_types;
+
+  // First, we identify and strip out any duplicates.
+  {
+    using NameToPosMap = multimap<string, PosRange>;
+    using NamePos = pair<string, PosRange>;
+    NameToPosMap byname;
+    for (const auto& entry : entries) {
+      byname.insert({entry.name, entry.namepos});
     }
 
-    // Check for duplicate definitions.
-    if (end - start > 1) {
-      vector<PosRange> defs;
-      for (uint i = start; i < end; ++i) {
-        defs.push_back(entries.at(i).namepos);
+    auto cur = byname.cbegin();
+    while (cur != byname.cend()) {
+      // The range [start, end) is meant to track a range of duplicate entries.
+      auto start = cur;
+      auto end = std::next(start);
+      int ndups = 1;
+
+      while (end != byname.cend() && start->first == end->first) {
+        ++ndups;
+        ++end;
       }
-      out->Append(MakeDuplicateTypeDefinitionError(fs, entries[start].name, defs));
-    }
 
-    start = end;
-    ++end;
+      // Immediately advance our outer iterator past the relevant range, so
+      // that we can't forget to do it later.
+      cur = end;
+
+      if (ndups == 1) {
+        types.push_back(start->first);
+        continue;
+      }
+      assert(ndups > 1);
+
+      vector<PosRange> defs;
+      for (auto dup = start; dup != end; ++dup) {
+        defs.push_back(dup->second);
+      }
+
+      out->Append(MakeDuplicateTypeDefinitionError(fs, start->first, defs));
+      bad_types.insert(start->first);
+    }
   }
 
-  vector<string> qualifiedNames;
-  transform(entries.begin(), entries.end(), back_inserter(qualifiedNames),
-      [](const Entry& e) { return e.name; });
+  // TODO: Check other restrictions, like having a type be a proper prefix of a
+  // package.
 
-  return TypeSet(fs, qualifiedNames, {});
+  return TypeSet(fs, types, bad_types);
 }
 
 } // namespace types
