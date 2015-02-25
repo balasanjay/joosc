@@ -58,31 +58,30 @@ Error* MakeDuplicateTypeDefinitionError(const FileSet* fs, const string& name, c
 
 } // namespace
 
-TypeSet TypeSet::kEmptyTypeSet(&FileSet::Empty(), {});
+TypeSet TypeSet::kEmptyTypeSet(&FileSet::Empty(), {}, {});
 
-TypeSet::TypeSet(const FileSet* fs, const vector<string>& qualifiedTypes) : fs_(fs) {
-  // Get list of all types.
-  vector<string> predefs = {
-    "<unassigned>",
-    "<error>",
-    "<null>",
-    "void",
-    "boolean",
-    "byte",
-    "char",
-    "short",
-    "int",
-  };
+TypeSet::TypeSet(const FileSet* fs, const vector<string>& types, const set<string>& bad_types) : fs_(fs) {
+  // Insert all predefined types.
+  original_names_["void"] = TypeId::kVoidBase;
+  original_names_["boolean"] = TypeId::kBoolBase;
+  original_names_["byte"] = TypeId::kByteBase;
+  original_names_["char"] = TypeId::kCharBase;
+  original_names_["short"] = TypeId::kShortBase;
+  original_names_["int"] = TypeId::kIntBase;
 
-  u64 i = 0;
-  for (const auto& predef : predefs) {
-    original_names_[predef] = TypeId::Base(i);
+  u64 i = TypeId::kFirstRefTypeBase;
+  for (const auto& type : types) {
+    auto result = original_names_.insert(make_pair(type, TypeId::Base(i)));
     i++;
+
+    // Verify that we didn't overwrite a key.
+    assert(result.second);
   }
 
-  for (const auto& qualifiedType : qualifiedTypes) {
-    original_names_[qualifiedType] = TypeId::Base(i);
-    i++;
+  for (const auto& bad_type : bad_types) {
+    auto result = original_names_.insert(make_pair(bad_type, TypeId::kError.base));
+    // Verify that we didn't overwrite a key.
+    assert(result.second);
   }
 
   available_names_ = original_names_;
@@ -92,7 +91,7 @@ TypeId TypeSet::Get(const vector<string>& qualifiedname) const {
   u64 typelen = -1;
   TypeId ret = GetPrefix(qualifiedname, &typelen);
   if ((uint)typelen < qualifiedname.size() || ret.base == TypeId::kErrorBase) {
-    return TypeId::kError;
+    return TypeId::kUnassigned;
   }
   return ret;
 }
@@ -126,7 +125,7 @@ TypeId TypeSet::GetPrefix(const vector<string>& qualifiedname, u64* typelen) con
     return TypeId{iter->second, 0};
   }
 
-  return TypeId::kError;
+  return TypeId::kUnassigned;
 }
 
 void TypeSet::InsertName(QualifiedNameBaseMap* m, string name, TypeId::Base base) {
@@ -245,7 +244,7 @@ TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
   transform(entries.begin(), entries.end(), back_inserter(qualifiedNames),
       [](const Entry& e) { return e.name; });
 
-  return TypeSet(fs, qualifiedNames);
+  return TypeSet(fs, qualifiedNames, {});
 }
 
 } // namespace types
