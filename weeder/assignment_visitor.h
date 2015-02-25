@@ -14,7 +14,7 @@ class AssignmentVisitor : public ast::Visitor {
   AssignmentVisitor(const base::FileSet* fs, base::ErrorList* errors)
       : fs_(fs), errors_(errors) {}
 
-  VISIT_DECL(BinExpr, expr);
+  VISIT_DECL(BinExpr, expr,);
 
  private:
   const base::FileSet* fs_;
