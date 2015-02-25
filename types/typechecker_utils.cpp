@@ -14,13 +14,25 @@ namespace types {
 
 sptr<const Type> TypeChecker::MustResolveType(sptr<const Type> type) {
   PosRange pos(-1, -1, -1);
+
   sptr<const Type> ret = ResolveType(type, typeset_, &pos);
+  assert(ret != nullptr);
+
   if (ret->GetTypeId().IsValid()) {
     return ret;
   }
 
-  errors_->Append(MakeUnknownTypenameError(fs_, pos));
+  // If this is blacklisted type, then we don't want to emit an error about. So
+  // we only do that if its unassigned. In any case, return null, so that we
+  // prune appropriate nodes.
+  if (ret->GetTypeId().IsUnassigned()) {
+    errors_->Append(MakeUnknownTypenameError(fs_, pos));
+  }
   return nullptr;
+}
+
+TypeId TypeChecker::JavaLangType(const string& name) const {
+  return typeset_.Get({"java", "lang", name});
 }
 
 bool TypeChecker::IsNumeric(TypeId tid) const {

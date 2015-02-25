@@ -33,7 +33,7 @@ namespace types {
 sptr<const Type> DeclResolver::MustResolveType(sptr<const Type> type) {
   PosRange pos(-1, -1, -1);
   sptr<const Type> ret = ResolveType(type, typeset_, &pos);
-  if (ret->GetTypeId().IsError()) {
+  if (ret->GetTypeId().IsUnassigned()) {
     errors_->Append(MakeUnknownTypenameError(fs_, pos));
   }
   return ret;
@@ -64,7 +64,7 @@ REWRITE_DEFN(DeclResolver, TypeDecl, TypeDecl, type, ) {
   classname.push_back(type.Name());
 
   TypeId curtid = typeset_.Get(classname);
-  if (curtid.IsError()) {
+  if (!curtid.IsValid()) {
     return nullptr;
   }
 
