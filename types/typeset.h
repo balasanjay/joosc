@@ -13,6 +13,8 @@ namespace types {
 
 class TypeSet {
 public:
+  TypeSet(const TypeSet&) = default;
+
   static const TypeSet& Empty() {
     return kEmptyTypeSet;
   }
@@ -43,8 +45,7 @@ public:
   friend class TypeSetBuilder;
   using QualifiedNameBaseMap = std::map<string, ast::TypeId::Base>;
 
-  TypeSet() = default;
-  TypeSet(const vector<string>& qualifiedTypes);
+  TypeSet(const base::FileSet* fs, const vector<string>& qualifiedTypes);
 
   static void InsertName(QualifiedNameBaseMap* m, string name, ast::TypeId::Base base);
 
@@ -52,6 +53,8 @@ public:
   void InsertWildcardImport(const string& base);
 
   static TypeSet kEmptyTypeSet;
+
+  const base::FileSet* fs_;
 
   // Changed depending on provided Imports.
   QualifiedNameBaseMap available_names_;

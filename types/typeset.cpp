@@ -58,9 +58,9 @@ Error* MakeDuplicateTypeDefinitionError(const FileSet* fs, const string& name, c
 
 } // namespace
 
-TypeSet TypeSet::kEmptyTypeSet = TypeSet(vector<string>{});
+TypeSet TypeSet::kEmptyTypeSet(&FileSet::Empty(), {});
 
-TypeSet::TypeSet(const vector<string>& qualifiedTypes) {
+TypeSet::TypeSet(const FileSet* fs, const vector<string>& qualifiedTypes) : fs_(fs) {
   // Get list of all types.
   vector<string> predefs = {
     "<unassigned>",
@@ -149,7 +149,7 @@ void TypeSet::InsertName(QualifiedNameBaseMap* m, string name, TypeId::Base base
 
 
 TypeSet TypeSet::WithImports(const vector<ast::ImportDecl>& imports, const FileSet* fs, ErrorList* errors) const {
-  TypeSet view;
+  TypeSet view(*this);
   view.original_names_ = original_names_;
   view.available_names_ = available_names_;
 
@@ -245,7 +245,7 @@ TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
   transform(entries.begin(), entries.end(), back_inserter(qualifiedNames),
       [](const Entry& e) { return e.name; });
 
-  return TypeSet(qualifiedNames);
+  return TypeSet(fs, qualifiedNames);
 }
 
 } // namespace types
