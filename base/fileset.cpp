@@ -7,6 +7,8 @@ using std::sort;
 
 namespace base {
 
+FileSet FileSet::kEmptyFileSet({});
+
 bool FileSet::Builder::Build(FileSet** fs, ErrorList* errors) const {
   // TODO: for assignment 2+, we should report *which* file fails to load,
   // rather than just returning false.
