@@ -70,6 +70,7 @@ struct PosRange {
       : fileid(fileid), begin(begin), end(end){};
   PosRange(const Pos& pos)
       : fileid(pos.fileid), begin(pos.index), end(pos.index + 1) {}
+  PosRange() = default;
 
   bool operator==(const PosRange& other) const {
     return fileid == other.fileid && begin == other.begin && end == other.end;
