@@ -12,13 +12,15 @@ using base::PosRange;
 
 namespace types {
 
-TypeId TypeChecker::MustResolveType(const Type& type) {
+sptr<const Type> TypeChecker::MustResolveType(sptr<const Type> type) {
   PosRange pos(-1, -1, -1);
-  TypeId tid = ResolveType(type, typeset_, &pos);
-  if (tid.IsError()) {
-    errors_->Append(MakeUnknownTypenameError(fs_, pos));
+  sptr<const Type> ret = ResolveType(type, typeset_, &pos);
+  if (ret->GetTypeId().IsValid()) {
+    return ret;
   }
-  return tid;
+
+  errors_->Append(MakeUnknownTypenameError(fs_, pos));
+  return nullptr;
 }
 
 bool TypeChecker::IsNumeric(TypeId tid) const {

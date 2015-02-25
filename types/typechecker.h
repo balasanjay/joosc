@@ -78,7 +78,7 @@ class TypeChecker final : public ast::Visitor {
         belowTypeDecl_(belowTypeDecl), curtype_(curtype),
         belowMethodDecl_(belowMethodDecl), curMethRet_(curMethRet) {}
 
-  ast::TypeId MustResolveType(const ast::Type& type);
+  sptr<const ast::Type> MustResolveType(sptr<const ast::Type> type);
   bool IsNumeric(ast::TypeId tid) const;
   bool IsPrimitive(ast::TypeId tid) const;
   bool IsReference(ast::TypeId tid) const;
