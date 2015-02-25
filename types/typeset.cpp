@@ -90,7 +90,7 @@ TypeSet::TypeSet(const FileSet* fs, const set<string>& types, const set<string>&
 TypeId TypeSet::Get(const vector<string>& qualifiedname) const {
   u64 typelen = -1;
   TypeId ret = GetPrefix(qualifiedname, &typelen);
-  if ((uint)typelen < qualifiedname.size() || ret.base == TypeId::kErrorBase) {
+  if ((uint)typelen < qualifiedname.size()) {
     return TypeId::kUnassigned;
   }
   return ret;
