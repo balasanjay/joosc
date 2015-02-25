@@ -290,11 +290,45 @@ TEST_F(TypeCheckerTest, UnaryExprNotIsBool) {
   EXPECT_EQ(TypeId::kBool, after->GetTypeId());
 }
 
-// TODO: BlockStmt
+TEST_F(TypeCheckerTest, BlockStmtGood) {
+  const auto insideType = TypeId{100, 0};
+  sptr<const Stmt> before = ParseStmt("{int a=1;if(true)a=2;return 2;}");
+  TypeChecker typeChecker = (*typeChecker_)
+    .InsideCompUnit(nullptr)
+    .InsideTypeDecl(insideType)
+    .InsideMethodDecl(TypeId::kInt);
+  auto after = typeChecker.Rewrite(before);
+  EXPECT_NO_ERRS();
+}
 
-// TODO: EmptyStmt
+TEST_F(TypeCheckerTest, BlockStmtBad) {
+  const auto insideType = TypeId{100, 0};
+  sptr<const Stmt> before = ParseStmt("{int a=1;if(1<true)a=2;return 2;}");
+  TypeChecker typeChecker = (*typeChecker_)
+    .InsideCompUnit(nullptr)
+    .InsideTypeDecl(insideType)
+    .InsideMethodDecl(TypeId::kInt);
+  auto after = typeChecker.Rewrite(before);
+  EXPECT_ERRS("TypeMismatchError(0:14-18)\n");
+}
 
-// TODO: ExprStmt
+TEST_F(TypeCheckerTest, EmptyStmt) {
+  sptr<const Stmt> before = ParseStmt(";");
+  auto after = typeChecker_->Rewrite(before);
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, ExprStmt) {
+  sptr<const Stmt> before = ParseStmt("{int i=0; i=1;}");
+  auto after = typeChecker_->Rewrite(before);
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, ExprStmtFail) {
+  sptr<const Stmt> before = ParseStmt("{int i=0; i=1+false;}");
+  auto after = typeChecker_->Rewrite(before);
+  EXPECT_ERRS("TypeMismatchError(0:14-19)\n");
+}
 
 TEST_F(TypeCheckerTest, ForStmtInitError) {
   sptr<const Stmt> before = ParseStmt("for (boolean i = 1; 1 < 2;);");
