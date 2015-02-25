@@ -268,6 +268,9 @@ REWRITE_DEFN(TypeChecker, StringLitExpr, Expr, expr,) {
 }
 
 REWRITE_DEFN(TypeChecker, ThisExpr, Expr, expr,) {
+  // TODO: this should only work in an instance context. i.e. we should only
+  // populate curtype_ when entering a non-static method, or a non-static field
+  // initializer.
   return make_shared<ThisExpr>(expr.ThisToken(), curtype_);
 }
 
