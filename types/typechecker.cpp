@@ -174,14 +174,7 @@ REWRITE_DEFN(TypeChecker, CastExpr, Expr, expr, exprptr) {
     return nullptr;
   }
 
-  if ((IsPrimitive(castType) && IsReference(exprType)) ||
-      (IsReference(castType) && IsPrimitive(exprType))) {
-    errors_->Append(MakeIncompatibleCastError(castType, exprType, ExtentOf(exprptr)));
-    return nullptr;
-  }
-
-  // If either way is assignable, then this is allowed. Simplification for Joos.
-  if (!IsAssignable(castType, exprType) && !IsAssignable(exprType, castType)) {
+  if (!IsCastable(castType, exprType)) {
     errors_->Append(MakeIncompatibleCastError(castType, exprType, ExtentOf(exprptr)));
     return nullptr;
   }
@@ -212,8 +205,7 @@ REWRITE_DEFN(TypeChecker, InstanceOfExpr, Expr, expr, exprptr) {
     return nullptr;
   }
 
-  // If either way is assignable, then this is allowed. Simplification for Joos.
-  if (!IsAssignable(lhsType, instanceOfType) && !IsAssignable(instanceOfType, lhsType)) {
+  if (!IsCastable(instanceOfType, lhsType)) {
     errors_->Append(MakeIncompatibleInstanceOfError(lhsType, instanceOfType, ExtentOf(exprptr)));
     return nullptr;
   }
@@ -247,7 +239,10 @@ REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
   return make_shared<NewArrayExpr>(expr.NewToken(), expr.GetTypePtr(), expr.Lbrack(), index, expr.Rbrack(), TypeId{tid.base, tid.ndims + 1});
 }
 
-// TODO: NewClassExpr
+REWRITE_DEFN(TypeChecker, NewClassExpr, Expr, expr, ) {
+  TypeId objType = MustResolveType(expr.GetType());
+  return make_shared<NewClassExpr>(expr.NewToken(), expr.GetTypePtr(), expr.Lparen(), expr.Args(), expr.Rparen(), objType);
+}
 
 REWRITE_DEFN(TypeChecker, NullLitExpr, Expr, expr, ) {
   return make_shared<NullLitExpr>(expr.GetToken(), TypeId::kNull);

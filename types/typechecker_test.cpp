@@ -1,5 +1,7 @@
 #include "types/typechecker.h"
 
+#include "base/file.h"
+#include "ast/ids.h"
 #include "lexer/lexer.h"
 #include "parser/parser_internal.h"
 #include "third_party/gtest/gtest.h"
@@ -8,6 +10,7 @@ using namespace ast;
 
 using base::ErrorList;
 using base::Pos;
+using base::PosRange;
 using lexer::Token;
 using parser::internal::Result;
 
@@ -183,7 +186,57 @@ TEST_F(TypeCheckerTest, BoolLitExpr) {
 
 // TODO: CallExpr
 
-// TODO: CastExpr
+TEST_F(TypeCheckerTest, CastExprPrimitives) {
+  sptr<const Expr> before = ParseExpr("(int)1");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(TypeId::kInt, after->GetTypeId());
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, CastExprReferenceType) {
+  TypeSetBuilder tsb;
+  tsb.Put({}, "Foo", PosRange(-1, -1, -1));
+  TypeSet ts = tsb.Build(fs_.get(), &errors_);
+  TypeId fooId = ts.Get({"Foo"});
+  EXPECT_NO_ERRS();
+  EXPECT_NE(ast::TypeId::kUnassigned, fooId);
+
+  sptr<const Expr> before = ParseExpr("(Foo)new Foo()");
+  sptr<const Expr> after = typeChecker_->WithTypeSet(ts).Rewrite(before);
+
+  ASSERT_NE(nullptr, after);
+  EXPECT_EQ(fooId, after->GetTypeId());
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, CastExprPrimitiveToRef) {
+  TypeSetBuilder tsb;
+  tsb.Put({}, "Foo", PosRange(-1, -1, -1));
+  TypeSet ts = tsb.Build(fs_.get(), &errors_);
+  TypeId fooId = ts.Get({"Foo"});
+  EXPECT_NO_ERRS();
+  EXPECT_NE(ast::TypeId::kUnassigned, fooId);
+
+  sptr<const Expr> before = ParseExpr("(Foo)2");
+  sptr<const Expr> after = typeChecker_->WithTypeSet(ts).Rewrite(before);
+
+  EXPECT_ERRS("IncompatibleCastError(0:0-6)\n");
+}
+
+TEST_F(TypeCheckerTest, CastExprRefToPrimitive) {
+  TypeSetBuilder tsb;
+  tsb.Put({}, "Foo", PosRange(-1, -1, -1));
+  TypeSet ts = tsb.Build(fs_.get(), &errors_);
+  TypeId fooId = ts.Get({"Foo"});
+  EXPECT_NO_ERRS();
+  EXPECT_NE(ast::TypeId::kUnassigned, fooId);
+
+  sptr<const Expr> before = ParseExpr("(int)new Foo()");
+  sptr<const Expr> after = typeChecker_->WithTypeSet(ts).Rewrite(before);
+
+  EXPECT_ERRS("IncompatibleCastError(0:0-14)\n");
+}
 
 TEST_F(TypeCheckerTest, CharLitExpr) {
   sptr<const Expr> before = ParseExpr("'0'");
@@ -209,7 +262,20 @@ TEST_F(TypeCheckerTest, IntLitExpr) {
 
 // TODO: NewArrayExpr
 
-// TODO: NewClassExpr
+TEST_F(TypeCheckerTest, NewClassExpr) {
+  TypeSetBuilder tsb;
+  tsb.Put({}, "Foo", PosRange(-1, -1, -1));
+  TypeSet ts = tsb.Build(fs_.get(), &errors_);
+  TypeId fooId = ts.Get({"Foo"});
+  EXPECT_NO_ERRS();
+  EXPECT_NE(ast::TypeId::kUnassigned, fooId);
+
+  sptr<const Expr> before = ParseExpr("new Foo()");
+  auto after = typeChecker_->WithTypeSet(ts).Rewrite(before);
+
+  EXPECT_EQ(fooId, after->GetTypeId());
+  EXPECT_NO_ERRS();
+}
 
 TEST_F(TypeCheckerTest, NullLitExpr) {
   sptr<const Expr> before = ParseExpr("null");
@@ -402,5 +468,17 @@ TEST_F(TypeCheckerTest, WhileStmtOk) {
 
 // TODO: CompUnit
 
+
+TEST(TypeCheckerUtilTest, IsCastablePrimitives) {
+  auto numTids = {TypeId::kInt, TypeId::kChar, TypeId::kShort, TypeId::kByte};
+  for (TypeId tidA : numTids) {
+    for (TypeId tidB : numTids) {
+      EXPECT_TRUE(TypeChecker::IsCastable(tidA, tidB));
+    }
+  }
+  EXPECT_TRUE(TypeChecker::IsCastable(TypeId::kBool, TypeId::kBool));
+}
+
+// TODO: TEST(TypeCheckerUtilTest, IsCastableReference) - with inheritance.
 
 }  // namespace types

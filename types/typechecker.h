@@ -40,6 +40,16 @@ class TypeChecker final : public ast::Visitor {
     return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package_, true, curtype_, true, curMethRet);
   }
 
+  static bool IsNumeric(ast::TypeId tid);
+  static bool IsPrimitive(ast::TypeId tid);
+  static bool IsReference(ast::TypeId tid);
+  static bool IsPrimitiveWidening(ast::TypeId lhs, ast::TypeId rhs);
+  static bool IsReferenceWidening(ast::TypeId lhs, ast::TypeId rhs);
+  static bool IsPrimitiveNarrowing(ast::TypeId lhs, ast::TypeId rhs);
+  static bool IsAssignable(ast::TypeId lhs, ast::TypeId rhs);
+  static bool IsCastable(ast::TypeId lhs, ast::TypeId rhs);
+  static bool IsComparable(ast::TypeId lhs, ast::TypeId rhs);
+
   REWRITE_DECL(ArrayIndexExpr, Expr, expr, exprptr);
   REWRITE_DECL(BinExpr, Expr, expr, exprptr);
   REWRITE_DECL(BoolLitExpr, Expr, expr, exprptr);
@@ -53,6 +63,7 @@ class TypeChecker final : public ast::Visitor {
   REWRITE_DECL(StringLitExpr, Expr, expr, exprptr);
   REWRITE_DECL(ThisExpr, Expr, expr, exprptr);
   REWRITE_DECL(UnaryExpr, Expr, expr, exprptr);
+  REWRITE_DECL(NewClassExpr, Expr, expr, exprptr);
 
   REWRITE_DECL(ForStmt, Stmt, stmt, stmtptr);
   REWRITE_DECL(IfStmt, Stmt, stmt, stmtptr);
@@ -79,13 +90,6 @@ class TypeChecker final : public ast::Visitor {
         belowMethodDecl_(belowMethodDecl), curMethRet_(curMethRet) {}
 
   ast::TypeId MustResolveType(const ast::Type& type);
-  bool IsNumeric(ast::TypeId tid) const;
-  bool IsPrimitive(ast::TypeId tid) const;
-  bool IsReference(ast::TypeId tid) const;
-  bool IsPrimitiveWidening(ast::TypeId lhs, ast::TypeId rhs) const;
-  bool IsReferenceWidening(ast::TypeId lhs, ast::TypeId rhs) const;
-  bool IsAssignable(ast::TypeId lhs, ast::TypeId rhs) const;
-  bool IsComparable(ast::TypeId lhs, ast::TypeId rhs) const;
 
   base::Error* MakeTypeMismatchError(ast::TypeId expected, ast::TypeId got, base::PosRange pos);
   base::Error* MakeIndexNonArrayError(base::PosRange pos);

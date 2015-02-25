@@ -363,8 +363,8 @@ class CastExpr : public Expr {
 
 class NewClassExpr : public Expr {
  public:
-  NewClassExpr(lexer::Token newTok, sptr<const Type> type, lexer::Token lparen, const base::SharedPtrVector<const Expr>& args, lexer::Token rparen)
-      : newTok_(newTok), type_(type), lparen_(lparen), args_(args), rparen_(rparen) {}
+  NewClassExpr(lexer::Token newTok, sptr<const Type> type, lexer::Token lparen, const base::SharedPtrVector<const Expr>& args, lexer::Token rparen, TypeId tid = TypeId::kUnassigned)
+      : Expr(tid), newTok_(newTok), type_(type), lparen_(lparen), args_(args), rparen_(rparen) {}
 
   ACCEPT_VISITOR(NewClassExpr, Expr);
 
