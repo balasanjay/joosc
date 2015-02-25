@@ -60,7 +60,7 @@ Error* MakeDuplicateTypeDefinitionError(const FileSet* fs, const string& name, c
 
 TypeSet TypeSet::kEmptyTypeSet(&FileSet::Empty(), {}, {});
 
-TypeSet::TypeSet(const FileSet* fs, const vector<string>& types, const set<string>& bad_types) : fs_(fs) {
+TypeSet::TypeSet(const FileSet* fs, const set<string>& types, const set<string>& bad_types) : fs_(fs) {
   // Insert all predefined types.
   original_names_["void"] = TypeId::kVoidBase;
   original_names_["boolean"] = TypeId::kBoolBase;
@@ -216,8 +216,7 @@ void TypeSetBuilder::Put(const vector<string>& ns, const string& name, base::Pos
 TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
   vector<Entry> entries(entries_);
 
-  // TODO: switch types to be a set.
-  vector<string> types;
+  set<string> types;
   set<string> bad_types;
 
   // First, we identify and strip out any duplicates.
@@ -246,7 +245,7 @@ TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
       cur = end;
 
       if (ndups == 1) {
-        types.push_back(start->first);
+        types.insert(start->first);
         continue;
       }
       assert(ndups > 1);

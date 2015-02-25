@@ -55,7 +55,7 @@ public:
   friend class TypeSetBuilder;
   using QualifiedNameBaseMap = std::map<string, ast::TypeId::Base>;
 
-  TypeSet(const base::FileSet* fs, const vector<string>& types, const set<string>& bad_types);
+  TypeSet(const base::FileSet* fs, const set<string>& types, const set<string>& bad_types);
 
   static void InsertName(QualifiedNameBaseMap* m, string name, ast::TypeId::Base base);
 
