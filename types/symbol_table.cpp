@@ -67,8 +67,8 @@ pair<TypeId, LocalVarId> SymbolTable::ResolveLocal(const string& name, PosRange 
   auto findParam = params_.find(name);
   if (findVar != cur_symbols_.end()) {
     var = &findVar->second;
-  } else if (var == nullptr && findParam != params_.end()) {
-    var = &findVar->second;
+  } else if (findParam != params_.end()) {
+    var = &findParam->second;
   } else {
     errors->Append(MakeUndefinedReferenceError(name, nameRange));
     return make_pair(TypeId::kUnassigned, kVarUnassigned);
