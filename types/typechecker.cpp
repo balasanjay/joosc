@@ -5,6 +5,7 @@
 #include "base/error.h"
 #include "base/macros.h"
 #include "types/types_internal.h"
+#include "types/symbol_table.h"
 
 using namespace ast;
 
@@ -215,11 +216,16 @@ REWRITE_DEFN(TypeChecker, InstanceOfExpr, Expr, expr, exprptr) {
   return make_shared<InstanceOfExpr>(lhs, expr.InstanceOf(), rhs, TypeId::kBool);
 }
 
-REWRITE_DEFN(TypeChecker, IntLitExpr, Expr, expr, ) {
+REWRITE_DEFN(TypeChecker, IntLitExpr, Expr, expr,) {
   return make_shared<IntLitExpr>(expr.GetToken(), expr.Value(), TypeId::kInt);
 }
 
-// TODO: NameExpr
+REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr,) {
+  // TODO: Name resolution rules.
+  pair<TypeId, ast::LocalVarId> varData = symbol_table_.ResolveLocal(
+      expr.Name().Name(), expr.Name().Tokens()[0].pos, errors_);
+  return make_shared<NameExpr>(expr.Name(), varData.second, varData.first);
+}
 
 REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
   sptr<const Type> elemtype = MustResolveType(expr.GetTypePtr());
@@ -297,7 +303,25 @@ REWRITE_DEFN(TypeChecker, UnaryExpr, Expr, expr, exprptr) {
   return make_shared<UnaryExpr>(expr.Op(), rhs, TypeId::kBool);
 }
 
+REWRITE_DEFN(TypeChecker, BlockStmt, Stmt, stmt, stmtptr) {
+  bool stmtsChanged = false;
+  SharedPtrVector<const Stmt> newStmts;
+  {
+    ScopeGuard s(&symbol_table_);
+    newStmts = AcceptMulti(stmt.Stmts(), &stmtsChanged);
+  }
+
+  if (!stmtsChanged) {
+    return stmtptr;
+  }
+
+  return make_shared<BlockStmt>(newStmts);
+}
+
 REWRITE_DEFN(TypeChecker, ForStmt, Stmt, stmt,) {
+  // Enter scope for decls in for init.
+  ScopeGuard s(&symbol_table_);
+
   sptr<const Stmt> init = Rewrite(stmt.InitPtr());
 
   sptr<const Expr> cond = nullptr;
@@ -356,9 +380,10 @@ REWRITE_DEFN(TypeChecker, LocalDeclStmt, Stmt, stmt,) {
     return nullptr;
   }
 
-  // TODO: put into symbol table, and assign local variable id.
+  pair<TypeId, LocalVarId> varData = symbol_table_.DeclareLocal(type->GetTypeId(), stmt.Name(), stmt.NameToken().pos, errors_);
+  // TODO: Do something on duplicate var declaration error? duplicate we can just continue type checking and ignore the error...
 
-  return make_shared<LocalDeclStmt>(type, stmt.Name(), stmt.NameToken(), expr);
+  return make_shared<LocalDeclStmt>(type, stmt.Name(), stmt.NameToken(), expr, varData.second);
 }
 
 REWRITE_DEFN(TypeChecker, ReturnStmt, Stmt, stmt,) {
@@ -443,7 +468,7 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
     assert(!rettype.IsError());
   }
 
-  TypeChecker below = InsideMethodDecl(rettype);
+  TypeChecker below = InsideMethodDecl(rettype, decl.Params());
   return below.Rewrite(declptr);
 }
 

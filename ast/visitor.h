@@ -70,7 +70,7 @@ protected:
   FOR_EACH_VISITABLE(_VISIT_DECL)
 #undef _VISIT_DECL
 
-private:
+protected:
   template <typename T>
   base::SharedPtrVector<const T> AcceptMulti(const base::SharedPtrVector<const T>& oldVec, bool* changed_out) {
     base::SharedPtrVector<const T> newVec;

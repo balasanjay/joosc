@@ -8,12 +8,8 @@
 
 namespace types {
 
-using LocalVarId = u64;
-const LocalVarId kVarUnassigned = 0;
-const LocalVarId kVarFirst = 100;
-
 struct VariableInfo {
-  LocalVarId vid;
+  ast::LocalVarId vid;
   ast::TypeId tid;
   string name;
   base::PosRange posRange;
@@ -23,11 +19,13 @@ class SymbolTable {
 public:
   SymbolTable(const base::FileSet* fs, const TypeIdList& paramTids, const vector<string>& paramNames, const vector<base::PosRange>& ranges);
 
+  static SymbolTable empty;
+
   void EnterScope();
   void LeaveScope();
 
-  pair<ast::TypeId, LocalVarId> DeclareLocal(ast::TypeId tid, const string& name, base::PosRange nameRange, base::ErrorList* errors);
-  pair<ast::TypeId, LocalVarId> ResolveLocal(const string& name, base::PosRange nameRange, base::ErrorList* errors) const;
+  pair<ast::TypeId, ast::LocalVarId> DeclareLocal(ast::TypeId tid, const string& name, base::PosRange nameRange, base::ErrorList* errors);
+  pair<ast::TypeId, ast::LocalVarId> ResolveLocal(const string& name, base::PosRange nameRange, base::ErrorList* errors) const;
 
 private:
   base::Error* MakeUndefinedReferenceError(string varName, base::PosRange nameRange) const;
@@ -38,7 +36,7 @@ private:
   std::map<string, VariableInfo> cur_symbols_; // Doesn't include params.
   vector<string> cur_scope_;
   vector<vector<string>> scopes_;
-  LocalVarId var_id_counter_;
+  ast::LocalVarId var_id_counter_;
 };
 
 struct ScopeGuard {
@@ -52,7 +50,6 @@ public:
 private:
   SymbolTable* table_;
 };
-
 
 } // namespace types
 

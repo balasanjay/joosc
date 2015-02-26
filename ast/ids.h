@@ -47,6 +47,10 @@ struct TypeId {
   u64 ndims;
 };
 
+using LocalVarId = u64;
+const LocalVarId kVarUnassigned = 0;
+const LocalVarId kVarFirst = 100;
+
 } // namespace ast
 
 #endif

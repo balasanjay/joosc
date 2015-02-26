@@ -5,10 +5,15 @@
 
 namespace types {
 
+using ast::LocalVarId;
+using ast::kVarUnassigned;
+using ast::kVarFirst;
 using ast::Type;
 using ast::TypeId;
 using base::PosRange;
 using base::ErrorList;
+
+SymbolTable SymbolTable::empty(nullptr, {}, {}, {});
 
 SymbolTable::SymbolTable(const base::FileSet* fs, const TypeIdList& paramTids, const vector<string>& paramNames, const vector<PosRange>& ranges): fs_(fs) {
   const u64 num_params = paramTids.Size();
@@ -32,7 +37,7 @@ pair<TypeId, LocalVarId> SymbolTable::DeclareLocal(ast::TypeId tid, const string
   if (previousDef != cur_symbols_.end()) {
     VariableInfo varInfo = previousDef->second;
     errors->Append(MakeDuplicateVarDeclError(name, nameRange, varInfo.posRange));
-    return make_pair(TypeId::kUnassigned, kVarUnassigned);
+    return make_pair(varInfo.tid, varInfo.vid);
   }
 
   // Add new variable to current scope.
@@ -90,6 +95,8 @@ base::Error* SymbolTable::MakeUndefinedReferenceError(string varName, PosRange v
 }
 
 base::Error* SymbolTable::MakeDuplicateVarDeclError(string varName, PosRange varRange, PosRange originalVarRange) const {
+  // This lambda will outlive this instance of SymbolTable. Capture local copy of fs_.
+  const base::FileSet* fs = fs_;
   return base::MakeError([=](std::ostream* out, const base::OutputOptions& opt) {
     if (opt.simple) {
       *out << "DuplicateVarDeclError(";
@@ -103,11 +110,11 @@ base::Error* SymbolTable::MakeDuplicateVarDeclError(string varName, PosRange var
     stringstream msgstream;
     msgstream << "Local variable '" << varName << "' was declared multiple times.";
 
-    PrintDiagnosticHeader(out, opt, fs_, varRange, base::DiagnosticClass::ERROR, msgstream.str());
-    PrintRangePtr(out, opt, fs_, varRange);
+    PrintDiagnosticHeader(out, opt, fs, varRange, base::DiagnosticClass::ERROR, msgstream.str());
+    PrintRangePtr(out, opt, fs, varRange);
     *out << '\n';
-    PrintDiagnosticHeader(out, opt, fs_, originalVarRange, base::DiagnosticClass::INFO, "Previously declared here.");
-    PrintRangePtr(out, opt, fs_, varRange);
+    PrintDiagnosticHeader(out, opt, fs, originalVarRange, base::DiagnosticClass::INFO, "Previously declared here.");
+    PrintRangePtr(out, opt, fs, varRange);
   });
 }
 

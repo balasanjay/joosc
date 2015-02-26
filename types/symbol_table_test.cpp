@@ -6,6 +6,7 @@
 using base::ErrorList;
 using base::PosRange;
 using ast::TypeId;
+using ast::kVarUnassigned;
 using lexer::Token;
 
 #define EXPECT_ERRS(msg) EXPECT_EQ(msg, testing::PrintToString(errors_))
