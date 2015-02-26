@@ -5,8 +5,10 @@
 
 namespace types {
 
+using ast::Type;
 using ast::TypeId;
 using base::PosRange;
+using base::ErrorList;
 
 SymbolTable::SymbolTable(const base::FileSet* fs, const TypeIdList& paramTids, const vector<string>& paramNames, const vector<PosRange>& ranges): fs_(fs) {
   const u64 num_params = paramTids.Size();
@@ -24,17 +26,16 @@ SymbolTable::SymbolTable(const base::FileSet* fs, const TypeIdList& paramTids, c
   }
 }
 
-pair<TypeId, LocalVarId> SymbolTable::DeclareLocal(const ast::Type& type, const string& name, PosRange nameRange, base::ErrorList* errors) {
+pair<TypeId, LocalVarId> SymbolTable::DeclareLocal(ast::TypeId tid, const string& name, PosRange nameRange, ErrorList* errors) {
   // Check if already defined (not as a parameter).
   auto previousDef = cur_symbols_.find(name);
-  if (previousDef == cur_symbols_.end()) {
+  if (previousDef != cur_symbols_.end()) {
     VariableInfo varInfo = previousDef->second;
     errors->Append(MakeDuplicateVarDeclError(name, nameRange, varInfo.posRange));
     return make_pair(TypeId::kUnassigned, kVarUnassigned);
   }
 
   // Add new variable to current scope.
-  TypeId tid = type.GetTypeId();
   VariableInfo varInfo = VariableInfo{
     var_id_counter_,
     tid,
@@ -46,7 +47,7 @@ pair<TypeId, LocalVarId> SymbolTable::DeclareLocal(const ast::Type& type, const 
   return make_pair(tid, varInfo.vid);
 }
 
-pair<TypeId, LocalVarId> SymbolTable::ResolveLocal(const string& name, PosRange nameRange, base::ErrorList* errors) const {
+pair<TypeId, LocalVarId> SymbolTable::ResolveLocal(const string& name, PosRange nameRange, ErrorList* errors) const {
   // First check local vars (non-params).
   const VariableInfo* var = nullptr;
   auto findVar = cur_symbols_.end();
@@ -71,13 +72,13 @@ void SymbolTable::EnterScope() {
 }
 
 void SymbolTable::LeaveScope() {
-  vector<string> leaving_scope = scopes_.back();
-  scopes_.pop_back();
-  for (string varName : leaving_scope) {
+  for (string varName : cur_scope_) {
     auto found = cur_symbols_.find(varName);
     assert(found != cur_symbols_.end());
     cur_symbols_.erase(found);
   }
+  cur_scope_ = scopes_.back();
+  scopes_.pop_back();
 }
 
 base::Error* SymbolTable::MakeUndefinedReferenceError(string varName, PosRange varRange) const {
@@ -91,11 +92,11 @@ base::Error* SymbolTable::MakeUndefinedReferenceError(string varName, PosRange v
 base::Error* SymbolTable::MakeDuplicateVarDeclError(string varName, PosRange varRange, PosRange originalVarRange) const {
   return base::MakeError([=](std::ostream* out, const base::OutputOptions& opt) {
     if (opt.simple) {
-      *out << varName << ": [";
+      *out << "DuplicateVarDeclError(";
       *out << varRange;
       *out << ',';
       *out << originalVarRange;
-      *out << ']';
+      *out << ')';
       return;
     }
 

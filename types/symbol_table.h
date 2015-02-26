@@ -26,7 +26,7 @@ public:
   void EnterScope();
   void LeaveScope();
 
-  pair<ast::TypeId, LocalVarId> DeclareLocal(const ast::Type& type, const string& name, base::PosRange nameRange, base::ErrorList* errors);
+  pair<ast::TypeId, LocalVarId> DeclareLocal(ast::TypeId tid, const string& name, base::PosRange nameRange, base::ErrorList* errors);
   pair<ast::TypeId, LocalVarId> ResolveLocal(const string& name, base::PosRange nameRange, base::ErrorList* errors) const;
 
 private:
