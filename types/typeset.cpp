@@ -62,7 +62,6 @@ void TypeSetBuilder::AddPackage(const vector<string>&, const vector<PosRange>) {
 }
 
 void TypeSetBuilder::AddType(const vector<string>& pkg, const vector<PosRange>, const string& name, base::PosRange namepos) {
-
   stringstream ss;
   for (const auto& p : pkg) {
     assert(p.find('.') == string::npos);

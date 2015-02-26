@@ -22,8 +22,8 @@ sptr<const Type> TypeChecker::MustResolveType(sptr<const Type> type) {
     return ret;
   }
 
-  // If this is blacklisted type, then we don't want to emit an error about. So
-  // we only do that if its unassigned. In any case, return null, so that we
+  // If this is blacklisted type then we don't want to emit an error about, so
+  // we only do that if its unassigned. In any case, return null so that we
   // prune appropriate nodes.
   if (ret->GetTypeId().IsUnassigned()) {
     errors_->Append(MakeUnknownTypenameError(fs_, pos));
