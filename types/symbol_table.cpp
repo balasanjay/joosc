@@ -131,7 +131,7 @@ Error* SymbolTable::MakeDuplicateVarDeclError(string varName, PosRange varRange,
 }
 
 Error* SymbolTable::MakeVariableInitializerSelfReferenceError(PosRange pos) const {
-  return MakeSimplePosRangeError(fs_, pos, "VariableInitializerSelfReferenceError", "You can't use a variable in its own initializer.");
+  return MakeSimplePosRangeError(fs_, pos, "VariableInitializerSelfReferenceError", "A variable cannot be used in its own initializer.");
 }
 
 
