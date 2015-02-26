@@ -63,16 +63,13 @@ void SymbolTable::DeclareLocalEnd(ast::LocalVarId) {
 pair<TypeId, LocalVarId> SymbolTable::ResolveLocal(const string& name, PosRange nameRange, ErrorList* errors) const {
   // First check local vars (non-params).
   const VariableInfo* var = nullptr;
-  auto findVar = cur_symbols_.end();
-  if ((findVar = cur_symbols_.find(name)) != cur_symbols_.end()) {
+  auto findVar = cur_symbols_.find(name);
+  auto findParam = params_.find(name);
+  if (findVar != cur_symbols_.end()) {
     var = &findVar->second;
-  // Then check params.
-  } else if ((findVar = params_.find(name)) != params_.end()) {
+  } else if (var == nullptr && findParam != params_.end()) {
     var = &findVar->second;
-  }
-
-  // If not found.
-  if (var == nullptr) {
+  } else {
     errors->Append(MakeUndefinedReferenceError(name, nameRange));
     return make_pair(TypeId::kUnassigned, kVarUnassigned);
   }
