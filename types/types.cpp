@@ -9,20 +9,34 @@
 using ast::Program;
 using base::ErrorList;
 using base::FileSet;
+using base::PosRange;
+using lexer::Token;
 
 namespace types {
 
 namespace {
 
+vector<PosRange> ExtractPosRanges(const vector<Token> tokens) {
+  vector<PosRange> v;
+  v.reserve(tokens.size());
+  for (Token token : tokens) {
+    v.push_back(token.pos);
+  }
+  return v;
+}
+
 TypeSet BuildTypeSet(const Program& prog, const FileSet* fs, ErrorList* out) {
   types::TypeSetBuilder typeSetBuilder;
   for (const auto& unit : prog.CompUnits()) {
-    vector<string> ns;
+    vector<string> pkg;
+    vector<PosRange> pkgpos;
     if (unit.PackagePtr() != nullptr) {
-      ns = unit.PackagePtr()->Parts();
+      pkg = unit.PackagePtr()->Parts();
+      pkgpos = ExtractPosRanges(unit.PackagePtr()->Tokens());
+      typeSetBuilder.AddPackage(pkg, pkgpos);
     }
     for (const auto& decl : unit.Types()) {
-      typeSetBuilder.Put(ns, decl.Name(), decl.NameToken().pos);
+      typeSetBuilder.AddType(pkg, pkgpos, decl.Name(), decl.NameToken().pos);
     }
   }
   return typeSetBuilder.Build(fs, out);

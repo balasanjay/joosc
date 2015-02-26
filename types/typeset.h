@@ -77,9 +77,13 @@ class TypeSetBuilder {
   // Automatically inserts 'int', 'short', 'byte', 'boolean', 'void', and 'error'.
   TypeSetBuilder() = default;
 
-  // Add a type definition to this TypeSetBuilder. The namepos will be returned
-  // from Build on duplicate definitions.
-  void Put(const vector<string>& ns, const string& name, base::PosRange namepos);
+  // Add a package to this TypeSetBuilder. The namepos will be used to
+  // construct Errors during Build.
+  void AddPackage(const vector<string>& pkg, const vector<base::PosRange> pkgpos);
+
+  // Add a type definition to this TypeSetBuilder. The namepos will be used to
+  // construct Errors during Build.
+  void AddType(const vector<string>& pkg, const vector<base::PosRange> pkgpos, const string& name, base::PosRange namepos);
 
   // Returns a TypeSet with all types inserted with Put. If a type was defined
   // multiple times, an Error will be appended to the ErrorList for each

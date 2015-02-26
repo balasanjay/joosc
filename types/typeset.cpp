@@ -57,11 +57,16 @@ Error* MakeDuplicateTypeDefinitionError(const FileSet* fs, const string& name, c
 
 TypeSet TypeSet::kEmptyTypeSet(sptr<TypeSetImpl>(new TypeSetImpl(&FileSet::Empty(), {}, {})));
 
-void TypeSetBuilder::Put(const vector<string>& ns, const string& name, base::PosRange namepos) {
+void TypeSetBuilder::AddPackage(const vector<string>&, const vector<PosRange>) {
+  // TODO: implement me.
+}
+
+void TypeSetBuilder::AddType(const vector<string>& pkg, const vector<PosRange>, const string& name, base::PosRange namepos) {
+
   stringstream ss;
-  for (const auto& n : ns) {
-    assert(n.find('.') == string::npos);
-    ss << n << '.';
+  for (const auto& p : pkg) {
+    assert(p.find('.') == string::npos);
+    ss << p << '.';
   }
   assert(name.find('.') == string::npos);
   ss << name;
