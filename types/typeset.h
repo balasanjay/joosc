@@ -3,11 +3,12 @@
 
 #include <map>
 
+#include "ast/ast.h"
+#include "ast/ids.h"
 #include "base/errorlist.h"
 #include "base/file.h"
 #include "base/fileset.h"
-#include "ast/ast.h"
-#include "ast/ids.h"
+#include "types/typeset_impl.h"
 
 namespace types {
 
@@ -19,12 +20,24 @@ public:
     return kEmptyTypeSet;
   }
 
+  // Enter the root package. Mutually exclusive with WithPackage.
+  TypeSet WithRootPackage() {
+    return TypeSet(impl_->WithRootPackage());
+  }
+
+  // Enter a package. Mutually exclusive with WithRootPackage.
+  TypeSet WithPackage(const vector<string>& package, base::PosRange pos) {
+    return TypeSet(impl_->WithPackage(package, pos));
+  }
+
   // Provides a `view' into the TypeSet assuming the provided imports are in
   // scope. Note that these do not `stack'; i.e.
   // `a.WithImports(bimports).WithImports(cimports)' is equivalent to
   // `a.WithImports(cimports)' regardless of the values of `bimports' and
   // `cimports'.
-  TypeSet WithImports(const vector<ast::ImportDecl>& imports, base::ErrorList* errors) const;
+  TypeSet WithImports(const vector<ast::ImportDecl>& imports, base::ErrorList* errors) const {
+    return TypeSet(impl_->WithImports(imports, errors));
+  }
 
   // Returns a TypeId corresponding to a prefix of the provided qualified name.
   //
@@ -38,39 +51,25 @@ public:
   //
   // Otherwise, a valid TypeId will be returned, and the length of the prefix
   // will be written to *typelen.
-  ast::TypeId GetPrefix(const vector<string>& qualifiedname, u64* typelen) const;
+  ast::TypeId GetPrefix(const vector<string>& qualifiedname, u64* typelen) const {
+    return impl_->GetPrefix(qualifiedname, typelen);
+  }
 
   // Helper method that calls GetPrefix, and filters out any results that don't
   // use all of qualifiedname. Any result from GetPrefix that doesn't encompass
   // the whole string will be turned into TypeId::kUnassigned.
-  ast::TypeId Get(const vector<string>& qualifiedname) const;
-
-  void PrintTo(std::ostream* out) const {
-    for (const auto& name : available_names_) {
-      *out << name.first << "->" << name.second << '\n';
-    }
+  ast::TypeId Get(const vector<string>& qualifiedname) const {
+    return impl_->Get(qualifiedname);
   }
 
  private:
   friend class TypeSetBuilder;
-  using QualifiedNameBaseMap = std::map<string, ast::TypeId::Base>;
 
-  TypeSet(const base::FileSet* fs, const set<string>& types, const set<string>& bad_types);
-
-  static void InsertName(QualifiedNameBaseMap* m, string name, ast::TypeId::Base base);
-
-  void InsertImport(const ast::ImportDecl& import, base::ErrorList* errors);
-  void InsertWildcardImport(const string& base);
+  TypeSet(sptr<const TypeSetImpl> impl) : impl_(impl) {}
 
   static TypeSet kEmptyTypeSet;
 
-  const base::FileSet* fs_;
-
-  // Changed depending on provided Imports.
-  QualifiedNameBaseMap available_names_;
-
-  // Always kept identical to values from Builder.
-  QualifiedNameBaseMap original_names_;
+  sptr<const TypeSetImpl> impl_;
 };
 
 class TypeSetBuilder {
