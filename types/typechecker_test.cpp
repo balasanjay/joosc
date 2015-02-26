@@ -262,20 +262,7 @@ TEST_F(TypeCheckerTest, IntLitExpr) {
 
 // TODO: NewArrayExpr
 
-TEST_F(TypeCheckerTest, NewClassExpr) {
-  TypeSetBuilder tsb;
-  tsb.Put({}, "Foo", PosRange(-1, -1, -1));
-  TypeSet ts = tsb.Build(fs_.get(), &errors_);
-  TypeId fooId = ts.Get({"Foo"});
-  EXPECT_NO_ERRS();
-  EXPECT_NE(ast::TypeId::kUnassigned, fooId);
-
-  sptr<const Expr> before = ParseExpr("new Foo()");
-  auto after = typeChecker_->WithTypeSet(ts).Rewrite(before);
-
-  EXPECT_EQ(fooId, after->GetTypeId());
-  EXPECT_NO_ERRS();
-}
+// TODO: NewClassExpr
 
 TEST_F(TypeCheckerTest, NullLitExpr) {
   sptr<const Expr> before = ParseExpr("null");
