@@ -308,18 +308,8 @@ REWRITE_DEFN(TypeChecker, UnaryExpr, Expr, expr, exprptr) {
 }
 
 REWRITE_DEFN(TypeChecker, BlockStmt, Stmt, stmt, stmtptr) {
-  bool stmtsChanged = false;
-  SharedPtrVector<const Stmt> newStmts;
-  {
-    ScopeGuard s(&symbol_table_);
-    newStmts = AcceptMulti(stmt.Stmts(), &stmtsChanged);
-  }
-
-  if (!stmtsChanged) {
-    return stmtptr;
-  }
-
-  return make_shared<BlockStmt>(newStmts);
+  ScopeGuard s(&symbol_table_);
+  return Visitor::RewriteBlockStmt(stmt, stmtptr);
 }
 
 REWRITE_DEFN(TypeChecker, ForStmt, Stmt, stmt,) {
