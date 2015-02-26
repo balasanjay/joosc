@@ -64,8 +64,8 @@ TEST_F(SymbolTableTest, LocalVarWorks) {
   TypeId tid2{101, 2};
   MakeSymbolTable({}, {}, {});
 
-  symbs_->DeclareLocal(tid1, "foo", PosRange(0, 0, 1), &errors_);
-  symbs_->DeclareLocal(tid2, "bar", PosRange(0, 1, 2), &errors_);
+  VarDeclGuard(symbs_.get(), tid1, "foo", PosRange(0, 0, 1), &errors_);
+  VarDeclGuard(symbs_.get(), tid2, "bar", PosRange(0, 1, 2), &errors_);
   EXPECT_NO_ERRS();
 
   auto varInfo = symbs_->ResolveLocal("foo", PosRange(0, 3, 4), &errors_);
@@ -97,7 +97,7 @@ TEST_F(SymbolTableTest, SimpleScope) {
   errors_.Clear();
 
   symbs_->EnterScope();
-  symbs_->DeclareLocal(tid, name, PosRange(0, 1, 2), &errors_);
+  VarDeclGuard(symbs_.get(), tid, name, PosRange(0, 1, 2), &errors_);
   auto result = symbs_->ResolveLocal(name, PosRange(0, 0, 1), &errors_);
   EXPECT_NO_ERRS();
   EXPECT_EQ(tid, result.first);
@@ -114,7 +114,7 @@ TEST_F(SymbolTableTest, LocalVarShadowsParam) {
   MakeSymbolTable({paramTid}, {"foo"}, {PosRange(0, 0, 1)});
 
   symbs_->EnterScope();
-  symbs_->DeclareLocal(localTid, "foo", PosRange(0, 1, 2), &errors_);
+  VarDeclGuard(symbs_.get(), localTid, "foo", PosRange(0, 1, 2), &errors_);
   EXPECT_NO_ERRS();
 
   auto varInfo = symbs_->ResolveLocal("foo", PosRange(0, 3, 4), &errors_);
@@ -133,11 +133,11 @@ TEST_F(SymbolTableTest, LocalVarDuplicateDef) {
   TypeId tid{100, 0};
   MakeSymbolTable({}, {}, {});
 
-  symbs_->DeclareLocal(tid, "foo", PosRange(0, 1, 2), &errors_);
+  VarDeclGuard(symbs_.get(), tid, "foo", PosRange(0, 1, 2), &errors_);
   EXPECT_NO_ERRS();
 
   symbs_->EnterScope();
-  symbs_->DeclareLocal(tid, "foo", PosRange(0, 2, 3), &errors_);
+  VarDeclGuard(symbs_.get(), tid, "foo", PosRange(0, 2, 3), &errors_);
   EXPECT_ERRS("DuplicateVarDeclError(0:2,0:1)\n");
 }
 
@@ -146,14 +146,36 @@ TEST_F(SymbolTableTest, LocalVarNonOverlappingScopes) {
   MakeSymbolTable({tid}, {"foo"}, {PosRange(0, 0, 1)});
 
   symbs_->EnterScope();
-  symbs_->DeclareLocal(tid, "foo", PosRange(0, 1, 2), &errors_);
+  VarDeclGuard(symbs_.get(), tid, "foo", PosRange(0, 1, 2), &errors_);
   EXPECT_NO_ERRS();
   symbs_->LeaveScope();
 
   symbs_->EnterScope();
-  symbs_->DeclareLocal(tid, "foo", PosRange(0, 2, 3), &errors_);
+  VarDeclGuard(symbs_.get(), tid, "foo", PosRange(0, 2, 3), &errors_);
   EXPECT_NO_ERRS();
   symbs_->LeaveScope();
+}
+
+TEST_F(SymbolTableTest, InitializerReferencingOtherVar) {
+  TypeId tid{100, 0};
+  MakeSymbolTable({tid}, {"foo"}, {PosRange(0, 0, 1)});
+
+  ast::LocalVarId vid = symbs_->DeclareLocalStart(tid, "bar", PosRange(0, 1, 2), &errors_);
+  EXPECT_NO_ERRS();
+  symbs_->ResolveLocal("foo", PosRange(0, 4, 5), &errors_);
+  EXPECT_NO_ERRS();
+  symbs_->DeclareLocalEnd(vid);
+}
+
+TEST_F(SymbolTableTest, InitializerReferencingOwnVar) {
+  TypeId tid{100, 0};
+  MakeSymbolTable({}, {}, {});
+
+  ast::LocalVarId vid = symbs_->DeclareLocalStart(tid, "foo", PosRange(0, 1, 2), &errors_);
+  EXPECT_NO_ERRS();
+  symbs_->ResolveLocal("foo", PosRange(0, 4, 5), &errors_);
+  EXPECT_ERRS("VariableInitializerSelfReferenceError(0:4)\n");
+  symbs_->DeclareLocalEnd(vid);
 }
 
 }  // namespace types

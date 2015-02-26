@@ -11,11 +11,12 @@ using ast::kVarFirst;
 using ast::Type;
 using ast::TypeId;
 using base::PosRange;
+using base::Error;
 using base::ErrorList;
 
 SymbolTable SymbolTable::empty(nullptr, {}, {}, {});
 
-SymbolTable::SymbolTable(const base::FileSet* fs, const TypeIdList& paramTids, const vector<string>& paramNames, const vector<PosRange>& ranges): fs_(fs) {
+SymbolTable::SymbolTable(const base::FileSet* fs, const TypeIdList& paramTids, const vector<string>& paramNames, const vector<PosRange>& ranges): fs_(fs), currently_declaring_(kVarUnassigned) {
   const u64 num_params = paramTids.Size();
   assert(num_params == paramNames.size());
 
@@ -31,13 +32,15 @@ SymbolTable::SymbolTable(const base::FileSet* fs, const TypeIdList& paramTids, c
   }
 }
 
-pair<TypeId, LocalVarId> SymbolTable::DeclareLocal(ast::TypeId tid, const string& name, PosRange nameRange, ErrorList* errors) {
+LocalVarId SymbolTable::DeclareLocalStart(ast::TypeId tid, const string& name, PosRange nameRange, ErrorList* errors) {
+  assert(currently_declaring_ == kVarUnassigned);
+
   // Check if already defined (not as a parameter).
   auto previousDef = cur_symbols_.find(name);
   if (previousDef != cur_symbols_.end()) {
     VariableInfo varInfo = previousDef->second;
     errors->Append(MakeDuplicateVarDeclError(name, nameRange, varInfo.posRange));
-    return make_pair(varInfo.tid, varInfo.vid);
+    return varInfo.vid;
   }
 
   // Add new variable to current scope.
@@ -46,10 +49,15 @@ pair<TypeId, LocalVarId> SymbolTable::DeclareLocal(ast::TypeId tid, const string
     tid,
     name,
     nameRange};
+  currently_declaring_ = var_id_counter_;
   ++var_id_counter_;
   cur_symbols_[name] = varInfo;
   cur_scope_.push_back(name);
-  return make_pair(tid, varInfo.vid);
+  return varInfo.vid;
+}
+
+void SymbolTable::DeclareLocalEnd(ast::LocalVarId) {
+  currently_declaring_ = kVarUnassigned;
 }
 
 pair<TypeId, LocalVarId> SymbolTable::ResolveLocal(const string& name, PosRange nameRange, ErrorList* errors) const {
@@ -63,8 +71,15 @@ pair<TypeId, LocalVarId> SymbolTable::ResolveLocal(const string& name, PosRange 
     var = &findVar->second;
   }
 
+  // If not found.
   if (var == nullptr) {
     errors->Append(MakeUndefinedReferenceError(name, nameRange));
+    return make_pair(TypeId::kUnassigned, kVarUnassigned);
+  }
+
+  // Check if currently in this variable's initializer.
+  if (currently_declaring_ == var->vid) {
+    errors->Append(MakeVariableInitializerSelfReferenceError(nameRange));
     return make_pair(TypeId::kUnassigned, kVarUnassigned);
   }
 
@@ -86,7 +101,7 @@ void SymbolTable::LeaveScope() {
   scopes_.pop_back();
 }
 
-base::Error* SymbolTable::MakeUndefinedReferenceError(string varName, PosRange varRange) const {
+Error* SymbolTable::MakeUndefinedReferenceError(string varName, PosRange varRange) const {
   stringstream ss;
   ss << "Undefined reference to \"";
   ss << varName;
@@ -94,7 +109,7 @@ base::Error* SymbolTable::MakeUndefinedReferenceError(string varName, PosRange v
   return MakeSimplePosRangeError(fs_, varRange, "UndefinedReferenceError", ss.str());
 }
 
-base::Error* SymbolTable::MakeDuplicateVarDeclError(string varName, PosRange varRange, PosRange originalVarRange) const {
+Error* SymbolTable::MakeDuplicateVarDeclError(string varName, PosRange varRange, PosRange originalVarRange) const {
   // This lambda will outlive this instance of SymbolTable. Capture local copy of fs_.
   const base::FileSet* fs = fs_;
   return base::MakeError([=](std::ostream* out, const base::OutputOptions& opt) {
@@ -117,5 +132,10 @@ base::Error* SymbolTable::MakeDuplicateVarDeclError(string varName, PosRange var
     PrintRangePtr(out, opt, fs, varRange);
   });
 }
+
+Error* SymbolTable::MakeVariableInitializerSelfReferenceError(PosRange pos) const {
+  return MakeSimplePosRangeError(fs_, pos, "VariableInitializerSelfReferenceError", "You can't use a variable in its own initializer.");
+}
+
 
 } // namespace types

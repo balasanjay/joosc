@@ -24,12 +24,14 @@ public:
   void EnterScope();
   void LeaveScope();
 
-  pair<ast::TypeId, ast::LocalVarId> DeclareLocal(ast::TypeId tid, const string& name, base::PosRange nameRange, base::ErrorList* errors);
+  ast::LocalVarId DeclareLocalStart(ast::TypeId tid, const string& name, base::PosRange nameRange, base::ErrorList* errors);
+  void DeclareLocalEnd(ast::LocalVarId vid);
   pair<ast::TypeId, ast::LocalVarId> ResolveLocal(const string& name, base::PosRange nameRange, base::ErrorList* errors) const;
 
 private:
   base::Error* MakeUndefinedReferenceError(string varName, base::PosRange nameRange) const;
   base::Error* MakeDuplicateVarDeclError(string varName, base::PosRange varPos, base::PosRange originalVarPos) const;
+  base::Error* MakeVariableInitializerSelfReferenceError(base::PosRange pos) const;
 
   const base::FileSet* fs_;
   std::map<string, VariableInfo> params_;
@@ -37,6 +39,7 @@ private:
   vector<string> cur_scope_;
   vector<vector<string>> scopes_;
   ast::LocalVarId var_id_counter_;
+  ast::LocalVarId currently_declaring_;
 };
 
 struct ScopeGuard {
@@ -49,6 +52,23 @@ public:
   }
 private:
   SymbolTable* table_;
+};
+
+struct VarDeclGuard {
+  VarDeclGuard(SymbolTable* symbolTable, ast::TypeId tid, const string& name, base::PosRange nameRange, base::ErrorList* errors) : symbol_table_(symbolTable) {
+    vid_ = symbolTable->DeclareLocalStart(tid, name, nameRange, errors);
+  }
+
+  ~VarDeclGuard() {
+    symbol_table_->DeclareLocalEnd(vid_);
+  }
+
+  ast::LocalVarId GetVarId() {
+    return vid_;
+  }
+
+  SymbolTable* symbol_table_;
+  ast::LocalVarId vid_;
 };
 
 } // namespace types
