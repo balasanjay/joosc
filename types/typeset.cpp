@@ -4,6 +4,7 @@
 #include <iostream>
 #include <iterator>
 
+#include "base/algorithm.h"
 #include "types/typeset_impl.h"
 
 using std::back_inserter;
@@ -19,6 +20,7 @@ using base::DiagnosticClass;
 using base::Error;
 using base::ErrorList;
 using base::FileSet;
+using base::FindEqualRanges;
 using base::MakeError;
 using base::OutputOptions;
 using base::Pos;
@@ -82,41 +84,35 @@ TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
   {
     using NameToPosMap = multimap<string, PosRange>;
     using NamePos = pair<string, PosRange>;
+    using Iter = NameToPosMap::const_iterator;
     NameToPosMap byname;
     for (const auto& entry : entries) {
       byname.insert({entry.name, entry.namepos});
     }
 
-    auto cur = byname.cbegin();
-    while (cur != byname.cend()) {
-      // The range [start, end) is meant to track a range of duplicate entries.
-      auto start = cur;
-      auto end = std::next(start);
-      int ndups = 1;
+    auto cmp = [](const NamePos& lhs, const NamePos& rhs) {
+      return lhs.first == rhs.first;
+    };
 
-      while (end != byname.cend() && start->first == end->first) {
-        ++ndups;
-        ++end;
-      }
-
-      // Immediately advance our outer iterator past the relevant range, so
-      // that we can't forget to do it later.
-      cur = end;
-
+    auto cb = [&](Iter start, Iter end, i64 ndups) {
       if (ndups == 1) {
         types.insert(start->first);
-        continue;
+        return;
       }
       assert(ndups > 1);
 
       vector<PosRange> defs;
-      for (auto dup = start; dup != end; ++dup) {
-        defs.push_back(dup->second);
+      for (auto cur = start; cur != end; ++cur) {
+        defs.push_back(cur->second);
       }
+
+      assert(defs.size() == (size_t)ndups);
 
       out->Append(MakeDuplicateTypeDefinitionError(fs, start->first, defs));
       bad_types.insert(start->first);
-    }
+    };
+
+    FindEqualRanges(byname.cbegin(), byname.cend(), cmp, cb);
   }
 
   // TODO: Check other restrictions, like having a type be a proper prefix of a
