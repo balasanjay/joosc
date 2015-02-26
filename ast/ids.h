@@ -43,6 +43,12 @@ struct TypeId {
   bool operator!=(const TypeId& other) const {
     return !(*this == other);
   }
+  bool operator<(const TypeId& other) const {
+    return base < other.base || (base == other.base && ndims < other.ndims);
+  }
+  bool operator>(const TypeId& other) const {
+    return other < *this;
+  }
 
   Base base;
   u64 ndims;
