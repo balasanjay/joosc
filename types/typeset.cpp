@@ -149,8 +149,6 @@ void TypeSet::InsertName(QualifiedNameBaseMap* m, string name, TypeId::Base base
 
 TypeSet TypeSet::WithImports(const vector<ast::ImportDecl>& imports, ErrorList* errors) const {
   TypeSet view(*this);
-  view.original_names_ = original_names_;
-  view.available_names_ = available_names_;
 
   view.InsertWildcardImport("java.lang");
   for (const auto& import : imports) {

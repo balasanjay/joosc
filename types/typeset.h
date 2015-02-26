@@ -32,7 +32,7 @@ public:
   // return TypeId::kUnassigned.
   //
   // If the TypeSet has already emitted an error about a type that is a prefix
-  // of na,e, then it might return TypeId::kError. Clients should avoid
+  // of name, then it might return TypeId::kError. Clients should avoid
   // emitting further errors involving this type. Note that this is done
   // best-effort; the TypeSet might still return TypeId::kUnassigned instead.
   //
