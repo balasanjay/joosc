@@ -89,7 +89,8 @@ REWRITE_DEFN(DeclResolver, TypeDecl, TypeDecl, type, ) {
     AddToTypeIdVector(name, &implements);
   }
 
-  // TODO: put into TypeInfoMapBuilder.
+  builder_->PutType(curtid, type, extends, implements);
+
   DeclResolver memberResolver(builder_, typeset_, fs_, errors_, package_, curtid);
   SharedPtrVector<const MemberDecl> members;
   for (int i = 0; i < type.Members().Size(); ++i) {
@@ -116,10 +117,12 @@ REWRITE_DEFN(DeclResolver, FieldDecl, MemberDecl, field, ) {
 REWRITE_DEFN(DeclResolver, MethodDecl, MemberDecl, meth,) {
   sptr<const Type> ret_type = nullptr;
   TypeId rettid = TypeId::kUnassigned;
+  bool is_constructor = false;
   if (meth.TypePtr() == nullptr) {
     // Handle constructor.
     // The return type of a constructor is the containing class.
     rettid = curtype_;
+    is_constructor = true;
   } else {
     // Handle method.
     ret_type = MustResolveType(meth.TypePtr());
@@ -140,7 +143,7 @@ REWRITE_DEFN(DeclResolver, MethodDecl, MemberDecl, meth,) {
     return nullptr;
   }
 
-  builder_->PutMethod(curtype_, rettid, paramtids, meth);
+  builder_->PutMethod(curtype_, rettid, paramtids, meth, is_constructor);
   // TODO: assign member id to method.
 
   return make_shared<MethodDecl>(meth.Mods(), ret_type, meth.Name(),
