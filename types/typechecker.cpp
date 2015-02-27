@@ -98,7 +98,7 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
 
   if (op == lexer::ASSG) {
     // TODO: implement assignment.
-    return nullptr;
+    throw;
   }
 
   if (IsBoolOp(op)) {
@@ -234,12 +234,6 @@ REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
   TypeId expr_tid = TypeId{elem_tid.base, elem_tid.ndims + 1};
 
   return make_shared<NewArrayExpr>(expr.NewToken(), elemtype, expr.Lbrack(), index, expr.Rbrack(), expr_tid);
-}
-
-REWRITE_DEFN(TypeChecker, NewClassExpr, Expr, expr, ) {
-  // TODO: Lookup constructor with arg types.
-  sptr<const Type> objType = MustResolveType(expr.GetTypePtr());
-  return make_shared<NewClassExpr>(expr.NewToken(), expr.GetTypePtr(), expr.Lparen(), expr.Args(), expr.Rparen(), objType->GetTypeId());
 }
 
 REWRITE_DEFN(TypeChecker, NullLitExpr, Expr, expr, ) {
