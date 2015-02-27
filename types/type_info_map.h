@@ -62,10 +62,6 @@ struct MethodInfo {
   base::PosRange pos;
   MethodSignature signature;
   bool is_constructor;
-
-  bool operator<(const MethodInfo& other) const {
-    return std::tie(class_type, is_constructor, signature) < std::tie(other.class_type, other.is_constructor, other.signature);
-  }
 };
 
 struct MethodTableParam {
@@ -79,6 +75,7 @@ public:
   MethodId ResolveCall(ast::TypeId callerType, CallContext ctx, const TypeIdList& params, base::ErrorList* out) const;
 
   // Given a valid MethodId, return all the associated info about it.
+  // TODO: handle blacklisting.
   const MethodInfo& LookupMethod(MethodId mid) const {
     auto info = method_info_.find(mid);
     assert(info != method_info_.end());
@@ -132,10 +129,6 @@ struct TypeInfo {
   // implements or extends another type B, then B has a lower top_sort_index
   // than A.
   u64 top_sort_index;
-
-  bool operator<(const TypeInfo& other) const {
-    return type < other.type;
-  }
 };
 
 class TypeInfoMap {
@@ -144,10 +137,10 @@ public:
     return kEmptyTypeInfoMap;
   }
 
+  // TODO: handle blacklisting.
   pair<const TypeInfo&, bool> LookupTypeInfo(ast::TypeId tid) {
     auto info = type_info_.find(tid);
     assert(info != type_info_.end());
-    // TODO: Bool?
     return make_pair(info->second, true);
   }
 
