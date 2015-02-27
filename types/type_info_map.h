@@ -10,7 +10,15 @@ namespace types {
 
 struct TypeIdList {
 public:
-  TypeIdList(const std::initializer_list<ast::TypeId>& tids) : tids_(tids){}
+  TypeIdList(const vector<ast::TypeId>& tids) : tids_(tids){}
+
+  int Size() const {
+    return tids_.size();
+  }
+
+  ast::TypeId At(int i) const {
+    return tids_.at(i);
+  }
 
   // TODO: implement operator <. See std::lexicographical_compare
 private:
@@ -18,7 +26,6 @@ private:
 };
 
 using MethodId = u64;
-using LocalVarId = u64;
 
 enum CallContext {
   INSTANCE,
@@ -49,29 +56,6 @@ public:
   MethodId ResolveCall(ast::TypeId callerType, CallContext ctx, const TypeIdList& params, base::ErrorList* out) const;
 
   const MethodInfo& LookupMethod(MethodId mid) const;
-};
-
-class SymbolTable {
-public:
-  SymbolTable(const TypeIdList& params);
-
-  void EnterScope();
-  void LeaveScope();
-
-  pair<ast::TypeId, LocalVarId> DeclareLocal(const ast::Type& type, const string& name, base::ErrorList* out);
-  pair<ast::TypeId, LocalVarId> ResolveLocal(const string& name, base::ErrorList* out) const;
-};
-
-struct ScopeGuard {
-public:
-  ScopeGuard(SymbolTable* table) : table_(table) {
-    table_->EnterScope();
-  }
-  ~ScopeGuard() {
-    table_->LeaveScope();
-  }
-private:
-  SymbolTable* table_;
 };
 
 class TypeInfoMap {
