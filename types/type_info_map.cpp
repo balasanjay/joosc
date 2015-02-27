@@ -54,6 +54,7 @@ TypeInfoMap TypeInfoMapBuilder::Build(const base::FileSet* fs, base::ErrorList* 
 
   sort(type_entries_.begin(), type_entries_.end());
   auto good_iter = good_methods.begin();
+  auto bad_iter = bad_methods.begin();
   MethodId cur_mid = 0;
   vector<TypeInfo> type_info_entries;
 
@@ -62,6 +63,14 @@ TypeInfoMap TypeInfoMapBuilder::Build(const base::FileSet* fs, base::ErrorList* 
   for (const auto& type_entry : type_entries_) {
     const string& type_name = type_entry.name;
     vector<MethodTableParam> method_table_entries;
+    for (; bad_iter != bad_methods.end(); ++bad_iter) {
+      if (bad_iter->class_type != type_entry.type) {
+        break;
+      }
+      if (bad_iter->is_constructor && bad_iter->signature.name != type_name) {
+        out->Append(MakeConstructorNameError(fs, bad_iter->namepos));
+      }
+    }
     for (; good_iter != good_methods.end(); ++good_iter) {
       if (good_iter->class_type != type_entry.type) {
         break;
