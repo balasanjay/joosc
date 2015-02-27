@@ -5,6 +5,7 @@
 #include <iterator>
 
 #include "base/algorithm.h"
+#include "types/types_internal.h"
 #include "types/typeset_impl.h"
 
 using std::back_inserter;
@@ -27,35 +28,6 @@ using base::Pos;
 using base::PosRange;
 
 namespace types {
-
-namespace {
-
-Error* MakeDuplicateTypeDefinitionError(const FileSet* fs, const string& name, const vector<PosRange> dupes) {
-  return MakeError([=](ostream* out, const OutputOptions& opt) {
-    if (opt.simple) {
-      *out << name << ": [";
-      for (const auto& dupe : dupes) {
-        *out << dupe << ",";
-      }
-      *out << ']';
-      return;
-    }
-
-    stringstream msgstream;
-    msgstream << "Type '" << name << "' was declared multiple times.";
-
-    PrintDiagnosticHeader(out, opt, fs, dupes.at(0), DiagnosticClass::ERROR, msgstream.str());
-    PrintRangePtr(out, opt, fs, dupes.at(0));
-    for (uint i = 1; i < dupes.size(); ++i) {
-      *out << '\n';
-      PosRange pos = dupes.at(i);
-      PrintDiagnosticHeader(out, opt, fs, pos, DiagnosticClass::INFO, "Also declared here.");
-      PrintRangePtr(out, opt, fs, pos);
-    }
-  });
-}
-
-} // namespace
 
 TypeSet TypeSet::kEmptyTypeSet(sptr<TypeSetImpl>(new TypeSetImpl(&FileSet::Empty(), {}, {})));
 
@@ -108,7 +80,9 @@ TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
 
       assert(defs.size() == (size_t)ndups);
 
-      out->Append(MakeDuplicateTypeDefinitionError(fs, start->first, defs));
+      stringstream msgstream;
+      msgstream << "Type '" << start->first << "' was declared multiple times.";
+      out->Append(MakeDuplicateDefinitionError(fs, defs, msgstream.str(), start->first));
       bad_types.insert(start->first);
     };
 

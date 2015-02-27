@@ -147,7 +147,7 @@ REWRITE_DEFN(DeclResolver, MethodDecl, MemberDecl, meth,) {
     return nullptr;
   }
 
-  // TODO: put method in table keyed by (curtid_, meth.Name(), paramtids).
+  builder_->PutMethod(curtype_, rettid, paramtids, meth);
   // TODO: assign member id to method.
 
   return make_shared<MethodDecl>(meth.Mods(), ret_type, meth.Name(),
