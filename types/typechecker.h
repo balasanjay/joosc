@@ -6,6 +6,7 @@
 #include "base/fileset.h"
 #include "types/type_info_map.h"
 #include "types/typeset.h"
+#include "types/symbol_table.h"
 
 namespace types {
 
@@ -34,10 +35,22 @@ class TypeChecker final : public ast::Visitor {
     return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package_, true, curtype);
   }
 
-  TypeChecker InsideMethodDecl(ast::TypeId curMethRet) const {
+  TypeChecker InsideMethodDecl(ast::TypeId curMethRet, const ast::ParamList& params) const {
     assert(belowTypeDecl_);
     assert(!belowMethodDecl_);
-    return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package_, true, curtype_, true, curMethRet);
+
+    // Construct initial symbol table with params for this method.
+    vector<VariableInfo> paramInfos;
+    for (int i = 0; i < params.Params().Size(); ++i) {
+      sptr<const ast::Param> param = params.Params().At(i);
+      paramInfos.push_back(VariableInfo(
+        param->GetType().GetTypeId(),
+        param->Name(),
+        param->NameToken().pos));
+    }
+    SymbolTable symbol_table(fs_, paramInfos);
+
+    return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package_, true, curtype_, true, curMethRet, symbol_table);
   }
 
   REWRITE_DECL(ArrayIndexExpr, Expr, expr, exprptr);
@@ -47,6 +60,7 @@ class TypeChecker final : public ast::Visitor {
   REWRITE_DECL(CharLitExpr, Expr, expr, exprptr);
   REWRITE_DECL(InstanceOfExpr, Expr, expr, exprptr);
   REWRITE_DECL(IntLitExpr, Expr, expr, exprptr);
+  REWRITE_DECL(NameExpr, Expr, expr,);
   REWRITE_DECL(NewArrayExpr, Expr, expr, exprptr);
   REWRITE_DECL(NullLitExpr, Expr, expr, exprptr);
   REWRITE_DECL(ParenExpr, Expr, expr, exprptr);
@@ -59,6 +73,7 @@ class TypeChecker final : public ast::Visitor {
   REWRITE_DECL(LocalDeclStmt, Stmt, stmt, stmtptr);
   REWRITE_DECL(ReturnStmt, Stmt, stmt, stmtptr);
   REWRITE_DECL(WhileStmt, Stmt, stmt, stmtptr);
+  REWRITE_DECL(BlockStmt, Stmt, stmt, stmtptr);
 
   REWRITE_DECL(FieldDecl, MemberDecl, decl, declptr);
   REWRITE_DECL(MethodDecl, MemberDecl, decl, declptr);
@@ -72,13 +87,17 @@ class TypeChecker final : public ast::Visitor {
               const TypeSet& typeset, const TypeInfoMap& typeinfo,
               bool belowCompUnit = false, sptr<const ast::QualifiedName> package = nullptr,
               bool belowTypeDecl = false, ast::TypeId curtype = ast::TypeId::kUnassigned,
-              bool belowMethodDecl = false, ast::TypeId curMethRet = ast::TypeId::kUnassigned)
+              bool belowMethodDecl = false, ast::TypeId curMethRet = ast::TypeId::kUnassigned,
+              SymbolTable symbol_table = SymbolTable::Empty())
       : fs_(fs), errors_(errors), typeset_(typeset), typeinfo_(typeinfo),
         belowCompUnit_(belowCompUnit), package_(package),
         belowTypeDecl_(belowTypeDecl), curtype_(curtype),
-        belowMethodDecl_(belowMethodDecl), curMethRet_(curMethRet) {}
+        belowMethodDecl_(belowMethodDecl), curMethRet_(curMethRet),
+        symbol_table_(symbol_table) {}
 
   sptr<const ast::Type> MustResolveType(sptr<const ast::Type> type);
+  ast::TypeId JavaLangType(const string& name) const;
+
   bool IsNumeric(ast::TypeId tid) const;
   bool IsPrimitive(ast::TypeId tid) const;
   bool IsReference(ast::TypeId tid) const;
@@ -113,6 +132,7 @@ class TypeChecker final : public ast::Visitor {
 
   const bool belowMethodDecl_ = false;
   const ast::TypeId curMethRet_; // Only populated if below MethodDecl.
+  SymbolTable symbol_table_;
 };
 
 }  // namespace types

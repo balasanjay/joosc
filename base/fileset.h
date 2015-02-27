@@ -9,6 +9,10 @@ class ErrorList;
 
 class FileSet final {
  public:
+  static const FileSet& Empty() {
+    return kEmptyFileSet;
+  }
+
   class Builder final {
    public:
     Builder& AddDiskFile(string path) {
@@ -44,6 +48,8 @@ class FileSet final {
   friend FileSet::Builder;
 
   FileSet(vector<File*> files) : files_(files) {}
+
+  static FileSet kEmptyFileSet;
 
   const vector<File*> files_;
 };
