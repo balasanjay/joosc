@@ -56,7 +56,7 @@ LocalVarId SymbolTable::DeclareLocalStart(ast::TypeId tid, const string& name, P
   return varInfo.vid;
 }
 
-void SymbolTable::DeclareLocalEnd(ast::LocalVarId) {
+void SymbolTable::DeclareLocalEnd() {
   currently_declaring_ = kVarUnassigned;
 }
 
@@ -111,9 +111,9 @@ void SymbolTable::LeaveScope() {
 
 Error* SymbolTable::MakeUndefinedReferenceError(string name, PosRange pos) const {
   stringstream ss;
-  ss << "Undefined reference to \"";
+  ss << "Undefined reference to '";
   ss << name;
-  ss << "\"";
+  ss << '\'';
   return MakeSimplePosRangeError(fs_, pos, "UndefinedReferenceError", ss.str());
 }
 

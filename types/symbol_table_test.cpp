@@ -159,22 +159,22 @@ TEST_F(SymbolTableTest, InitializerReferencingOtherVar) {
   TypeId tid{100, 0};
   MakeSymbolTable({{tid, "foo", PosRange(0, 0, 1)}});
 
-  ast::LocalVarId vid = symbs_->DeclareLocalStart(tid, "bar", PosRange(0, 1, 2), &errors_);
+  symbs_->DeclareLocalStart(tid, "bar", PosRange(0, 1, 2), &errors_);
   EXPECT_NO_ERRS();
   symbs_->ResolveLocal("foo", PosRange(0, 4, 5), &errors_);
   EXPECT_NO_ERRS();
-  symbs_->DeclareLocalEnd(vid);
+  symbs_->DeclareLocalEnd();
 }
 
 TEST_F(SymbolTableTest, InitializerReferencingOwnVar) {
   TypeId tid{100, 0};
   MakeSymbolTable({});
 
-  ast::LocalVarId vid = symbs_->DeclareLocalStart(tid, "foo", PosRange(0, 1, 2), &errors_);
+  symbs_->DeclareLocalStart(tid, "foo", PosRange(0, 1, 2), &errors_);
   EXPECT_NO_ERRS();
   symbs_->ResolveLocal("foo", PosRange(0, 4, 5), &errors_);
   EXPECT_ERRS("VariableInitializerSelfReferenceError(0:4)\n");
-  symbs_->DeclareLocalEnd(vid);
+  symbs_->DeclareLocalEnd();
 }
 
 }  // namespace types

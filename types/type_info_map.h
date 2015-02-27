@@ -11,7 +11,6 @@ namespace types {
 struct TypeIdList {
 public:
   TypeIdList(const vector<ast::TypeId>& tids) : tids_(tids){}
-  TypeIdList(const std::initializer_list<ast::TypeId>& tids) : tids_(tids){}
 
   int Size() const {
     return tids_.size();

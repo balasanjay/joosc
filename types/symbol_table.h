@@ -36,7 +36,7 @@ public:
   void LeaveScope();
 
   ast::LocalVarId DeclareLocalStart(ast::TypeId tid, const string& name, base::PosRange name_pos, base::ErrorList* errors);
-  void DeclareLocalEnd(ast::LocalVarId vid);
+  void DeclareLocalEnd();
   pair<ast::TypeId, ast::LocalVarId> ResolveLocal(const string& name, base::PosRange name_pos, base::ErrorList* errors) const;
 
 private:
@@ -52,8 +52,8 @@ private:
   u32 cur_scope_len_;
   vector<string> scopes_;
   vector<u32> scope_lengths_;
-  ast::LocalVarId var_id_counter_;
-  ast::LocalVarId currently_declaring_;
+  ast::LocalVarId var_id_counter_ = ast::kVarFirst;
+  ast::LocalVarId currently_declaring_ = ast::kVarUnassigned;
 };
 
 struct ScopeGuard {
@@ -74,7 +74,7 @@ struct VarDeclGuard {
   }
 
   ~VarDeclGuard() {
-    symbol_table_->DeclareLocalEnd(vid_);
+    symbol_table_->DeclareLocalEnd();
   }
 
   ast::LocalVarId GetVarId() {
