@@ -44,7 +44,7 @@ struct TypeId {
     return !(*this == other);
   }
   bool operator<(const TypeId& other) const {
-    return base < other.base || (base == other.base && ndims < other.ndims);
+    return std::tie(base, ndims) < std::tie(other.base, other.ndims);
   }
   bool operator>(const TypeId& other) const {
     return other < *this;

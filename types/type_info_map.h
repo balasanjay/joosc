@@ -49,7 +49,7 @@ struct MethodSignature {
   TypeIdList param_types;
 
   bool operator<(const MethodSignature& other) const {
-    return name < other.name || (name == other.name && param_types < other.param_types);
+    return std::tie(name, param_types) < std::tie(other.name, other.param_types);
   }
 
   bool operator==(const MethodSignature& other) const {
