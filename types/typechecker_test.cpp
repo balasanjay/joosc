@@ -269,7 +269,7 @@ TEST_F(TypeCheckerTest, ThisLitExpr) {
   auto typeChecker = (*typeChecker_.get())
     .InsideCompUnit(nullptr)
     .InsideTypeDecl(insideType)
-    .InsideMethodDecl(TypeId::kVoid);
+    .InsideMethodDecl(TypeId::kVoid, ParamList({}));
 
   auto after = typeChecker.Rewrite(before);
 
