@@ -40,16 +40,15 @@ class TypeChecker final : public ast::Visitor {
     assert(!belowMethodDecl_);
 
     // Construct initial symbol table with params for this method.
-    vector<ast::TypeId> paramTids;
-    vector<string> paramNames;
-    vector<base::PosRange> paramRanges;
+    vector<VariableInfo> paramInfos;
     for (int i = 0; i < params.Params().Size(); ++i) {
       sptr<const ast::Param> param = params.Params().At(i);
-      paramTids.push_back(param->GetType().GetTypeId());
-      paramNames.push_back(param->Name());
-      paramRanges.push_back(param->NameToken().pos);
+      paramInfos.push_back(VariableInfo(
+        param->GetType().GetTypeId(),
+        param->Name(),
+        param->NameToken().pos));
     }
-    SymbolTable symbol_table(fs_, TypeIdList(paramTids), paramNames, paramRanges);
+    SymbolTable symbol_table(fs_, paramInfos);
 
     return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package_, true, curtype_, true, curMethRet, symbol_table);
   }

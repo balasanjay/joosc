@@ -15,19 +15,18 @@ using base::PosRange;
 using base::Error;
 using base::ErrorList;
 
-SymbolTable::SymbolTable(const base::FileSet* fs, const TypeIdList& paramTids, const vector<string>& paramNames, const vector<PosRange>& ranges)
+//SymbolTable::SymbolTable(const base::FileSet* fs, const TypeIdList& paramTids, const vector<string>& paramNames, const vector<PosRange>& ranges)
+SymbolTable::SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& params)
   : fs_(fs), cur_scope_len_(0), currently_declaring_(kVarUnassigned) {
-  const u64 num_params = paramTids.Size();
-  assert(num_params == paramNames.size());
-
   var_id_counter_ = kVarFirst;
-  for (u64 i = 0; i < num_params; ++i) {
-    VariableInfo varInfo = VariableInfo(
-      var_id_counter_,
-      paramTids.At(i),
-      paramNames.at(i),
-      ranges[i]);
-    params_[paramNames.at(i)] = varInfo;
+  for (const VariableInfo& param : params) {
+    VariableInfo var_info(
+      param.tid,
+      param.name,
+      param.pos,
+      var_id_counter_
+    );
+    params_[var_info.name] = var_info;
     ++var_id_counter_;
   }
 }
@@ -39,16 +38,16 @@ LocalVarId SymbolTable::DeclareLocalStart(ast::TypeId tid, const string& name, P
   auto previousDef = cur_symbols_.find(name);
   if (previousDef != cur_symbols_.end()) {
     VariableInfo varInfo = previousDef->second;
-    errors->Append(MakeDuplicateVarDeclError(name, nameRange, varInfo.posRange));
+    errors->Append(MakeDuplicateVarDeclError(name, nameRange, varInfo.pos));
     return varInfo.vid;
   }
 
   // Add new variable to current scope.
   VariableInfo varInfo = VariableInfo(
-      var_id_counter_,
       tid,
       name,
-      nameRange);
+      nameRange,
+      var_id_counter_);
   currently_declaring_ = var_id_counter_;
   ++var_id_counter_;
   cur_symbols_[name] = varInfo;

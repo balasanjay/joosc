@@ -11,24 +11,24 @@ namespace types {
 struct VariableInfo {
 public:
   VariableInfo(
-      ast::LocalVarId vid = ast::kVarUnassigned,
       ast::TypeId tid = ast::TypeId::kUnassigned,
       string name = "",
-      base::PosRange posRange = base::PosRange(-1, -1, -1))
-    : vid(vid), tid(tid), name(name), posRange(posRange) {}
+      base::PosRange pos = base::PosRange(-1, -1, -1),
+      ast::LocalVarId vid = ast::kVarUnassigned)
+    : tid(tid), name(name), pos(pos), vid(vid) {}
 
-  ast::LocalVarId vid;
   ast::TypeId tid;
   string name;
-  base::PosRange posRange;
+  base::PosRange pos;
+  ast::LocalVarId vid;
 };
 
 class SymbolTable {
 public:
-  SymbolTable(const base::FileSet* fs, const TypeIdList& paramTids, const vector<string>& paramNames, const vector<base::PosRange>& ranges);
+  SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& params);
 
   static SymbolTable Empty() {
-    return SymbolTable(&base::FileSet::Empty(), {}, {}, {});
+    return SymbolTable(&base::FileSet::Empty(), {});
   }
 
 
