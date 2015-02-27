@@ -15,8 +15,6 @@ using base::PosRange;
 using base::Error;
 using base::ErrorList;
 
-SymbolTable SymbolTable::empty(nullptr, {}, {}, {});
-
 SymbolTable::SymbolTable(const base::FileSet* fs, const TypeIdList& paramTids, const vector<string>& paramNames, const vector<PosRange>& ranges)
   : fs_(fs), cur_scope_len_(0), currently_declaring_(kVarUnassigned) {
   const u64 num_params = paramTids.Size();

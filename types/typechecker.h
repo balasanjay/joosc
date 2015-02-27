@@ -89,7 +89,7 @@ class TypeChecker final : public ast::Visitor {
               bool belowCompUnit = false, sptr<const ast::QualifiedName> package = nullptr,
               bool belowTypeDecl = false, ast::TypeId curtype = ast::TypeId::kUnassigned,
               bool belowMethodDecl = false, ast::TypeId curMethRet = ast::TypeId::kUnassigned,
-              SymbolTable symbol_table = SymbolTable::empty)
+              SymbolTable symbol_table = SymbolTable::Empty())
       : fs_(fs), errors_(errors), typeset_(typeset), typeinfo_(typeinfo),
         belowCompUnit_(belowCompUnit), package_(package),
         belowTypeDecl_(belowTypeDecl), curtype_(curtype),

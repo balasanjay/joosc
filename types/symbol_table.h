@@ -27,7 +27,10 @@ class SymbolTable {
 public:
   SymbolTable(const base::FileSet* fs, const TypeIdList& paramTids, const vector<string>& paramNames, const vector<base::PosRange>& ranges);
 
-  static SymbolTable empty;
+  static SymbolTable Empty() {
+    return SymbolTable(&base::FileSet::Empty(), {}, {}, {});
+  }
+
 
   void EnterScope();
   void LeaveScope();
