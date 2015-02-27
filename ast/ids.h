@@ -46,9 +46,6 @@ struct TypeId {
   bool operator<(const TypeId& other) const {
     return std::tie(base, ndims) < std::tie(other.base, other.ndims);
   }
-  bool operator>(const TypeId& other) const {
-    return other < *this;
-  }
 
   Base base;
   u64 ndims;
