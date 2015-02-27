@@ -13,7 +13,11 @@ using base::PosRange;
 namespace types {
 
 sptr<const Type> TypeChecker::MustResolveType(sptr<const Type> type) {
-  return ResolveType(type, typeset_, errors_);
+  sptr<const Type> ret = ResolveType(type, typeset_, errors_);
+  if (ret->GetTypeId().IsValid()) {
+    return ret;
+  }
+  return nullptr;
 }
 
 TypeId TypeChecker::JavaLangType(const string& name) const {
