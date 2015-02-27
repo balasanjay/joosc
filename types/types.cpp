@@ -7,6 +7,7 @@
 #include "types/typeset.h"
 
 using ast::Program;
+using ast::QualifiedName;
 using base::ErrorList;
 using base::FileSet;
 using base::PosRange;
@@ -16,27 +17,27 @@ namespace types {
 
 namespace {
 
-vector<PosRange> ExtractPosRanges(const vector<Token> tokens) {
-  vector<PosRange> v;
-  v.reserve(tokens.size());
-  for (Token token : tokens) {
-    v.push_back(token.pos);
+vector<TypeSetBuilder::Elem> ExtractElems(const QualifiedName& name) {
+  vector<TypeSetBuilder::Elem> v;
+  v.reserve(name.Parts().size());
+
+  for (size_t i = 0; i < name.Parts().size(); ++i) {
+    v.push_back({name.Parts().at(i), name.Tokens().at(i).pos});
   }
+
   return v;
 }
 
 TypeSet BuildTypeSet(const Program& prog, const FileSet* fs, ErrorList* out) {
   types::TypeSetBuilder typeSetBuilder;
   for (const auto& unit : prog.CompUnits()) {
-    vector<string> pkg;
-    vector<PosRange> pkgpos;
+    vector<TypeSetBuilder::Elem> pkg;
     if (unit.PackagePtr() != nullptr) {
-      pkg = unit.PackagePtr()->Parts();
-      pkgpos = ExtractPosRanges(unit.PackagePtr()->Tokens());
-      typeSetBuilder.AddPackage(pkg, pkgpos);
+      pkg = ExtractElems(*unit.PackagePtr());
+      typeSetBuilder.AddPackage(pkg);
     }
     for (const auto& decl : unit.Types()) {
-      typeSetBuilder.AddType(pkg, pkgpos, decl.Name(), decl.NameToken().pos);
+      typeSetBuilder.AddType(pkg, {decl.Name(), decl.NameToken().pos});
     }
   }
   return typeSetBuilder.Build(fs, out);

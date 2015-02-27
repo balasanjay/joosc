@@ -28,10 +28,10 @@ class TypeChecker final : public ast::Visitor {
     return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package);
   }
 
-  TypeChecker InsideTypeDecl(ast::TypeId curtype) const {
+  TypeChecker InsideTypeDecl(ast::TypeId curtype, const TypeSet& typeset) const {
     assert(belowCompUnit_);
     assert(!belowTypeDecl_);
-    return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package_, true, curtype);
+    return TypeChecker(fs_, errors_, typeset, typeinfo_, true, package_, true, curtype);
   }
 
   TypeChecker InsideMethodDecl(ast::TypeId curMethRet) const {

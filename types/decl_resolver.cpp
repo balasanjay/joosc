@@ -31,22 +31,24 @@ using base::UniquePtrVector;
 namespace types {
 
 sptr<const Type> DeclResolver::MustResolveType(sptr<const Type> type) {
-  PosRange pos(-1, -1, -1);
-  sptr<const Type> ret = ResolveType(type, typeset_, &pos);
-  if (ret->GetTypeId().IsUnassigned()) {
-    errors_->Append(MakeUnknownTypenameError(fs_, pos));
-  }
-  return ret;
+  return ResolveType(type, typeset_, errors_);
 }
 
 REWRITE_DEFN(DeclResolver, CompUnit, CompUnit, unit,) {
-  TypeSet scopedTypeSet = typeset_.WithImports(unit.Imports(), errors_);
-  DeclResolver scopedResolver(builder_, scopedTypeSet, fs_, errors_, unit.PackagePtr());
+  TypeSet scoped_typeset  = typeset_;
+  if (unit.PackagePtr() != nullptr) {
+    scoped_typeset = typeset_.WithPackage(unit.PackagePtr()->Name(), errors_);
+  } else {
+    scoped_typeset = typeset_.WithRootPackage(errors_);
+  }
+  scoped_typeset = scoped_typeset.WithImports(unit.Imports(), errors_);
+
+  DeclResolver scoped_resolver(builder_, scoped_typeset, fs_, errors_, unit.PackagePtr());
 
   base::SharedPtrVector<const TypeDecl> decls;
   for (int i = 0; i < unit.Types().Size(); ++i) {
     sptr<const TypeDecl> oldtype = unit.Types().At(i);
-    sptr<const TypeDecl> newtype = scopedResolver.Rewrite(oldtype);
+    sptr<const TypeDecl> newtype = scoped_resolver.Rewrite(oldtype);
     if (newtype != nullptr) {
       decls.Append(newtype);
     }
@@ -55,35 +57,26 @@ REWRITE_DEFN(DeclResolver, CompUnit, CompUnit, unit,) {
 }
 
 REWRITE_DEFN(DeclResolver, TypeDecl, TypeDecl, type, ) {
-  // Try and resolve TypeId of this class. If this fails, that means that this
-  // class has some previously discovered error, and we prune this subtree.
-  vector<string> classname;
-  if (package_ != nullptr) {
-    classname = package_->Parts();
-  }
-  classname.push_back(type.Name());
+  // First, fetch a nested TypeSet for this type.
+  TypeSet scoped_resolver = typeset_.WithType(type.Name(), type.NameToken().pos, errors_);
 
-  TypeId curtid = typeset_.Get(classname);
+  // Then, try and resolve TypeId of this class. If this fails, that means that
+  // this class has some serious previously discovered error (cycles in the
+  // import graph, for example). We immediately prune the subtree.
+  TypeId curtid = typeset_.TryGet(type.Name());
   if (!curtid.IsValid()) {
     return nullptr;
   }
 
   // A helper function to build the extends and implements lists.
   const auto AddToTypeIdVector = [&](const QualifiedName& name, vector<TypeId>* out) {
-    TypeId tid = typeset_.Get(name.Parts());
+    PosRange pos = name.Tokens().front().pos;
+    pos.end = name.Tokens().back().pos.end;
+
+    TypeId tid = typeset_.Get(name.Name(), pos, errors_);
     if (tid.IsValid()) {
       out->push_back(tid);
-      return;
     }
-
-    // If we've never heard about this type before, then emit an error.
-    if (tid.IsUnassigned()) {
-      errors_->Append(MakeUnknownTypenameError(fs_, name.Tokens().back().pos));
-      return;
-    }
-
-    // This is a type we've already emitted an error about, so don't emit one again.
-    assert(tid.IsError());
   };
 
   vector<TypeId> extends;

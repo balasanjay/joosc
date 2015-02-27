@@ -457,16 +457,11 @@ REWRITE_DEFN(TypeChecker, TypeDecl, TypeDecl, type, typeptr) {
   // Otherwise create a sub-visitor that has the type info, and let it rewrite
   // this node.
 
-  vector<string> classname;
-  if (package_ != nullptr) {
-    classname = package_->Parts();
-  }
-  classname.push_back(type.Name());
-
-  TypeId curtid = typeset_.Get(classname);
+  TypeSet scoped_typeset = typeset_.WithType(type.Name(), type.NameToken().pos, errors_);
+  TypeId curtid = scoped_typeset.TryGet(type.Name());
   assert(!curtid.IsError()); // Pruned in DeclResolver.
 
-  TypeChecker below = InsideTypeDecl(curtid);
+  TypeChecker below = InsideTypeDecl(curtid, scoped_typeset);
   return below.Rewrite(typeptr);
 }
 
@@ -479,8 +474,15 @@ REWRITE_DEFN(TypeChecker, CompUnit, CompUnit, unit, unitptr) {
 
   // Otherwise create a sub-visitor that has the import info, and let it
   // rewrite this node.
-  TypeSet scopedTypeSet = typeset_.WithImports(unit.Imports(), errors_);
-  TypeChecker below = WithTypeSet(scopedTypeSet).InsideCompUnit(unit.PackagePtr());
+  TypeSet scoped_typeset = typeset_;
+  if (unit.PackagePtr() != nullptr) {
+    scoped_typeset = typeset_.WithPackage(unit.PackagePtr()->Name(), errors_);
+  } else {
+    scoped_typeset = typeset_.WithRootPackage(errors_);
+  }
+  scoped_typeset = scoped_typeset.WithImports(unit.Imports(), errors_);
+
+  TypeChecker below = WithTypeSet(scoped_typeset).InsideCompUnit(unit.PackagePtr());
 
   return below.Rewrite(unitptr);
 }

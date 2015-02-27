@@ -29,37 +29,47 @@ using base::PosRange;
 
 namespace types {
 
-TypeSet TypeSet::kEmptyTypeSet(sptr<TypeSetImpl>(new TypeSetImpl(&FileSet::Empty(), {}, {})));
+TypeSet TypeSet::kEmptyTypeSet(sptr<TypeSetImpl>(new TypeSetImpl(&FileSet::Empty(), {}, {}, {})));
 
-void TypeSetBuilder::AddPackage(const vector<string>&, const vector<PosRange>) {
-  // TODO: implement me.
-}
-
-void TypeSetBuilder::AddType(const vector<string>& pkg, const vector<PosRange>, const string& name, base::PosRange namepos) {
+string TypeSetBuilder::FullyQualifiedTypeName(const Entry& entry) const {
   stringstream ss;
-  for (const auto& p : pkg) {
-    assert(p.find('.') == string::npos);
-    ss << p << '.';
+  if (entry.pkg.size() == 0) {
+    ss << TypeSetImpl::kUnnamedPkgPrefix;
+  } else {
+    ss << TypeSetImpl::kNamedPkgPrefix;
   }
-  assert(name.find('.') == string::npos);
-  ss << name;
-  entries_.push_back(Entry{ss.str(), namepos});
+  for (const auto& part : entry.pkg) {
+    ss << '.' << part.name;
+  }
+  ss << '.' << entry.type.name;
+  return ss.str();
 }
 
 TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
-  vector<Entry> entries(entries_);
+  using NamePos = pair<string, base::PosRange>;
+  using NamePosMap = map<string, base::PosRange>;
+  using NamePosMultiMap = multimap<string, base::PosRange>;
 
-  set<string> types;
-  set<string> bad_types;
+  NamePosMap declared_pkgs(pkgs_);
+
+  // Get fully qualified name of all types.
+  vector<Elem> declared_types;
+  for (const auto& entry : types_) {
+    declared_types.push_back(Elem{FullyQualifiedTypeName(entry), entry.type.pos});
+  }
 
   // First, we identify and strip out any duplicates.
+  set<string> bad_names;
   {
-    using NameToPosMap = multimap<string, PosRange>;
-    using NamePos = pair<string, PosRange>;
-    using Iter = NameToPosMap::const_iterator;
-    NameToPosMap byname;
-    for (const auto& entry : entries) {
-      byname.insert({entry.name, entry.namepos});
+    using Iter = NamePosMultiMap::const_iterator;
+
+    // Put both types and packages in a single multimap.
+    NamePosMultiMap byname;
+    for (const auto& type : declared_types) {
+      byname.insert({type.name, type.pos});
+    }
+    for (const auto& pkg : declared_pkgs) {
+      byname.insert({pkg.first, pkg.second});
     }
 
     auto cmp = [](const NamePos& lhs, const NamePos& rhs) {
@@ -68,7 +78,6 @@ TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
 
     auto cb = [&](Iter start, Iter end, i64 ndups) {
       if (ndups == 1) {
-        types.insert(start->first);
         return;
       }
       assert(ndups > 1);
@@ -80,19 +89,37 @@ TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
 
       assert(defs.size() == (size_t)ndups);
 
+      string without_prefix = start->first.substr(TypeSetImpl::kPkgPrefixLen+1);
       stringstream msgstream;
-      msgstream << "Type '" << start->first << "' was declared multiple times.";
-      out->Append(MakeDuplicateDefinitionError(fs, defs, msgstream.str(), start->first));
-      bad_types.insert(start->first);
+      msgstream << "Type '" << without_prefix << "' was declared multiple times.";
+      out->Append(MakeDuplicateDefinitionError(fs, defs, msgstream.str(), without_prefix));
+      bad_names.insert(start->first);
     };
 
     FindEqualRanges(byname.cbegin(), byname.cend(), cmp, cb);
   }
 
-  // TODO: Check other restrictions, like having a type be a proper prefix of a
-  // package.
+  // Build final set of types and packages by filtering out blacklisted names.
+  set<string> types;
+  set<string> pkgs;
 
-  return TypeSet(make_shared<TypeSetImpl>(fs, types, bad_types));
+  // Helper that inserts a string into a set, if its not blacklisted.
+  auto insert_if_not_bad = [](const string& name, const set<string>& bad, set<string>* out) {
+    if (bad.count(name) == 1) {
+      return;
+    }
+    auto iterok = out->insert(name);
+    assert(iterok.second);
+  };
+
+  for (const auto& type : declared_types) {
+    insert_if_not_bad(type.name, bad_names, &types);
+  }
+  for (const auto& pkg : declared_pkgs) {
+    insert_if_not_bad(pkg.first, bad_names, &pkgs);
+  }
+
+  return TypeSet(make_shared<TypeSetImpl>(fs, types, pkgs, bad_names));
 }
 
 } // namespace types

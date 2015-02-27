@@ -13,36 +13,68 @@ namespace types {
 
 class TypeSetImpl {
 public:
-  TypeSetImpl(const base::FileSet* fs, const set<string>& types, const set<string>& bad_types);
+  enum class ImportScope {
+    // Compilation-unit scoped imports include single-import-statements, and
+    // all the types declared inside the compilation unit. No conflicts are
+    // allowed at this import scope.
+    COMP_UNIT = 0,
 
-  sptr<TypeSetImpl> WithRootPackage() const;
-  sptr<TypeSetImpl> WithPackage(const vector<string>& package, base::PosRange pos) const;
-  sptr<TypeSetImpl> WithImports(const vector<ast::ImportDecl>& imports, base::ErrorList* errors) const;
+    // Package scope lets you name all types that are in the same compilation
+    // unit as you. No conflicts are allowed at this import scope (this is
+    // handled by checking the type-uniqueness constraint).
+    PACKAGE = 1,
 
-  ast::TypeId GetPrefix(const vector<string>& qualifiedname, u64* typelen) const;
-  ast::TypeId Get(const vector<string>& qualifiedname) const;
+    // Wildcard scope includes all wildcard-import-statements. Conflicts ARE
+    // allowed at this import scope, and errors are only emitted upon use.
+    WILDCARD = 2,
+  };
+
+  TypeSetImpl(const base::FileSet* fs, const set<string>& types, const set<string>& pkgs, const set<string>& bad_types);
+
+  // See TypeSet for docs.
+  sptr<TypeSetImpl> WithRootPackage(base::ErrorList*) const;
+  sptr<TypeSetImpl> WithPackage(const string&, base::ErrorList*) const;
+  sptr<TypeSetImpl> WithImports(const vector<ast::ImportDecl>&, base::ErrorList*) const;
+  sptr<TypeSetImpl> WithType(const string& name, base::PosRange pos, base::ErrorList*) const;
+  ast::TypeId Get(const string&, base::PosRange, base::ErrorList*) const;
 
   void PrintTo(std::ostream* out) const {
-    for (const auto& name : available_names_) {
-      *out << name.first << "->" << name.second << '\n';
+    for (const auto& name : visible_types_) {
+      *out << name.first << "->" << name.second.base << "(" <<
+        (int)name.second.scope << ")" << '\n';
     }
   }
 
-  void InsertImport(const ast::ImportDecl& import, base::ErrorList* errors);
-  void InsertWildcardImport(const string& base);
+  static const int kPkgPrefixLen;
+  static const string kUnnamedPkgPrefix;
+  static const string kNamedPkgPrefix;
+
+  void InsertAtScope(ImportScope scope, const string& longname, base::PosRange pos, base::ErrorList* out);
+
+  void InsertWildCard(ImportScope scope, const string& basename, base::PosRange pos, base::ErrorList* out);
 
  private:
-  using QualifiedNameBaseMap = map<string, ast::TypeId::Base>;
+  using TypeBase = ast::TypeId::Base;
 
-  static void InsertName(QualifiedNameBaseMap* m, string name, ast::TypeId::Base base);
+  struct TypeInfo {
+    string full_name;
+    TypeBase base;
+    ImportScope scope;
+  };
+  using TypeInfoMap = multimap<string, TypeInfo>;
+
 
   const base::FileSet* fs_;
 
-  // Changed depending on provided Imports.
-  QualifiedNameBaseMap available_names_;
+  TypeInfoMap visible_types_;
 
-  // Always kept identical to values from Builder.
-  QualifiedNameBaseMap original_names_;
+  // All declared types. Kept immutable after recieving from Builder.
+  map<string, TypeBase> types_;
+
+  // All declared packages. Kept immutable after recieving from Builder.
+  set<string> pkgs_;
+
+  string pkg_prefix_ = "";
 };
 
 } // namespace types
