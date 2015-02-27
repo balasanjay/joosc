@@ -36,8 +36,9 @@ private:
   const base::FileSet* fs_;
   std::map<string, VariableInfo> params_;
   std::map<string, VariableInfo> cur_symbols_; // Doesn't include params.
-  vector<string> cur_scope_;
-  vector<vector<string>> scopes_;
+  u32 cur_scope_len_;
+  vector<string> scopes_;
+  vector<u32> scope_lengths_;
   ast::LocalVarId var_id_counter_;
   ast::LocalVarId currently_declaring_;
 };

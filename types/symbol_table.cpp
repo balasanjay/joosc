@@ -16,7 +16,8 @@ using base::ErrorList;
 
 SymbolTable SymbolTable::empty(nullptr, {}, {}, {});
 
-SymbolTable::SymbolTable(const base::FileSet* fs, const TypeIdList& paramTids, const vector<string>& paramNames, const vector<PosRange>& ranges): fs_(fs), currently_declaring_(kVarUnassigned) {
+SymbolTable::SymbolTable(const base::FileSet* fs, const TypeIdList& paramTids, const vector<string>& paramNames, const vector<PosRange>& ranges)
+  : fs_(fs), cur_scope_len_(0), currently_declaring_(kVarUnassigned) {
   const u64 num_params = paramTids.Size();
   assert(num_params == paramNames.size());
 
@@ -52,7 +53,8 @@ LocalVarId SymbolTable::DeclareLocalStart(ast::TypeId tid, const string& name, P
   currently_declaring_ = var_id_counter_;
   ++var_id_counter_;
   cur_symbols_[name] = varInfo;
-  cur_scope_.push_back(name);
+  scopes_.push_back(name);
+  ++cur_scope_len_;
   return varInfo.vid;
 }
 
@@ -84,18 +86,20 @@ pair<TypeId, LocalVarId> SymbolTable::ResolveLocal(const string& name, PosRange 
 }
 
 void SymbolTable::EnterScope() {
-  scopes_.push_back(cur_scope_);
-  cur_scope_.clear();
+  scope_lengths_.push_back(cur_scope_len_);
+  cur_scope_len_ = 0;
 }
 
 void SymbolTable::LeaveScope() {
-  for (string varName : cur_scope_) {
+  for (u32 i = 0; i < cur_scope_len_; ++i) {
+    string varName = scopes_.back();
+    scopes_.pop_back();
     auto found = cur_symbols_.find(varName);
     assert(found != cur_symbols_.end());
     cur_symbols_.erase(found);
   }
-  cur_scope_ = scopes_.back();
-  scopes_.pop_back();
+  cur_scope_len_ = scope_lengths_.back();
+  scope_lengths_.pop_back();
 }
 
 Error* SymbolTable::MakeUndefinedReferenceError(string varName, PosRange varRange) const {
