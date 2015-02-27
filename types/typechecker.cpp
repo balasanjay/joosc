@@ -98,8 +98,11 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
   TokenType op = expr.Op().type;
 
   if (op == lexer::ASSG) {
-    // TODO: implement assignment.
-    throw;
+    if (!IsAssignable(lhsType, rhsType)) {
+      errors_->Append(MakeUnassignableError(lhsType, rhsType, ExtentOf(rhs)));
+      return nullptr;
+    }
+    return make_shared<BinExpr>(lhs, expr.Op(), rhs, lhsType);
   }
 
   if (IsBoolOp(op)) {
