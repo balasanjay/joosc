@@ -186,26 +186,36 @@ TEST_F(TypeCheckerTest, BoolLitExpr) {
 
 // TODO: CallExpr
 
-TEST_F(TypeCheckerTest, CastExprPrimitives) {
+TEST_F(TypeCheckerTest, CastExprNullptr) {
+  sptr<const Expr> before = ParseExpr("(int)(1 + null)");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(after, nullptr);
+  EXPECT_ERRS("TypeMismatchError(0:10-14)\n");
+}
+
+TEST_F(TypeCheckerTest, CastExprTypeNullptr) {
+  sptr<const Expr> before = ParseExpr("(foo)1");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(after, nullptr);
+  EXPECT_ERRS("UnknownTypenameError(0:1-4)\n");
+}
+
+TEST_F(TypeCheckerTest, CastExprNotCastable) {
+  sptr<const Expr> before = ParseExpr("(int)true");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(after, nullptr);
+  EXPECT_ERRS("IncompatibleCastError(0:0-9)\n");
+}
+
+TEST_F(TypeCheckerTest, CastExprCastable) {
   sptr<const Expr> before = ParseExpr("(int)1");
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kInt, after->GetTypeId());
   EXPECT_NO_ERRS();
-}
-
-TEST_F(TypeCheckerTest, CastExprPrimitiveToRef) {
-  TypeSetBuilder tsb;
-  tsb.Put({}, "Foo", PosRange(-1, -1, -1));
-  TypeSet ts = tsb.Build(fs_.get(), &errors_);
-  TypeId fooId = ts.Get({"Foo"});
-  EXPECT_NO_ERRS();
-  EXPECT_NE(ast::TypeId::kUnassigned, fooId);
-
-  sptr<const Expr> before = ParseExpr("(Foo)2");
-  sptr<const Expr> after = typeChecker_->WithTypeSet(ts).Rewrite(before);
-
-  EXPECT_ERRS("IncompatibleCastError(0:0-6)\n");
 }
 
 // TODO: Cast expr tests with Reference type as LHS.
