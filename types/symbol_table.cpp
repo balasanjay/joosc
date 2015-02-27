@@ -91,6 +91,8 @@ void SymbolTable::EnterScope() {
 }
 
 void SymbolTable::LeaveScope() {
+  assert(scopes_.size() >= cur_scope_len_
+      && !scope_lengths_.empty());
   for (u32 i = 0; i < cur_scope_len_; ++i) {
     string varName = scopes_.back();
     scopes_.pop_back();
