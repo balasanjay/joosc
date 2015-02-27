@@ -9,6 +9,14 @@
 namespace types {
 
 struct VariableInfo {
+public:
+  VariableInfo(
+      ast::LocalVarId vid = ast::kVarUnassigned,
+      ast::TypeId tid = ast::TypeId::kUnassigned,
+      string name = "",
+      base::PosRange posRange = base::PosRange(-1, -1, -1))
+    : vid(vid), tid(tid), name(name), posRange(posRange) {}
+
   ast::LocalVarId vid;
   ast::TypeId tid;
   string name;

@@ -1,7 +1,8 @@
 
-#include "types/symbol_table.h"
-#include "base/error.h"
 #include "ast/extent.h"
+#include "types/symbol_table.h"
+
+#include "base/error.h"
 
 namespace types {
 
@@ -23,11 +24,11 @@ SymbolTable::SymbolTable(const base::FileSet* fs, const TypeIdList& paramTids, c
 
   var_id_counter_ = kVarFirst;
   for (u64 i = 0; i < num_params; ++i) {
-    VariableInfo varInfo = VariableInfo{
+    VariableInfo varInfo = VariableInfo(
       var_id_counter_,
       paramTids.At(i),
       paramNames.at(i),
-      ranges[i]};
+      ranges[i]);
     params_[paramNames.at(i)] = varInfo;
     ++var_id_counter_;
   }
@@ -45,11 +46,11 @@ LocalVarId SymbolTable::DeclareLocalStart(ast::TypeId tid, const string& name, P
   }
 
   // Add new variable to current scope.
-  VariableInfo varInfo = VariableInfo{
-    var_id_counter_,
-    tid,
-    name,
-    nameRange};
+  VariableInfo varInfo = VariableInfo(
+      var_id_counter_,
+      tid,
+      name,
+      nameRange);
   currently_declaring_ = var_id_counter_;
   ++var_id_counter_;
   cur_symbols_[name] = varInfo;
@@ -139,6 +140,5 @@ Error* SymbolTable::MakeDuplicateVarDeclError(string varName, PosRange varRange,
 Error* SymbolTable::MakeVariableInitializerSelfReferenceError(PosRange pos) const {
   return MakeSimplePosRangeError(fs_, pos, "VariableInitializerSelfReferenceError", "A variable cannot be used in its own initializer.");
 }
-
 
 } // namespace types
