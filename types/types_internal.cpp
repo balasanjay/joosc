@@ -4,13 +4,18 @@
 #include "base/error.h"
 #include "base/macros.h"
 
+using std::ostream;
+
 using ast::ArrayType;
 using ast::PrimitiveType;
 using ast::ReferenceType;
 using ast::Type;
 using ast::TypeId;
+using base::DiagnosticClass;
 using base::Error;
 using base::FileSet;
+using base::MakeError;
+using base::OutputOptions;
 using base::PosRange;
 
 namespace types {
@@ -18,6 +23,28 @@ namespace types {
 Error* MakeUnknownTypenameError(const FileSet* fs, PosRange pos) {
   return MakeSimplePosRangeError(fs, pos, "UnknownTypenameError",
                                  "Unknown type name.");
+}
+
+Error* MakeDuplicateDefinitionError(const FileSet* fs, const vector<PosRange> dupes, const string& main_message, const string& name) {
+  return MakeError([=](ostream* out, const OutputOptions& opt) {
+    if (opt.simple) {
+      *out << name << ": [";
+      for (const auto& dupe : dupes) {
+        *out << dupe << ",";
+      }
+      *out << ']';
+      return;
+    }
+
+    PrintDiagnosticHeader(out, opt, fs, dupes.at(0), DiagnosticClass::ERROR, main_message);
+    PrintRangePtr(out, opt, fs, dupes.at(0));
+    for (uint i = 1; i < dupes.size(); ++i) {
+      *out << '\n';
+      PosRange pos = dupes.at(i);
+      PrintDiagnosticHeader(out, opt, fs, pos, DiagnosticClass::INFO, "Also declared here.");
+      PrintRangePtr(out, opt, fs, pos);
+    }
+  });
 }
 
 sptr<const Type> ResolveType(sptr<const Type> type, TypeSet typeset, PosRange* pos_out) {
