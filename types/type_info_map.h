@@ -63,10 +63,16 @@ struct MethodInfo {
   ast::TypeId return_type;
   base::PosRange namepos;
   MethodSignature signature;
+  bool is_constructor;
 
   bool operator<(const MethodInfo& other) const {
-    return signature < other.signature;
+    return std::tie(class_type, signature) < std::tie(other.class_type, other.signature);
   }
+};
+
+struct MethodTableParam {
+  MethodInfo minfo;
+  MethodId mid;
 };
 
 class MethodTable {
@@ -91,7 +97,11 @@ private:
     method_info_.insert({mid, minfo});
   }
 
-  MethodTable() = default;
+  MethodTable(const vector<MethodTableParam>& entries) {
+    for (const auto& entry : entries) {
+      InsertMethod(entry.mid, entry.minfo);
+    }
+  }
 
   static MethodTable kEmptyMethodTable;
 
@@ -104,10 +114,10 @@ struct TypeInfo {
   ast::TypeKind kind;
   ast::TypeId type;
   string name;
-  base::PosRange namePos;
+  base::PosRange pos;
   TypeIdList extends;
   TypeIdList implements;
-  MethodTable mtable;
+  MethodTable methods;
 };
 
 class SymbolTable {
@@ -139,37 +149,62 @@ public:
     return kEmptyTypeInfoMap;
   }
 
-  pair<const TypeInfo&, bool> LookupTypeInfo(ast::TypeId tid);
+  pair<const TypeInfo&, bool> LookupTypeInfo(ast::TypeId tid) {
+    auto info = type_info_.find(tid);
+    assert(info != type_info_.end());
+    // TODO: Bool?
+    return make_pair(info->second, true);
+  }
 
 private:
   friend class TypeInfoMapBuilder;
 
-  TypeInfoMap() = default;
+  void InsertTypeInfo(ast::TypeId tid, const TypeInfo& typeinfo) {
+    type_info_.insert({tid, typeinfo});
+  }
+
+  TypeInfoMap(const vector<TypeInfo>& entries) {
+    for (const auto& entry : entries) {
+      InsertTypeInfo(entry.type, entry);
+    }
+  }
 
   static TypeInfoMap kEmptyTypeInfoMap;
+
+  std::map<ast::TypeId, TypeInfo> type_info_;
 };
 
 class TypeInfoMapBuilder {
 public:
-  // TODO: decide on an API.
-  void Put(ast::TypeKind /*kind*/, ast::TypeId tid, const string& /*qualifiedname*/, const ast::ModifierList& /*mods*/) {
+  void PutType(ast::TypeId tid, const ast::TypeDecl& type, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
     assert(tid.ndims == 0);
+    type_entries_.push_back(TypeEntry{type.Mods(), type.Kind(), tid, type.Name(), type.NameToken().pos, TypeIdList(extends), TypeIdList(implements)});
   }
 
-  void PutMethod(ast::TypeId curtid, ast::TypeId rettid, const vector<ast::TypeId>& paramtids, const ast::MemberDecl& meth) {
-    method_entries_.push_back(MethodInfo{curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{meth.Name(), TypeIdList(paramtids)}});
+  void PutMethod(ast::TypeId curtid, ast::TypeId rettid, const vector<ast::TypeId>& paramtids, const ast::MemberDecl& meth, bool is_constructor) {
+    method_entries_.push_back(MethodInfo{curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{meth.Name(), TypeIdList(paramtids)}, is_constructor});
   }
 
-  TypeInfoMap Build(const base::FileSet* fs, base::ErrorList* out) {
-    CheckMethodDuplicates(fs, out);
-    // TODO: Populate TypeInfo with a MethodTable.
-    // TODO: Create TypeInfos.
-    return TypeInfoMap();
-  }
+  TypeInfoMap Build(const base::FileSet* fs, base::ErrorList* out);
+
+  base::Error* MakeConstructorNameError(const base::FileSet* fs, base::PosRange pos) const;
 
 private:
-  void CheckMethodDuplicates(const base::FileSet* fs, base::ErrorList* out);
+  struct TypeEntry {
+    ast::ModifierList mods;
+    ast::TypeKind kind;
+    ast::TypeId type;
+    string name;
+    base::PosRange pos;
+    TypeIdList extends;
+    TypeIdList implements;
 
+    bool operator<(const TypeEntry& other) const {
+      return type < other.type;
+    }
+  };
+
+  vector<TypeEntry> type_entries_;
   vector<MethodInfo> method_entries_;
 };
 
