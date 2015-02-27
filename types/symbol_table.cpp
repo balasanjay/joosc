@@ -1,21 +1,20 @@
-
-#include "ast/extent.h"
 #include "types/symbol_table.h"
 
+#include "ast/extent.h"
 #include "base/error.h"
+#include "types/types_internal.h"
 
 namespace types {
 
 using ast::LocalVarId;
-using ast::kVarUnassigned;
-using ast::kVarFirst;
 using ast::Type;
 using ast::TypeId;
-using base::PosRange;
+using ast::kVarFirst;
+using ast::kVarUnassigned;
 using base::Error;
 using base::ErrorList;
+using base::PosRange;
 
-//SymbolTable::SymbolTable(const base::FileSet* fs, const TypeIdList& paramTids, const vector<string>& paramNames, const vector<PosRange>& ranges)
 SymbolTable::SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& params)
   : fs_(fs), cur_scope_len_(0), currently_declaring_(kVarUnassigned) {
   var_id_counter_ = kVarFirst;
@@ -118,27 +117,9 @@ Error* SymbolTable::MakeUndefinedReferenceError(string name, PosRange pos) const
 }
 
 Error* SymbolTable::MakeDuplicateVarDeclError(string name, PosRange pos, PosRange old_pos) const {
-  // This lambda will outlive this instance of SymbolTable. Capture local copy of fs_.
-  const base::FileSet* fs = fs_;
-  return base::MakeError([=](std::ostream* out, const base::OutputOptions& opt) {
-    if (opt.simple) {
-      *out << "DuplicateVarDeclError(";
-      *out << pos;
-      *out << ',';
-      *out << old_pos;
-      *out << ')';
-      return;
-    }
-
-    stringstream msgstream;
-    msgstream << "Local variable '" << name << "' was declared multiple times.";
-
-    PrintDiagnosticHeader(out, opt, fs, pos, base::DiagnosticClass::ERROR, msgstream.str());
-    PrintRangePtr(out, opt, fs, pos);
-    *out << '\n';
-    PrintDiagnosticHeader(out, opt, fs, old_pos, base::DiagnosticClass::INFO, "Previously declared here.");
-    PrintRangePtr(out, opt, fs, pos);
-  });
+  stringstream msgstream;
+  msgstream << "Local variable '" << name << "' was declared multiple times.";
+  return MakeDuplicateDefinitionError(fs_, {pos, old_pos}, msgstream.str(), name);
 }
 
 Error* SymbolTable::MakeVariableInitializerSelfReferenceError(PosRange pos) const {

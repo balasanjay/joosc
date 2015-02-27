@@ -137,7 +137,7 @@ TEST_F(SymbolTableTest, LocalVarDuplicateDef) {
 
   symbs_->EnterScope();
   VarDeclGuard(symbs_.get(), tid, "foo", PosRange(0, 2, 3), &errors_);
-  EXPECT_ERRS("DuplicateVarDeclError(0:2,0:1)\n");
+  EXPECT_ERRS("foo: [0:2,0:1,]\n");
 }
 
 TEST_F(SymbolTableTest, LocalVarNonOverlappingScopes) {
