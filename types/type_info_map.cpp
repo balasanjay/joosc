@@ -12,6 +12,8 @@ namespace types {
 
 TypeInfoMap TypeInfoMap::kEmptyTypeInfoMap = TypeInfoMap(vector<TypeInfo>{});
 MethodTable MethodTable::kEmptyMethodTable = MethodTable(vector<MethodTableParam>{});
+MethodSignature MethodTable::kEmptyMethodSignature = MethodSignature{"", TypeIdList({})};
+MethodInfo MethodTable::kEmptyMethodInfo = MethodInfo{TypeId::kError, {}, TypeId::kError, PosRange(-1, -1, -1), MethodTable::kEmptyMethodSignature, false};
 
 Error* TypeInfoMapBuilder::MakeConstructorNameError(const FileSet* fs, PosRange pos) const {
   return MakeSimplePosRangeError(fs, pos, "ConstructorNameError", "Constructors must have the same name as its class.");
@@ -28,7 +30,8 @@ TypeInfoMap TypeInfoMapBuilder::Build(const base::FileSet* fs, base::ErrorList* 
 
     auto cmp = [](const MethodInfo& lhs, const MethodInfo& rhs) {
       return lhs.class_type == rhs.class_type &&
-             lhs.signature == rhs.signature;
+             lhs.signature == rhs.signature &&
+             lhs.is_constructor == rhs.is_constructor;
     };
 
     auto cb = [&](Iter start, Iter end, i64 ndups) {
@@ -56,11 +59,10 @@ TypeInfoMap TypeInfoMapBuilder::Build(const base::FileSet* fs, base::ErrorList* 
   auto good_iter = good_methods.begin();
   auto bad_iter = bad_methods.begin();
   MethodId cur_mid = 0;
-  vector<TypeInfo> type_info_entries;
 
   // TODO: Do something useful with method blacklist.
 
-  for (const auto& type_entry : type_entries_) {
+  for (auto& type_entry : type_entries_) {
     const string& type_name = type_entry.name;
     vector<MethodTableParam> method_table_entries;
     for (; bad_iter != bad_methods.end(); ++bad_iter) {
@@ -83,10 +85,10 @@ TypeInfoMap TypeInfoMapBuilder::Build(const base::FileSet* fs, base::ErrorList* 
 
       method_table_entries.push_back(MethodTableParam{*good_iter, cur_mid++});
     }
-    type_info_entries.push_back(TypeInfo{type_entry.mods, type_entry.kind, type_entry.type, type_entry.name, type_entry.pos, type_entry.extends, type_entry.implements, MethodTable(method_table_entries)});
+    type_entry.methods = MethodTable(method_table_entries);
   }
 
-  return TypeInfoMap(type_info_entries);
+  return TypeInfoMap(type_entries_);
 }
 
 } // namespace types

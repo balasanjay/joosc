@@ -66,7 +66,7 @@ struct MethodInfo {
   bool is_constructor;
 
   bool operator<(const MethodInfo& other) const {
-    return std::tie(class_type, signature) < std::tie(other.class_type, other.signature);
+    return std::tie(class_type, is_constructor, signature) < std::tie(other.class_type, other.is_constructor, other.signature);
   }
 };
 
@@ -104,6 +104,8 @@ private:
   }
 
   static MethodTable kEmptyMethodTable;
+  static MethodSignature kEmptyMethodSignature;
+  static MethodInfo kEmptyMethodInfo;
 
   MethodSignatureMap method_signatures_;
   MethodInfoMap method_info_;
@@ -118,6 +120,10 @@ struct TypeInfo {
   TypeIdList extends;
   TypeIdList implements;
   MethodTable methods;
+
+  bool operator<(const TypeInfo& other) const {
+    return type < other.type;
+  }
 };
 
 class SymbolTable {
@@ -170,6 +176,7 @@ private:
   }
 
   static TypeInfoMap kEmptyTypeInfoMap;
+  static TypeInfo kEmptyTypeInfo;
 
   std::map<ast::TypeId, TypeInfo> type_info_;
 };
@@ -178,7 +185,7 @@ class TypeInfoMapBuilder {
 public:
   void PutType(ast::TypeId tid, const ast::TypeDecl& type, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
     assert(tid.ndims == 0);
-    type_entries_.push_back(TypeEntry{type.Mods(), type.Kind(), tid, type.Name(), type.NameToken().pos, TypeIdList(extends), TypeIdList(implements)});
+    type_entries_.push_back(TypeInfo{type.Mods(), type.Kind(), tid, type.Name(), type.NameToken().pos, TypeIdList(extends), TypeIdList(implements), MethodTable::kEmptyMethodTable});
   }
 
   void PutMethod(ast::TypeId curtid, ast::TypeId rettid, const vector<ast::TypeId>& paramtids, const ast::MemberDecl& meth, bool is_constructor) {
@@ -190,21 +197,7 @@ public:
   base::Error* MakeConstructorNameError(const base::FileSet* fs, base::PosRange pos) const;
 
 private:
-  struct TypeEntry {
-    ast::ModifierList mods;
-    ast::TypeKind kind;
-    ast::TypeId type;
-    string name;
-    base::PosRange pos;
-    TypeIdList extends;
-    TypeIdList implements;
-
-    bool operator<(const TypeEntry& other) const {
-      return type < other.type;
-    }
-  };
-
-  vector<TypeEntry> type_entries_;
+  vector<TypeInfo> type_entries_;
   vector<MethodInfo> method_entries_;
 };
 
