@@ -35,13 +35,13 @@ public:
   void EnterScope();
   void LeaveScope();
 
-  ast::LocalVarId DeclareLocalStart(ast::TypeId tid, const string& name, base::PosRange nameRange, base::ErrorList* errors);
+  ast::LocalVarId DeclareLocalStart(ast::TypeId tid, const string& name, base::PosRange name_pos, base::ErrorList* errors);
   void DeclareLocalEnd(ast::LocalVarId vid);
-  pair<ast::TypeId, ast::LocalVarId> ResolveLocal(const string& name, base::PosRange nameRange, base::ErrorList* errors) const;
+  pair<ast::TypeId, ast::LocalVarId> ResolveLocal(const string& name, base::PosRange name_pos, base::ErrorList* errors) const;
 
 private:
-  base::Error* MakeUndefinedReferenceError(string varName, base::PosRange nameRange) const;
-  base::Error* MakeDuplicateVarDeclError(string varName, base::PosRange varPos, base::PosRange originalVarPos) const;
+  base::Error* MakeUndefinedReferenceError(string var_name, base::PosRange name_pos) const;
+  base::Error* MakeDuplicateVarDeclError(string varName, base::PosRange varPos, base::PosRange original_pos) const;
   base::Error* MakeVariableInitializerSelfReferenceError(base::PosRange pos) const;
 
   const base::FileSet* fs_;
@@ -67,8 +67,8 @@ private:
 };
 
 struct VarDeclGuard {
-  VarDeclGuard(SymbolTable* symbolTable, ast::TypeId tid, const string& name, base::PosRange nameRange, base::ErrorList* errors) : symbol_table_(symbolTable) {
-    vid_ = symbolTable->DeclareLocalStart(tid, name, nameRange, errors);
+  VarDeclGuard(SymbolTable* symbolTable, ast::TypeId tid, const string& name, base::PosRange name_pos, base::ErrorList* errors) : symbol_table_(symbolTable) {
+    vid_ = symbolTable->DeclareLocalStart(tid, name, name_pos, errors);
   }
 
   ~VarDeclGuard() {
