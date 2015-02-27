@@ -99,7 +99,7 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
 
   if (op == lexer::ASSG) {
     // TODO: implement assignment.
-    return nullptr;
+    throw;
   }
 
   if (IsBoolOp(op)) {
@@ -172,14 +172,7 @@ REWRITE_DEFN(TypeChecker, CastExpr, Expr, expr, exprptr) {
   TypeId exprType = castedExpr->GetTypeId();
   TypeId castType = type->GetTypeId();
 
-  if ((IsPrimitive(castType) && IsReference(exprType)) ||
-      (IsReference(castType) && IsPrimitive(exprType))) {
-    errors_->Append(MakeIncompatibleCastError(castType, exprType, ExtentOf(exprptr)));
-    return nullptr;
-  }
-
-  // If either way is assignable, then this is allowed. Simplification for Joos.
-  if (!IsAssignable(castType, exprType) && !IsAssignable(exprType, castType)) {
+  if (!IsCastable(castType, exprType)) {
     errors_->Append(MakeIncompatibleCastError(castType, exprType, ExtentOf(exprptr)));
     return nullptr;
   }
@@ -207,8 +200,7 @@ REWRITE_DEFN(TypeChecker, InstanceOfExpr, Expr, expr, exprptr) {
     return nullptr;
   }
 
-  // If either way is assignable, then this is allowed. Simplification for Joos.
-  if (!IsAssignable(lhsType, rhsType) && !IsAssignable(rhsType, lhsType)) {
+  if (!IsCastable(lhsType, rhsType)) {
     errors_->Append(MakeIncompatibleInstanceOfError(lhsType, rhsType, ExtentOf(exprptr)));
     return nullptr;
   }
@@ -253,8 +245,6 @@ REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
 
   return make_shared<NewArrayExpr>(expr.NewToken(), elemtype, expr.Lbrack(), index, expr.Rbrack(), expr_tid);
 }
-
-// TODO: NewClassExpr
 
 REWRITE_DEFN(TypeChecker, NullLitExpr, Expr, expr, ) {
   return make_shared<NullLitExpr>(expr.GetToken(), TypeId::kNull);
