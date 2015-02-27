@@ -99,9 +99,9 @@ void SymbolTable::LeaveScope() {
   assert(scopes_.size() >= cur_scope_len_
       && !scope_lengths_.empty());
   for (u32 i = 0; i < cur_scope_len_; ++i) {
-    string var_name = scopes_.back();
+    string name = scopes_.back();
     scopes_.pop_back();
-    auto found = cur_symbols_.find(var_name);
+    auto found = cur_symbols_.find(name);
     assert(found != cur_symbols_.end());
     cur_symbols_.erase(found);
   }
@@ -109,35 +109,35 @@ void SymbolTable::LeaveScope() {
   scope_lengths_.pop_back();
 }
 
-Error* SymbolTable::MakeUndefinedReferenceError(string var_name, PosRange var_pos) const {
+Error* SymbolTable::MakeUndefinedReferenceError(string name, PosRange pos) const {
   stringstream ss;
   ss << "Undefined reference to \"";
-  ss << var_name;
+  ss << name;
   ss << "\"";
-  return MakeSimplePosRangeError(fs_, var_pos, "UndefinedReferenceError", ss.str());
+  return MakeSimplePosRangeError(fs_, pos, "UndefinedReferenceError", ss.str());
 }
 
-Error* SymbolTable::MakeDuplicateVarDeclError(string var_name, PosRange var_pos, PosRange original_pos) const {
+Error* SymbolTable::MakeDuplicateVarDeclError(string name, PosRange pos, PosRange old_pos) const {
   // This lambda will outlive this instance of SymbolTable. Capture local copy of fs_.
   const base::FileSet* fs = fs_;
   return base::MakeError([=](std::ostream* out, const base::OutputOptions& opt) {
     if (opt.simple) {
       *out << "DuplicateVarDeclError(";
-      *out << var_pos;
+      *out << pos;
       *out << ',';
-      *out << original_pos;
+      *out << old_pos;
       *out << ')';
       return;
     }
 
     stringstream msgstream;
-    msgstream << "Local variable '" << var_name << "' was declared multiple times.";
+    msgstream << "Local variable '" << name << "' was declared multiple times.";
 
-    PrintDiagnosticHeader(out, opt, fs, var_pos, base::DiagnosticClass::ERROR, msgstream.str());
-    PrintRangePtr(out, opt, fs, var_pos);
+    PrintDiagnosticHeader(out, opt, fs, pos, base::DiagnosticClass::ERROR, msgstream.str());
+    PrintRangePtr(out, opt, fs, pos);
     *out << '\n';
-    PrintDiagnosticHeader(out, opt, fs, original_pos, base::DiagnosticClass::INFO, "Previously declared here.");
-    PrintRangePtr(out, opt, fs, var_pos);
+    PrintDiagnosticHeader(out, opt, fs, old_pos, base::DiagnosticClass::INFO, "Previously declared here.");
+    PrintRangePtr(out, opt, fs, pos);
   });
 }
 
