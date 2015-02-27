@@ -14,7 +14,6 @@ namespace types {
 struct TypeIdList {
 public:
   TypeIdList(const vector<ast::TypeId>& tids) : tids_(tids){}
-  TypeIdList(const std::initializer_list<ast::TypeId>& tids) : tids_(tids){}
 
   int Size() const {
     return tids_.size();
@@ -61,7 +60,7 @@ struct MethodInfo {
   ast::TypeId class_type;
   ast::ModifierList mods;
   ast::TypeId return_type;
-  base::PosRange namepos;
+  base::PosRange pos;
   MethodSignature signature;
   bool is_constructor;
 
@@ -97,18 +96,27 @@ private:
     method_info_.insert({mid, minfo});
   }
 
-  MethodTable(const vector<MethodTableParam>& entries) {
+  MethodTable(const vector<MethodTableParam>& entries, const set<string>& bad_methods, bool has_bad_constructor) : has_bad_constructor_(has_bad_constructor), bad_methods_(bad_methods) {
     for (const auto& entry : entries) {
       InsertMethod(entry.mid, entry.minfo);
     }
   }
 
+  MethodTable() : all_blacklisted_(true) {}
+
   static MethodTable kEmptyMethodTable;
-  static MethodSignature kEmptyMethodSignature;
-  static MethodInfo kEmptyMethodInfo;
+  static MethodTable kErrorMethodTable;
 
   MethodSignatureMap method_signatures_;
   MethodInfoMap method_info_;
+
+  // All blacklisting information.
+  // Every call is blacklisted.
+  bool all_blacklisted_ = false;
+  // Any constructor is blacklisted.
+  bool has_bad_constructor_ = false;
+  // Specific method names are blacklisted.
+  set<string> bad_methods_;
 };
 
 struct TypeInfo {
@@ -120,6 +128,11 @@ struct TypeInfo {
   TypeIdList extends;
   TypeIdList implements;
   MethodTable methods;
+
+  // Orders all types in topological order such that if there is a type A that
+  // implements or extends another type B, then B has a lower top_sort_index
+  // than A.
+  u64 top_sort_index;
 
   bool operator<(const TypeInfo& other) const {
     return type < other.type;
@@ -163,40 +176,41 @@ public:
   }
 
 private:
+  using Map = map<ast::TypeId, TypeInfo>;
   friend class TypeInfoMapBuilder;
 
-  void InsertTypeInfo(ast::TypeId tid, const TypeInfo& typeinfo) {
-    type_info_.insert({tid, typeinfo});
-  }
-
-  TypeInfoMap(const vector<TypeInfo>& entries) {
-    for (const auto& entry : entries) {
-      InsertTypeInfo(entry.type, entry);
-    }
-  }
+  TypeInfoMap(const Map& typeinfo) : type_info_(typeinfo) {}
 
   static TypeInfoMap kEmptyTypeInfoMap;
   static TypeInfo kEmptyTypeInfo;
 
-  std::map<ast::TypeId, TypeInfo> type_info_;
+  Map type_info_;
 };
 
 class TypeInfoMapBuilder {
 public:
+  TypeInfoMapBuilder(const base::FileSet* fs) : fs_(fs) {}
+
   void PutType(ast::TypeId tid, const ast::TypeDecl& type, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
     assert(tid.ndims == 0);
-    type_entries_.push_back(TypeInfo{type.Mods(), type.Kind(), tid, type.Name(), type.NameToken().pos, TypeIdList(extends), TypeIdList(implements), MethodTable::kEmptyMethodTable});
+    type_entries_.push_back(TypeInfo{type.Mods(), type.Kind(), tid, type.Name(), type.NameToken().pos, TypeIdList(extends), TypeIdList(implements), MethodTable::kEmptyMethodTable, tid.base});
   }
 
   void PutMethod(ast::TypeId curtid, ast::TypeId rettid, const vector<ast::TypeId>& paramtids, const ast::MemberDecl& meth, bool is_constructor) {
     method_entries_.push_back(MethodInfo{curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{meth.Name(), TypeIdList(paramtids)}, is_constructor});
   }
 
-  TypeInfoMap Build(const base::FileSet* fs, base::ErrorList* out);
-
-  base::Error* MakeConstructorNameError(const base::FileSet* fs, base::PosRange pos) const;
+  TypeInfoMap Build(base::ErrorList* out);
 
 private:
+  using MInfoIter = vector<MethodInfo>::iterator;
+  using MInfoCIter = vector<MethodInfo>::const_iterator;
+
+  void BuildMethodTable(MInfoIter begin, MInfoIter end, TypeInfo* tinfo, MethodId* cur_mid, const map<ast::TypeId, TypeInfo>& sofar, base::ErrorList* out);
+
+  base::Error* MakeConstructorNameError(base::PosRange pos) const;
+
+  const base::FileSet* fs_;
   vector<TypeInfo> type_entries_;
   vector<MethodInfo> method_entries_;
 };
