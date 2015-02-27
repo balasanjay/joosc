@@ -1,6 +1,7 @@
 #ifndef TYPES_TYPECHECKER_H
 #define TYPES_TYPECHECKER_H
 
+#include "third_party/gtest/gtest.h"
 #include "ast/visitor.h"
 #include "base/errorlist.h"
 #include "base/fileset.h"
@@ -83,6 +84,8 @@ class TypeChecker final : public ast::Visitor {
   REWRITE_DECL(CompUnit, CompUnit, args, argsptr);
 
  private:
+  FRIEND_TEST(TypeCheckerUtilTest, IsCastablePrimitives);
+
   TypeChecker(const base::FileSet* fs, base::ErrorList* errors,
               const TypeSet& typeset, const TypeInfoMap& typeinfo,
               bool belowCompUnit = false, sptr<const ast::QualifiedName> package = nullptr,
@@ -102,9 +105,11 @@ class TypeChecker final : public ast::Visitor {
   bool IsPrimitive(ast::TypeId tid) const;
   bool IsReference(ast::TypeId tid) const;
   bool IsPrimitiveWidening(ast::TypeId lhs, ast::TypeId rhs) const;
+  bool IsPrimitiveNarrowing(ast::TypeId lhs, ast::TypeId rhs) const;
   bool IsReferenceWidening(ast::TypeId lhs, ast::TypeId rhs) const;
   bool IsAssignable(ast::TypeId lhs, ast::TypeId rhs) const;
   bool IsComparable(ast::TypeId lhs, ast::TypeId rhs) const;
+  bool IsCastable(ast::TypeId lhs, ast::TypeId rhs) const;
 
   base::Error* MakeTypeMismatchError(ast::TypeId expected, ast::TypeId got, base::PosRange pos);
   base::Error* MakeIndexNonArrayError(base::PosRange pos);
