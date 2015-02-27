@@ -5,6 +5,7 @@
 #include "base/error.h"
 #include "base/macros.h"
 #include "types/types_internal.h"
+#include "types/symbol_table.h"
 
 using namespace ast;
 
@@ -215,11 +216,20 @@ REWRITE_DEFN(TypeChecker, InstanceOfExpr, Expr, expr, exprptr) {
   return make_shared<InstanceOfExpr>(lhs, expr.InstanceOf(), rhs, TypeId::kBool);
 }
 
-REWRITE_DEFN(TypeChecker, IntLitExpr, Expr, expr, ) {
+REWRITE_DEFN(TypeChecker, IntLitExpr, Expr, expr,) {
   return make_shared<IntLitExpr>(expr.GetToken(), expr.Value(), TypeId::kInt);
 }
 
-// TODO: NameExpr
+REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr,) {
+  // TODO: Name resolution rules.
+  pair<TypeId, ast::LocalVarId> varData = symbol_table_.ResolveLocal(
+      expr.Name().Name(), expr.Name().Tokens()[0].pos, errors_);
+  if (varData.first == TypeId::kUnassigned
+      || varData.second == kVarUnassigned) {
+    return nullptr;
+  }
+  return make_shared<NameExpr>(expr.Name(), varData.second, varData.first);
+}
 
 REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
   sptr<const Type> elemtype = MustResolveType(expr.GetTypePtr());
@@ -297,7 +307,15 @@ REWRITE_DEFN(TypeChecker, UnaryExpr, Expr, expr, exprptr) {
   return make_shared<UnaryExpr>(expr.Op(), rhs, TypeId::kBool);
 }
 
+REWRITE_DEFN(TypeChecker, BlockStmt, Stmt, stmt, stmtptr) {
+  ScopeGuard s(&symbol_table_);
+  return Visitor::RewriteBlockStmt(stmt, stmtptr);
+}
+
 REWRITE_DEFN(TypeChecker, ForStmt, Stmt, stmt,) {
+  // Enter scope for decls in for init.
+  ScopeGuard s(&symbol_table_);
+
   sptr<const Stmt> init = Rewrite(stmt.InitPtr());
 
   sptr<const Expr> cond = nullptr;
@@ -345,7 +363,21 @@ REWRITE_DEFN(TypeChecker, IfStmt, Stmt, stmt,) {
 
 REWRITE_DEFN(TypeChecker, LocalDeclStmt, Stmt, stmt,) {
   sptr<const Type> type = MustResolveType(stmt.GetTypePtr());
-  sptr<const Expr> expr = Rewrite(stmt.GetExprPtr());
+  sptr<const Expr> expr;
+
+  LocalVarId vid = kVarUnassigned;
+  TypeId tid = TypeId::kUnassigned;
+
+  // Assign variable even if type lookup fails so we don't show undefined reference errors.
+  if (type != nullptr) {
+    tid = type->GetTypeId();
+  }
+
+  {
+    VarDeclGuard g(&symbol_table_, tid, stmt.Name(), stmt.NameToken().pos, errors_);
+    expr = Rewrite(stmt.GetExprPtr());
+    vid = g.GetVarId();
+  }
 
   if (type == nullptr || expr == nullptr) {
     return nullptr;
@@ -356,9 +388,7 @@ REWRITE_DEFN(TypeChecker, LocalDeclStmt, Stmt, stmt,) {
     return nullptr;
   }
 
-  // TODO: put into symbol table, and assign local variable id.
-
-  return make_shared<LocalDeclStmt>(type, stmt.Name(), stmt.NameToken(), expr);
+  return make_shared<LocalDeclStmt>(type, stmt.Name(), stmt.NameToken(), expr, vid);
 }
 
 REWRITE_DEFN(TypeChecker, ReturnStmt, Stmt, stmt,) {
@@ -443,7 +473,7 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
     assert(!rettype.IsError());
   }
 
-  TypeChecker below = InsideMethodDecl(rettype);
+  TypeChecker below = InsideMethodDecl(rettype, decl.Params());
   return below.Rewrite(declptr);
 }
 

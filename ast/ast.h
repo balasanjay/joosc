@@ -149,16 +149,19 @@ class Expr {
 
 class NameExpr : public Expr {
  public:
-  NameExpr(const QualifiedName& name) : name_(name) {}
+  NameExpr(const QualifiedName& name, LocalVarId vid = kVarUnassigned, TypeId tid = TypeId::kUnassigned)
+    : Expr(tid), name_(name), vid_(vid) {}
 
   ACCEPT_VISITOR(NameExpr, Expr);
 
   REF_GETTER(QualifiedName, Name, name_);
+  VAL_GETTER(LocalVarId, GetVarId, vid_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NameExpr);
 
   QualifiedName name_;
+  LocalVarId vid_;
 };
 
 class InstanceOfExpr : public Expr {
@@ -439,8 +442,8 @@ class EmptyStmt : public Stmt {
 
 class LocalDeclStmt : public Stmt {
  public:
-  LocalDeclStmt(sptr<const Type> type, const string& name, lexer::Token nameToken, sptr<const Expr> expr)
-      : type_(type), name_(name), nameToken_(nameToken), expr_(expr) {}
+  LocalDeclStmt(sptr<const Type> type, const string& name, lexer::Token nameToken, sptr<const Expr> expr, LocalVarId vid = kVarUnassigned)
+      : type_(type), name_(name), nameToken_(nameToken), expr_(expr), vid_(vid) {}
 
   ACCEPT_VISITOR(LocalDeclStmt, Stmt);
 
@@ -448,6 +451,7 @@ class LocalDeclStmt : public Stmt {
   REF_GETTER(string, Name, name_);
   VAL_GETTER(lexer::Token, NameToken, nameToken_);
   SPTR_GETTER(Expr, GetExpr, expr_);
+  VAL_GETTER(LocalVarId, GetVarId, vid_);
 
   // TODO: get the identifier as a string.
 
@@ -456,6 +460,7 @@ class LocalDeclStmt : public Stmt {
   string name_;
   lexer::Token nameToken_;
   sptr<const Expr> expr_;
+  LocalVarId vid_;
 };
 
 class ReturnStmt : public Stmt {
