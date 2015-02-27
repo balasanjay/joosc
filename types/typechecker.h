@@ -83,6 +83,8 @@ class TypeChecker final : public ast::Visitor {
         belowMethodDecl_(belowMethodDecl), curMethRet_(curMethRet) {}
 
   sptr<const ast::Type> MustResolveType(sptr<const ast::Type> type);
+  ast::TypeId JavaLangType(const string& name) const;
+
   bool IsNumeric(ast::TypeId tid) const;
   bool IsPrimitive(ast::TypeId tid) const;
   bool IsReference(ast::TypeId tid) const;

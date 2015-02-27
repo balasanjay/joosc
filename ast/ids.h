@@ -15,6 +15,7 @@ struct TypeId {
   static const Base kCharBase = 6;
   static const Base kShortBase = 7;
   static const Base kIntBase = 8;
+  static const Base kFirstRefTypeBase = 16;
 
   static const TypeId kUnassigned;
   static const TypeId kError;

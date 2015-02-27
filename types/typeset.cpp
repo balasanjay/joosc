@@ -4,6 +4,8 @@
 #include <iostream>
 #include <iterator>
 
+#include "base/algorithm.h"
+
 using std::back_inserter;
 using std::count;
 using std::cout;
@@ -17,6 +19,7 @@ using base::DiagnosticClass;
 using base::Error;
 using base::ErrorList;
 using base::FileSet;
+using base::FindEqualRanges;
 using base::MakeError;
 using base::OutputOptions;
 using base::Pos;
@@ -58,31 +61,30 @@ Error* MakeDuplicateTypeDefinitionError(const FileSet* fs, const string& name, c
 
 } // namespace
 
-TypeSet TypeSet::kEmptyTypeSet = TypeSet(vector<string>{});
+TypeSet TypeSet::kEmptyTypeSet(&FileSet::Empty(), {}, {});
 
-TypeSet::TypeSet(const vector<string>& qualifiedTypes) {
-  // Get list of all types.
-  vector<string> predefs = {
-    "<unassigned>",
-    "<error>",
-    "<null>",
-    "void",
-    "boolean",
-    "byte",
-    "char",
-    "short",
-    "int",
-  };
+TypeSet::TypeSet(const FileSet* fs, const set<string>& types, const set<string>& bad_types) : fs_(fs) {
+  // Insert all predefined types.
+  original_names_["void"] = TypeId::kVoidBase;
+  original_names_["boolean"] = TypeId::kBoolBase;
+  original_names_["byte"] = TypeId::kByteBase;
+  original_names_["char"] = TypeId::kCharBase;
+  original_names_["short"] = TypeId::kShortBase;
+  original_names_["int"] = TypeId::kIntBase;
 
-  u64 i = 0;
-  for (const auto& predef : predefs) {
-    original_names_[predef] = TypeId::Base(i);
+  u64 i = TypeId::kFirstRefTypeBase;
+  for (const auto& type : types) {
+    auto result = original_names_.insert(make_pair(type, TypeId::Base(i)));
     i++;
+
+    // Verify that we didn't overwrite a key.
+    assert(result.second);
   }
 
-  for (const auto& qualifiedType : qualifiedTypes) {
-    original_names_[qualifiedType] = TypeId::Base(i);
-    i++;
+  for (const auto& bad_type : bad_types) {
+    auto result = original_names_.insert(make_pair(bad_type, TypeId::kError.base));
+    // Verify that we didn't overwrite a key.
+    assert(result.second);
   }
 
   available_names_ = original_names_;
@@ -91,8 +93,8 @@ TypeSet::TypeSet(const vector<string>& qualifiedTypes) {
 TypeId TypeSet::Get(const vector<string>& qualifiedname) const {
   u64 typelen = -1;
   TypeId ret = GetPrefix(qualifiedname, &typelen);
-  if ((uint)typelen < qualifiedname.size() || ret.base == TypeId::kErrorBase) {
-    return TypeId::kError;
+  if ((uint)typelen < qualifiedname.size()) {
+    return TypeId::kUnassigned;
   }
   return ret;
 }
@@ -126,7 +128,7 @@ TypeId TypeSet::GetPrefix(const vector<string>& qualifiedname, u64* typelen) con
     return TypeId{iter->second, 0};
   }
 
-  return TypeId::kError;
+  return TypeId::kUnassigned;
 }
 
 void TypeSet::InsertName(QualifiedNameBaseMap* m, string name, TypeId::Base base) {
@@ -148,38 +150,42 @@ void TypeSet::InsertName(QualifiedNameBaseMap* m, string name, TypeId::Base base
 }
 
 
-TypeSet TypeSet::WithImports(const vector<ast::ImportDecl>& imports, const FileSet* fs, ErrorList* errors) const {
-  TypeSet view;
-  view.original_names_ = original_names_;
-  view.available_names_ = available_names_;
+TypeSet TypeSet::WithImports(const vector<ast::ImportDecl>& imports, ErrorList* errors) const {
+  TypeSet view(*this);
 
   view.InsertWildcardImport("java.lang");
   for (const auto& import : imports) {
     if (import.IsWildCard()) {
       view.InsertWildcardImport(import.Name().Name());
     } else {
-      view.InsertImport(import, fs, errors);
+      view.InsertImport(import, errors);
     }
   }
 
   return view;
 }
 
-void TypeSet::InsertImport(const ImportDecl& import, const FileSet* fs, ErrorList* errors) {
-  auto iter = original_names_.find(import.Name().Name());
+void TypeSet::InsertImport(const ImportDecl& import, ErrorList* errors) {
+  const string& full = import.Name().Name();
+  const vector<string>& parts = import.Name().Parts();
+  const string& last = parts.at(parts.size() - 1);
+
+  auto iter = original_names_.find(full);
 
   if (iter == original_names_.end()) {
-    errors->Append(MakeUnknownImportError(fs, import.Name().Tokens().back().pos));
+    errors->Append(MakeUnknownImportError(fs_, import.Name().Tokens().back().pos));
+
+    // Add both versions of the name to blacklist, without overwriting any
+    // existing entries.
+    available_names_.insert(make_pair(full, TypeId::kError.base));
+    available_names_.insert(make_pair(last, TypeId::kError.base));
+
     return;
   }
 
   // TODO: errors.
   assert(iter != original_names_.end());
   TypeId::Base tid = iter->second;
-
-  const vector<string>& parts = import.Name().Parts();
-  const string& last = parts.at(parts.size() - 1);
-
   InsertName(&available_names_, last, tid);
 }
 
@@ -215,37 +221,50 @@ void TypeSetBuilder::Put(const vector<string>& ns, const string& name, base::Pos
 }
 
 TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
-  // Find duplicates.
   vector<Entry> entries(entries_);
-  stable_sort(entries.begin(), entries.end(),
-      [](const Entry& lhs, const Entry& rhs) { return lhs.name < rhs.name; });
 
-  uint start = 0;
-  uint end = 1;
-  while (start < entries.size()) {
-    if (end < entries.size() && entries[start].name == entries[end].name) {
-      ++end;
-      continue;
+  set<string> types;
+  set<string> bad_types;
+
+  // First, we identify and strip out any duplicates.
+  {
+    using NameToPosMap = multimap<string, PosRange>;
+    using NamePos = pair<string, PosRange>;
+    using Iter = NameToPosMap::const_iterator;
+    NameToPosMap byname;
+    for (const auto& entry : entries) {
+      byname.insert({entry.name, entry.namepos});
     }
 
-    // Check for duplicate definitions.
-    if (end - start > 1) {
-      vector<PosRange> defs;
-      for (uint i = start; i < end; ++i) {
-        defs.push_back(entries.at(i).namepos);
+    auto cmp = [](const NamePos& lhs, const NamePos& rhs) {
+      return lhs.first == rhs.first;
+    };
+
+    auto cb = [&](Iter start, Iter end, i64 ndups) {
+      if (ndups == 1) {
+        types.insert(start->first);
+        return;
       }
-      out->Append(MakeDuplicateTypeDefinitionError(fs, entries[start].name, defs));
-    }
+      assert(ndups > 1);
 
-    start = end;
-    ++end;
+      vector<PosRange> defs;
+      for (auto cur = start; cur != end; ++cur) {
+        defs.push_back(cur->second);
+      }
+
+      assert(defs.size() == (size_t)ndups);
+
+      out->Append(MakeDuplicateTypeDefinitionError(fs, start->first, defs));
+      bad_types.insert(start->first);
+    };
+
+    FindEqualRanges(byname.cbegin(), byname.cend(), cmp, cb);
   }
 
-  vector<string> qualifiedNames;
-  transform(entries.begin(), entries.end(), back_inserter(qualifiedNames),
-      [](const Entry& e) { return e.name; });
+  // TODO: Check other restrictions, like having a type be a proper prefix of a
+  // package.
 
-  return TypeSet(qualifiedNames);
+  return TypeSet(fs, types, bad_types);
 }
 
 } // namespace types
