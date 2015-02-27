@@ -2,11 +2,13 @@
 #define STD_H
 
 #include <cstdint>
+#include <map>
 #include <memory>
+#include <set>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
-#include <sstream>
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -20,7 +22,11 @@ typedef int64_t i64;
 
 using std::make_pair;
 using std::make_shared;
+using std::map;
+using std::multimap;
+using std::multiset;
 using std::pair;
+using std::set;
 using std::string;
 using std::stringstream;
 using std::vector;

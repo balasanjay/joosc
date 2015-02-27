@@ -97,6 +97,8 @@ class TypeChecker final : public ast::Visitor {
         symbol_table_(symbol_table) {}
 
   sptr<const ast::Type> MustResolveType(sptr<const ast::Type> type);
+  ast::TypeId JavaLangType(const string& name) const;
+
   bool IsNumeric(ast::TypeId tid) const;
   bool IsPrimitive(ast::TypeId tid) const;
   bool IsReference(ast::TypeId tid) const;
