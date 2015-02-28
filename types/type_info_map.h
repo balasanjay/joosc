@@ -35,6 +35,8 @@ private:
 };
 
 using MethodId = u64;
+const MethodId kErrorMethodId = 0;
+const MethodId kFirstMethodId = 1;
 
 enum CallContext {
   INSTANCE,
@@ -43,30 +45,26 @@ enum CallContext {
 };
 
 struct MethodSignature {
+  bool is_constructor;
   string name;
   TypeIdList param_types;
 
   bool operator<(const MethodSignature& other) const {
-    return std::tie(name, param_types) < std::tie(other.name, other.param_types);
+    return std::tie(is_constructor, name, param_types) < std::tie(other.is_constructor, other.name, other.param_types);
   }
 
   bool operator==(const MethodSignature& other) const {
-    return name == other.name && param_types == other.param_types;
+    return !(*this < other) && !(other < *this);
   }
 };
 
 struct MethodInfo {
+  MethodId mid;
   ast::TypeId class_type;
   ast::ModifierList mods;
   ast::TypeId return_type;
   base::PosRange pos;
   MethodSignature signature;
-  bool is_constructor;
-};
-
-struct MethodTableParam {
-  MethodInfo minfo;
-  MethodId mid;
 };
 
 class MethodTable {
@@ -75,8 +73,11 @@ public:
   MethodId ResolveCall(ast::TypeId callerType, CallContext ctx, const TypeIdList& params, base::ErrorList* out) const;
 
   // Given a valid MethodId, return all the associated info about it.
-  // TODO: handle blacklisting.
   const MethodInfo& LookupMethod(MethodId mid) const {
+    if (mid == kErrorMethodId) {
+      return kErrorMethodInfo;
+    }
+
     auto info = method_info_.find(mid);
     assert(info != method_info_.end());
     return info->second;
@@ -84,17 +85,12 @@ public:
 
 private:
   friend class TypeInfoMapBuilder;
-  using MethodSignatureMap = std::map<MethodSignature, MethodId>;
+  using MethodSignatureMap = std::map<MethodSignature, MethodInfo>;
   using MethodInfoMap = std::map<MethodId, MethodInfo>;
 
-  void InsertMethod(MethodId mid, const MethodInfo& minfo) {
-    method_signatures_.insert({minfo.signature, mid});
-    method_info_.insert({mid, minfo});
-  }
-
-  MethodTable(const vector<MethodTableParam>& entries, const set<string>& bad_methods, bool has_bad_constructor) : has_bad_constructor_(has_bad_constructor), bad_methods_(bad_methods) {
+  MethodTable(const MethodSignatureMap& entries, const set<string>& bad_methods, bool has_bad_constructor) : method_signatures_(entries), has_bad_constructor_(has_bad_constructor), bad_methods_(bad_methods) {
     for (const auto& entry : entries) {
-      InsertMethod(entry.mid, entry.minfo);
+      method_info_.insert({entry.second.mid, entry.second});
     }
   }
 
@@ -102,6 +98,7 @@ private:
 
   static MethodTable kEmptyMethodTable;
   static MethodTable kErrorMethodTable;
+  static MethodInfo kErrorMethodInfo;
 
   MethodSignatureMap method_signatures_;
   MethodInfoMap method_info_;
@@ -139,8 +136,8 @@ public:
 
   // TODO: handle blacklisting.
   pair<const TypeInfo&, bool> LookupTypeInfo(ast::TypeId tid) {
-    auto info = type_info_.find(tid);
-    assert(info != type_info_.end());
+    const auto info = type_info_.find(tid);
+    assert(info != type_info_.cend());
     return make_pair(info->second, true);
   }
 
@@ -166,7 +163,7 @@ public:
   }
 
   void PutMethod(ast::TypeId curtid, ast::TypeId rettid, const vector<ast::TypeId>& paramtids, const ast::MemberDecl& meth, bool is_constructor) {
-    method_entries_.push_back(MethodInfo{curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{meth.Name(), TypeIdList(paramtids)}, is_constructor});
+    method_entries_.push_back(MethodInfo{kErrorMethodId, curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{is_constructor, meth.Name(), TypeIdList(paramtids)}});
   }
 
   TypeInfoMap Build(base::ErrorList* out);
@@ -174,6 +171,8 @@ public:
 private:
   using MInfoIter = vector<MethodInfo>::iterator;
   using MInfoCIter = vector<MethodInfo>::const_iterator;
+
+  MethodTable MakeResolvedMethodTable(TypeInfo* tinfo, const MethodTable::MethodSignatureMap& good_methods, const set<string>& bad_methods, bool has_bad_constructor, const map<ast::TypeId, TypeInfo>& sofar, base::ErrorList* out);
 
   void BuildMethodTable(MInfoIter begin, MInfoIter end, TypeInfo* tinfo, MethodId* cur_mid, const map<ast::TypeId, TypeInfo>& sofar, base::ErrorList* out);
 

@@ -1585,18 +1585,7 @@ sptr<const Program> Parse(const FileSet* fs,
   return make_shared<Program>(units);
 }
 
-// TODO: After we have types, need to ensure byte literals are within 8-bit
-// signed two's complement.
-// TODO: in for-loop initializers, for-loop incrementors, and top-level
-// statements, we must ensure that they are either assignment, method
-// invocation, or class creation, not other types of expressions (like
-// boolean ops).
 // TODO: Handle parsing empty files.
-// TODO: The weeder must ensure that non-abstract classes cannot have abstract
-// methods.
-// TODO: Weed out array indexing into 'this'; i.e. ("this[3]").
-// TODO: Weed out parens around assignment in blocks, for initializer, for
-// update.
 // TODO: "Integer[] a;" gives strange error - should say requires
 // initialization.
 
