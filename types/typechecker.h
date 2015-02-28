@@ -36,7 +36,7 @@ class TypeChecker final : public ast::Visitor {
     return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package_, true, curtype);
   }
 
-  TypeChecker InsideMethodDecl(ast::TypeId curMethRet, const ast::ParamList& params) const {
+  TypeChecker InsideMethodDecl(ast::TypeId curMethRet, bool isStatic, const ast::ParamList& params) const {
     assert(belowTypeDecl_);
     assert(!belowMethodDecl_);
 
@@ -51,7 +51,7 @@ class TypeChecker final : public ast::Visitor {
     }
     SymbolTable symbol_table(fs_, paramInfos);
 
-    return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package_, true, curtype_, true, curMethRet, symbol_table);
+    return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package_, true, curtype_, true, isStatic, curMethRet, symbol_table);
   }
 
   REWRITE_DECL(ArrayIndexExpr, Expr, expr, exprptr);
@@ -90,12 +90,12 @@ class TypeChecker final : public ast::Visitor {
               const TypeSet& typeset, const TypeInfoMap& typeinfo,
               bool belowCompUnit = false, sptr<const ast::QualifiedName> package = nullptr,
               bool belowTypeDecl = false, ast::TypeId curtype = ast::TypeId::kUnassigned,
-              bool belowMethodDecl = false, ast::TypeId curMethRet = ast::TypeId::kUnassigned,
+              bool belowMethodDecl = false, bool belowStaticMethod = false, ast::TypeId curMethRet = ast::TypeId::kUnassigned,
               SymbolTable symbol_table = SymbolTable::Empty())
       : fs_(fs), errors_(errors), typeset_(typeset), typeinfo_(typeinfo),
         belowCompUnit_(belowCompUnit), package_(package),
         belowTypeDecl_(belowTypeDecl), curtype_(curtype),
-        belowMethodDecl_(belowMethodDecl), curMethRet_(curMethRet),
+        belowMethodDecl_(belowMethodDecl), belowStaticMethod_(belowStaticMethod), curMethRet_(curMethRet),
         symbol_table_(symbol_table) {}
 
   sptr<const ast::Type> MustResolveType(sptr<const ast::Type> type);
@@ -122,6 +122,7 @@ class TypeChecker final : public ast::Visitor {
   base::Error* MakeUnassignableError(ast::TypeId lhs, ast::TypeId rhs, base::PosRange pos);
   base::Error* MakeInvalidReturnError(ast::TypeId ret, ast::TypeId expr, base::PosRange pos);
   base::Error* MakeIncomparableTypeError(ast::TypeId lhs, ast::TypeId rhs, base::PosRange pos);
+  base::Error* MakeThisInStaticMethodError(base::PosRange this_pos);
 
   const base::FileSet* fs_;
   base::ErrorList* errors_;
@@ -136,8 +137,9 @@ class TypeChecker final : public ast::Visitor {
   const ast::TypeId curtype_; // Only populated if below TypeDecl.
 
   const bool belowMethodDecl_ = false;
+  const bool belowStaticMethod_ = false;
   const ast::TypeId curMethRet_; // Only populated if below MethodDecl.
-  SymbolTable symbol_table_;
+  SymbolTable symbol_table_; // Empty unless below MethodDecl.
 };
 
 }  // namespace types

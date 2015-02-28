@@ -279,12 +279,28 @@ TEST_F(TypeCheckerTest, ThisLitExpr) {
   auto typeChecker = (*typeChecker_.get())
     .InsideCompUnit(nullptr)
     .InsideTypeDecl(insideType)
-    .InsideMethodDecl(TypeId::kVoid, ParamList({}));
+    .InsideMethodDecl(TypeId::kVoid, false, ParamList({}));
 
   auto after = typeChecker.Rewrite(before);
 
   EXPECT_EQ(insideType, after->GetTypeId());
   EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, ThisLitExprInStaticMethod) {
+  const auto insideType = TypeId{100, 0};
+
+  sptr<const Expr> before = ParseExpr("this");
+
+  auto typeChecker = (*typeChecker_.get())
+    .InsideCompUnit(nullptr)
+    .InsideTypeDecl(insideType)
+    .InsideMethodDecl(TypeId::kVoid, true, ParamList({}));
+
+  auto after = typeChecker.Rewrite(before);
+
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("ThisInStaticMethodError(0:0-4)\n");
 }
 
 TEST_F(TypeCheckerTest, UnaryExprErrorFromRHS) {

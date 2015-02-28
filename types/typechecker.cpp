@@ -265,9 +265,10 @@ REWRITE_DEFN(TypeChecker, StringLitExpr, Expr, expr,) {
 }
 
 REWRITE_DEFN(TypeChecker, ThisExpr, Expr, expr,) {
-  // TODO: this should only work in an instance context. i.e. we should only
-  // populate curtype_ when entering a non-static method, or a non-static field
-  // initializer.
+  if (belowStaticMethod_) {
+    errors_->Append(MakeThisInStaticMethodError(expr.ThisToken().pos));
+    return nullptr;
+  }
   return make_shared<ThisExpr>(expr.ThisToken(), curtype_);
 }
 
@@ -463,7 +464,8 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
     assert(!rettype.IsError());
   }
 
-  TypeChecker below = InsideMethodDecl(rettype, decl.Params());
+  bool is_static = decl.Mods().HasModifier(lexer::Modifier::STATIC);
+  TypeChecker below = InsideMethodDecl(rettype, is_static, decl.Params());
   return below.Rewrite(declptr);
 }
 
