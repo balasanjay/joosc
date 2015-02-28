@@ -32,7 +32,6 @@ public:
   TypeSetImpl(const base::FileSet* fs, const set<string>& types, const set<string>& pkgs, const set<string>& bad_types);
 
   // See TypeSet for docs.
-  sptr<TypeSetImpl> WithRootPackage(base::ErrorList*) const;
   sptr<TypeSetImpl> WithPackage(const string&, base::ErrorList*) const;
   sptr<TypeSetImpl> WithImports(const vector<ast::ImportDecl>&, base::ErrorList*) const;
   sptr<TypeSetImpl> WithType(const string& name, base::PosRange pos, base::ErrorList*) const;

@@ -35,13 +35,11 @@ sptr<const Type> DeclResolver::MustResolveType(sptr<const Type> type) {
 }
 
 REWRITE_DEFN(DeclResolver, CompUnit, CompUnit, unit,) {
-  TypeSet scoped_typeset  = typeset_;
-  if (unit.PackagePtr() != nullptr) {
-    scoped_typeset = typeset_.WithPackage(unit.PackagePtr()->Name(), errors_);
-  } else {
-    scoped_typeset = typeset_.WithRootPackage(errors_);
-  }
-  scoped_typeset = scoped_typeset.WithImports(unit.Imports(), errors_);
+  // TODO: if the typeset.WithImports finds an error in the imports, we should
+  // trim the imports, so that subsequent passes do not emit the same error.
+  TypeSet scoped_typeset  = typeset_
+      .WithPackage(unit.PackagePtr(), errors_)
+      .WithImports(unit.Imports(), errors_);;
 
   DeclResolver scoped_resolver(builder_, scoped_typeset, fs_, errors_, unit.PackagePtr());
 

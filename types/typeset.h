@@ -20,14 +20,14 @@ public:
     return kEmptyTypeSet;
   }
 
-  // Enter the root package. Mutually exclusive with WithPackage.
-  TypeSet WithRootPackage(base::ErrorList* errors) const {
-    return TypeSet(impl_->WithRootPackage(errors));
-  }
-
-  // Enter a package. Mutually exclusive with WithRootPackage.
-  TypeSet WithPackage(const string& package, base::ErrorList* errors) const {
-    return TypeSet(impl_->WithPackage(package, errors));
+  // Enter a package. package can be nullptr, which means use the unnamed
+  // package.
+  TypeSet WithPackage(sptr<const ast::QualifiedName> package, base::ErrorList* errors) const {
+    string pkg = "";
+    if (package != nullptr) {
+      pkg = package->Name();
+    }
+    return TypeSet(impl_->WithPackage(pkg, errors));
   }
 
   // Provides a `view' into the TypeSet assuming the provided imports are in
@@ -43,12 +43,12 @@ public:
   }
 
   ast::TypeId Get(const string& name, base::PosRange pos, base::ErrorList* errors) const {
-    assert(errors != nullptr);
     return impl_->Get(name, pos, errors);
   }
   ast::TypeId TryGet(const string& name) const {
     static const base::PosRange fakepos(-1, -1, -1);
-    return impl_->Get(name, fakepos, nullptr);
+    base::ErrorList throwaway;
+    return impl_->Get(name, fakepos, &throwaway);
   }
  private:
   friend class TypeSetBuilder;
