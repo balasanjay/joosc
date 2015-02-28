@@ -82,23 +82,18 @@ TypeSetImpl::TypeSetImpl(const FileSet* fs, const set<string>& types, const set<
   }
 }
 
-sptr<TypeSetImpl> TypeSetImpl::WithRootPackage(base::ErrorList* errors) const {
-  static const PosRange fakepos(-1, -1, -1);
-
-  assert(pkg_prefix_ == "");
-
-  TypeSetImpl view(*this);
-  view.pkg_prefix_ = kUnnamedPkgPrefix + ".";
-  view.InsertWildCard(ImportScope::PACKAGE, kUnnamedPkgPrefix, fakepos, errors);
-  return sptr<TypeSetImpl>(new TypeSetImpl(view));
-}
-
 sptr<TypeSetImpl> TypeSetImpl::WithPackage(const string& package, base::ErrorList* errors) const {
   static const PosRange fakepos(-1, -1, -1);
 
   assert(pkg_prefix_ == "");
 
-  string pkg = kNamedPkgPrefix + "." + package;
+  string pkg = "";
+  if (pkg == "") {
+    pkg = kUnnamedPkgPrefix;
+  } else {
+    pkg = kNamedPkgPrefix + "." + package;
+  }
+
   assert(pkgs_.count(pkg) == 1);
 
   TypeSetImpl view(*this);
@@ -147,9 +142,7 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
   // First, lookup this type.
   auto iter = types_.find(longname);
   if (iter == types_.end()) {
-    if (errors != nullptr) {
-      errors->Append(MakeUnknownImportError(fs_, pos));
-    }
+    errors->Append(MakeUnknownImportError(fs_, pos));
 
     // Blacklist both versions of this name.
     visible_types_.erase(longname);
@@ -254,14 +247,12 @@ TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList*
   if (num_entries == 0) {
     // TODO: return a special TypeId::kPackage if it is in pkgs_. That way the
     // TypeChecker can resolve ambiguous names correctly.
-    if (errors != nullptr) {
-      errors->Append(MakeUnknownTypenameError(fs_, pos));
-    }
+    errors->Append(MakeUnknownTypenameError(fs_, pos));
     return TypeId::kUnassigned;
   }
 
-  // If there is an entry, then either its an actual type, or its blacklisted.
-  // In either case, just return the type.
+  // If there is an entry, then either it's an actual type, or it's
+  // blacklisted.  In either case, just return the type.
   if (num_entries == 1) {
     return TypeId{begin->second.base, 0};
   }
@@ -270,27 +261,23 @@ TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList*
   // conflicting wildcard entries.
   assert(num_entries > 1);
 
-  if (errors != nullptr) {
-    stringstream ss;
-    ss << "'" << name << "' is ambiguous; it could refer to ";
-    for (auto cur = begin; cur != end; ++cur) {
-      if (cur != begin) {
-        ss << ", or ";
-      }
-      ss << cur->second.full_name.substr(kPkgPrefixLen + 1);
+  stringstream ss;
+  ss << "'" << name << "' is ambiguous; it could refer to ";
+  for (auto cur = begin; cur != end; ++cur) {
+    if (cur != begin) {
+      ss << ", or ";
     }
-    ss << '.';
-    errors->Append(MakeAmbiguousTypeError(fs_, pos, ss.str()));
+    ss << cur->second.full_name.substr(kPkgPrefixLen + 1);
   }
+  ss << '.';
+  errors->Append(MakeAmbiguousTypeError(fs_, pos, ss.str()));
 
   return TypeId::kError;
 }
 
 void TypeSetImpl::InsertWildCard(ImportScope scope, const string& basename, base::PosRange pos, base::ErrorList* errors) {
   if (pkgs_.count(basename) == 0) {
-    if (errors != nullptr) {
-      errors->Append(MakeUnknownPackageError(fs_, pos));
-    }
+    errors->Append(MakeUnknownPackageError(fs_, pos));
     return;
   }
 
@@ -298,17 +285,30 @@ void TypeSetImpl::InsertWildCard(ImportScope scope, const string& basename, base
   auto begin = types_.lower_bound(prefix);
   auto end = types_.end();
 
+  // Find all types that this wildcard import names.
   for (auto iter = begin; iter != end; ++iter) {
     auto decl = iter->first;
-    if (decl.size() < prefix.size() || count(decl.begin() + prefix.size(), decl.end(), '.') > 0) {
+
+    // If the subsequent name is shorter, then we've passed the relevant
+    // section of names starting with prefix.
+    if (decl.size() < prefix.size()) {
+      break;
+    }
+
+    // If we are importing "java.*", we don't want to make "java.lang.Integer"
+    // available. So we only want types that don't have any dots in their name
+    // after the package prefix.
+    if (find(decl.begin() + prefix.size(), decl.end(), '.') != decl.end()) {
       continue;
     }
 
+    // If the decl no longer starts with the prefix, then we've passed the
+    // relevant section of names starting with prefix.
     if (decl.compare(0, prefix.size(), prefix) != 0) {
       break;
     }
 
-    string longname = decl;
+    // Otherwise, we found a type that we should import, so we import it.
     InsertAtScope(scope, decl, pos, errors);
   }
 }
