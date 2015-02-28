@@ -378,8 +378,8 @@ void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(map<TypeId, TypeInfo>* t
   IdInfoMap& all_types = *types;
   set<TypeId>& bad_types = *bad;
 
-  // Ensure that we blacklist any classes that introduce invalid any edges into
-  // the graph.
+  // Ensure that we blacklist any classes that introduce invalid edges into the
+  // graph.
   PruneInvalidGraphEdges(all_types, &bad_types, errors);
 
   // Now build a combined graph of edges.
@@ -547,7 +547,5 @@ vector<TypeId> TypeInfoMapBuilder::VerifyAcyclicGraph(const multimap<TypeId, Typ
 
   return sorted;
 }
-
-
 
 } // namespace types
