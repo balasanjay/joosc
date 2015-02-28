@@ -36,9 +36,9 @@ class TypeChecker final : public ast::Visitor {
     return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package_, true, curtype);
   }
 
-  TypeChecker InsideMethodDecl(ast::TypeId curMethRet, bool isStatic, const ast::ParamList& params) const {
+  TypeChecker InsideMemberDecl(ast::TypeId curMethRet, bool isStatic, const ast::ParamList& params) const {
     assert(belowTypeDecl_);
-    assert(!belowMethodDecl_);
+    assert(!belowMemberDecl_);
 
     // Construct initial symbol table with params for this method.
     vector<VariableInfo> paramInfos;
@@ -95,7 +95,7 @@ class TypeChecker final : public ast::Visitor {
       : fs_(fs), errors_(errors), typeset_(typeset), typeinfo_(typeinfo),
         belowCompUnit_(belowCompUnit), package_(package),
         belowTypeDecl_(belowTypeDecl), curtype_(curtype),
-        belowMethodDecl_(belowMethodDecl), belowStaticMethod_(belowStaticMethod), curMethRet_(curMethRet),
+        belowMemberDecl_(belowMethodDecl), belowStaticMember_(belowStaticMethod), curMemberType_(curMethRet),
         symbol_table_(symbol_table) {}
 
   sptr<const ast::Type> MustResolveType(sptr<const ast::Type> type);
@@ -122,7 +122,7 @@ class TypeChecker final : public ast::Visitor {
   base::Error* MakeUnassignableError(ast::TypeId lhs, ast::TypeId rhs, base::PosRange pos);
   base::Error* MakeInvalidReturnError(ast::TypeId ret, ast::TypeId expr, base::PosRange pos);
   base::Error* MakeIncomparableTypeError(ast::TypeId lhs, ast::TypeId rhs, base::PosRange pos);
-  base::Error* MakeThisInStaticMethodError(base::PosRange this_pos);
+  base::Error* MakeThisInStaticMemberError(base::PosRange this_pos);
 
   const base::FileSet* fs_;
   base::ErrorList* errors_;
@@ -136,9 +136,9 @@ class TypeChecker final : public ast::Visitor {
   const bool belowTypeDecl_ = false;
   const ast::TypeId curtype_; // Only populated if below TypeDecl.
 
-  const bool belowMethodDecl_ = false;
-  const bool belowStaticMethod_ = false;
-  const ast::TypeId curMethRet_; // Only populated if below MethodDecl.
+  const bool belowMemberDecl_ = false;
+  const bool belowStaticMember_ = false;
+  const ast::TypeId curMemberType_; // Only populated if below MemberDecl.
   SymbolTable symbol_table_; // Empty unless below MethodDecl.
 };
 

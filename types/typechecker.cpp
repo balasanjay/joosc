@@ -265,8 +265,8 @@ REWRITE_DEFN(TypeChecker, StringLitExpr, Expr, expr,) {
 }
 
 REWRITE_DEFN(TypeChecker, ThisExpr, Expr, expr,) {
-  if (belowStaticMethod_) {
-    errors_->Append(MakeThisInStaticMethodError(expr.ThisToken().pos));
+  if (belowStaticMember_) {
+    errors_->Append(MakeThisInStaticMemberError(expr.ThisToken().pos));
     return nullptr;
   }
   return make_shared<ThisExpr>(expr.ThisToken(), curtype_);
@@ -396,9 +396,9 @@ REWRITE_DEFN(TypeChecker, ReturnStmt, Stmt, stmt,) {
     exprType = expr->GetTypeId();
   }
 
-  assert(belowMethodDecl_);
-  if (!IsAssignable(curMethRet_, exprType)) {
-    errors_->Append(MakeInvalidReturnError(curMethRet_, exprType, stmt.ReturnToken().pos));
+  assert(belowMemberDecl_);
+  if (!IsAssignable(curMemberType_, exprType)) {
+    errors_->Append(MakeInvalidReturnError(curMemberType_, exprType, stmt.ReturnToken().pos));
     return nullptr;
   }
 
@@ -449,7 +449,7 @@ REWRITE_DEFN(TypeChecker, FieldDecl, MemberDecl, decl,) {
 REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
   // If we have method info, then just use the default implementation of
   // RewriteMethodDecl.
-  if (belowMethodDecl_) {
+  if (belowMemberDecl_) {
     return Visitor::RewriteMethodDecl(decl, declptr);
   }
 
@@ -465,7 +465,7 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
   }
 
   bool is_static = decl.Mods().HasModifier(lexer::Modifier::STATIC);
-  TypeChecker below = InsideMethodDecl(rettype, is_static, decl.Params());
+  TypeChecker below = InsideMemberDecl(rettype, is_static, decl.Params());
   return below.Rewrite(declptr);
 }
 
