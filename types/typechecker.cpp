@@ -470,6 +470,14 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
   return below.Rewrite(declptr);
 }
 
+// Rewrite params to include the local var ids that were just assigned to them.
+REWRITE_DEFN(TypeChecker, Param, Param, param,) {
+  LocalVarId vid;
+  std::tie(std::ignore, vid) = symbol_table_.ResolveLocal(param.Name(), param.NameToken().pos, errors_);
+  assert(vid != kVarUnassigned);
+  return make_shared<Param>(param.GetTypePtr(), param.Name(), param.NameToken(), vid);
+}
+
 REWRITE_DEFN(TypeChecker, TypeDecl, TypeDecl, type, typeptr) {
   // If we have method info, then just use the default implementation of
   // RewriteTypeDecl.

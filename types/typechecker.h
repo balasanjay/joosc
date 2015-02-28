@@ -82,6 +82,7 @@ class TypeChecker final : public ast::Visitor {
   REWRITE_DECL(ReturnStmt, Stmt, stmt, stmtptr);
   REWRITE_DECL(WhileStmt, Stmt, stmt, stmtptr);
   REWRITE_DECL(BlockStmt, Stmt, stmt, stmtptr);
+  REWRITE_DECL(Param, Param, param, paramptr);
 
   REWRITE_DECL(FieldDecl, MemberDecl, decl, declptr);
   REWRITE_DECL(MethodDecl, MemberDecl, decl, declptr);
