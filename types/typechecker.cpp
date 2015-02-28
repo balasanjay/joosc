@@ -494,15 +494,13 @@ REWRITE_DEFN(TypeChecker, CompUnit, CompUnit, unit, unitptr) {
 
   // Otherwise create a sub-visitor that has the import info, and let it
   // rewrite this node.
-  TypeSet scoped_typeset = typeset_;
-  if (unit.PackagePtr() != nullptr) {
-    scoped_typeset = typeset_.WithPackage(unit.PackagePtr()->Name(), errors_);
-  } else {
-    scoped_typeset = typeset_.WithRootPackage(errors_);
-  }
-  scoped_typeset = scoped_typeset.WithImports(unit.Imports(), errors_);
+  TypeSet scoped_typeset = typeset_
+      .WithPackage(unit.PackagePtr(), errors_)
+      .WithImports(unit.Imports(), errors_);
 
-  TypeChecker below = WithTypeSet(scoped_typeset).InsideCompUnit(unit.PackagePtr());
+  TypeChecker below = (*this)
+      .WithTypeSet(scoped_typeset)
+      .InsideCompUnit(unit.PackagePtr());
 
   return below.Rewrite(unitptr);
 }
