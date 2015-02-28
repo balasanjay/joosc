@@ -98,8 +98,11 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
   TokenType op = expr.Op().type;
 
   if (op == lexer::ASSG) {
-    // TODO: implement assignment.
-    throw;
+    if (!IsAssignable(lhsType, rhsType)) {
+      errors_->Append(MakeUnassignableError(lhsType, rhsType, ExtentOf(rhs)));
+      return nullptr;
+    }
+    return make_shared<BinExpr>(lhs, expr.Op(), rhs, lhsType);
   }
 
   if (IsBoolOp(op)) {
@@ -421,28 +424,40 @@ REWRITE_DEFN(TypeChecker, WhileStmt, Stmt, stmt,) {
   return make_shared<WhileStmt>(cond, body);
 }
 
-REWRITE_DEFN(TypeChecker, FieldDecl, MemberDecl, decl,) {
+REWRITE_DEFN(TypeChecker, FieldDecl, MemberDecl, decl, declptr) {
   sptr<const Type> type = MustResolveType(decl.GetTypePtr());
+  if (type == nullptr) {
+    return nullptr;
+  }
+
+  TypeId tid = type->GetTypeId();
+
+  // If we have method info, then just use the default implementation of
+  // RewriteMethodDecl.
+  if (!belowMemberDecl_) {
+    bool is_static = decl.Mods().HasModifier(lexer::Modifier::STATIC);
+    TypeChecker below = InsideMemberDecl(tid, is_static, {});
+    return below.RewriteFieldDecl(decl, declptr);
+  }
+
   sptr<const Expr> val = nullptr;
   if (decl.ValPtr() != nullptr) {
     val = Rewrite(decl.ValPtr());
   }
 
-  if (type == nullptr || (decl.ValPtr() != nullptr && val == nullptr)) {
+  if (decl.ValPtr() != nullptr && val == nullptr) {
     return nullptr;
   }
 
   if (val != nullptr) {
-    if (!IsAssignable(type->GetTypeId(), val->GetTypeId())) {
-      errors_->Append(MakeUnassignableError(type->GetTypeId(), val->GetTypeId(), ExtentOf(decl.ValPtr())));
+    if (!IsAssignable(tid, val->GetTypeId())) {
+      errors_->Append(MakeUnassignableError(tid, val->GetTypeId(), ExtentOf(decl.ValPtr())));
       return nullptr;
     }
   }
 
-
   // TODO: When we start putting field-ids into FieldDecl, then this should
   // also populate it.
-
   return make_shared<FieldDecl>(decl.Mods(), type, decl.Name(), decl.NameToken(), val);
 }
 
@@ -467,6 +482,14 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
   bool is_static = decl.Mods().HasModifier(lexer::Modifier::STATIC);
   TypeChecker below = InsideMemberDecl(rettype, is_static, decl.Params());
   return below.Rewrite(declptr);
+}
+
+// Rewrite params to include the local var ids that were just assigned to them.
+REWRITE_DEFN(TypeChecker, Param, Param, param,) {
+  LocalVarId vid;
+  std::tie(std::ignore, vid) = symbol_table_.ResolveLocal(param.Name(), param.NameToken().pos, errors_);
+  assert(vid != kVarUnassigned);
+  return make_shared<Param>(param.GetTypePtr(), param.Name(), param.NameToken(), vid);
 }
 
 REWRITE_DEFN(TypeChecker, TypeDecl, TypeDecl, type, typeptr) {

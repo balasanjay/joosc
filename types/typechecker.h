@@ -36,11 +36,7 @@ class TypeChecker final : public ast::Visitor {
     return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package_, true, curtype);
   }
 
-  TypeChecker InsideMemberDecl(ast::TypeId curMethRet, bool isStatic, const ast::ParamList& params) const {
-    assert(belowTypeDecl_);
-    assert(!belowMemberDecl_);
-
-    // Construct initial symbol table with params for this method.
+  TypeChecker InsideMemberDecl(ast::TypeId cur_member_type, bool is_static, const ast::ParamList& params) const {
     vector<VariableInfo> paramInfos;
     for (int i = 0; i < params.Params().Size(); ++i) {
       sptr<const ast::Param> param = params.Params().At(i);
@@ -49,9 +45,20 @@ class TypeChecker final : public ast::Visitor {
         param->Name(),
         param->NameToken().pos));
     }
-    SymbolTable symbol_table(fs_, paramInfos);
 
-    return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package_, true, curtype_, true, isStatic, curMethRet, symbol_table);
+    return InsideMemberDecl(cur_member_type, is_static, paramInfos);
+  }
+
+  TypeChecker InsideMemberDecl(ast::TypeId cur_member_type, bool is_static, const vector<VariableInfo>& paramInfos) const {
+    assert(belowTypeDecl_);
+    assert(!belowMemberDecl_);
+
+    // Construct initial symbol table with params for this method.
+    return TypeChecker(
+        fs_, errors_, typeset_, typeinfo_,
+        true, package_,
+        true, curtype_,
+        true, is_static, cur_member_type, SymbolTable(fs_, paramInfos));
   }
 
   REWRITE_DECL(ArrayIndexExpr, Expr, expr, exprptr);
@@ -75,6 +82,7 @@ class TypeChecker final : public ast::Visitor {
   REWRITE_DECL(ReturnStmt, Stmt, stmt, stmtptr);
   REWRITE_DECL(WhileStmt, Stmt, stmt, stmtptr);
   REWRITE_DECL(BlockStmt, Stmt, stmt, stmtptr);
+  REWRITE_DECL(Param, Param, param, paramptr);
 
   REWRITE_DECL(FieldDecl, MemberDecl, decl, declptr);
   REWRITE_DECL(MethodDecl, MemberDecl, decl, declptr);
@@ -90,12 +98,12 @@ class TypeChecker final : public ast::Visitor {
               const TypeSet& typeset, const TypeInfoMap& typeinfo,
               bool belowCompUnit = false, sptr<const ast::QualifiedName> package = nullptr,
               bool belowTypeDecl = false, ast::TypeId curtype = ast::TypeId::kUnassigned,
-              bool belowMethodDecl = false, bool belowStaticMethod = false, ast::TypeId curMethRet = ast::TypeId::kUnassigned,
+              bool belowMemberDecl = false, bool belowStaticMember = false, ast::TypeId curMethRet = ast::TypeId::kUnassigned,
               SymbolTable symbol_table = SymbolTable::Empty())
       : fs_(fs), errors_(errors), typeset_(typeset), typeinfo_(typeinfo),
         belowCompUnit_(belowCompUnit), package_(package),
         belowTypeDecl_(belowTypeDecl), curtype_(curtype),
-        belowMemberDecl_(belowMethodDecl), belowStaticMember_(belowStaticMethod), curMemberType_(curMethRet),
+        belowMemberDecl_(belowMemberDecl), belowStaticMember_(belowStaticMember), curMemberType_(curMethRet),
         symbol_table_(symbol_table) {}
 
   sptr<const ast::Type> MustResolveType(sptr<const ast::Type> type);
