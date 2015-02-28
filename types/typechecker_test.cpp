@@ -190,7 +190,7 @@ TEST_F(TypeCheckerTest, BinExprAssignment) {
   auto typeChecker = (*typeChecker_.get())
     .InsideCompUnit(nullptr)
     .InsideTypeDecl(insideType)
-    .InsideMemberDecl(TypeId::kVoid, false, {{TypeId::kInt, "a", PosRange(0, 0, 1)}});
+    .InsideMemberDecl(false, TypeId::kVoid, {{TypeId::kInt, "a", PosRange(0, 0, 1)}});
 
   auto after = typeChecker.Rewrite(before);
   EXPECT_EQ(TypeId::kInt, after->GetTypeId());
@@ -204,7 +204,7 @@ TEST_F(TypeCheckerTest, BinExprAssignmentFails) {
   auto typeChecker = (*typeChecker_.get())
     .InsideCompUnit(nullptr)
     .InsideTypeDecl(insideType)
-    .InsideMemberDecl(TypeId::kVoid, false, {{TypeId::kInt, "a", PosRange(0, 0, 1)}});
+    .InsideMemberDecl(false, TypeId::kVoid, {{TypeId::kInt, "a", PosRange(0, 0, 1)}});
 
   auto after = typeChecker.Rewrite(before);
   EXPECT_EQ(nullptr, after);
@@ -314,7 +314,7 @@ TEST_F(TypeCheckerTest, ThisLitExpr) {
   auto typeChecker = (*typeChecker_.get())
     .InsideCompUnit(nullptr)
     .InsideTypeDecl(insideType)
-    .InsideMemberDecl(TypeId::kVoid, false, ParamList({}));
+    .InsideMemberDecl(false, TypeId::kVoid);
 
   auto after = typeChecker.Rewrite(before);
 
@@ -330,7 +330,7 @@ TEST_F(TypeCheckerTest, ThisLitExprInStaticMethod) {
   auto typeChecker = (*typeChecker_.get())
     .InsideCompUnit(nullptr)
     .InsideTypeDecl(insideType)
-    .InsideMemberDecl(TypeId::kVoid, true, ParamList({}));
+    .InsideMemberDecl(true, TypeId::kVoid);
 
   auto after = typeChecker.Rewrite(before);
 

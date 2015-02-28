@@ -425,39 +425,35 @@ REWRITE_DEFN(TypeChecker, WhileStmt, Stmt, stmt,) {
 }
 
 REWRITE_DEFN(TypeChecker, FieldDecl, MemberDecl, decl, declptr) {
-  sptr<const Type> type = MustResolveType(decl.GetTypePtr());
-  if (type == nullptr) {
-    return nullptr;
-  }
-
-  TypeId tid = type->GetTypeId();
-
   // If we have method info, then just use the default implementation of
   // RewriteMethodDecl.
   if (!belowMemberDecl_) {
     bool is_static = decl.Mods().HasModifier(lexer::Modifier::STATIC);
-    TypeChecker below = InsideMemberDecl(tid, is_static, {});
+    TypeChecker below = InsideMemberDecl(is_static);
     return below.RewriteFieldDecl(decl, declptr);
   }
 
+  sptr<const Type> type = MustResolveType(decl.GetTypePtr());
   sptr<const Expr> val = nullptr;
   if (decl.ValPtr() != nullptr) {
     val = Rewrite(decl.ValPtr());
   }
 
-  if (decl.ValPtr() != nullptr && val == nullptr) {
+  if (type == nullptr || (decl.ValPtr() != nullptr && val == nullptr)) {
     return nullptr;
   }
 
   if (val != nullptr) {
-    if (!IsAssignable(tid, val->GetTypeId())) {
-      errors_->Append(MakeUnassignableError(tid, val->GetTypeId(), ExtentOf(decl.ValPtr())));
+    if (!IsAssignable(type->GetTypeId(), val->GetTypeId())) {
+      errors_->Append(MakeUnassignableError(type->GetTypeId(), val->GetTypeId(), ExtentOf(decl.ValPtr())));
       return nullptr;
     }
   }
 
+
   // TODO: When we start putting field-ids into FieldDecl, then this should
   // also populate it.
+
   return make_shared<FieldDecl>(decl.Mods(), type, decl.Name(), decl.NameToken(), val);
 }
 
@@ -480,7 +476,7 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
   }
 
   bool is_static = decl.Mods().HasModifier(lexer::Modifier::STATIC);
-  TypeChecker below = InsideMemberDecl(rettype, is_static, decl.Params());
+  TypeChecker below = InsideMemberDecl(is_static, rettype, decl.Params());
   return below.Rewrite(declptr);
 }
 

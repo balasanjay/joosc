@@ -36,7 +36,7 @@ class TypeChecker final : public ast::Visitor {
     return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package_, true, curtype);
   }
 
-  TypeChecker InsideMemberDecl(ast::TypeId cur_member_type, bool is_static, const ast::ParamList& params) const {
+  TypeChecker InsideMemberDecl(bool is_static, ast::TypeId cur_member_type, const ast::ParamList& params) const {
     vector<VariableInfo> paramInfos;
     for (int i = 0; i < params.Params().Size(); ++i) {
       sptr<const ast::Param> param = params.Params().At(i);
@@ -46,10 +46,13 @@ class TypeChecker final : public ast::Visitor {
         param->NameToken().pos));
     }
 
-    return InsideMemberDecl(cur_member_type, is_static, paramInfos);
+    return InsideMemberDecl(is_static, cur_member_type, paramInfos);
   }
 
-  TypeChecker InsideMemberDecl(ast::TypeId cur_member_type, bool is_static, const vector<VariableInfo>& paramInfos) const {
+  TypeChecker InsideMemberDecl(
+      bool is_static,
+      ast::TypeId cur_member_type = ast::TypeId::kError,
+      const vector<VariableInfo>& paramInfos = {}) const {
     assert(belowTypeDecl_);
     assert(!belowMemberDecl_);
 
@@ -146,7 +149,7 @@ class TypeChecker final : public ast::Visitor {
 
   const bool belowMemberDecl_ = false;
   const bool belowStaticMember_ = false;
-  const ast::TypeId curMemberType_; // Only populated if below MemberDecl.
+  const ast::TypeId curMemberType_; // Only populated if below MethodDecl.
   SymbolTable symbol_table_; // Empty unless below MethodDecl.
 };
 
