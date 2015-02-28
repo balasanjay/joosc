@@ -42,6 +42,21 @@ static Token kProtected(K_PROTECTED, kFakePos);
 static Token kFinal(K_FINAL, kFakePos);
 static Token kAbstract(K_ABSTRACT, kFakePos);
 
+Error* MakeInterfaceExtendsClassError(const FileSet* fs, PosRange pos, const string& parent_class) {
+  string msg = "An interface may not extend '" + parent_class + "', a class.";
+  return MakeSimplePosRangeError(fs, pos, "InterfaceExtendsClassError", msg);
+}
+
+Error* MakeClassImplementsClassError(const FileSet* fs, PosRange pos, const string& parent_class) {
+  string msg = "A class may not implement '" + parent_class + "', a class.";
+  return MakeSimplePosRangeError(fs, pos, "ClassImplementsClassError", msg);
+}
+
+Error* MakeClassExtendsInterfaceError(const FileSet* fs, PosRange pos, const string& parent_iface) {
+  string msg = "A class may not extend '" + parent_iface + "', an interface.";
+  return MakeSimplePosRangeError(fs, pos, "ClassExtendInterfaceError", msg);
+}
+
 } // namespace
 
 TypeInfoMap TypeInfoMap::kEmptyTypeInfoMap = TypeInfoMap({});
@@ -317,11 +332,13 @@ void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeIn
 
 TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
   map<TypeId, TypeInfo> typeinfo;
+  set<TypeId> bad_types;
+
   for (const auto& entry : type_entries_) {
     typeinfo.insert({entry.type, entry});
   }
 
-  ValidateExtendsImplementsGraph(&typeinfo, out);
+  ValidateExtendsImplementsGraph(&typeinfo, &bad_types, out);
 
   // Sort MethodInfo vector by the topological ordering of the types.
   {
@@ -333,6 +350,7 @@ TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
 
   // Populate MethodTables for each TypeInfo.
   {
+    // TODO: Take &bad_types as an argument, and immediately skip types that are bad.
     // TODO: Catch classes with no methods.
     MethodId cur_mid = kFirstMethodId;
 
@@ -348,19 +366,21 @@ TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
     FindEqualRanges(method_entries_.begin(), method_entries_.end(), cmp, cb);
   }
 
+  // TODO: take bad_types in the constructor. Any lookups of TypeIds from
+  // bad_types should yield kErrorTypeInfo, or something like it.
   return TypeInfoMap(typeinfo);
 }
 
-void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(map<TypeId, TypeInfo>* m, ErrorList* errors) {
+void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(map<TypeId, TypeInfo>* types, set<TypeId>* bad, ErrorList* errors) {
   using IdInfoMap = map<TypeId, TypeInfo>;
 
   // Bind a reference to make the code more readable.
-  IdInfoMap& all_types = *m;
-  set<TypeId> blacklisted_types;
+  IdInfoMap& all_types = *types;
+  set<TypeId>& bad_types = *bad;
 
   // Ensure that we blacklist any classes that introduce invalid any edges into
   // the graph.
-  PruneInvalidGraphEdges(all_types, &blacklisted_types, errors);
+  PruneInvalidGraphEdges(all_types, &bad_types, errors);
 
   // Now build a combined graph of edges.
   multimap<TypeId, TypeId> edges;
@@ -368,15 +388,13 @@ void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(map<TypeId, TypeInfo>* m
     const TypeId type = type_pair.first;
     const TypeInfo& typeinfo = type_pair.second;
 
-    if (blacklisted_types.count(type) == 1) {
+    if (bad_types.count(type) == 1) {
       continue;
     }
 
-    for (int i = 0; i < typeinfo.extends.Size(); ++i) {
-      edges.insert({type, typeinfo.extends.At(i)});
-    }
-    for (int i = 0; i < typeinfo.implements.Size(); ++i) {
-      edges.insert({type, typeinfo.implements.At(i)});
+    TypeIdList parents = Concat({typeinfo.extends, typeinfo.implements});
+    for (int i = 0; i < parents.Size(); ++i) {
+      edges.insert({type, parents.At(i)});
     }
   }
 
@@ -390,27 +408,25 @@ void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(map<TypeId, TypeInfo>* m
       errors->Append(MakeExtendsCycleError(infos));
     };
 
-    vector<TypeId> topsort = VerifyAcyclicGraph(edges, &blacklisted_types, cycle_cb);
+    vector<TypeId> topsort = VerifyAcyclicGraph(edges, &bad_types, cycle_cb);
     for (uint i = 0; i < topsort.size(); ++i) {
       all_types.at(topsort.at(i)).top_sort_index = i;
     }
   }
-
-  // TODO: figure out what jon needs here and make it thusly.
 }
 
-void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all_types, set<TypeId>* blacklisted_types, ErrorList* errors) {
+void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all_types, set<TypeId>* bad_types, ErrorList* errors) {
   // Blacklists child if parent doesn't exist in all_types, or parent's kind
   // doesn't match expected_parent_kind.
   auto match_relationship = [&](TypeId parent, TypeId child, TypeKind expected_parent_kind) {
     auto parent_iter = all_types.find(parent);
     if (parent_iter == all_types.end()) {
-      blacklisted_types->insert(child);
+      bad_types->insert(child);
       return false;
     }
 
     if (parent_iter->second.kind != expected_parent_kind) {
-      blacklisted_types->insert(child);
+      bad_types->insert(child);
       return false;
     }
 
@@ -429,8 +445,8 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
       for (int i = 0; i < typeinfo.extends.Size(); ++i) {
         TypeId extends_tid = typeinfo.extends.At(i);
         if (!match_relationship(extends_tid, type, TypeKind::INTERFACE)) {
-          // TODO: emit an error.
-          throw;
+          errors->Append(MakeInterfaceExtendsClassError(fs_, typeinfo.pos, all_types.at(extends_tid).name));
+          bad_types->insert(type);
         }
       }
       continue;
@@ -441,28 +457,29 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
     if (typeinfo.extends.Size() == 1) {
       TypeId parent_tid = typeinfo.extends.At(0);
       if (!match_relationship(parent_tid, type, TypeKind::CLASS)) {
-        // TODO: emit an error.
-        throw;
+        errors->Append(MakeClassExtendsInterfaceError(fs_, typeinfo.pos, all_types.at(parent_tid).name));
+        bad_types->insert(type);
       }
     }
     for (int i = 0; i < typeinfo.implements.Size(); ++i) {
       TypeId implement_tid = typeinfo.implements.At(i);
       if (!match_relationship(implement_tid, type, TypeKind::INTERFACE)) {
-        // TODO: emit an error.
-        throw;
+        errors->Append(MakeClassImplementsClassError(fs_, typeinfo.pos, all_types.at(implement_tid).name));
+        bad_types->insert(type);
       }
     }
   }
 }
 
-vector<TypeId> TypeInfoMapBuilder::VerifyAcyclicGraph(const multimap<TypeId, TypeId>& edges, set<TypeId>* blacklisted_types, function<void(const vector<TypeId>& cycle)> cb) {
-  // Both of these store different representations of the current recursion path.
+vector<TypeId> TypeInfoMapBuilder::VerifyAcyclicGraph(const multimap<TypeId, TypeId>& edges, set<TypeId>* bad_types, function<void(const vector<TypeId>& cycle)> cb) {
+  // Both of these store different representations of the current recursion
+  // path.
   set<TypeId> open;
   vector<TypeId> path;
 
   // Tracks known values of TypeIds.
   set<TypeId> good;
-  set<TypeId>& bad = *blacklisted_types;
+  set<TypeId>& bad = *bad_types;
 
   // Stored in top-sorted order.
   vector<TypeId> sorted;
