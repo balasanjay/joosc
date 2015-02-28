@@ -36,7 +36,7 @@ class TypeChecker final : public ast::Visitor {
     return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package_, true, curtype);
   }
 
-  TypeChecker InsideMethodDecl(ast::TypeId curMethRet, const ast::ParamList& params) const {
+  TypeChecker InsideMemberDecl(bool is_static, ast::TypeId cur_member_type, const ast::ParamList& params) const {
     vector<VariableInfo> paramInfos;
     for (int i = 0; i < params.Params().Size(); ++i) {
       sptr<const ast::Param> param = params.Params().At(i);
@@ -46,19 +46,22 @@ class TypeChecker final : public ast::Visitor {
         param->NameToken().pos));
     }
 
-    return InsideMethodDecl(curMethRet, paramInfos);
+    return InsideMemberDecl(is_static, cur_member_type, paramInfos);
   }
 
-  TypeChecker InsideMethodDecl(ast::TypeId curMethRet, const vector<VariableInfo>& paramInfos) const {
+  TypeChecker InsideMemberDecl(
+      bool is_static,
+      ast::TypeId cur_member_type = ast::TypeId::kError,
+      const vector<VariableInfo>& paramInfos = {}) const {
     assert(belowTypeDecl_);
-    assert(!belowMethodDecl_);
+    assert(!belowMemberDecl_);
 
     // Construct initial symbol table with params for this method.
     return TypeChecker(
         fs_, errors_, typeset_, typeinfo_,
         true, package_,
         true, curtype_,
-        true, curMethRet, SymbolTable(fs_, paramInfos));
+        true, is_static, cur_member_type, SymbolTable(fs_, paramInfos));
   }
 
   REWRITE_DECL(ArrayIndexExpr, Expr, expr, exprptr);
@@ -98,12 +101,12 @@ class TypeChecker final : public ast::Visitor {
               const TypeSet& typeset, const TypeInfoMap& typeinfo,
               bool belowCompUnit = false, sptr<const ast::QualifiedName> package = nullptr,
               bool belowTypeDecl = false, ast::TypeId curtype = ast::TypeId::kUnassigned,
-              bool belowMethodDecl = false, ast::TypeId curMethRet = ast::TypeId::kUnassigned,
+              bool belowMemberDecl = false, bool belowStaticMember = false, ast::TypeId curMethRet = ast::TypeId::kUnassigned,
               SymbolTable symbol_table = SymbolTable::Empty())
       : fs_(fs), errors_(errors), typeset_(typeset), typeinfo_(typeinfo),
         belowCompUnit_(belowCompUnit), package_(package),
         belowTypeDecl_(belowTypeDecl), curtype_(curtype),
-        belowMethodDecl_(belowMethodDecl), curMethRet_(curMethRet),
+        belowMemberDecl_(belowMemberDecl), belowStaticMember_(belowStaticMember), curMemberType_(curMethRet),
         symbol_table_(symbol_table) {}
 
   sptr<const ast::Type> MustResolveType(sptr<const ast::Type> type);
@@ -130,6 +133,7 @@ class TypeChecker final : public ast::Visitor {
   base::Error* MakeUnassignableError(ast::TypeId lhs, ast::TypeId rhs, base::PosRange pos);
   base::Error* MakeInvalidReturnError(ast::TypeId ret, ast::TypeId expr, base::PosRange pos);
   base::Error* MakeIncomparableTypeError(ast::TypeId lhs, ast::TypeId rhs, base::PosRange pos);
+  base::Error* MakeThisInStaticMemberError(base::PosRange this_pos);
 
   const base::FileSet* fs_;
   base::ErrorList* errors_;
@@ -143,9 +147,10 @@ class TypeChecker final : public ast::Visitor {
   const bool belowTypeDecl_ = false;
   const ast::TypeId curtype_; // Only populated if below TypeDecl.
 
-  const bool belowMethodDecl_ = false;
-  const ast::TypeId curMethRet_; // Only populated if below MethodDecl.
-  SymbolTable symbol_table_;
+  const bool belowMemberDecl_ = false;
+  const bool belowStaticMember_ = false;
+  const ast::TypeId curMemberType_; // Only populated if below MethodDecl.
+  SymbolTable symbol_table_; // Empty unless below MethodDecl.
 };
 
 }  // namespace types
