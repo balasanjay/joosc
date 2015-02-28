@@ -176,6 +176,34 @@ TEST_F(TypeCheckerTest, BinExprNumericOpOperandsNotNumeric) {
   EXPECT_ERRS("TypeMismatchError(0:0-4)\nTypeMismatchError(0:7-11)\n");
 }
 
+TEST_F(TypeCheckerTest, BinExprAssignment) {
+  sptr<const Expr> before = ParseExpr("a = 1");
+
+  const auto insideType = TypeId{100, 0};
+  auto typeChecker = (*typeChecker_.get())
+    .InsideCompUnit(nullptr)
+    .InsideTypeDecl(insideType)
+    .InsideMethodDecl(TypeId::kVoid, {{TypeId::kInt, "a", PosRange(0, 0, 1)}});
+
+  auto after = typeChecker.Rewrite(before);
+  EXPECT_EQ(TypeId::kInt, after->GetTypeId());
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, BinExprAssignmentFails) {
+  sptr<const Expr> before = ParseExpr("a = true");
+
+  const auto insideType = TypeId{100, 0};
+  auto typeChecker = (*typeChecker_.get())
+    .InsideCompUnit(nullptr)
+    .InsideTypeDecl(insideType)
+    .InsideMethodDecl(TypeId::kVoid, {{TypeId::kInt, "a", PosRange(0, 0, 1)}});
+
+  auto after = typeChecker.Rewrite(before);
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("UnassignableError(0:4-8)\n");
+}
+
 TEST_F(TypeCheckerTest, BoolLitExpr) {
   sptr<const Expr> before = ParseExpr("true");
   auto after = typeChecker_->Rewrite(before);

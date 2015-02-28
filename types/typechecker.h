@@ -37,10 +37,6 @@ class TypeChecker final : public ast::Visitor {
   }
 
   TypeChecker InsideMethodDecl(ast::TypeId curMethRet, const ast::ParamList& params) const {
-    assert(belowTypeDecl_);
-    assert(!belowMethodDecl_);
-
-    // Construct initial symbol table with params for this method.
     vector<VariableInfo> paramInfos;
     for (int i = 0; i < params.Params().Size(); ++i) {
       sptr<const ast::Param> param = params.Params().At(i);
@@ -49,9 +45,20 @@ class TypeChecker final : public ast::Visitor {
         param->Name(),
         param->NameToken().pos));
     }
-    SymbolTable symbol_table(fs_, paramInfos);
 
-    return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package_, true, curtype_, true, curMethRet, symbol_table);
+    return InsideMethodDecl(curMethRet, paramInfos);
+  }
+
+  TypeChecker InsideMethodDecl(ast::TypeId curMethRet, const vector<VariableInfo>& paramInfos) const {
+    assert(belowTypeDecl_);
+    assert(!belowMethodDecl_);
+
+    // Construct initial symbol table with params for this method.
+    return TypeChecker(
+        fs_, errors_, typeset_, typeinfo_,
+        true, package_,
+        true, curtype_,
+        true, curMethRet, SymbolTable(fs_, paramInfos));
   }
 
   REWRITE_DECL(ArrayIndexExpr, Expr, expr, exprptr);
