@@ -177,7 +177,12 @@ private:
 
   void BuildMethodTable(MInfoIter begin, MInfoIter end, TypeInfo* tinfo, MethodId* cur_mid, const map<ast::TypeId, TypeInfo>& sofar, base::ErrorList* out);
 
+  void ValidateExtendsImplementsGraph(map<ast::TypeId, TypeInfo>* m, base::ErrorList* errors);
+  void PruneInvalidGraphEdges(const map<ast::TypeId, TypeInfo>&, set<ast::TypeId>*, base::ErrorList*);
+  void VerifyAcyclicGraph(const multimap<ast::TypeId, ast::TypeId>&, set<ast::TypeId>*, std::function<void(const vector<ast::TypeId>&)>);
+
   base::Error* MakeConstructorNameError(base::PosRange pos) const;
+  base::Error* MakeExtendsCycleError(const vector<TypeInfo>& cycle) const;
 
   const base::FileSet* fs_;
   vector<TypeInfo> type_entries_;
