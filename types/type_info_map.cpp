@@ -136,6 +136,12 @@ Error* TypeInfoMapBuilder::MakeOverrideFinalMethodError(const MethodInfo& minfo,
   return MakeResolveMethodTableError(fs_, minfo.pos, m_msg, pinfo.pos, p_msg, "OverrideFinalMethodError");
 }
 
+Error* TypeInfoMapBuilder::MakeParentClassEmptyConstructorError(const TypeInfo& minfo, const TypeInfo& pinfo) const {
+  const string p_msg = "An inherited class must have a zero-argument constructor.";
+  const string m_msg = "Child class declared here.";
+  return MakeResolveMethodTableError(fs_, pinfo.pos, p_msg, minfo.pos, m_msg, "ParentClassEmptyConstructorError");
+}
+
 Error* TypeInfoMapBuilder::MakeNeedAbstractClassError(const TypeInfo& tinfo, const MethodTable::MethodSignatureMap& method_map) const {
   const FileSet* fs = fs_;
   return MakeError([=](ostream* out, const OutputOptions& opt) {
@@ -236,7 +242,7 @@ ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract
   return mods;
 }
 
-MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const MethodTable::MethodSignatureMap& good_methods, const set<string>& bad_methods, bool has_bad_constructor, const map<TypeId, TypeInfo>& sofar, const set<TypeId>& bad_types, ErrorList* out) {
+MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const MethodTable::MethodSignatureMap& good_methods, const set<string>& bad_methods, bool has_bad_constructor, const map<TypeId, TypeInfo>& sofar, const set<TypeId>& bad_types, set<TypeId>* new_bad_types, ErrorList* out) {
   MethodTable::MethodSignatureMap new_good_methods(good_methods);
   set<string> new_bad_methods(bad_methods);
 
@@ -258,6 +264,8 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
       continue;
     }
 
+    bool has_empty_constructor = false;
+
     for (const auto& psig_pair : pinfo.methods.method_signatures_) {
       const MethodSignature& psig = psig_pair.first;
       const MethodInfo& implicit_pminfo = psig_pair.second;
@@ -266,6 +274,9 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
       // Skip constructors since they are not inherited.
       if (psig.is_constructor) {
+        if (psig.param_types.Size() == 0) {
+          has_empty_constructor = true;
+        }
         continue;
       }
 
@@ -334,6 +345,13 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
       msig_pair->second = final_mminfo;
     }
 
+    if (!has_empty_constructor &&
+        pinfo.kind != TypeKind::INTERFACE &&
+        new_bad_types->count(pinfo.type) == 0) {
+      out->Append(MakeParentClassEmptyConstructorError(*tinfo, pinfo));
+      new_bad_types->insert(pinfo.type);
+    }
+
     // Union sets of disallowed names from the parent.
     new_bad_methods.insert(pinfo.methods.bad_methods_.begin(), pinfo.methods.bad_methods_.end());
   }
@@ -355,7 +373,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
 // Builds valid MethodTables for a TypeInfo. Emits errors if methods for the
 // type are invalid.
-void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeInfo* tinfo, MethodId* cur_mid, const map<TypeId, TypeInfo>& sofar, const set<TypeId>& bad_types, ErrorList* out) {
+void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeInfo* tinfo, MethodId* cur_mid, const map<TypeId, TypeInfo>& sofar, const set<TypeId>& bad_types, set<TypeId>* new_bad_types, ErrorList* out) {
   // Sort all MethodInfo to cluster them by signature.
   auto lt_cmp = [](const MethodInfo& lhs, const MethodInfo& rhs) {
     return lhs.signature < rhs.signature;
@@ -411,20 +429,21 @@ void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeIn
     FindEqualRanges(begin, end, eq_cmp, cb);
   }
 
-  tinfo->methods = MakeResolvedMethodTable(tinfo, good_methods, bad_methods, has_bad_constructor, sofar, bad_types, out);
+  tinfo->methods = MakeResolvedMethodTable(tinfo, good_methods, bad_methods, has_bad_constructor, sofar, bad_types, new_bad_types, out);
 }
 
 TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
   map<TypeId, TypeInfo> typeinfo;
   vector<TypeId> all_types;
-  set<TypeId> bad_types;
+  set<TypeId> cycle_bad_types;
+  set<TypeId> parent_bad_types;
 
   for (const auto& entry : type_entries_) {
     typeinfo.insert({entry.type, entry});
     all_types.push_back(entry.type);
   }
 
-  ValidateExtendsImplementsGraph(&typeinfo, &bad_types, out);
+  ValidateExtendsImplementsGraph(&typeinfo, &cycle_bad_types, out);
 
   // Sort TypeId vector by the topological ordering of the types.
   {
@@ -439,7 +458,7 @@ TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
     MethodId cur_mid = kFirstMethodId;
 
     for (auto type_id : all_types) {
-      if (bad_types.count(type_id) == 1) {
+      if (cycle_bad_types.count(type_id) == 1) {
         typeinfo.at(type_id) = TypeInfoMap::kErrorTypeInfo;
         continue;
       }
@@ -451,8 +470,12 @@ TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
       }
 
       TypeInfo* tinfo = &typeinfo.at(type_id);
-      BuildMethodTable(methods.begin(), methods.end(), tinfo, &cur_mid, typeinfo, bad_types, out);
+      BuildMethodTable(methods.begin(), methods.end(), tinfo, &cur_mid, typeinfo, cycle_bad_types, &parent_bad_types, out);
     }
+  }
+
+  for (auto type_id : parent_bad_types) {
+    typeinfo.at(type_id) = TypeInfoMap::kErrorTypeInfo;
   }
 
   return TypeInfoMap(typeinfo);
