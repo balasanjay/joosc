@@ -57,6 +57,21 @@ Error* MakeClassExtendsInterfaceError(const FileSet* fs, PosRange pos, const str
   return MakeSimplePosRangeError(fs, pos, "ClassExtendInterfaceError", msg);
 }
 
+Error* MakeResolveMethodTableError(const FileSet* fs, PosRange m_pos, const string& m_string, PosRange p_pos, const string& p_string, const string& error_name) {
+  return MakeError([=](ostream* out, const OutputOptions& opt) {
+    if (opt.simple) {
+      *out << error_name;
+      return;
+    }
+
+    PrintDiagnosticHeader(out, opt, fs, m_pos, DiagnosticClass::ERROR, m_string);
+    PrintRangePtr(out, opt, fs, m_pos);
+    *out << '\n';
+    PrintDiagnosticHeader(out, opt, fs, p_pos, DiagnosticClass::INFO, p_string);
+    PrintRangePtr(out, opt, fs, p_pos);
+  });
+}
+
 } // namespace
 
 TypeInfoMap TypeInfoMap::kEmptyTypeInfoMap = TypeInfoMap({});
@@ -66,6 +81,58 @@ MethodInfo MethodTable::kErrorMethodInfo = MethodInfo{kErrorMethodId, TypeId::kE
 
 Error* TypeInfoMapBuilder::MakeConstructorNameError(PosRange pos) const {
   return MakeSimplePosRangeError(fs_, pos, "ConstructorNameError", "Constructors must have the same name as its class.");
+}
+
+Error* TypeInfoMapBuilder::MakeParentFinalError(const TypeInfo& minfo, const TypeInfo& pinfo) const {
+  stringstream msgstream;
+  msgstream << "A class may not extend '" << pinfo.name << "', a final class.";
+  const string p_msg = "Declared final here.";
+  return MakeResolveMethodTableError(fs_, minfo.pos, msgstream.str(), pinfo.pos, p_msg, "ParentFinalError");
+}
+
+Error* TypeInfoMapBuilder::MakeDifferingReturnTypeError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const {
+  const FileSet* fs = fs_;
+  return MakeError([=](ostream* out, const OutputOptions& opt) {
+    if (opt.simple) {
+      *out << "DifferingReturnTypeError";
+      return;
+    }
+
+    const string message = "Cannot have methods with overloaded return types.";
+    bool is_self_method = (mtinfo.type == mminfo.class_type);
+    PosRange m_pos = is_self_method ? mminfo.pos : mtinfo.pos;
+
+    PrintDiagnosticHeader(out, opt, fs, m_pos, DiagnosticClass::ERROR, message);
+    PrintRangePtr(out, opt, fs, m_pos);
+    *out << '\n';
+    if (is_self_method) {
+      PrintDiagnosticHeader(out, opt, fs, pminfo.pos, DiagnosticClass::INFO, "Parent method declared here.");
+      PrintRangePtr(out, opt, fs, pminfo.pos);
+    } else {
+      PrintDiagnosticHeader(out, opt, fs, mminfo.pos, DiagnosticClass::INFO, "First method declared here.");
+      PrintRangePtr(out, opt, fs, mminfo.pos);
+      *out << '\n';
+      PrintDiagnosticHeader(out, opt, fs, pminfo.pos, DiagnosticClass::INFO, "Second method declared here.");
+      PrintRangePtr(out, opt, fs, pminfo.pos);
+    }
+  });
+}
+Error* TypeInfoMapBuilder::MakeStaticMethodOverrideError(const MethodInfo& minfo, const MethodInfo& pinfo) const {
+  const string m_msg = "A class may not inherit a static method, nor may it override using a static method.";
+  const string p_msg = "Parent method declared here.";
+  return MakeResolveMethodTableError(fs_, minfo.pos, m_msg, pinfo.pos, p_msg, "StaticMethodOverrideError");
+}
+
+Error* TypeInfoMapBuilder::MakeLowerVisibilityError(const MethodInfo& minfo, const MethodInfo& pinfo) const {
+  const string m_msg = "A class may not lower the visibility of an inherited method.";
+  const string p_msg = "Parent method declared here.";
+  return MakeResolveMethodTableError(fs_, minfo.pos, m_msg, pinfo.pos, p_msg, "LowerVisibilityError");
+}
+
+Error* TypeInfoMapBuilder::MakeOverrideFinalMethodError(const MethodInfo& minfo, const MethodInfo& pinfo) const {
+  const string m_msg = "A class may not override a final method.";
+  const string p_msg = "Final method declared here.";
+  return MakeResolveMethodTableError(fs_, minfo.pos, m_msg, pinfo.pos, p_msg, "OverrideFinalMethodError");
 }
 
 Error* TypeInfoMapBuilder::MakeExtendsCycleError(const vector<TypeInfo>& cycle) const {
@@ -162,8 +229,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
     // We cannot inherit from a parent that is declared final.
     if (pinfo.mods.HasModifier(FINAL)) {
-      // TODO: Emit error. (parent final)
-      out->Append(MakeSimplePosRangeError(fs_, pinfo.mods.GetModifierToken(FINAL).pos, "ParentFinalError", "ParentFinalError"));
+      out->Append(MakeParentFinalError(*tinfo, pinfo));
       continue;
     }
 
@@ -198,8 +264,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
       // We cannot inherit methods of the same signature but differing return
       // types.
       if (pminfo.return_type != mminfo.return_type) {
-        // TODO: Emit error (different return types).
-        out->Append(MakeSimplePosRangeError(fs_, mminfo.pos, "DifferingReturnTypeError", "DifferingReturnTypeError"));
+        out->Append(MakeDifferingReturnTypeError(*tinfo, mminfo, pminfo));
         new_bad_methods.insert(mminfo.signature.name);
         continue;
       }
@@ -207,8 +272,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
       // Inheriting methods that are static or overriding with a static method
       // are not allowed.
       if (pminfo.mods.HasModifier(lexer::STATIC) || mminfo.mods.HasModifier(lexer::STATIC)) {
-        // TODO: Emit error (static method clash).
-        out->Append(MakeSimplePosRangeError(fs_, mminfo.pos, "StaticMethodOverrideError", "StaticMethodOverrideError"));
+        out->Append(MakeStaticMethodOverrideError(mminfo, pminfo));
         new_bad_methods.insert(mminfo.signature.name);
         continue;
       }
@@ -218,8 +282,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
       // We can't lower visibility of inherited methods.
       if (pminfo.mods.HasModifier(PUBLIC) && mminfo.mods.HasModifier(PROTECTED)) {
-        // TODO: Emit error (lower visibility).
-        out->Append(MakeSimplePosRangeError(fs_, mminfo.pos, "LowerVisibilityError", "LowerVisibilityError"));
+        out->Append(MakeLowerVisibilityError(mminfo, pminfo));
         new_bad_methods.insert(mminfo.signature.name);
         continue;
       }
@@ -227,8 +290,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
       // We can't override final methods.
       if (pminfo.mods.HasModifier(FINAL)) {
-        // TODO: Emit error (can't override final).
-        out->Append(MakeSimplePosRangeError(fs_, mminfo.pos, "OverrideFinalMethodError", "OverrideFinalMethodError"));
+        out->Append(MakeOverrideFinalMethodError(mminfo, pminfo));
         new_bad_methods.insert(mminfo.signature.name);
         continue;
       }
