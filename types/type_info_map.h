@@ -88,8 +88,8 @@ public:
   }
 
 private:
-  friend class TypeInfoMapBuilder;
   friend class TypeInfoMap;
+  friend class TypeInfoMapBuilder;
 
   using MethodSignatureMap = std::map<MethodSignature, MethodInfo>;
   using MethodInfoMap = std::map<MethodId, MethodInfo>;
@@ -204,14 +204,10 @@ public:
     return kEmptyTypeInfoMap;
   }
 
-  // TODO: handle blacklisting.
-  pair<const TypeInfo&, bool> LookupTypeInfo(ast::TypeId tid) const {
+  const TypeInfo& LookupTypeInfo(ast::TypeId tid) const {
     const auto info = type_info_.find(tid);
-    if (info == type_info_.end()) {
-      return make_pair(kErrorTypeInfo, false);
-    } else {
-      return make_pair(info->second, true);
-    }
+    assert(info != type_info_.cend());
+    return info->second;
   }
 
 private:
@@ -236,11 +232,11 @@ public:
   }
 
   void PutMethod(ast::TypeId curtid, ast::TypeId rettid, const vector<ast::TypeId>& paramtids, const ast::MemberDecl& meth, bool is_constructor) {
-    method_entries_.push_back(MethodInfo{kErrorMethodId, curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{is_constructor, meth.Name(), TypeIdList(paramtids)}});
+    method_entries_.insert({curtid, MethodInfo{kErrorMethodId, curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{is_constructor, meth.Name(), TypeIdList(paramtids)}}});
   }
 
   void PutField(ast::TypeId curtid, ast::TypeId tid, const ast::MemberDecl& field) {
-    field_entries_.push_back(FieldInfo{kErrorFieldId, curtid, field.Mods(), tid, field.NameToken().pos, ""});
+    field_entries_.insert({curtid, FieldInfo{kErrorFieldId, curtid, field.Mods(), tid, field.NameToken().pos, field.Name()}});
   }
 
   TypeInfoMap Build(base::ErrorList* out);
@@ -251,9 +247,9 @@ private:
   using FInfoIter = vector<FieldInfo>::iterator;
   using FInfoCIter = vector<FieldInfo>::const_iterator;
 
-  MethodTable MakeResolvedMethodTable(TypeInfo* tinfo, const MethodTable::MethodSignatureMap& good_methods, const set<string>& bad_methods, bool has_bad_constructor, const map<ast::TypeId, TypeInfo>& sofar, base::ErrorList* out);
+  MethodTable MakeResolvedMethodTable(TypeInfo* tinfo, const MethodTable::MethodSignatureMap& good_methods, const set<string>& bad_methods, bool has_bad_constructor, const map<ast::TypeId, TypeInfo>& sofar, const set<ast::TypeId>& bad_types, set<ast::TypeId>* new_bad_types, base::ErrorList* out);
 
-  void BuildMethodTable(MInfoIter begin, MInfoIter end, TypeInfo* tinfo, MethodId* cur_mid, const map<ast::TypeId, TypeInfo>& sofar, base::ErrorList* out);
+  void BuildMethodTable(MInfoIter begin, MInfoIter end, TypeInfo* tinfo, MethodId* cur_mid, const map<ast::TypeId, TypeInfo>& sofar, const set<ast::TypeId>& bad_types, set<ast::TypeId>* new_bad_types, base::ErrorList* out);
 
   void BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInfo* tinfo, FieldId* cur_fid, const map<ast::TypeId, TypeInfo>& sofar, base::ErrorList* out);
 
@@ -262,12 +258,20 @@ private:
   vector<ast::TypeId> VerifyAcyclicGraph(const multimap<ast::TypeId, ast::TypeId>&, set<ast::TypeId>*, std::function<void(const vector<ast::TypeId>&)>);
 
   base::Error* MakeConstructorNameError(base::PosRange pos) const;
+  base::Error* MakeParentFinalError(const TypeInfo& minfo, const TypeInfo& pinfo) const;
+  base::Error* MakeDifferingReturnTypeError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const;
+  base::Error* MakeStaticMethodOverrideError(const MethodInfo& minfo, const MethodInfo& pinfo) const;
+  base::Error* MakeLowerVisibilityError(const MethodInfo& minfo, const MethodInfo& pinfo) const;
+  base::Error* MakeOverrideFinalMethodError(const MethodInfo& minfo, const MethodInfo& pinfo) const;
+  base::Error* MakeParentClassEmptyConstructorError(const TypeInfo& minfo, const TypeInfo& pinfo) const;
+  base::Error* MakeNeedAbstractClassError(const TypeInfo& tinfo, const MethodTable::MethodSignatureMap& method_map) const;
+
   base::Error* MakeExtendsCycleError(const vector<TypeInfo>& cycle) const;
 
   const base::FileSet* fs_;
   vector<TypeInfo> type_entries_;
-  vector<MethodInfo> method_entries_;
-  vector<FieldInfo> field_entries_;
+  multimap<ast::TypeId, MethodInfo> method_entries_;
+  multimap<ast::TypeId, FieldInfo> field_entries_;
 };
 
 } // namespace types
