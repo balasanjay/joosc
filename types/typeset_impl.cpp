@@ -88,7 +88,7 @@ sptr<TypeSetImpl> TypeSetImpl::WithPackage(const string& package, base::ErrorLis
   assert(pkg_prefix_ == "");
 
   string pkg = "";
-  if (pkg == "") {
+  if (package == "") {
     pkg = kUnnamedPkgPrefix;
   } else {
     pkg = kNamedPkgPrefix + "." + package;
