@@ -170,7 +170,7 @@ private:
   static FieldTable kErrorFieldTable;
   static FieldInfo kErrorFieldInfo;
 
-  const base::FileSet* fs_;
+  const base::FileSet* fs_ = nullptr;
   FieldNameMap field_names_;
   FieldInfoMap field_info_;
 
@@ -205,6 +205,23 @@ public:
   }
 
   const TypeInfo& LookupTypeInfo(ast::TypeId tid) const {
+    if (tid.ndims > 0) {
+      // TODO: Don't leak this.
+      TypeInfo* ainfo = new TypeInfo{
+        MakeModifierList(false, false, false),
+        ast::TypeKind::CLASS,
+        ast::TypeId::kError,
+        "array",
+        base::PosRange(-1, -1, -1),
+        TypeIdList({}),
+        TypeIdList({}),
+        MethodTable({}, {}, false),
+        FieldTable(fs_, {}, {}),
+        0
+      };
+      return *ainfo;
+    }
+
     const auto info = type_info_.find(tid);
     assert(info != type_info_.cend());
     return info->second;
@@ -214,11 +231,12 @@ private:
   using Map = map<ast::TypeId, TypeInfo>;
   friend class TypeInfoMapBuilder;
 
-  TypeInfoMap(const Map& typeinfo) : type_info_(typeinfo) {}
+  TypeInfoMap(const base::FileSet* fs, const Map& typeinfo) : fs_(fs), type_info_(typeinfo) {}
 
   static TypeInfoMap kEmptyTypeInfoMap;
   static TypeInfo kErrorTypeInfo;
 
+  const base::FileSet* fs_;
   Map type_info_;
 };
 
