@@ -55,6 +55,10 @@ using LocalVarId = u64;
 const LocalVarId kVarUnassigned = 0;
 const LocalVarId kVarFirst = 100;
 
+using FieldId = u64;
+const FieldId kErrorFieldId = 0;
+const FieldId kFirstFieldId = 1;
+
 } // namespace ast
 
 #endif

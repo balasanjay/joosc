@@ -660,21 +660,24 @@ class MemberDecl {
 
 class FieldDecl : public MemberDecl {
  public:
-  FieldDecl(const ModifierList& mods, sptr<const Type> type, const string& name, lexer::Token nameToken, sptr<const Expr> val)
+  FieldDecl(const ModifierList& mods, sptr<const Type> type, const string& name, lexer::Token nameToken, sptr<const Expr> val, FieldId fid = kErrorFieldId)
       : MemberDecl(mods, name, nameToken),
         type_(type),
-        val_(val) {}
+        val_(val),
+        fid_(fid) {}
 
   ACCEPT_VISITOR(FieldDecl, MemberDecl);
 
   SPTR_GETTER(Type, GetType, type_);
   VAL_GETTER(sptr<const Expr>, ValPtr, val_);
+  VAL_GETTER(FieldId, GetFieldId, fid_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FieldDecl);
 
   sptr<const Type> type_;
   sptr<const Expr> val_;  // Might be nullptr.
+  FieldId fid_ = kErrorFieldId;
 };
 
 class MethodDecl : public MemberDecl {
