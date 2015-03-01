@@ -135,6 +135,30 @@ Error* TypeInfoMapBuilder::MakeOverrideFinalMethodError(const MethodInfo& minfo,
   return MakeResolveMethodTableError(fs_, minfo.pos, m_msg, pinfo.pos, p_msg, "OverrideFinalMethodError");
 }
 
+Error* TypeInfoMapBuilder::MakeNeedAbstractClassError(const TypeInfo& tinfo, const MethodTable::MethodSignatureMap& method_map) const {
+  const FileSet* fs = fs_;
+  return MakeError([=](ostream* out, const OutputOptions& opt) {
+    if (opt.simple) {
+      *out << "NeedAbstractClassError";
+      return;
+    }
+    const string m_msg = "A class containing abstract methods must be abstract.";
+    const string l_msg = "Abstract method declared here.";
+
+    PrintDiagnosticHeader(out, opt, fs, tinfo.pos, DiagnosticClass::ERROR, m_msg);
+    PrintRangePtr(out, opt, fs, tinfo.pos);
+    for (auto sig_pair = method_map.cbegin(); sig_pair != method_map.cend(); ++sig_pair) {
+      const MethodInfo& minfo = sig_pair->second;
+      if (!minfo.mods.HasModifier(ABSTRACT)) {
+        continue;
+      }
+      *out << '\n';
+      PrintDiagnosticHeader(out, opt, fs, minfo.pos, DiagnosticClass::INFO, l_msg);
+      PrintRangePtr(out, opt, fs, minfo.pos);
+    }
+  });
+}
+
 Error* TypeInfoMapBuilder::MakeExtendsCycleError(const vector<TypeInfo>& cycle) const {
   const FileSet* fs = fs_;
   return MakeError([=](ostream* out, const OutputOptions& opt) {
@@ -318,12 +342,10 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
     auto is_abstract_method = [](pair<MethodSignature, MethodInfo> pair) {
       return pair.second.mods.HasModifier(ABSTRACT);
     };
-    // TODO: first_of
     bool has_abstract = std::any_of(new_good_methods.cbegin(), new_good_methods.cend(), is_abstract_method);
 
     if (has_abstract && !tinfo->mods.HasModifier(ABSTRACT)) {
-      // TODO: Emit error.
-      out->Append(MakeSimplePosRangeError(fs_, tinfo->pos, "NeedAbstractClassError", "NeedAbstractClassError"));
+      out->Append(MakeNeedAbstractClassError(*tinfo, new_good_methods));
     }
   }
 
