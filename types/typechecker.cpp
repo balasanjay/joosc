@@ -327,7 +327,6 @@ REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr, exprptr) {
   // might use them if resolving this as a Type fails.
   ErrorList field_errors;
   {
-    // TODO: add a field lookup in here.
     TypeInfo tinfo = typeinfo_.LookupTypeInfo(curtype_);
     FieldId fid = tinfo.fields.ResolveAccess(curtype_, CallContext::INSTANCE, parts.at(0), toks.at(0).pos, &field_errors);
     bool ok = fid != kErrorFieldId;
