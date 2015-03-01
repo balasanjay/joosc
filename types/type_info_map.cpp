@@ -151,8 +151,8 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
         continue;
       }
 
-      // Inheriting methods that are static or with a static overload are not
-      // allowed.
+      // Inheriting methods that are static or overriding with a static method
+      // are not allowed.
       if (pminfo.mods.HasModifier(lexer::STATIC) || mminfo.mods.HasModifier(lexer::STATIC)) {
         // TODO: Emit error (static method clash).
         out->Append(MakeSimplePosRangeError(fs_, mminfo.pos, "StaticMethodOverrideError", "StaticMethodOverrideError"));
@@ -200,8 +200,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
   // If we have abstract methods, we must also be abstract.
   {
-    using CMSMPair = pair<MethodSignature, MethodInfo>;
-    auto is_abstract_method = [](CMSMPair pair) {
+    auto is_abstract_method = [](pair<MethodSignature, MethodInfo> pair) {
       return pair.second.mods.HasModifier(ABSTRACT);
     };
     // TODO: first_of
