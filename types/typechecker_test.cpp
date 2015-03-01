@@ -75,6 +75,13 @@ class TypeCheckerTest : public ::testing::Test {
     return stmtResult.Get();
   }
 
+  sptr<const MemberDecl> ParseMemberDecl(string s) {
+    MakeParser(s);
+    Result<MemberDecl> memberResult;
+    assert(!parser_->ParseMemberDecl(&memberResult).Failed());
+    return memberResult.Get();
+  }
+
   base::ErrorList errors_;
   uptr<base::FileSet> fs_;
   vector<vector<lexer::Token>> tokens;
@@ -174,6 +181,34 @@ TEST_F(TypeCheckerTest, BinExprNumericOpOperandsNotNumeric) {
 
   EXPECT_EQ(nullptr, after);
   EXPECT_ERRS("TypeMismatchError(0:0-4)\nTypeMismatchError(0:7-11)\n");
+}
+
+TEST_F(TypeCheckerTest, BinExprAssignment) {
+  sptr<const Expr> before = ParseExpr("a = 1");
+
+  const auto insideType = TypeId{100, 0};
+  auto typeChecker = (*typeChecker_.get())
+    .InsideCompUnit(nullptr)
+    .InsideTypeDecl(insideType, TypeSet::Empty())
+    .InsideMemberDecl(false, TypeId::kVoid, {{TypeId::kInt, "a", PosRange(0, 0, 1)}});
+
+  auto after = typeChecker.Rewrite(before);
+  EXPECT_EQ(TypeId::kInt, after->GetTypeId());
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, BinExprAssignmentFails) {
+  sptr<const Expr> before = ParseExpr("a = true");
+
+  const auto insideType = TypeId{100, 0};
+  auto typeChecker = (*typeChecker_.get())
+    .InsideCompUnit(nullptr)
+    .InsideTypeDecl(insideType, TypeSet::Empty())
+    .InsideMemberDecl(false, TypeId::kVoid, {{TypeId::kInt, "a", PosRange(0, 0, 1)}});
+
+  auto after = typeChecker.Rewrite(before);
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("UnassignableError(0:4-8)\n");
 }
 
 TEST_F(TypeCheckerTest, BoolLitExpr) {
@@ -279,12 +314,28 @@ TEST_F(TypeCheckerTest, ThisLitExpr) {
   auto typeChecker = (*typeChecker_.get())
     .InsideCompUnit(nullptr)
     .InsideTypeDecl(insideType, TypeSet::Empty())
-    .InsideMethodDecl(TypeId::kVoid, ParamList({}));
+    .InsideMemberDecl(false, TypeId::kVoid);
 
   auto after = typeChecker.Rewrite(before);
 
   EXPECT_EQ(insideType, after->GetTypeId());
   EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, ThisLitExprInStaticMethod) {
+  const auto insideType = TypeId{100, 0};
+
+  sptr<const Expr> before = ParseExpr("this");
+
+  auto typeChecker = (*typeChecker_.get())
+    .InsideCompUnit(nullptr)
+    .InsideTypeDecl(insideType, TypeSet::Empty())
+    .InsideMemberDecl(true, TypeId::kVoid);
+
+  auto after = typeChecker.Rewrite(before);
+
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("ThisInStaticMemberError(0:0-4)\n");
 }
 
 TEST_F(TypeCheckerTest, UnaryExprErrorFromRHS) {
@@ -425,6 +476,28 @@ TEST_F(TypeCheckerTest, WhileStmtOk) {
 
   EXPECT_NE(nullptr, after);
   EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, FieldDeclThis) {
+  sptr<const MemberDecl> before = ParseMemberDecl("int x = this;");
+  auto typeChecker = (*typeChecker_.get())
+    .InsideCompUnit(nullptr)
+    .InsideTypeDecl(TypeId::kInt, TypeSet::Empty());
+  auto after = typeChecker.Rewrite(before);
+
+  EXPECT_NE(nullptr, after);
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, FieldDeclStaticThis) {
+  sptr<const MemberDecl> before = ParseMemberDecl("static int x = this;");
+  auto typeChecker = (*typeChecker_.get())
+    .InsideCompUnit(nullptr)
+    .InsideTypeDecl(TypeId::kInt, TypeSet::Empty());
+  auto after = typeChecker.Rewrite(before);
+
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("ThisInStaticMemberError(0:15-19)\n");
 }
 
 // TODO: FieldDecl
