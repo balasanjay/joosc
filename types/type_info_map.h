@@ -15,6 +15,8 @@ using ast::FieldId;
 using ast::kErrorFieldId;
 using ast::kFirstFieldId;
 
+ast::ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract);
+
 struct TypeIdList {
 public:
   TypeIdList(const vector<ast::TypeId>& tids) : tids_(tids){}
@@ -226,6 +228,8 @@ public:
     assert(info != type_info_.cend());
     return info->second;
   }
+
+  static const TypeInfo kArrayInfo;
 
 private:
   using Map = map<ast::TypeId, TypeInfo>;

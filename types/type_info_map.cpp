@@ -73,6 +73,28 @@ Error* MakeResolveMethodTableError(const FileSet* fs, PosRange m_pos, const stri
 }
 
 } // namespace
+
+ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract) {
+
+  ModifierList mods;
+
+  if (is_protected) {
+    mods.AddModifier(kProtected);
+  } else {
+    mods.AddModifier(kPublic);
+  }
+
+  if (is_final) {
+    mods.AddModifier(kFinal);
+  }
+
+  if (is_abstract) {
+    mods.AddModifier(kAbstract);
+  }
+
+  return mods;
+}
+
 // TODO: Don't empty fs ever.
 TypeInfoMap TypeInfoMap::kEmptyTypeInfoMap = TypeInfoMap(&FileSet::Empty(), {});
 TypeInfo TypeInfoMap::kErrorTypeInfo = TypeInfo{{}, TypeKind::CLASS, TypeId::kError, "", kFakePos, TypeIdList({}), TypeIdList({}), MethodTable::kErrorMethodTable, FieldTable::kErrorFieldTable, 0};
@@ -224,27 +246,6 @@ MethodInfo FixMods(const TypeInfo& tinfo, const MethodInfo& minfo) {
   ret_minfo.mods.AddModifier(kAbstract);
 
   return ret_minfo;
-}
-
-ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract) {
-
-  ModifierList mods;
-
-  if (is_protected) {
-    mods.AddModifier(kProtected);
-  } else {
-    mods.AddModifier(kPublic);
-  }
-
-  if (is_final) {
-    mods.AddModifier(kFinal);
-  }
-
-  if (is_abstract) {
-    mods.AddModifier(kAbstract);
-  }
-
-  return mods;
 }
 
 MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const MethodTable::MethodSignatureMap& good_methods, const set<string>& bad_methods, bool has_bad_constructor, const map<TypeId, TypeInfo>& sofar, const set<TypeId>& bad_types, set<TypeId>* new_bad_types, ErrorList* out) {
