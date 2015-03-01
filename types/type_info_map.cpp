@@ -444,6 +444,7 @@ void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInf
   auto lt_cmp = [](const FieldInfo& lhs, const FieldInfo& rhs) {
     return lhs.name < rhs.name;
   };
+  // TODO: Assign field ids in source code order, not lexicographical order.
   stable_sort(begin, end, lt_cmp);
 
   FieldTable::FieldNameMap good_fields;
@@ -773,9 +774,11 @@ FieldId FieldTable::ResolveAccess(TypeId callerType, CallContext ctx, string fie
   bool is_static = finfo->second.mods.HasModifier(lexer::Modifier::STATIC);
   if (is_static && ctx != CallContext::STATIC) {
     // TODO: Error.
+    throw;
     return kErrorFieldId;
   } else if (!is_static && ctx == CallContext::STATIC) {
     // TODO: Error
+    throw;
     return kErrorFieldId;
   }
 

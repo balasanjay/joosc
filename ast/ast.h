@@ -321,19 +321,21 @@ class ArrayIndexExpr : public Expr {
 
 class FieldDerefExpr : public Expr {
  public:
-  FieldDerefExpr(sptr<const Expr> base, const string& fieldname, lexer::Token token)
-      : base_(base), fieldname_(fieldname), token_(token) {}
+  FieldDerefExpr(sptr<const Expr> base, const string& fieldname, lexer::Token token, FieldId fid = kErrorFieldId, TypeId tid = TypeId::kUnassigned)
+      : Expr(tid), base_(base), fieldname_(fieldname), token_(token), fid_(fid) {}
 
   ACCEPT_VISITOR(FieldDerefExpr, Expr);
 
   SPTR_GETTER(Expr, Base, base_);
   REF_GETTER(string, FieldName, fieldname_);
   REF_GETTER(lexer::Token, GetToken, token_);
+  VAL_GETTER(FieldId, GetFieldId, fid_);
 
  private:
   sptr<const Expr> base_;
   string fieldname_;
   lexer::Token token_;
+  FieldId fid_;
 };
 
 class CallExpr : public Expr {

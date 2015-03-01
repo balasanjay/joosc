@@ -190,7 +190,31 @@ REWRITE_DEFN(TypeChecker, CharLitExpr, Expr, expr, ) {
   return make_shared<CharLitExpr>(expr.GetToken(), TypeId::kChar);
 }
 
-// TODO: FieldDerefExpr
+REWRITE_DEFN(TypeChecker, FieldDerefExpr, Expr, expr,) {
+  sptr<const Expr> base = Rewrite(expr.BasePtr());
+  if (base == nullptr) {
+    return nullptr;
+  }
+  CallContext cc = CallContext::INSTANCE;
+  TypeId base_tid = base->GetTypeId();
+
+  // If base is a type name, then this is a reference to a static field.
+  {
+    const StaticRefExpr* stat = dynamic_cast<const StaticRefExpr*>(base.get());
+    if (stat != nullptr) {
+      cc = CallContext::STATIC;
+      base_tid = stat->GetRefTypePtr()->GetTypeId();
+    }
+  }
+
+  const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(base_tid);
+  FieldId fid = tinfo.fields.ResolveAccess(curtype_, cc, expr.FieldName(), expr.GetToken().pos, errors_);
+  if (fid == kErrorFieldId) {
+    return nullptr;
+  }
+  FieldInfo finfo = tinfo.fields.LookupField(fid);
+  return make_shared<FieldDerefExpr>(base, expr.FieldName(), expr.GetToken(), fid, finfo.field_type);
+}
 
 REWRITE_DEFN(TypeChecker, InstanceOfExpr, Expr, expr, exprptr) {
   sptr<const Expr> lhs = Rewrite(expr.LhsPtr());
@@ -303,8 +327,9 @@ REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr, exprptr) {
   // might use them if resolving this as a Type fails.
   ErrorList field_errors;
   {
-    // TODO: add a field lookup in here.
-    bool ok = false;
+    TypeInfo tinfo = typeinfo_.LookupTypeInfo(curtype_);
+    FieldId fid = tinfo.fields.ResolveAccess(curtype_, CallContext::INSTANCE, parts.at(0), toks.at(0).pos, &field_errors);
+    bool ok = fid != kErrorFieldId;
     if (ok) {
       sptr<const Expr> implicit_this = MakeImplicitThis(toks.at(0).pos, curtype_);
       sptr<const Expr> field_deref = make_shared<FieldDerefExpr>(implicit_this, parts.at(0), toks.at(0));
@@ -540,6 +565,8 @@ REWRITE_DEFN(TypeChecker, WhileStmt, Stmt, stmt,) {
 }
 
 REWRITE_DEFN(TypeChecker, FieldDecl, MemberDecl, decl, declptr) {
+  // TODO: Check whether field references only fields defined before this.
+
   // If we have method info, then just use the default implementation of
   // RewriteMethodDecl.
   if (!belowMemberDecl_) {
