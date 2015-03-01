@@ -244,8 +244,8 @@ sptr<const Expr> SplitQualifiedToFieldDerefs(
 }
 
 QualifiedName SliceFirstN(const QualifiedName& name, int n) {
-  const vector<string> old_parts = name.Parts();
-  const vector<Token> old_toks = name.Tokens();
+  const vector<string>& old_parts = name.Parts();
+  const vector<Token>& old_toks = name.Tokens();
 
   assert(n > 0);
 
@@ -270,7 +270,13 @@ sptr<const Expr> MakeImplicitThis(PosRange pos, TypeId tid) {
   return make_shared<ThisExpr>(Token(K_THIS, Pos(pos.fileid, pos.begin)), tid);
 }
 
-REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr,) {
+REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr, exprptr) {
+  // If we've already assigned the vid, then we've resolved this node before
+  // when disambiguating a qualified name.
+  if (expr.GetVarId() != kVarUnassigned) {
+    return exprptr;
+  }
+
   const vector<string> parts = expr.Name().Parts();
   const vector<Token> toks = expr.Name().Tokens();
   assert(parts.size() > 0);
