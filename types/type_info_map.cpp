@@ -307,6 +307,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
       // Inheriting methods that are static or overriding with a static method
       // are not allowed.
+      // TODO: Point to class and two methods.
       if (pminfo.mods.HasModifier(lexer::STATIC) || mminfo.mods.HasModifier(lexer::STATIC)) {
         out->Append(MakeStaticMethodOverrideError(mminfo, pminfo));
         new_bad_methods.insert(mminfo.signature.name);
@@ -317,6 +318,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
       assert(!mminfo.mods.HasModifier(NATIVE));
 
       // We can't lower visibility of inherited methods.
+      // TODO: Point to class and two methods.
       if (pminfo.mods.HasModifier(PUBLIC) && mminfo.mods.HasModifier(PROTECTED)) {
         out->Append(MakeLowerVisibilityError(mminfo, pminfo));
         new_bad_methods.insert(mminfo.signature.name);
