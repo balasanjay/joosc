@@ -355,6 +355,20 @@ class CallExpr : public Expr {
   lexer::Token rparen_;
 };
 
+class StaticRefExpr : public Expr {
+public:
+  StaticRefExpr(sptr<const Type> ref_type) : Expr(TypeId::kType), ref_type_(ref_type) {}
+
+  ACCEPT_VISITOR(StaticRefExpr, Expr);
+
+  SPTR_GETTER(Type, GetRefType, ref_type_);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(StaticRefExpr);
+
+  sptr<const Type> ref_type_;
+};
+
 class CastExpr : public Expr {
  public:
   CastExpr(lexer::Token lparen, sptr<const Type> type, lexer::Token rparen, sptr<const Expr> expr, TypeId tid = TypeId::kUnassigned) : Expr(tid), lparen_(lparen), type_(type), rparen_(rparen), expr_(expr) {}

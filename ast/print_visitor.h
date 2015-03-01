@@ -128,6 +128,11 @@ class PrintVisitor final : public Visitor {
     return VisitResult::SKIP;
   }
 
+  VISIT_DECL(StaticRefExpr, expr,) {
+    expr.GetRefType().PrintTo(os_);
+    return VisitResult::SKIP;
+  }
+
   VISIT_DECL(UnaryExpr, expr,) {
     *os_ << '(' << expr.Op().TypeInfo() << ' ';
     Visit(expr.RhsPtr());

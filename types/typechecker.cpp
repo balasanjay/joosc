@@ -10,10 +10,13 @@
 using namespace ast;
 
 using base::Error;
+using base::ErrorList;
 using base::FileSet;
 using base::Pos;
 using base::PosRange;
 using base::SharedPtrVector;
+using lexer::K_THIS;
+using lexer::Token;
 using lexer::TokenType;
 
 namespace types {
@@ -215,15 +218,121 @@ REWRITE_DEFN(TypeChecker, IntLitExpr, Expr, expr,) {
   return make_shared<IntLitExpr>(expr.GetToken(), expr.Value(), TypeId::kInt);
 }
 
-REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr,) {
-  // TODO: Name resolution rules.
-  pair<TypeId, ast::LocalVarId> varData = symbol_table_.ResolveLocal(
-      expr.Name().Name(), expr.Name().Tokens()[0].pos, errors_);
-  if (varData.first == TypeId::kUnassigned
-      || varData.second == kVarUnassigned) {
-    return nullptr;
+sptr<const Expr> SplitQualifiedToFieldDerefs(
+    sptr<const Expr> base, const QualifiedName& name, int start_idx) {
+  const vector<string> parts = name.Parts();
+  const vector<Token> toks = name.Tokens();
+  assert(start_idx > 0);
+
+  // If they want to split past-the-end, then just use the base.
+  if ((uint)start_idx == parts.size()) {
+    return base;
   }
-  return make_shared<NameExpr>(expr.Name(), varData.second, varData.first);
+
+  assert((uint)start_idx < parts.size());
+
+  // Parts includes the dots between tokens; quickly validate this assumption
+  // holds.
+  assert(((parts.size() - 1) * 2) + 1 == toks.size());
+
+  sptr<const Expr> cur_base = base;
+  for (uint i = (uint)start_idx; i < parts.size(); ++i) {
+    sptr<const Expr> field_deref = make_shared<FieldDerefExpr>(cur_base, parts.at(i), toks.at(2 * i));
+    cur_base = field_deref;
+  }
+  return cur_base;
+}
+
+QualifiedName SliceFirstN(const QualifiedName& name, int n) {
+  const vector<string> old_parts = name.Parts();
+  const vector<Token> old_toks = name.Tokens();
+
+  assert(n > 0);
+
+  vector<string> parts;
+  vector<Token> toks;
+  stringstream fullname;
+
+  parts.push_back(old_parts.at(0));
+  toks.push_back(old_toks.at(0));
+  fullname << old_parts.at(0);
+  for (uint i = 1; i < (uint)n; ++i) {
+    parts.push_back(old_parts.at(i));
+    toks.push_back(old_toks.at((2*i) - 1));
+    toks.push_back(old_toks.at((2*i)));
+    fullname << '.' << old_parts.at(i);
+  }
+
+  return QualifiedName(toks, parts, fullname.str());
+}
+
+sptr<const Expr> MakeImplicitThis(PosRange pos, TypeId tid) {
+  return make_shared<ThisExpr>(Token(K_THIS, Pos(pos.fileid, pos.begin)), tid);
+}
+
+REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr,) {
+  const vector<string> parts = expr.Name().Parts();
+  const vector<Token> toks = expr.Name().Tokens();
+  assert(parts.size() > 0);
+  assert(belowTypeDecl_);
+
+  // First, try resolving it as a local variable or a param.
+  {
+    // We don't bother using the local var decl error, because the field error
+    // will be strictly superior.
+    ErrorList throwaway;
+    pair<TypeId, ast::LocalVarId> var_data = symbol_table_.ResolveLocal(
+        parts.at(0), toks.at(0).pos, &throwaway);
+    bool ok = (var_data.first != TypeId::kUnassigned && var_data.second != kVarUnassigned);
+
+    // If the local resolved successfully, we split the current NameExpr into a
+    // series of FieldDerefs, and recurse on it.
+    if (ok) {
+      sptr<const Expr> name_expr = make_shared<NameExpr>(SliceFirstN(expr.Name(), 1), var_data.second, var_data.first);
+      return Rewrite(SplitQualifiedToFieldDerefs(name_expr, expr.Name(), 1));
+    }
+  }
+
+  // Next, try resolving it as a field. We keep any emitted errors around. We
+  // might use them if resolving this as a Type fails.
+  ErrorList field_errors;
+  {
+    // TODO: add a field lookup in here.
+    bool ok = false;
+    if (ok) {
+      sptr<const Expr> implicit_this = MakeImplicitThis(toks.at(0).pos, curtype_);
+      sptr<const Expr> field_deref = make_shared<FieldDerefExpr>(implicit_this, parts.at(0), toks.at(0));
+      return Rewrite(SplitQualifiedToFieldDerefs(field_deref, expr.Name(), 1));
+    }
+  }
+
+  // Last, try looking up successive prefixes as a type.
+  {
+    stringstream ss;
+    for (uint i = 0; i < parts.size(); ++i) {
+      if (i != 0) {
+        ss << '.';
+      }
+      ss << parts.at(i);
+      string name = ss.str();
+      TypeId tid = typeset_.TryGet(name);
+      if (tid.IsValid()) {
+        sptr<const Type> resolved_type = make_shared<ReferenceType>(
+            SliceFirstN(expr.Name(), i + 1), tid);
+        auto static_ref = make_shared<StaticRefExpr>(resolved_type);
+        return Rewrite(SplitQualifiedToFieldDerefs(static_ref, expr.Name(), i + 1));
+      }
+    }
+  }
+
+  // Release the field errors, and prune the rest.
+  vector<Error*> released;
+  field_errors.Release(&released);
+  for (auto err : released) {
+    errors_->Append(err);
+  }
+  released.clear();
+  return nullptr;
 }
 
 REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
