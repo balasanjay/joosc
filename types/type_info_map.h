@@ -165,7 +165,7 @@ public:
   }
 
   void PutMethod(ast::TypeId curtid, ast::TypeId rettid, const vector<ast::TypeId>& paramtids, const ast::MemberDecl& meth, bool is_constructor) {
-    method_entries_.push_back(MethodInfo{kErrorMethodId, curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{is_constructor, meth.Name(), TypeIdList(paramtids)}});
+    method_entries_.insert({curtid, MethodInfo{kErrorMethodId, curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{is_constructor, meth.Name(), TypeIdList(paramtids)}}});
   }
 
   TypeInfoMap Build(base::ErrorList* out);
@@ -194,7 +194,7 @@ private:
 
   const base::FileSet* fs_;
   vector<TypeInfo> type_entries_;
-  vector<MethodInfo> method_entries_;
+  multimap<ast::TypeId, MethodInfo> method_entries_;
 };
 
 } // namespace types

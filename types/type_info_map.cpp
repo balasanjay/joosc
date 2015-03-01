@@ -345,7 +345,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
     };
     bool has_abstract = std::any_of(new_good_methods.cbegin(), new_good_methods.cend(), is_abstract_method);
 
-    if (has_abstract && !tinfo->mods.HasModifier(ABSTRACT)) {
+    if (has_abstract && tinfo->kind != TypeKind::INTERFACE && !tinfo->mods.HasModifier(ABSTRACT)) {
       out->Append(MakeNeedAbstractClassError(*tinfo, new_good_methods));
     }
   }
@@ -416,42 +416,43 @@ void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeIn
 
 TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
   map<TypeId, TypeInfo> typeinfo;
+  vector<TypeId> all_types;
   set<TypeId> bad_types;
 
   for (const auto& entry : type_entries_) {
     typeinfo.insert({entry.type, entry});
+    all_types.push_back(entry.type);
   }
 
   ValidateExtendsImplementsGraph(&typeinfo, &bad_types, out);
 
-  // Sort MethodInfo vector by the topological ordering of the types.
+  // Sort TypeId vector by the topological ordering of the types.
   {
-    auto cmp = [&typeinfo](const MethodInfo& lhs, const MethodInfo& rhs) {
-      return typeinfo.at(lhs.class_type).top_sort_index < typeinfo.at(rhs.class_type).top_sort_index;
+    auto t_cmp = [&typeinfo](TypeId lhs, TypeId rhs) {
+      return typeinfo.at(lhs).top_sort_index < typeinfo.at(rhs).top_sort_index;
     };
-    stable_sort(method_entries_.begin(), method_entries_.end(), cmp);
+    stable_sort(all_types.begin(), all_types.end(), t_cmp);
   }
 
   // Populate MethodTables for each TypeInfo.
   {
-    // TODO: Catch classes with no methods.
     MethodId cur_mid = kFirstMethodId;
 
-    auto cmp = [](const MethodInfo& lhs, const MethodInfo& rhs) {
-      return lhs.class_type == rhs.class_type;
-    };
-
-    auto cb = [&](MInfoIter begin, MInfoIter end, i64) {
-      TypeId class_type = begin->class_type;
-      if (bad_types.count(class_type) == 1) {
-        typeinfo.at(class_type) = TypeInfoMap::kErrorTypeInfo;
-        return;
+    for (auto type_id : all_types) {
+      if (bad_types.count(type_id) == 1) {
+        typeinfo.at(type_id) = TypeInfoMap::kErrorTypeInfo;
+        continue;
       }
-      TypeInfo* tinfo = &typeinfo.at(class_type);
-      BuildMethodTable(begin, end, tinfo, &cur_mid, typeinfo, bad_types, out);
-    };
 
-    FindEqualRanges(method_entries_.begin(), method_entries_.end(), cmp, cb);
+      auto iter_pair = method_entries_.equal_range(type_id);
+      vector<MethodInfo> methods;
+      for (auto cur = iter_pair.first; cur != iter_pair.second; ++cur) {
+        methods.push_back(cur->second);
+      }
+
+      TypeInfo* tinfo = &typeinfo.at(type_id);
+      BuildMethodTable(methods.begin(), methods.end(), tinfo, &cur_mid, typeinfo, bad_types, out);
+    }
   }
 
   return TypeInfoMap(typeinfo);
