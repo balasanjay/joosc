@@ -450,11 +450,12 @@ REWRITE_DEFN(TypeChecker, FieldDecl, MemberDecl, decl, declptr) {
     }
   }
 
+  // Lookup field and rewrite with fid.
+  pair<const TypeInfo&, bool> type_pair = typeinfo_.LookupTypeInfo(curtype_);
+  assert(type_pair.second);
+  FieldInfo finfo = type_pair.first.fields.LookupField(decl.Name());
 
-  // TODO: When we start putting field-ids into FieldDecl, then this should
-  // also populate it.
-
-  return make_shared<FieldDecl>(decl.Mods(), type, decl.Name(), decl.NameToken(), val);
+  return make_shared<FieldDecl>(decl.Mods(), type, decl.Name(), decl.NameToken(), val, finfo.fid);
 }
 
 REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
