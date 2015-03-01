@@ -225,11 +225,11 @@ sptr<const Expr> SplitQualifiedToFieldDerefs(
   assert(start_idx > 0);
 
   // If they want to split past-the-end, then just use the base.
-  if (start_idx == parts.size()) {
+  if ((uint)start_idx == parts.size()) {
     return base;
   }
 
-  assert(start_idx < parts.size());
+  assert((uint)start_idx < parts.size());
 
   // Parts includes the dots between tokens; quickly validate this assumption
   // holds.
@@ -270,7 +270,7 @@ sptr<const Expr> MakeImplicitThis(PosRange pos, TypeId tid) {
   return make_shared<ThisExpr>(Token(K_THIS, Pos(pos.fileid, pos.begin)), tid);
 }
 
-REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr, exprptr) {
+REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr,) {
   const vector<string> parts = expr.Name().Parts();
   const vector<Token> toks = expr.Name().Tokens();
   assert(parts.size() > 0);
@@ -283,7 +283,7 @@ REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr, exprptr) {
     ErrorList throwaway;
     pair<TypeId, ast::LocalVarId> var_data = symbol_table_.ResolveLocal(
         parts.at(0), toks.at(0).pos, &throwaway);
-    bool ok = var_data.first != TypeId::kUnassigned && var_data.second != kVarUnassigned;
+    bool ok = (var_data.first != TypeId::kUnassigned && var_data.second != kVarUnassigned);
 
     // If the local resolved successfully, we split the current NameExpr into a
     // series of FieldDerefs, and recurse on it.
