@@ -242,7 +242,7 @@ class PrintVisitor final : public Visitor {
     *os_ << ' ';
     *os_ << field.Name();
     if (field.GetFieldId() != ast::kErrorFieldId) {
-      *os_ << "f#" << field.GetFieldId();
+      *os_ << "#f" << field.GetFieldId();
     }
     if (field.ValPtr() != nullptr) {
       *os_ << space_ << '=' << space_;

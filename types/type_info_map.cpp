@@ -454,6 +454,7 @@ TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
   }
 
   // Populate FieldTables for each TypeInfo.
+  // TODO: Handle classes without fields.
   {
     FieldId cur_fid = kFirstFieldId;
 

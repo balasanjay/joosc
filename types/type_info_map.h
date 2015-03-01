@@ -207,10 +207,6 @@ public:
   // TODO: handle blacklisting.
   pair<const TypeInfo&, bool> LookupTypeInfo(ast::TypeId tid) const {
     const auto info = type_info_.find(tid);
-    std::cout << "HERE\n";
-    for (auto i : type_info_) {
-      std::cout << i.second.name << '\n';
-    }
     if (info == type_info_.end()) {
       return make_pair(kErrorTypeInfo, false);
     } else {
