@@ -99,7 +99,7 @@ class PrintVisitor final : public Visitor {
   }
 
   VISIT_DECL(NameExpr, expr,) {
-    *os_ << expr.Name().Name();
+    PrintLocalVarName(os_, expr.Name().Name(), expr.GetVarId());
     return VisitResult::SKIP;
   }
 
@@ -170,7 +170,9 @@ class PrintVisitor final : public Visitor {
   VISIT_DECL(LocalDeclStmt, stmt,) {
     *os_ << RepStr(NumDelimiters(), " ");
     stmt.GetType().PrintTo(os_);
-    *os_ << RepStr(NumDelimiters(1), " ") << stmt.Name() << RepStr(NumDelimiters(), space_)
+    *os_ << RepStr(NumDelimiters(1), " ");
+    PrintLocalVarName(os_, stmt.Name(), stmt.GetVarId());
+    *os_ << RepStr(NumDelimiters(), space_)
          << '=' << RepStr(NumDelimiters(), space_);
     Visit(stmt.GetExprPtr());
     *os_ << ';';
@@ -239,7 +241,8 @@ class PrintVisitor final : public Visitor {
   VISIT_DECL(Param, param,) {
     *os_ << RepStr(NumDelimiters(), " ");
     param.GetType().PrintTo(os_);
-    *os_ << RepStr(NumDelimiters(1), " ") << param.Name();
+    *os_ << RepStr(NumDelimiters(1), " ");
+    PrintLocalVarName(os_, param.Name(), param.GetVarId());
     return VisitResult::SKIP;
   }
 
@@ -365,6 +368,13 @@ class PrintVisitor final : public Visitor {
       ss << str;
     }
     return ss.str();
+  }
+
+  void PrintLocalVarName(std::ostream* os, string name, LocalVarId vid) {
+    *os << name;
+    if (vid != kVarUnassigned) {
+      *os << "#v" << vid;
+    }
   }
 
   void PrintArgList(const base::SharedPtrVector<const Expr>& args) {

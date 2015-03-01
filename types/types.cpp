@@ -7,22 +7,37 @@
 #include "types/typeset.h"
 
 using ast::Program;
+using ast::QualifiedName;
 using base::ErrorList;
 using base::FileSet;
+using base::PosRange;
+using lexer::Token;
 
 namespace types {
 
 namespace {
 
+vector<TypeSetBuilder::Elem> ExtractElems(const QualifiedName& name) {
+  vector<TypeSetBuilder::Elem> v;
+  v.reserve(name.Parts().size());
+
+  for (size_t i = 0; i < name.Parts().size(); ++i) {
+    v.push_back({name.Parts().at(i), name.Tokens().at(i).pos});
+  }
+
+  return v;
+}
+
 TypeSet BuildTypeSet(const Program& prog, const FileSet* fs, ErrorList* out) {
   types::TypeSetBuilder typeSetBuilder;
   for (const auto& unit : prog.CompUnits()) {
-    vector<string> ns;
+    vector<TypeSetBuilder::Elem> pkg;
     if (unit.PackagePtr() != nullptr) {
-      ns = unit.PackagePtr()->Parts();
+      pkg = ExtractElems(*unit.PackagePtr());
+      typeSetBuilder.AddPackage(pkg);
     }
     for (const auto& decl : unit.Types()) {
-      typeSetBuilder.Put(ns, decl.Name(), decl.NameToken().pos);
+      typeSetBuilder.AddType(pkg, {decl.Name(), decl.NameToken().pos});
     }
   }
   return typeSetBuilder.Build(fs, out);
@@ -31,12 +46,12 @@ TypeSet BuildTypeSet(const Program& prog, const FileSet* fs, ErrorList* out) {
 TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, sptr<const Program> prog,
                              const FileSet* fs, sptr<const Program>* new_prog,
                              ErrorList* error_out) {
-  TypeInfoMapBuilder builder;
+  TypeInfoMapBuilder builder(fs);
   DeclResolver resolver(&builder, typeset, fs, error_out);
 
   *new_prog = resolver.Rewrite(prog);
 
-  return builder.Build(fs, error_out);
+  return builder.Build(error_out);
 }
 
 }  // namespace

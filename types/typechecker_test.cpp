@@ -1,5 +1,7 @@
 #include "types/typechecker.h"
 
+#include "base/file.h"
+#include "ast/ids.h"
 #include "lexer/lexer.h"
 #include "parser/parser_internal.h"
 #include "third_party/gtest/gtest.h"
@@ -8,6 +10,7 @@ using namespace ast;
 
 using base::ErrorList;
 using base::Pos;
+using base::PosRange;
 using lexer::Token;
 using parser::internal::Result;
 
@@ -70,6 +73,13 @@ class TypeCheckerTest : public ::testing::Test {
     Result<Stmt> stmtResult;
     assert(!parser_->ParseStmt(&stmtResult).Failed());
     return stmtResult.Get();
+  }
+
+  sptr<const MemberDecl> ParseMemberDecl(string s) {
+    MakeParser(s);
+    Result<MemberDecl> memberResult;
+    assert(!parser_->ParseMemberDecl(&memberResult).Failed());
+    return memberResult.Get();
   }
 
   base::ErrorList errors_;
@@ -173,6 +183,34 @@ TEST_F(TypeCheckerTest, BinExprNumericOpOperandsNotNumeric) {
   EXPECT_ERRS("TypeMismatchError(0:0-4)\nTypeMismatchError(0:7-11)\n");
 }
 
+TEST_F(TypeCheckerTest, BinExprAssignment) {
+  sptr<const Expr> before = ParseExpr("a = 1");
+
+  const auto insideType = TypeId{100, 0};
+  auto typeChecker = (*typeChecker_.get())
+    .InsideCompUnit(nullptr)
+    .InsideTypeDecl(insideType, TypeSet::Empty())
+    .InsideMemberDecl(false, TypeId::kVoid, {{TypeId::kInt, "a", PosRange(0, 0, 1)}});
+
+  auto after = typeChecker.Rewrite(before);
+  EXPECT_EQ(TypeId::kInt, after->GetTypeId());
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, BinExprAssignmentFails) {
+  sptr<const Expr> before = ParseExpr("a = true");
+
+  const auto insideType = TypeId{100, 0};
+  auto typeChecker = (*typeChecker_.get())
+    .InsideCompUnit(nullptr)
+    .InsideTypeDecl(insideType, TypeSet::Empty())
+    .InsideMemberDecl(false, TypeId::kVoid, {{TypeId::kInt, "a", PosRange(0, 0, 1)}});
+
+  auto after = typeChecker.Rewrite(before);
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("UnassignableError(0:4-8)\n");
+}
+
 TEST_F(TypeCheckerTest, BoolLitExpr) {
   sptr<const Expr> before = ParseExpr("true");
   auto after = typeChecker_->Rewrite(before);
@@ -183,7 +221,39 @@ TEST_F(TypeCheckerTest, BoolLitExpr) {
 
 // TODO: CallExpr
 
-// TODO: CastExpr
+TEST_F(TypeCheckerTest, CastExprNullptr) {
+  sptr<const Expr> before = ParseExpr("(int)(1 + null)");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(after, nullptr);
+  EXPECT_ERRS("TypeMismatchError(0:10-14)\n");
+}
+
+TEST_F(TypeCheckerTest, CastExprTypeNullptr) {
+  sptr<const Expr> before = ParseExpr("(foo)1");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(after, nullptr);
+  EXPECT_ERRS("UnknownTypenameError(0:1-4)\n");
+}
+
+TEST_F(TypeCheckerTest, CastExprNotCastable) {
+  sptr<const Expr> before = ParseExpr("(int)true");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(after, nullptr);
+  EXPECT_ERRS("IncompatibleCastError(0:0-9)\n");
+}
+
+TEST_F(TypeCheckerTest, CastExprCastable) {
+  sptr<const Expr> before = ParseExpr("(int)1");
+  auto after = typeChecker_->Rewrite(before);
+
+  EXPECT_EQ(TypeId::kInt, after->GetTypeId());
+  EXPECT_NO_ERRS();
+}
+
+// TODO: Cast expr tests with Reference type as LHS.
 
 TEST_F(TypeCheckerTest, CharLitExpr) {
   sptr<const Expr> before = ParseExpr("'0'");
@@ -243,13 +313,29 @@ TEST_F(TypeCheckerTest, ThisLitExpr) {
 
   auto typeChecker = (*typeChecker_.get())
     .InsideCompUnit(nullptr)
-    .InsideTypeDecl(insideType)
-    .InsideMethodDecl(TypeId::kVoid, ParamList({}));
+    .InsideTypeDecl(insideType, TypeSet::Empty())
+    .InsideMemberDecl(false, TypeId::kVoid);
 
   auto after = typeChecker.Rewrite(before);
 
   EXPECT_EQ(insideType, after->GetTypeId());
   EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, ThisLitExprInStaticMethod) {
+  const auto insideType = TypeId{100, 0};
+
+  sptr<const Expr> before = ParseExpr("this");
+
+  auto typeChecker = (*typeChecker_.get())
+    .InsideCompUnit(nullptr)
+    .InsideTypeDecl(insideType, TypeSet::Empty())
+    .InsideMemberDecl(true, TypeId::kVoid);
+
+  auto after = typeChecker.Rewrite(before);
+
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("ThisInStaticMemberError(0:0-4)\n");
 }
 
 TEST_F(TypeCheckerTest, UnaryExprErrorFromRHS) {
@@ -392,6 +478,28 @@ TEST_F(TypeCheckerTest, WhileStmtOk) {
   EXPECT_NO_ERRS();
 }
 
+TEST_F(TypeCheckerTest, FieldDeclThis) {
+  sptr<const MemberDecl> before = ParseMemberDecl("int x = this;");
+  auto typeChecker = (*typeChecker_.get())
+    .InsideCompUnit(nullptr)
+    .InsideTypeDecl(TypeId::kInt, TypeSet::Empty());
+  auto after = typeChecker.Rewrite(before);
+
+  EXPECT_NE(nullptr, after);
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, FieldDeclStaticThis) {
+  sptr<const MemberDecl> before = ParseMemberDecl("static int x = this;");
+  auto typeChecker = (*typeChecker_.get())
+    .InsideCompUnit(nullptr)
+    .InsideTypeDecl(TypeId::kInt, TypeSet::Empty());
+  auto after = typeChecker.Rewrite(before);
+
+  EXPECT_EQ(nullptr, after);
+  EXPECT_ERRS("ThisInStaticMemberError(0:15-19)\n");
+}
+
 // TODO: FieldDecl
 
 // TODO: MethodDecl
@@ -402,5 +510,18 @@ TEST_F(TypeCheckerTest, WhileStmtOk) {
 
 // TODO: CompUnit
 
+
+TEST(TypeCheckerUtilTest, IsCastablePrimitives) {
+  TypeChecker typeChecker(nullptr, nullptr);
+  auto numTids = {TypeId::kInt, TypeId::kChar, TypeId::kShort, TypeId::kByte};
+  for (TypeId tidA : numTids) {
+    for (TypeId tidB : numTids) {
+      EXPECT_TRUE(typeChecker.IsCastable(tidA, tidB));
+    }
+  }
+  EXPECT_TRUE(typeChecker.IsCastable(TypeId::kBool, TypeId::kBool));
+}
+
+// TODO: TEST(TypeCheckerUtilTest, IsCastableReference) - with inheritance.
 
 }  // namespace types

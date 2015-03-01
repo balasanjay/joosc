@@ -13,26 +13,15 @@ using base::PosRange;
 namespace types {
 
 sptr<const Type> TypeChecker::MustResolveType(sptr<const Type> type) {
-  PosRange pos(-1, -1, -1);
-
-  sptr<const Type> ret = ResolveType(type, typeset_, &pos);
-  assert(ret != nullptr);
-
+  sptr<const Type> ret = ResolveType(type, typeset_, errors_);
   if (ret->GetTypeId().IsValid()) {
     return ret;
-  }
-
-  // If this is blacklisted type then we don't want to emit an error about, so
-  // we only do that if its unassigned. In any case, return null so that we
-  // prune appropriate nodes.
-  if (ret->GetTypeId().IsUnassigned()) {
-    errors_->Append(MakeUnknownTypenameError(fs_, pos));
   }
   return nullptr;
 }
 
 TypeId TypeChecker::JavaLangType(const string& name) const {
-  return typeset_.Get({"java", "lang", name});
+  return typeset_.TryGet("java.lang." + name);
 }
 
 bool TypeChecker::IsNumeric(TypeId tid) const {
@@ -106,6 +95,26 @@ bool TypeChecker::IsPrimitiveWidening(TypeId lhs, TypeId rhs) const {
   }
 }
 
+// Returns true iff an assignment `lhs x = (rhs)y' is a primitive narrowing
+// conversion.
+bool TypeChecker::IsPrimitiveNarrowing(TypeId lhs, TypeId rhs) const {
+  if (!IsNumeric(lhs) || !IsNumeric(rhs)) {
+    return false;
+  }
+
+  switch (rhs.base) {
+    case TypeId::kByteBase:
+      return lhs.base == TypeId::kCharBase;
+    case TypeId::kShortBase:
+      return IsOneOf(lhs.base, {TypeId::kByteBase, TypeId::kCharBase});
+    case TypeId::kCharBase:
+      return IsOneOf(lhs.base, {TypeId::kByteBase, TypeId::kShortBase});
+    case TypeId::kIntBase:
+      return IsOneOf(lhs.base, {TypeId::kByteBase, TypeId::kCharBase, TypeId::kShortBase});
+    default: throw; // Should be unreachable.
+  }
+}
+
 bool TypeChecker::IsReferenceWidening(TypeId lhs, TypeId rhs) const {
   if (!IsReference(lhs) || !IsReference(rhs)) {
     return false;
@@ -138,6 +147,19 @@ bool TypeChecker::IsAssignable(TypeId lhs, TypeId rhs) const {
     return true;
   }
 
+  return false;
+}
+
+bool TypeChecker::IsCastable(TypeId lhs, TypeId rhs) const {
+  if (lhs == rhs) {
+    return true;
+  }
+  if (IsPrimitive(lhs) && IsPrimitive(rhs)) {
+    return IsPrimitiveWidening(lhs, rhs) || IsPrimitiveNarrowing(lhs, rhs);
+  }
+  if (IsReference(lhs) && IsReference(rhs)) {
+    return IsAssignable(lhs, rhs) || IsAssignable(rhs, lhs);
+  }
   return false;
 }
 

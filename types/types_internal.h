@@ -11,7 +11,8 @@ namespace types {
 
 base::Error* MakeUnknownTypenameError(const base::FileSet* fs, base::PosRange pos);
 base::Error* MakeDuplicateDefinitionError(const base::FileSet* fs, const vector<base::PosRange> dupes, const string& main_message, const string& name);
-sptr<const ast::Type> ResolveType(sptr<const ast::Type> type, TypeSet typeset, base::PosRange* pos_out);
+
+sptr<const ast::Type> ResolveType(sptr<const ast::Type>, const TypeSet&, base::ErrorList*);
 
 } // namespace types
 

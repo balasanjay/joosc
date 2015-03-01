@@ -13,6 +13,7 @@ using ast::Type;
 using ast::TypeId;
 using base::DiagnosticClass;
 using base::Error;
+using base::ErrorList;
 using base::FileSet;
 using base::MakeError;
 using base::OutputOptions;
@@ -47,14 +48,14 @@ Error* MakeDuplicateDefinitionError(const FileSet* fs, const vector<PosRange> du
   });
 }
 
-sptr<const Type> ResolveType(sptr<const Type> type, TypeSet typeset, PosRange* pos_out) {
+sptr<const Type> ResolveType(sptr<const Type> type, const TypeSet& typeset, ErrorList* errors) {
   const Type* cur = type.get();
 
   // References.
   if (IS_CONST_PTR(ReferenceType, cur)) {
     const ReferenceType* ref = dynamic_cast<const ReferenceType*>(cur);
-    *pos_out = ref->Name().Tokens().back().pos;
-    TypeId got = typeset.Get(ref->Name().Parts());
+    PosRange pos = ref->Name().Tokens().back().pos;
+    TypeId got = typeset.Get(ref->Name().Name(), pos, errors);
     if (got == cur->GetTypeId()) {
       return type;
     }
@@ -64,8 +65,7 @@ sptr<const Type> ResolveType(sptr<const Type> type, TypeSet typeset, PosRange* p
   // Primitives.
   if (IS_CONST_PTR(PrimitiveType, cur)) {
     const PrimitiveType* prim = dynamic_cast<const PrimitiveType*>(cur);
-    *pos_out = prim->GetToken().pos;
-    TypeId got = typeset.Get({prim->GetToken().TypeInfo().Value()});
+    TypeId got = typeset.Get(prim->GetToken().TypeInfo().Value(), prim->GetToken().pos, errors);
     if (got == cur->GetTypeId()) {
       return type;
     }
@@ -76,7 +76,7 @@ sptr<const Type> ResolveType(sptr<const Type> type, TypeSet typeset, PosRange* p
   assert(IS_CONST_PTR(ArrayType, cur));
   const ArrayType* arr = dynamic_cast<const ArrayType*>(cur);
 
-  sptr<const Type> nested = ResolveType(arr->ElemTypePtr(), typeset, pos_out);
+  sptr<const Type> nested = ResolveType(arr->ElemTypePtr(), typeset, errors);
   TypeId tid = nested->GetTypeId();
   if (tid.IsValid()) {
     tid = TypeId{tid.base, tid.ndims + 1};

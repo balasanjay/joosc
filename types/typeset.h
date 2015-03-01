@@ -3,11 +3,12 @@
 
 #include <map>
 
+#include "ast/ast.h"
+#include "ast/ids.h"
 #include "base/errorlist.h"
 #include "base/file.h"
 #include "base/fileset.h"
-#include "ast/ast.h"
-#include "ast/ids.h"
+#include "types/typeset_impl.h"
 
 namespace types {
 
@@ -19,80 +20,100 @@ public:
     return kEmptyTypeSet;
   }
 
-  // Provides a `view' into the TypeSet assuming the provided imports are in
-  // scope. Note that these do not `stack'; i.e.
-  // `a.WithImports(bimports).WithImports(cimports)' is equivalent to
-  // `a.WithImports(cimports)' regardless of the values of `bimports' and
-  // `cimports'.
-  TypeSet WithImports(const vector<ast::ImportDecl>& imports, base::ErrorList* errors) const;
-
-  // Returns a TypeId corresponding to a prefix of the provided qualified name.
-  //
-  // If the TypeSet has never seen any prefix of name before that it will
-  // return TypeId::kUnassigned.
-  //
-  // If the TypeSet has already emitted an error about a type that is a prefix
-  // of name, then it might return TypeId::kError. Clients should avoid
-  // emitting further errors involving this type. Note that this is done
-  // best-effort; the TypeSet might still return TypeId::kUnassigned instead.
-  //
-  // Otherwise, a valid TypeId will be returned, and the length of the prefix
-  // will be written to *typelen.
-  ast::TypeId GetPrefix(const vector<string>& qualifiedname, u64* typelen) const;
-
-  // Helper method that calls GetPrefix, and filters out any results that don't
-  // use all of qualifiedname. Any result from GetPrefix that doesn't encompass
-  // the whole string will be turned into TypeId::kUnassigned.
-  ast::TypeId Get(const vector<string>& qualifiedname) const;
-
-  void PrintTo(std::ostream* out) const {
-    for (const auto& name : available_names_) {
-      *out << name.first << "->" << name.second << '\n';
+  // Enter a package. package can be nullptr, which means use the unnamed
+  // package.
+  TypeSet WithPackage(sptr<const ast::QualifiedName> package, base::ErrorList* errors) const {
+    string pkg = "";
+    if (package != nullptr) {
+      pkg = package->Name();
     }
+    return TypeSet(impl_->WithPackage(pkg, errors));
   }
 
+  // Provides a `view' into the TypeSet assuming the provided imports are in
+  // scope.
+  TypeSet WithImports(const vector<ast::ImportDecl>& imports, base::ErrorList* errors) const {
+    return TypeSet(impl_->WithImports(imports, errors));
+  }
+
+  // Enter a type declaration. Will validate that the named type does not
+  // conflict with an import in the same file.
+  TypeSet WithType(const string& name, base::PosRange pos, base::ErrorList* errors) const {
+    return TypeSet(impl_->WithType(name, pos, errors));
+  }
+
+  ast::TypeId Get(const string& name, base::PosRange pos, base::ErrorList* errors) const {
+    return impl_->Get(name, pos, errors);
+  }
+  ast::TypeId TryGet(const string& name) const {
+    static const base::PosRange fakepos(-1, -1, -1);
+    base::ErrorList throwaway;
+    return impl_->Get(name, fakepos, &throwaway);
+  }
  private:
   friend class TypeSetBuilder;
-  using QualifiedNameBaseMap = std::map<string, ast::TypeId::Base>;
 
-  TypeSet(const base::FileSet* fs, const set<string>& types, const set<string>& bad_types);
-
-  static void InsertName(QualifiedNameBaseMap* m, string name, ast::TypeId::Base base);
-
-  void InsertImport(const ast::ImportDecl& import, base::ErrorList* errors);
-  void InsertWildcardImport(const string& base);
+  TypeSet(sptr<const TypeSetImpl> impl) : impl_(impl) {}
 
   static TypeSet kEmptyTypeSet;
 
-  const base::FileSet* fs_;
-
-  // Changed depending on provided Imports.
-  QualifiedNameBaseMap available_names_;
-
-  // Always kept identical to values from Builder.
-  QualifiedNameBaseMap original_names_;
+  sptr<const TypeSetImpl> impl_;
 };
 
 class TypeSetBuilder {
  public:
+  // pair<string, PosRange> with better field naming.
+  struct Elem {
+    string name;
+    base::PosRange pos;
+  };
+
   // Automatically inserts 'int', 'short', 'byte', 'boolean', 'void', and 'error'.
   TypeSetBuilder() = default;
 
-  // Add a type definition to this TypeSetBuilder. The namepos will be returned
-  // from Build on duplicate definitions.
-  void Put(const vector<string>& ns, const string& name, base::PosRange namepos);
+  // Add a package to this TypeSetBuilder. The namepos will be used to
+  // construct Errors during Build.
+  void AddPackage(const vector<Elem>& pkg) {
+    if (pkg.size() == 0) {
+      pkgs_.insert({TypeSetImpl::kUnnamedPkgPrefix, base::PosRange(-1, -1, -1)});
+      return;
+    }
 
-  // Returns a TypeSet with all types inserted with Put. If a type was defined
+    stringstream ss;
+    ss << TypeSetImpl::kNamedPkgPrefix;
+    for (uint i = 0; i < pkg.size(); ++i) {
+      const Elem& elem = pkg.at(i);
+      ss << '.' << elem.name;
+
+      // Inserts without replacing, so we keep the first pos we saw for a package.
+      pkgs_.insert({ss.str(), elem.pos});
+    }
+  }
+
+  // Add a type definition to this TypeSetBuilder.
+  void AddType(const vector<Elem>& pkg, const Elem& type) {
+    AddPackage(pkg);
+    types_.push_back(Entry{pkg, type});
+  }
+
+  // Returns a TypeSet with all types inserted with Add*. If a type was defined
   // multiple times, an Error will be appended to the ErrorList for each
   // duplicate location.
   TypeSet Build(const base::FileSet* fs, base::ErrorList* out) const;
 
  private:
   struct Entry {
-    string name; // com.foo.Bar
-    base::PosRange namepos;
+    vector<Elem> pkg;
+    Elem type;
   };
-  vector<Entry> entries_;
+
+  string FullyQualifiedTypeName(const Entry& entry) const;
+
+  vector<Entry> types_;
+
+  // Records all seen packages. Keeps a single PosRange, so that we can point
+  // any relevant errors to that PosRange.
+  map<string, base::PosRange> pkgs_;
 };
 
 } // namespace types
