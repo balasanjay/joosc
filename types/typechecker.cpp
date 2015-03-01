@@ -701,8 +701,13 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
     return nullptr;
   }
 
+  sptr<const Stmt> body = Rewrite(decl.BodyPtr());
+  if (body == nullptr) {
+    return nullptr;
+  }
+
   return make_shared<MethodDecl>(decl.Mods(), decl.TypePtr(), decl.Name(),
-      decl.NameToken(), decl.ParamsPtr(), decl.BodyPtr(), minfo.mid);
+      decl.NameToken(), decl.ParamsPtr(), body, minfo.mid);
 }
 
 // Rewrite params to include the local var ids that were just assigned to them.
