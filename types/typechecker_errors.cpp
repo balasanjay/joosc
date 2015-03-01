@@ -82,4 +82,8 @@ Error* TypeChecker::MakeIncomparableTypeError(TypeId lhs, TypeId rhs, PosRange p
   return MakeSimplePosRangeError(fs_, pos, "IncomparableTypeError", ss.str());
 }
 
+Error* TypeChecker::MakeThisInStaticMemberError(PosRange this_pos) {
+  return MakeSimplePosRangeError(fs_, this_pos, "ThisInStaticMemberError", "Cannot use 'this' in static context.");
+}
+
 } // namespace types

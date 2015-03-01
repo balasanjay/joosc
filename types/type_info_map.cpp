@@ -57,15 +57,113 @@ Error* MakeClassExtendsInterfaceError(const FileSet* fs, PosRange pos, const str
   return MakeSimplePosRangeError(fs, pos, "ClassExtendInterfaceError", msg);
 }
 
-} // namespace
+Error* MakeResolveMethodTableError(const FileSet* fs, PosRange m_pos, const string& m_string, PosRange p_pos, const string& p_string, const string& error_name) {
+  return MakeError([=](ostream* out, const OutputOptions& opt) {
+    if (opt.simple) {
+      *out << error_name;
+      return;
+    }
 
+    PrintDiagnosticHeader(out, opt, fs, m_pos, DiagnosticClass::ERROR, m_string);
+    PrintRangePtr(out, opt, fs, m_pos);
+    *out << '\n';
+    PrintDiagnosticHeader(out, opt, fs, p_pos, DiagnosticClass::INFO, p_string);
+    PrintRangePtr(out, opt, fs, p_pos);
+  });
+}
+
+} // namespace
 TypeInfoMap TypeInfoMap::kEmptyTypeInfoMap = TypeInfoMap({});
+TypeInfo TypeInfoMap::kErrorTypeInfo = TypeInfo{{}, TypeKind::CLASS, TypeId::kError, "", kFakePos, TypeIdList({}), TypeIdList({}), MethodTable::kErrorMethodTable, 0};
+
 MethodTable MethodTable::kEmptyMethodTable = MethodTable({}, {}, false);
 MethodTable MethodTable::kErrorMethodTable = MethodTable();
-MethodInfo MethodTable::kErrorMethodInfo = MethodInfo{kErrorMethodId, TypeId::kError, {}, TypeId::kError, PosRange(-1, -1, -1), {false, "", TypeIdList({})}};
+MethodInfo MethodTable::kErrorMethodInfo = MethodInfo{kErrorMethodId, TypeId::kError, {}, TypeId::kError, kFakePos, {false, "", TypeIdList({})}};
 
 Error* TypeInfoMapBuilder::MakeConstructorNameError(PosRange pos) const {
   return MakeSimplePosRangeError(fs_, pos, "ConstructorNameError", "Constructors must have the same name as its class.");
+}
+
+Error* TypeInfoMapBuilder::MakeParentFinalError(const TypeInfo& minfo, const TypeInfo& pinfo) const {
+  stringstream msgstream;
+  msgstream << "A class may not extend '" << pinfo.name << "', a final class.";
+  const string p_msg = "Declared final here.";
+  return MakeResolveMethodTableError(fs_, minfo.pos, msgstream.str(), pinfo.pos, p_msg, "ParentFinalError");
+}
+
+Error* TypeInfoMapBuilder::MakeDifferingReturnTypeError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const {
+  const FileSet* fs = fs_;
+  return MakeError([=](ostream* out, const OutputOptions& opt) {
+    if (opt.simple) {
+      *out << "DifferingReturnTypeError";
+      return;
+    }
+
+    const string message = "Cannot have methods with overloaded return types.";
+    bool is_self_method = (mtinfo.type == mminfo.class_type);
+    PosRange m_pos = is_self_method ? mminfo.pos : mtinfo.pos;
+
+    PrintDiagnosticHeader(out, opt, fs, m_pos, DiagnosticClass::ERROR, message);
+    PrintRangePtr(out, opt, fs, m_pos);
+    *out << '\n';
+    if (is_self_method) {
+      PrintDiagnosticHeader(out, opt, fs, pminfo.pos, DiagnosticClass::INFO, "Parent method declared here.");
+      PrintRangePtr(out, opt, fs, pminfo.pos);
+    } else {
+      PrintDiagnosticHeader(out, opt, fs, mminfo.pos, DiagnosticClass::INFO, "First method declared here.");
+      PrintRangePtr(out, opt, fs, mminfo.pos);
+      *out << '\n';
+      PrintDiagnosticHeader(out, opt, fs, pminfo.pos, DiagnosticClass::INFO, "Second method declared here.");
+      PrintRangePtr(out, opt, fs, pminfo.pos);
+    }
+  });
+}
+Error* TypeInfoMapBuilder::MakeStaticMethodOverrideError(const MethodInfo& minfo, const MethodInfo& pinfo) const {
+  const string m_msg = "A class may not inherit a static method, nor may it override using a static method.";
+  const string p_msg = "Parent method declared here.";
+  return MakeResolveMethodTableError(fs_, minfo.pos, m_msg, pinfo.pos, p_msg, "StaticMethodOverrideError");
+}
+
+Error* TypeInfoMapBuilder::MakeLowerVisibilityError(const MethodInfo& minfo, const MethodInfo& pinfo) const {
+  const string m_msg = "A class may not lower the visibility of an inherited method.";
+  const string p_msg = "Parent method declared here.";
+  return MakeResolveMethodTableError(fs_, minfo.pos, m_msg, pinfo.pos, p_msg, "LowerVisibilityError");
+}
+
+Error* TypeInfoMapBuilder::MakeOverrideFinalMethodError(const MethodInfo& minfo, const MethodInfo& pinfo) const {
+  const string m_msg = "A class may not override a final method.";
+  const string p_msg = "Final method declared here.";
+  return MakeResolveMethodTableError(fs_, minfo.pos, m_msg, pinfo.pos, p_msg, "OverrideFinalMethodError");
+}
+
+Error* TypeInfoMapBuilder::MakeParentClassEmptyConstructorError(const TypeInfo& minfo, const TypeInfo& pinfo) const {
+  const string p_msg = "An inherited class must have a zero-argument constructor.";
+  const string m_msg = "Child class declared here.";
+  return MakeResolveMethodTableError(fs_, pinfo.pos, p_msg, minfo.pos, m_msg, "ParentClassEmptyConstructorError");
+}
+
+Error* TypeInfoMapBuilder::MakeNeedAbstractClassError(const TypeInfo& tinfo, const MethodTable::MethodSignatureMap& method_map) const {
+  const FileSet* fs = fs_;
+  return MakeError([=](ostream* out, const OutputOptions& opt) {
+    if (opt.simple) {
+      *out << "NeedAbstractClassError";
+      return;
+    }
+    const string m_msg = "A class containing abstract methods must be abstract.";
+    const string l_msg = "Abstract method declared here.";
+
+    PrintDiagnosticHeader(out, opt, fs, tinfo.pos, DiagnosticClass::ERROR, m_msg);
+    PrintRangePtr(out, opt, fs, tinfo.pos);
+    for (auto sig_pair = method_map.cbegin(); sig_pair != method_map.cend(); ++sig_pair) {
+      const MethodInfo& minfo = sig_pair->second;
+      if (!minfo.mods.HasModifier(ABSTRACT)) {
+        continue;
+      }
+      *out << '\n';
+      PrintDiagnosticHeader(out, opt, fs, minfo.pos, DiagnosticClass::INFO, l_msg);
+      PrintRangePtr(out, opt, fs, minfo.pos);
+    }
+  });
 }
 
 Error* TypeInfoMapBuilder::MakeExtendsCycleError(const vector<TypeInfo>& cycle) const {
@@ -95,8 +193,8 @@ Error* TypeInfoMapBuilder::MakeExtendsCycleError(const vector<TypeInfo>& cycle) 
 
       stringstream msg;
       msg << prev.name << " extends " << cur.name << ".";
-      PrintDiagnosticHeader(out, opt, fs, cur.pos, DiagnosticClass::INFO, msg.str());
-      PrintRangePtr(out, opt, fs, cur.pos);
+      PrintDiagnosticHeader(out, opt, fs, prev.pos, DiagnosticClass::INFO, msg.str());
+      PrintRangePtr(out, opt, fs, prev.pos);
     }
   });
 }
@@ -144,7 +242,7 @@ ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract
   return mods;
 }
 
-MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const MethodTable::MethodSignatureMap& good_methods, const set<string>& bad_methods, bool has_bad_constructor, const map<ast::TypeId, TypeInfo>& sofar, ErrorList* out) {
+MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const MethodTable::MethodSignatureMap& good_methods, const set<string>& bad_methods, bool has_bad_constructor, const map<TypeId, TypeInfo>& sofar, const set<TypeId>& bad_types, set<TypeId>* new_bad_types, ErrorList* out) {
   MethodTable::MethodSignatureMap new_good_methods(good_methods);
   set<string> new_bad_methods(bad_methods);
 
@@ -156,16 +254,17 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
     const TypeInfo& pinfo = info_pair->second;
 
     // Early return if any of our parents are broken.
-    if (pinfo.methods.all_blacklisted_) {
+    if (bad_types.count(pinfo.type) == 1 || pinfo.methods.all_blacklisted_) {
       return MethodTable::kErrorMethodTable;
     }
 
     // We cannot inherit from a parent that is declared final.
     if (pinfo.mods.HasModifier(FINAL)) {
-      // TODO: Emit error. (parent final)
-      out->Append(MakeSimplePosRangeError(fs_, pinfo.mods.GetModifierToken(FINAL).pos, "ParentFinalError", "ParentFinalError"));
+      out->Append(MakeParentFinalError(*tinfo, pinfo));
       continue;
     }
+
+    bool has_empty_constructor = false;
 
     for (const auto& psig_pair : pinfo.methods.method_signatures_) {
       const MethodSignature& psig = psig_pair.first;
@@ -175,6 +274,9 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
       // Skip constructors since they are not inherited.
       if (psig.is_constructor) {
+        if (psig.param_types.Size() == 0) {
+          has_empty_constructor = true;
+        }
         continue;
       }
 
@@ -198,17 +300,15 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
       // We cannot inherit methods of the same signature but differing return
       // types.
       if (pminfo.return_type != mminfo.return_type) {
-        // TODO: Emit error (different return types).
-        out->Append(MakeSimplePosRangeError(fs_, mminfo.pos, "DifferingReturnTypeError", "DifferingReturnTypeError"));
+        out->Append(MakeDifferingReturnTypeError(*tinfo, mminfo, pminfo));
         new_bad_methods.insert(mminfo.signature.name);
         continue;
       }
 
-      // Inheriting methods that are static or with a static overload are not
-      // allowed.
+      // Inheriting methods that are static or overriding with a static method
+      // are not allowed.
       if (pminfo.mods.HasModifier(lexer::STATIC) || mminfo.mods.HasModifier(lexer::STATIC)) {
-        // TODO: Emit error (static method clash).
-        out->Append(MakeSimplePosRangeError(fs_, mminfo.pos, "StaticMethodOverrideError", "StaticMethodOverrideError"));
+        out->Append(MakeStaticMethodOverrideError(mminfo, pminfo));
         new_bad_methods.insert(mminfo.signature.name);
         continue;
       }
@@ -218,8 +318,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
       // We can't lower visibility of inherited methods.
       if (pminfo.mods.HasModifier(PUBLIC) && mminfo.mods.HasModifier(PROTECTED)) {
-        // TODO: Emit error (lower visibility).
-        out->Append(MakeSimplePosRangeError(fs_, mminfo.pos, "LowerVisibilityError", "LowerVisibilityError"));
+        out->Append(MakeLowerVisibilityError(mminfo, pminfo));
         new_bad_methods.insert(mminfo.signature.name);
         continue;
       }
@@ -227,8 +326,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
       // We can't override final methods.
       if (pminfo.mods.HasModifier(FINAL)) {
-        // TODO: Emit error (can't override final).
-        out->Append(MakeSimplePosRangeError(fs_, mminfo.pos, "OverrideFinalMethodError", "OverrideFinalMethodError"));
+        out->Append(MakeOverrideFinalMethodError(mminfo, pminfo));
         new_bad_methods.insert(mminfo.signature.name);
         continue;
       }
@@ -247,22 +345,26 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
       msig_pair->second = final_mminfo;
     }
 
+    if (!has_empty_constructor &&
+        pinfo.kind != TypeKind::INTERFACE &&
+        new_bad_types->count(pinfo.type) == 0) {
+      out->Append(MakeParentClassEmptyConstructorError(*tinfo, pinfo));
+      new_bad_types->insert(pinfo.type);
+    }
+
     // Union sets of disallowed names from the parent.
     new_bad_methods.insert(pinfo.methods.bad_methods_.begin(), pinfo.methods.bad_methods_.end());
   }
 
   // If we have abstract methods, we must also be abstract.
   {
-    using CMSMPair = pair<MethodSignature, MethodInfo>;
-    auto is_abstract_method = [](CMSMPair pair) {
+    auto is_abstract_method = [](pair<MethodSignature, MethodInfo> pair) {
       return pair.second.mods.HasModifier(ABSTRACT);
     };
-    // TODO: first_of
     bool has_abstract = std::any_of(new_good_methods.cbegin(), new_good_methods.cend(), is_abstract_method);
 
-    if (has_abstract && !tinfo->mods.HasModifier(ABSTRACT)) {
-      // TODO: Emit error.
-      out->Append(MakeSimplePosRangeError(fs_, tinfo->pos, "NeedAbstractClassError", "NeedAbstractClassError"));
+    if (has_abstract && tinfo->kind != TypeKind::INTERFACE && !tinfo->mods.HasModifier(ABSTRACT)) {
+      out->Append(MakeNeedAbstractClassError(*tinfo, new_good_methods));
     }
   }
 
@@ -271,7 +373,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
 // Builds valid MethodTables for a TypeInfo. Emits errors if methods for the
 // type are invalid.
-void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeInfo* tinfo, MethodId* cur_mid, const map<TypeId, TypeInfo>& sofar, ErrorList* out) {
+void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeInfo* tinfo, MethodId* cur_mid, const map<TypeId, TypeInfo>& sofar, const set<TypeId>& bad_types, set<TypeId>* new_bad_types, ErrorList* out) {
   // Sort all MethodInfo to cluster them by signature.
   auto lt_cmp = [](const MethodInfo& lhs, const MethodInfo& rhs) {
     return lhs.signature < rhs.signature;
@@ -327,47 +429,55 @@ void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeIn
     FindEqualRanges(begin, end, eq_cmp, cb);
   }
 
-  tinfo->methods = MakeResolvedMethodTable(tinfo, good_methods, bad_methods, has_bad_constructor, sofar, out);
+  tinfo->methods = MakeResolvedMethodTable(tinfo, good_methods, bad_methods, has_bad_constructor, sofar, bad_types, new_bad_types, out);
 }
 
 TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
   map<TypeId, TypeInfo> typeinfo;
-  set<TypeId> bad_types;
+  vector<TypeId> all_types;
+  set<TypeId> cycle_bad_types;
+  set<TypeId> parent_bad_types;
 
   for (const auto& entry : type_entries_) {
     typeinfo.insert({entry.type, entry});
+    all_types.push_back(entry.type);
   }
 
-  ValidateExtendsImplementsGraph(&typeinfo, &bad_types, out);
+  ValidateExtendsImplementsGraph(&typeinfo, &cycle_bad_types, out);
 
-  // Sort MethodInfo vector by the topological ordering of the types.
+  // Sort TypeId vector by the topological ordering of the types.
   {
-    auto cmp = [&typeinfo](const MethodInfo& lhs, const MethodInfo& rhs) {
-      return typeinfo.at(lhs.class_type).top_sort_index < typeinfo.at(rhs.class_type).top_sort_index;
+    auto t_cmp = [&typeinfo](TypeId lhs, TypeId rhs) {
+      return typeinfo.at(lhs).top_sort_index < typeinfo.at(rhs).top_sort_index;
     };
-    stable_sort(method_entries_.begin(), method_entries_.end(), cmp);
+    stable_sort(all_types.begin(), all_types.end(), t_cmp);
   }
 
   // Populate MethodTables for each TypeInfo.
   {
-    // TODO: Take &bad_types as an argument, and immediately skip types that are bad.
-    // TODO: Catch classes with no methods.
     MethodId cur_mid = kFirstMethodId;
 
-    auto cmp = [](const MethodInfo& lhs, const MethodInfo& rhs) {
-      return lhs.class_type == rhs.class_type;
-    };
+    for (auto type_id : all_types) {
+      if (cycle_bad_types.count(type_id) == 1) {
+        typeinfo.at(type_id) = TypeInfoMap::kErrorTypeInfo;
+        continue;
+      }
 
-    auto cb = [&](MInfoIter begin, MInfoIter end, i64) {
-      TypeInfo* tinfo = &typeinfo.at(begin->class_type);
-      BuildMethodTable(begin, end, tinfo, &cur_mid, typeinfo, out);
-    };
+      auto iter_pair = method_entries_.equal_range(type_id);
+      vector<MethodInfo> methods;
+      for (auto cur = iter_pair.first; cur != iter_pair.second; ++cur) {
+        methods.push_back(cur->second);
+      }
 
-    FindEqualRanges(method_entries_.begin(), method_entries_.end(), cmp, cb);
+      TypeInfo* tinfo = &typeinfo.at(type_id);
+      BuildMethodTable(methods.begin(), methods.end(), tinfo, &cur_mid, typeinfo, cycle_bad_types, &parent_bad_types, out);
+    }
   }
 
-  // TODO: take bad_types in the constructor. Any lookups of TypeIds from
-  // bad_types should yield kErrorTypeInfo, or something like it.
+  for (auto type_id : parent_bad_types) {
+    typeinfo.at(type_id) = TypeInfoMap::kErrorTypeInfo;
+  }
+
   return TypeInfoMap(typeinfo);
 }
 

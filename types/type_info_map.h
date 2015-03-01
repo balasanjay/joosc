@@ -84,7 +84,9 @@ public:
   }
 
 private:
+  friend class TypeInfoMap;
   friend class TypeInfoMapBuilder;
+
   using MethodSignatureMap = std::map<MethodSignature, MethodInfo>;
   using MethodInfoMap = std::map<MethodId, MethodInfo>;
 
@@ -134,11 +136,11 @@ public:
     return kEmptyTypeInfoMap;
   }
 
-  // TODO: handle blacklisting.
   pair<const TypeInfo&, bool> LookupTypeInfo(ast::TypeId tid) {
     const auto info = type_info_.find(tid);
     assert(info != type_info_.cend());
-    return make_pair(info->second, true);
+    bool is_error = (info->second.type == ast::TypeId::kError);
+    return make_pair(info->second, is_error);
   }
 
 private:
@@ -148,7 +150,7 @@ private:
   TypeInfoMap(const Map& typeinfo) : type_info_(typeinfo) {}
 
   static TypeInfoMap kEmptyTypeInfoMap;
-  static TypeInfo kEmptyTypeInfo;
+  static TypeInfo kErrorTypeInfo;
 
   Map type_info_;
 };
@@ -163,7 +165,7 @@ public:
   }
 
   void PutMethod(ast::TypeId curtid, ast::TypeId rettid, const vector<ast::TypeId>& paramtids, const ast::MemberDecl& meth, bool is_constructor) {
-    method_entries_.push_back(MethodInfo{kErrorMethodId, curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{is_constructor, meth.Name(), TypeIdList(paramtids)}});
+    method_entries_.insert({curtid, MethodInfo{kErrorMethodId, curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{is_constructor, meth.Name(), TypeIdList(paramtids)}}});
   }
 
   TypeInfoMap Build(base::ErrorList* out);
@@ -172,20 +174,28 @@ private:
   using MInfoIter = vector<MethodInfo>::iterator;
   using MInfoCIter = vector<MethodInfo>::const_iterator;
 
-  MethodTable MakeResolvedMethodTable(TypeInfo* tinfo, const MethodTable::MethodSignatureMap& good_methods, const set<string>& bad_methods, bool has_bad_constructor, const map<ast::TypeId, TypeInfo>& sofar, base::ErrorList* out);
+  MethodTable MakeResolvedMethodTable(TypeInfo* tinfo, const MethodTable::MethodSignatureMap& good_methods, const set<string>& bad_methods, bool has_bad_constructor, const map<ast::TypeId, TypeInfo>& sofar, const set<ast::TypeId>& bad_types, set<ast::TypeId>* new_bad_types, base::ErrorList* out);
 
-  void BuildMethodTable(MInfoIter begin, MInfoIter end, TypeInfo* tinfo, MethodId* cur_mid, const map<ast::TypeId, TypeInfo>& sofar, base::ErrorList* out);
+  void BuildMethodTable(MInfoIter begin, MInfoIter end, TypeInfo* tinfo, MethodId* cur_mid, const map<ast::TypeId, TypeInfo>& sofar, const set<ast::TypeId>& bad_types, set<ast::TypeId>* new_bad_types, base::ErrorList* out);
 
   void ValidateExtendsImplementsGraph(map<ast::TypeId, TypeInfo>* m, set<ast::TypeId>* bad, base::ErrorList* errors);
   void PruneInvalidGraphEdges(const map<ast::TypeId, TypeInfo>&, set<ast::TypeId>*, base::ErrorList*);
   vector<ast::TypeId> VerifyAcyclicGraph(const multimap<ast::TypeId, ast::TypeId>&, set<ast::TypeId>*, std::function<void(const vector<ast::TypeId>&)>);
 
   base::Error* MakeConstructorNameError(base::PosRange pos) const;
+  base::Error* MakeParentFinalError(const TypeInfo& minfo, const TypeInfo& pinfo) const;
+  base::Error* MakeDifferingReturnTypeError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const;
+  base::Error* MakeStaticMethodOverrideError(const MethodInfo& minfo, const MethodInfo& pinfo) const;
+  base::Error* MakeLowerVisibilityError(const MethodInfo& minfo, const MethodInfo& pinfo) const;
+  base::Error* MakeOverrideFinalMethodError(const MethodInfo& minfo, const MethodInfo& pinfo) const;
+  base::Error* MakeParentClassEmptyConstructorError(const TypeInfo& minfo, const TypeInfo& pinfo) const;
+  base::Error* MakeNeedAbstractClassError(const TypeInfo& tinfo, const MethodTable::MethodSignatureMap& method_map) const;
+
   base::Error* MakeExtendsCycleError(const vector<TypeInfo>& cycle) const;
 
   const base::FileSet* fs_;
   vector<TypeInfo> type_entries_;
-  vector<MethodInfo> method_entries_;
+  multimap<ast::TypeId, MethodInfo> method_entries_;
 };
 
 } // namespace types

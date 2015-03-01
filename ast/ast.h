@@ -617,13 +617,14 @@ class ModifierList {
 
 class Param final {
  public:
-  Param(sptr<const Type> type, const string& name, lexer::Token nameToken) : type_(type), name_(name), nameToken_(nameToken) {}
+  Param(sptr<const Type> type, const string& name, lexer::Token nameToken, LocalVarId vid = kVarUnassigned) : type_(type), name_(name), nameToken_(nameToken), vid_(vid) {}
 
   ACCEPT_VISITOR(Param, Param);
 
   SPTR_GETTER(Type, GetType, type_);
   REF_GETTER(string, Name, name_);
   VAL_GETTER(lexer::Token, NameToken, nameToken_);
+  VAL_GETTER(LocalVarId, GetVarId, vid_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Param);
@@ -631,6 +632,7 @@ class Param final {
   sptr<const Type> type_;
   string name_;
   lexer::Token nameToken_;
+  LocalVarId vid_ = kVarUnassigned;
 };
 
 class ParamList final {
