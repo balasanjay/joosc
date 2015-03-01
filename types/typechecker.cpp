@@ -697,11 +697,12 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
 
   const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(curtype_);
   const MethodInfo& minfo = tinfo.methods.LookupMethod(MethodSignature{is_constructor, decl.Name(), paramtids});
+  sptr<const Stmt> body = Rewrite(decl.BodyPtr());
+
   if (minfo.mid == kErrorMethodId) {
     return nullptr;
   }
 
-  sptr<const Stmt> body = Rewrite(decl.BodyPtr());
   if (body == nullptr) {
     return nullptr;
   }
