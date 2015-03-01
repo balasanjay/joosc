@@ -239,6 +239,16 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
 }
 
 TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList* errors) const {
+  // For fully qualified names, look up in all types directly.
+  if (name.find('.') != string::npos) {
+    auto t = types_.find(kNamedPkgPrefix + '.' + name);
+    if (t == types_.end()) {
+      errors->Append(MakeUnknownTypenameError(fs_, pos));
+      return TypeId::kUnassigned;
+    }
+    return TypeId{t->second, 0};
+  }
+
   TypeInfoMap::const_iterator begin;
   TypeInfoMap::const_iterator end;
   std::tie(begin, end) = visible_types_.equal_range(name);

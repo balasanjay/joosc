@@ -399,7 +399,7 @@ REWRITE_DEFN(TypeChecker, ParenExpr, Expr, expr,) {
 
 REWRITE_DEFN(TypeChecker, StringLitExpr, Expr, expr,) {
   const TypeId strType = JavaLangType("String");
-  if (strType.IsError()) {
+  if (!strType.IsValid()) {
     errors_->Append(MakeNoStringError(expr.GetToken().pos));
     return nullptr;
   }
