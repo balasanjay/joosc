@@ -74,11 +74,15 @@ Error* MakeResolveMethodTableError(const FileSet* fs, PosRange m_pos, const stri
 
 } // namespace
 TypeInfoMap TypeInfoMap::kEmptyTypeInfoMap = TypeInfoMap({});
-TypeInfo TypeInfoMap::kErrorTypeInfo = TypeInfo{{}, TypeKind::CLASS, TypeId::kError, "", kFakePos, TypeIdList({}), TypeIdList({}), MethodTable::kErrorMethodTable, 0};
+TypeInfo TypeInfoMap::kErrorTypeInfo = TypeInfo{{}, TypeKind::CLASS, TypeId::kError, "", kFakePos, TypeIdList({}), TypeIdList({}), MethodTable::kErrorMethodTable, FieldTable::kErrorFieldTable, 0};
 
 MethodTable MethodTable::kEmptyMethodTable = MethodTable({}, {}, false);
 MethodTable MethodTable::kErrorMethodTable = MethodTable();
 MethodInfo MethodTable::kErrorMethodInfo = MethodInfo{kErrorMethodId, TypeId::kError, {}, TypeId::kError, kFakePos, {false, "", TypeIdList({})}};
+
+FieldTable FieldTable::kEmptyFieldTable = FieldTable(&base::FileSet::Empty(), {}, {});
+FieldTable FieldTable::kErrorFieldTable = FieldTable();
+FieldInfo FieldTable::kErrorFieldInfo = FieldInfo{kErrorFieldId, TypeId::kError, {}, TypeId::kError, kFakePos, ""};
 
 Error* TypeInfoMapBuilder::MakeConstructorNameError(PosRange pos) const {
   return MakeSimplePosRangeError(fs_, pos, "ConstructorNameError", "Constructors must have the same name as its class.");
@@ -307,6 +311,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
       // Inheriting methods that are static or overriding with a static method
       // are not allowed.
+      // TODO: Point to class and two methods.
       if (pminfo.mods.HasModifier(lexer::STATIC) || mminfo.mods.HasModifier(lexer::STATIC)) {
         out->Append(MakeStaticMethodOverrideError(mminfo, pminfo));
         new_bad_methods.insert(mminfo.signature.name);
@@ -317,6 +322,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
       assert(!mminfo.mods.HasModifier(NATIVE));
 
       // We can't lower visibility of inherited methods.
+      // TODO: Point to class and two methods.
       if (pminfo.mods.HasModifier(PUBLIC) && mminfo.mods.HasModifier(PROTECTED)) {
         out->Append(MakeLowerVisibilityError(mminfo, pminfo));
         new_bad_methods.insert(mminfo.signature.name);
@@ -432,6 +438,90 @@ void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeIn
   tinfo->methods = MakeResolvedMethodTable(tinfo, good_methods, bad_methods, has_bad_constructor, sofar, bad_types, new_bad_types, out);
 }
 
+// Builds valid FieldTables for a TypeInfo. Emits errors if fields for the type are invalid.
+void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInfo* tinfo, FieldId* cur_fid, const map<TypeId, TypeInfo>& sofar, ErrorList* out) {
+  // Sort all FieldInfo to cluster them by name.
+  auto lt_cmp = [](const FieldInfo& lhs, const FieldInfo& rhs) {
+    return lhs.name < rhs.name;
+  };
+  stable_sort(begin, end, lt_cmp);
+
+  FieldTable::FieldNameMap good_fields;
+  set<string> bad_fields;
+
+  // Build FieldTable ignoring parent fields.
+  {
+    auto eq_cmp = [&lt_cmp](const FieldInfo& lhs, const FieldInfo& rhs) {
+      return !lt_cmp(lhs, rhs) && !lt_cmp(rhs, lhs);
+    };
+
+    auto cb = [&](FInfoCIter lbegin, FInfoCIter lend, i64 ndups) {
+      // Add non-duplicate FieldInfo to the FieldTable.
+      if (ndups == 1) {
+        FieldInfo new_info = *lbegin;
+        new_info.fid = *cur_fid;
+        good_fields.insert({new_info.name, new_info});
+        ++(*cur_fid);
+        return;
+      }
+
+      // Emit error for duped fields.
+      assert(ndups > 1);
+
+      vector<PosRange> defs;
+      for (auto cur = lbegin; cur != lend; ++cur) {
+        defs.push_back(cur->pos);
+      }
+      stringstream msgstream;
+      msgstream << "Field '" << lbegin->name << "' was declared multiple times.";
+      out->Append(MakeDuplicateDefinitionError(fs_, defs, msgstream.str(), lbegin->name));
+      bad_fields.insert(lbegin->name);
+    };
+
+    FindEqualRanges(begin, end, eq_cmp, cb);
+  }
+
+  FieldTable::FieldNameMap new_good_fields(good_fields);
+  set<string> new_bad_fields(bad_fields);
+
+  TypeIdList parents = Concat({tinfo->extends, tinfo->implements});
+
+  for (int i = 0; i < parents.Size(); ++i) {
+    const auto info_pair = sofar.find(parents.At(i));
+    assert(info_pair != sofar.cend());
+    const TypeInfo& pinfo = info_pair->second;
+
+    // Early return if any of our parents are broken.
+    if (pinfo.fields.all_blacklisted_) {
+      tinfo->fields = FieldTable::kErrorFieldTable;
+      return;
+    }
+
+    for (const auto& pname_pair : pinfo.fields.field_names_) {
+      const string& pname = pname_pair.first;
+      const FieldInfo pfinfo = pname_pair.second;
+
+      // Already blacklisted in child.
+      if (new_bad_fields.count(pname) == 1) {
+        continue;
+      }
+
+      auto mname_pair = new_good_fields.find(pname);
+
+      // No corresponding field in child so add it to our map.
+      if (mname_pair == new_good_fields.end()) {
+        new_good_fields.insert({pname, pfinfo});
+        continue;
+      }
+    }
+
+    // Union sets of disallowed names from the parent.
+    new_bad_fields.insert(pinfo.fields.bad_fields_.begin(), pinfo.fields.bad_fields_.end());
+  }
+
+  tinfo->fields = FieldTable(fs_, new_good_fields, new_bad_fields);
+}
+
 TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
   map<TypeId, TypeInfo> typeinfo;
   vector<TypeId> all_types;
@@ -453,9 +543,10 @@ TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
     stable_sort(all_types.begin(), all_types.end(), t_cmp);
   }
 
-  // Populate MethodTables for each TypeInfo.
+  // Populate MethodTables and FieldTables for each TypeInfo.
   {
     MethodId cur_mid = kFirstMethodId;
+    FieldId cur_fid = kFirstFieldId;
 
     for (auto type_id : all_types) {
       if (cycle_bad_types.count(type_id) == 1) {
@@ -463,14 +554,27 @@ TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
         continue;
       }
 
-      auto iter_pair = method_entries_.equal_range(type_id);
-      vector<MethodInfo> methods;
-      for (auto cur = iter_pair.first; cur != iter_pair.second; ++cur) {
-        methods.push_back(cur->second);
+      TypeInfo* tinfo = &typeinfo.at(type_id);
+      {
+        auto iter_pair = method_entries_.equal_range(type_id);
+        vector<MethodInfo> methods;
+        for (auto cur = iter_pair.first; cur != iter_pair.second; ++cur) {
+          methods.push_back(cur->second);
+        }
+
+        BuildMethodTable(methods.begin(), methods.end(), tinfo, &cur_mid, typeinfo, cycle_bad_types, &parent_bad_types, out);
       }
 
-      TypeInfo* tinfo = &typeinfo.at(type_id);
-      BuildMethodTable(methods.begin(), methods.end(), tinfo, &cur_mid, typeinfo, cycle_bad_types, &parent_bad_types, out);
+
+      {
+        auto iter_pair = field_entries_.equal_range(type_id);
+        vector<FieldInfo> fields;
+        for (auto cur = iter_pair.first; cur != iter_pair.second; ++cur) {
+          fields.push_back(cur->second);
+        }
+
+        BuildFieldTable(fields.begin(), fields.end(), tinfo, &cur_fid, typeinfo, out);
+      }
     }
   }
 
@@ -657,5 +761,36 @@ vector<TypeId> TypeInfoMapBuilder::VerifyAcyclicGraph(const multimap<TypeId, Typ
 
   return sorted;
 }
+
+FieldId FieldTable::ResolveAccess(TypeId callerType, CallContext ctx, string field_name, PosRange pos, ErrorList* errors) const {
+  auto finfo = field_names_.find(field_name);
+  if (finfo == field_names_.end()) {
+    errors->Append(MakeUndefinedReferenceError(field_name, pos));
+    return kErrorFieldId;
+  }
+
+  // Check whether correct calling context.
+  bool is_static = finfo->second.mods.HasModifier(lexer::Modifier::STATIC);
+  if (is_static && ctx != CallContext::STATIC) {
+    // TODO: Error.
+    return kErrorFieldId;
+  } else if (!is_static && ctx == CallContext::STATIC) {
+    // TODO: Error
+    return kErrorFieldId;
+  }
+
+  // TODO: Check permissions.
+
+  return finfo->second.fid;
+}
+
+Error* FieldTable::MakeUndefinedReferenceError(string name, PosRange pos) const {
+  stringstream ss;
+  ss << "Undefined reference to '";
+  ss << name;
+  ss << '\'';
+  return MakeSimplePosRangeError(fs_, pos, "UndefinedReferenceError", ss.str());
+}
+
 
 } // namespace types

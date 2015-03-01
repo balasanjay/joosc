@@ -11,6 +11,10 @@
 
 namespace types {
 
+using ast::FieldId;
+using ast::kErrorFieldId;
+using ast::kFirstFieldId;
+
 struct TypeIdList {
 public:
   TypeIdList(const vector<ast::TypeId>& tids) : tids_(tids){}
@@ -114,6 +118,69 @@ private:
   set<string> bad_methods_;
 };
 
+struct FieldInfo {
+  FieldId fid;
+  ast::TypeId class_type;
+  ast::ModifierList mods;
+  ast::TypeId field_type;
+  base::PosRange pos;
+  string name;
+};
+
+class FieldTable {
+public:
+  FieldId ResolveAccess(ast::TypeId callerType, CallContext ctx, string field_name, base::PosRange pos, base::ErrorList* out) const;
+
+  // Given a valid FieldId, return all the associated info about it.
+  const FieldInfo& LookupField(FieldId fid) const {
+    if (fid == kErrorFieldId) {
+      return kErrorFieldInfo;
+    }
+
+    auto info = field_info_.find(fid);
+    assert(info != field_info_.end());
+    return info->second;
+  }
+
+  // Given a field name, return all the associated info about it (no access checks).
+  const FieldInfo& LookupField(string field_name) const {
+    auto info = field_names_.find(field_name);
+    assert(info != field_names_.end());
+    return info->second;
+  }
+
+private:
+  friend class TypeInfoMapBuilder;
+  friend class TypeInfoMap;
+
+  using FieldNameMap = std::map<string, FieldInfo>;
+  using FieldInfoMap = std::map<FieldId, FieldInfo>;
+
+  FieldTable(const base::FileSet* fs, const FieldNameMap& entries, const set<string>& bad_fields) : fs_(fs), field_names_(entries), bad_fields_(bad_fields) {
+    for (const auto& entry : entries) {
+      field_info_.insert({entry.second.fid, entry.second});
+    }
+  }
+
+  FieldTable() : all_blacklisted_(true) {}
+
+  base::Error* MakeUndefinedReferenceError(string name, base::PosRange name_pos) const;
+
+  static FieldTable kEmptyFieldTable;
+  static FieldTable kErrorFieldTable;
+  static FieldInfo kErrorFieldInfo;
+
+  const base::FileSet* fs_;
+  FieldNameMap field_names_;
+  FieldInfoMap field_info_;
+
+  // All blacklisting information.
+  // Every field is blacklisted.
+  bool all_blacklisted_ = false;
+  // Specific field names are blacklisted.
+  set<string> bad_fields_;
+};
+
 struct TypeInfo {
   ast::ModifierList mods;
   ast::TypeKind kind;
@@ -123,6 +190,7 @@ struct TypeInfo {
   TypeIdList extends;
   TypeIdList implements;
   MethodTable methods;
+  FieldTable fields;
 
   // Orders all types in topological order such that if there is a type A that
   // implements or extends another type B, then B has a lower top_sort_index
@@ -136,11 +204,10 @@ public:
     return kEmptyTypeInfoMap;
   }
 
-  pair<const TypeInfo&, bool> LookupTypeInfo(ast::TypeId tid) {
+  const TypeInfo& LookupTypeInfo(ast::TypeId tid) const {
     const auto info = type_info_.find(tid);
     assert(info != type_info_.cend());
-    bool is_error = (info->second.type == ast::TypeId::kError);
-    return make_pair(info->second, is_error);
+    return info->second;
   }
 
 private:
@@ -161,11 +228,15 @@ public:
 
   void PutType(ast::TypeId tid, const ast::TypeDecl& type, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
     assert(tid.ndims == 0);
-    type_entries_.push_back(TypeInfo{type.Mods(), type.Kind(), tid, type.Name(), type.NameToken().pos, TypeIdList(extends), TypeIdList(implements), MethodTable::kEmptyMethodTable, tid.base});
+    type_entries_.push_back(TypeInfo{type.Mods(), type.Kind(), tid, type.Name(), type.NameToken().pos, TypeIdList(extends), TypeIdList(implements), MethodTable::kEmptyMethodTable, FieldTable::kEmptyFieldTable, tid.base});
   }
 
   void PutMethod(ast::TypeId curtid, ast::TypeId rettid, const vector<ast::TypeId>& paramtids, const ast::MemberDecl& meth, bool is_constructor) {
     method_entries_.insert({curtid, MethodInfo{kErrorMethodId, curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{is_constructor, meth.Name(), TypeIdList(paramtids)}}});
+  }
+
+  void PutField(ast::TypeId curtid, ast::TypeId tid, const ast::MemberDecl& field) {
+    field_entries_.insert({curtid, FieldInfo{kErrorFieldId, curtid, field.Mods(), tid, field.NameToken().pos, field.Name()}});
   }
 
   TypeInfoMap Build(base::ErrorList* out);
@@ -173,10 +244,14 @@ public:
 private:
   using MInfoIter = vector<MethodInfo>::iterator;
   using MInfoCIter = vector<MethodInfo>::const_iterator;
+  using FInfoIter = vector<FieldInfo>::iterator;
+  using FInfoCIter = vector<FieldInfo>::const_iterator;
 
   MethodTable MakeResolvedMethodTable(TypeInfo* tinfo, const MethodTable::MethodSignatureMap& good_methods, const set<string>& bad_methods, bool has_bad_constructor, const map<ast::TypeId, TypeInfo>& sofar, const set<ast::TypeId>& bad_types, set<ast::TypeId>* new_bad_types, base::ErrorList* out);
 
   void BuildMethodTable(MInfoIter begin, MInfoIter end, TypeInfo* tinfo, MethodId* cur_mid, const map<ast::TypeId, TypeInfo>& sofar, const set<ast::TypeId>& bad_types, set<ast::TypeId>* new_bad_types, base::ErrorList* out);
+
+  void BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInfo* tinfo, FieldId* cur_fid, const map<ast::TypeId, TypeInfo>& sofar, base::ErrorList* out);
 
   void ValidateExtendsImplementsGraph(map<ast::TypeId, TypeInfo>* m, set<ast::TypeId>* bad, base::ErrorList* errors);
   void PruneInvalidGraphEdges(const map<ast::TypeId, TypeInfo>&, set<ast::TypeId>*, base::ErrorList*);
@@ -196,6 +271,7 @@ private:
   const base::FileSet* fs_;
   vector<TypeInfo> type_entries_;
   multimap<ast::TypeId, MethodInfo> method_entries_;
+  multimap<ast::TypeId, FieldInfo> field_entries_;
 };
 
 } // namespace types
