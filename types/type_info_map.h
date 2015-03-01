@@ -84,7 +84,9 @@ public:
   }
 
 private:
+  friend class TypeInfoMap;
   friend class TypeInfoMapBuilder;
+
   using MethodSignatureMap = std::map<MethodSignature, MethodInfo>;
   using MethodInfoMap = std::map<MethodId, MethodInfo>;
 
@@ -134,11 +136,11 @@ public:
     return kEmptyTypeInfoMap;
   }
 
-  // TODO: handle blacklisting.
   pair<const TypeInfo&, bool> LookupTypeInfo(ast::TypeId tid) {
     const auto info = type_info_.find(tid);
     assert(info != type_info_.cend());
-    return make_pair(info->second, true);
+    bool is_error = (info->second.type == ast::TypeId::kError);
+    return make_pair(info->second, is_error);
   }
 
 private:
@@ -148,7 +150,7 @@ private:
   TypeInfoMap(const Map& typeinfo) : type_info_(typeinfo) {}
 
   static TypeInfoMap kEmptyTypeInfoMap;
-  static TypeInfo kEmptyTypeInfo;
+  static TypeInfo kErrorTypeInfo;
 
   Map type_info_;
 };
@@ -172,9 +174,9 @@ private:
   using MInfoIter = vector<MethodInfo>::iterator;
   using MInfoCIter = vector<MethodInfo>::const_iterator;
 
-  MethodTable MakeResolvedMethodTable(TypeInfo* tinfo, const MethodTable::MethodSignatureMap& good_methods, const set<string>& bad_methods, bool has_bad_constructor, const map<ast::TypeId, TypeInfo>& sofar, base::ErrorList* out);
+  MethodTable MakeResolvedMethodTable(TypeInfo* tinfo, const MethodTable::MethodSignatureMap& good_methods, const set<string>& bad_methods, bool has_bad_constructor, const map<ast::TypeId, TypeInfo>& sofar, const set<ast::TypeId>& bad_types, base::ErrorList* out);
 
-  void BuildMethodTable(MInfoIter begin, MInfoIter end, TypeInfo* tinfo, MethodId* cur_mid, const map<ast::TypeId, TypeInfo>& sofar, base::ErrorList* out);
+  void BuildMethodTable(MInfoIter begin, MInfoIter end, TypeInfo* tinfo, MethodId* cur_mid, const map<ast::TypeId, TypeInfo>& sofar, const set<ast::TypeId>& bad_types, base::ErrorList* out);
 
   void ValidateExtendsImplementsGraph(map<ast::TypeId, TypeInfo>* m, set<ast::TypeId>* bad, base::ErrorList* errors);
   void PruneInvalidGraphEdges(const map<ast::TypeId, TypeInfo>&, set<ast::TypeId>*, base::ErrorList*);

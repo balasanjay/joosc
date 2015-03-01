@@ -73,11 +73,12 @@ Error* MakeResolveMethodTableError(const FileSet* fs, PosRange m_pos, const stri
 }
 
 } // namespace
-
 TypeInfoMap TypeInfoMap::kEmptyTypeInfoMap = TypeInfoMap({});
+TypeInfo TypeInfoMap::kErrorTypeInfo = TypeInfo{{}, TypeKind::CLASS, TypeId::kError, "", kFakePos, TypeIdList({}), TypeIdList({}), MethodTable::kErrorMethodTable, 0};
+
 MethodTable MethodTable::kEmptyMethodTable = MethodTable({}, {}, false);
 MethodTable MethodTable::kErrorMethodTable = MethodTable();
-MethodInfo MethodTable::kErrorMethodInfo = MethodInfo{kErrorMethodId, TypeId::kError, {}, TypeId::kError, PosRange(-1, -1, -1), {false, "", TypeIdList({})}};
+MethodInfo MethodTable::kErrorMethodInfo = MethodInfo{kErrorMethodId, TypeId::kError, {}, TypeId::kError, kFakePos, {false, "", TypeIdList({})}};
 
 Error* TypeInfoMapBuilder::MakeConstructorNameError(PosRange pos) const {
   return MakeSimplePosRangeError(fs_, pos, "ConstructorNameError", "Constructors must have the same name as its class.");
@@ -235,7 +236,7 @@ ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract
   return mods;
 }
 
-MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const MethodTable::MethodSignatureMap& good_methods, const set<string>& bad_methods, bool has_bad_constructor, const map<ast::TypeId, TypeInfo>& sofar, ErrorList* out) {
+MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const MethodTable::MethodSignatureMap& good_methods, const set<string>& bad_methods, bool has_bad_constructor, const map<TypeId, TypeInfo>& sofar, const set<TypeId>& bad_types, ErrorList* out) {
   MethodTable::MethodSignatureMap new_good_methods(good_methods);
   set<string> new_bad_methods(bad_methods);
 
@@ -247,7 +248,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
     const TypeInfo& pinfo = info_pair->second;
 
     // Early return if any of our parents are broken.
-    if (pinfo.methods.all_blacklisted_) {
+    if (bad_types.count(pinfo.type) == 1 || pinfo.methods.all_blacklisted_) {
       return MethodTable::kErrorMethodTable;
     }
 
@@ -354,7 +355,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
 // Builds valid MethodTables for a TypeInfo. Emits errors if methods for the
 // type are invalid.
-void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeInfo* tinfo, MethodId* cur_mid, const map<TypeId, TypeInfo>& sofar, ErrorList* out) {
+void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeInfo* tinfo, MethodId* cur_mid, const map<TypeId, TypeInfo>& sofar, const set<TypeId>& bad_types, ErrorList* out) {
   // Sort all MethodInfo to cluster them by signature.
   auto lt_cmp = [](const MethodInfo& lhs, const MethodInfo& rhs) {
     return lhs.signature < rhs.signature;
@@ -410,7 +411,7 @@ void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeIn
     FindEqualRanges(begin, end, eq_cmp, cb);
   }
 
-  tinfo->methods = MakeResolvedMethodTable(tinfo, good_methods, bad_methods, has_bad_constructor, sofar, out);
+  tinfo->methods = MakeResolvedMethodTable(tinfo, good_methods, bad_methods, has_bad_constructor, sofar, bad_types, out);
 }
 
 TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
@@ -433,7 +434,6 @@ TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
 
   // Populate MethodTables for each TypeInfo.
   {
-    // TODO: Take &bad_types as an argument, and immediately skip types that are bad.
     // TODO: Catch classes with no methods.
     MethodId cur_mid = kFirstMethodId;
 
@@ -442,15 +442,18 @@ TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
     };
 
     auto cb = [&](MInfoIter begin, MInfoIter end, i64) {
-      TypeInfo* tinfo = &typeinfo.at(begin->class_type);
-      BuildMethodTable(begin, end, tinfo, &cur_mid, typeinfo, out);
+      TypeId class_type = begin->class_type;
+      if (bad_types.count(class_type) == 1) {
+        typeinfo.at(class_type) = TypeInfoMap::kErrorTypeInfo;
+        return;
+      }
+      TypeInfo* tinfo = &typeinfo.at(class_type);
+      BuildMethodTable(begin, end, tinfo, &cur_mid, typeinfo, bad_types, out);
     };
 
     FindEqualRanges(method_entries_.begin(), method_entries_.end(), cmp, cb);
   }
 
-  // TODO: take bad_types in the constructor. Any lookups of TypeIds from
-  // bad_types should yield kErrorTypeInfo, or something like it.
   return TypeInfoMap(typeinfo);
 }
 
