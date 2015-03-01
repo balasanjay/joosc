@@ -204,7 +204,8 @@ REWRITE_DEFN(TypeChecker, FieldDerefExpr, Expr, expr,) {
   if (fid == kErrorFieldId) {
     return nullptr;
   }
-  return make_shared<FieldDerefExpr>(base, expr.FieldName(), expr.GetToken(), fid);
+  FieldInfo finfo = tinfo.fields.LookupField(fid);
+  return make_shared<FieldDerefExpr>(base, expr.FieldName(), expr.GetToken(), fid, finfo.field_type);
 }
 
 REWRITE_DEFN(TypeChecker, InstanceOfExpr, Expr, expr, exprptr) {
@@ -319,7 +320,9 @@ REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr, exprptr) {
   ErrorList field_errors;
   {
     // TODO: add a field lookup in here.
-    bool ok = false;
+    TypeInfo tinfo = typeinfo_.LookupTypeInfo(curtype_);
+    FieldId fid = tinfo.fields.ResolveAccess(curtype_, CallContext::INSTANCE, parts.at(0), toks.at(0).pos, &field_errors);
+    bool ok = fid != kErrorFieldId;
     if (ok) {
       sptr<const Expr> implicit_this = MakeImplicitThis(toks.at(0).pos, curtype_);
       sptr<const Expr> field_deref = make_shared<FieldDerefExpr>(implicit_this, parts.at(0), toks.at(0));

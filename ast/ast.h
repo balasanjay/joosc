@@ -321,8 +321,8 @@ class ArrayIndexExpr : public Expr {
 
 class FieldDerefExpr : public Expr {
  public:
-  FieldDerefExpr(sptr<const Expr> base, const string& fieldname, lexer::Token token, FieldId fid = kErrorFieldId)
-      : base_(base), fieldname_(fieldname), token_(token), fid_(fid) {}
+  FieldDerefExpr(sptr<const Expr> base, const string& fieldname, lexer::Token token, FieldId fid = kErrorFieldId, TypeId tid = TypeId::kUnassigned)
+      : Expr(tid), base_(base), fieldname_(fieldname), token_(token), fid_(fid) {}
 
   ACCEPT_VISITOR(FieldDerefExpr, Expr);
 

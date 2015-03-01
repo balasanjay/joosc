@@ -61,7 +61,8 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(FieldDerefExpr, expr,) {
     Visit(expr.BasePtr());
-    *os_ << '.' << expr.FieldName();
+    *os_ << '.';
+    PrintFieldName(os_, expr.FieldName(), expr.GetFieldId());
     return VisitResult::SKIP;
   }
 
@@ -245,10 +246,7 @@ class PrintVisitor final : public Visitor {
     field.Mods().PrintTo(os_);
     field.GetType().PrintTo(os_);
     *os_ << ' ';
-    *os_ << field.Name();
-    if (field.GetFieldId() != ast::kErrorFieldId) {
-      *os_ << "#f" << field.GetFieldId();
-    }
+    PrintFieldName(os_, field.Name(), field.GetFieldId());
     if (field.ValPtr() != nullptr) {
       *os_ << space_ << '=' << space_;
       Visit(field.ValPtr());
@@ -355,6 +353,13 @@ class PrintVisitor final : public Visitor {
     *os << name;
     if (vid != kVarUnassigned) {
       *os << "#v" << vid;
+    }
+  }
+
+  void PrintFieldName(std::ostream* os, string name, FieldId fid) {
+    *os << name;
+    if (fid != kErrorFieldId) {
+      *os << "#f" << fid;
     }
   }
 
