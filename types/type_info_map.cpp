@@ -63,6 +63,9 @@ TypeInfoMap TypeInfoMap::kEmptyTypeInfoMap = TypeInfoMap({});
 MethodTable MethodTable::kEmptyMethodTable = MethodTable({}, {}, false);
 MethodTable MethodTable::kErrorMethodTable = MethodTable();
 MethodInfo MethodTable::kErrorMethodInfo = MethodInfo{kErrorMethodId, TypeId::kError, {}, TypeId::kError, PosRange(-1, -1, -1), {false, "", TypeIdList({})}};
+FieldTable FieldTable::kEmptyFieldTable = FieldTable({}, {});
+FieldTable FieldTable::kErrorFieldTable = FieldTable();
+FieldInfo FieldTable::kErrorFieldInfo = FieldInfo{kErrorFieldId, TypeId::kError, {}, TypeId::kError, PosRange(-1, -1, -1), ""};
 
 Error* TypeInfoMapBuilder::MakeConstructorNameError(PosRange pos) const {
   return MakeSimplePosRangeError(fs_, pos, "ConstructorNameError", "Constructors must have the same name as its class.");
@@ -329,6 +332,90 @@ void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeIn
   tinfo->methods = MakeResolvedMethodTable(tinfo, good_methods, bad_methods, has_bad_constructor, sofar, out);
 }
 
+// Builds valid FieldTables for a TypeInfo. Emits errors if fields for the type are invalid.
+void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInfo* tinfo, FieldId* cur_fid, const map<TypeId, TypeInfo>& sofar, ErrorList* out) {
+  // Sort all FieldInfo to cluster them by name.
+  auto lt_cmp = [](const FieldInfo& lhs, const FieldInfo& rhs) {
+    return lhs.name < rhs.name;
+  };
+  stable_sort(begin, end, lt_cmp);
+
+  FieldTable::FieldNameMap good_fields;
+  set<string> bad_fields;
+
+  // Build FieldTable ignoring parent fields.
+  {
+    auto eq_cmp = [&lt_cmp](const FieldInfo& lhs, const FieldInfo& rhs) {
+      return !lt_cmp(lhs, rhs) && !lt_cmp(rhs, lhs);
+    };
+
+    auto cb = [&](FInfoCIter lbegin, FInfoCIter lend, i64 ndups) {
+      // Add non-duplicate FieldInfo to the FieldTable.
+      if (ndups == 1) {
+        FieldInfo new_info = *lbegin;
+        new_info.fid = *cur_fid;
+        good_fields.insert({new_info.name, new_info});
+        ++(*cur_fid);
+        return;
+      }
+
+      // Emit error for duped fields.
+      assert(ndups > 1);
+
+      vector<PosRange> defs;
+      for (auto cur = lbegin; cur != lend; ++cur) {
+        defs.push_back(cur->pos);
+      }
+      stringstream msgstream;
+      msgstream << "Field '" << lbegin->name << "' was declared multiple times.";
+      out->Append(MakeDuplicateDefinitionError(fs_, defs, msgstream.str(), lbegin->name));
+      bad_fields.insert(lbegin->name);
+    };
+
+    FindEqualRanges(begin, end, eq_cmp, cb);
+  }
+
+  FieldTable::FieldNameMap new_good_fields(good_fields);
+  set<string> new_bad_fields(bad_fields);
+
+  TypeIdList parents = Concat({tinfo->extends, tinfo->implements});
+
+  for (int i = 0; i < parents.Size(); ++i) {
+    const auto info_pair = sofar.find(parents.At(i));
+    assert(info_pair != sofar.cend());
+    const TypeInfo& pinfo = info_pair->second;
+
+    // Early return if any of our parents are broken.
+    if (pinfo.fields.all_blacklisted_) {
+      tinfo->fields = FieldTable::kErrorFieldTable;
+      return;
+    }
+
+    for (const auto& pname_pair : pinfo.fields.field_names_) {
+      const string& pname = pname_pair.first;
+      const FieldInfo pfinfo = pname_pair.second;
+
+      // Already blacklisted in child.
+      if (new_bad_fields.count(pname) == 1) {
+        continue;
+      }
+
+      auto mname_pair = new_good_fields.find(pname);
+
+      // No corresponding field in child so add it to our map.
+      if (mname_pair == new_good_fields.end()) {
+        new_good_fields.insert({pname, pfinfo});
+        continue;
+      }
+    }
+
+    // Union sets of disallowed names from the parent.
+    new_bad_fields.insert(pinfo.fields.bad_fields_.begin(), pinfo.fields.bad_fields_.end());
+  }
+
+  tinfo->fields = FieldTable(new_good_fields, new_bad_fields);
+}
+
 TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
   map<TypeId, TypeInfo> typeinfo;
   set<TypeId> bad_types;
@@ -363,6 +450,22 @@ TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
     };
 
     FindEqualRanges(method_entries_.begin(), method_entries_.end(), cmp, cb);
+  }
+
+  // Populate FieldTables for each TypeInfo.
+  {
+    FieldId cur_fid = kFirstFieldId;
+
+    auto cmp = [](const FieldInfo& lhs, const FieldInfo& rhs) {
+      return lhs.class_type == rhs.class_type;
+    };
+
+    auto cb = [&](FInfoIter begin, FInfoIter end, i64) {
+      TypeInfo* tinfo = &typeinfo.at(begin->class_type);
+      BuildFieldTable(begin, end, tinfo, &cur_fid, typeinfo, out);
+    };
+
+    FindEqualRanges(field_entries_.begin(), field_entries_.end(), cmp, cb);
   }
 
   // TODO: take bad_types in the constructor. Any lookups of TypeIds from
