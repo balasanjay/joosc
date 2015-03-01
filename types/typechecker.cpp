@@ -190,7 +190,22 @@ REWRITE_DEFN(TypeChecker, CharLitExpr, Expr, expr, ) {
   return make_shared<CharLitExpr>(expr.GetToken(), TypeId::kChar);
 }
 
-// TODO: FieldDerefExpr
+REWRITE_DEFN(TypeChecker, FieldDerefExpr, Expr, expr,) {
+  sptr<const Expr> base = Rewrite(expr.BasePtr());
+  if (base == nullptr) {
+    return nullptr;
+  }
+  const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(base->GetTypeId());
+  CallContext cc = CallContext::INSTANCE;
+  if (dynamic_cast<const StaticRefExpr*>(base.get()) != nullptr) {
+    cc = CallContext::STATIC;
+  }
+  FieldId fid = tinfo.fields.ResolveAccess(curtype_, cc, expr.FieldName(), expr.GetToken().pos, errors_);
+  if (fid == kErrorFieldId) {
+    return nullptr;
+  }
+  return make_shared<FieldDerefExpr>(base, expr.FieldName(), expr.GetToken(), fid);
+}
 
 REWRITE_DEFN(TypeChecker, InstanceOfExpr, Expr, expr, exprptr) {
   sptr<const Expr> lhs = Rewrite(expr.LhsPtr());
