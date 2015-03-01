@@ -22,6 +22,7 @@ namespace ast {
   code(NewClassExpr, Expr, expr) \
   code(NullLitExpr, Expr, expr) \
   code(ParenExpr, Expr, expr) \
+  code(StaticRefExpr, Expr, expr) \
   code(StringLitExpr, Expr, expr) \
   code(ThisExpr, Expr, expr) \
   code(UnaryExpr, Expr, expr) \
