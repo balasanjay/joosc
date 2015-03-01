@@ -186,8 +186,8 @@ Error* TypeInfoMapBuilder::MakeExtendsCycleError(const vector<TypeInfo>& cycle) 
 
       stringstream msg;
       msg << prev.name << " extends " << cur.name << ".";
-      PrintDiagnosticHeader(out, opt, fs, cur.pos, DiagnosticClass::INFO, msg.str());
-      PrintRangePtr(out, opt, fs, cur.pos);
+      PrintDiagnosticHeader(out, opt, fs, prev.pos, DiagnosticClass::INFO, msg.str());
+      PrintRangePtr(out, opt, fs, prev.pos);
     }
   });
 }
