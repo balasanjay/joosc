@@ -195,11 +195,19 @@ REWRITE_DEFN(TypeChecker, FieldDerefExpr, Expr, expr,) {
   if (base == nullptr) {
     return nullptr;
   }
-  const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(base->GetTypeId());
   CallContext cc = CallContext::INSTANCE;
-  if (dynamic_cast<const StaticRefExpr*>(base.get()) != nullptr) {
-    cc = CallContext::STATIC;
+  TypeId base_tid = base->GetTypeId();
+
+  // If base is a type name, then this is a reference to a static field.
+  {
+    const StaticRefExpr* stat = dynamic_cast<const StaticRefExpr*>(base.get());
+    if (stat != nullptr) {
+      cc = CallContext::STATIC;
+      base_tid = stat->GetRefTypePtr()->GetTypeId();
+    }
   }
+
+  const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(base_tid);
   FieldId fid = tinfo.fields.ResolveAccess(curtype_, cc, expr.FieldName(), expr.GetToken().pos, errors_);
   if (fid == kErrorFieldId) {
     return nullptr;
@@ -558,6 +566,8 @@ REWRITE_DEFN(TypeChecker, WhileStmt, Stmt, stmt,) {
 }
 
 REWRITE_DEFN(TypeChecker, FieldDecl, MemberDecl, decl, declptr) {
+  // TODO: Check whether field references only fields defined before this.
+
   // If we have method info, then just use the default implementation of
   // RewriteMethodDecl.
   if (!belowMemberDecl_) {
