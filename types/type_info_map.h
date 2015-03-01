@@ -13,6 +13,7 @@ namespace types {
 
 using ast::FieldId;
 using ast::kErrorFieldId;
+using ast::kArrayLengthFieldId;
 using ast::kFirstFieldId;
 
 ast::ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract);
@@ -218,7 +219,7 @@ public:
         TypeIdList({}),
         TypeIdList({}),
         MethodTable({}, {}, false),
-        FieldTable(fs_, {}, {}),
+        FieldTable(fs_, {{"length", FieldInfo{kArrayLengthFieldId, ast::TypeId::kError, MakeModifierList(false, false, false), ast::TypeId::kInt, base::PosRange(-1, -1, -1), "length"}}}, {}),
         0
       };
       return *ainfo;
