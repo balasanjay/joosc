@@ -60,10 +60,11 @@ Error* MakeClassExtendsInterfaceError(const FileSet* fs, PosRange pos, const str
 } // namespace
 
 TypeInfoMap TypeInfoMap::kEmptyTypeInfoMap = TypeInfoMap({});
+TypeInfo TypeInfoMap::kErrorTypeInfo = TypeInfo{{}, TypeKind::CLASS, TypeId::kError, "", kFakePos, TypeIdList({}), TypeIdList({}), MethodTable::kErrorMethodTable, FieldTable::kErrorFieldTable, 0};
 MethodTable MethodTable::kEmptyMethodTable = MethodTable({}, {}, false);
 MethodTable MethodTable::kErrorMethodTable = MethodTable();
 MethodInfo MethodTable::kErrorMethodInfo = MethodInfo{kErrorMethodId, TypeId::kError, {}, TypeId::kError, PosRange(-1, -1, -1), {false, "", TypeIdList({})}};
-FieldTable FieldTable::kEmptyFieldTable = FieldTable({}, {});
+FieldTable FieldTable::kEmptyFieldTable = FieldTable(&base::FileSet::Empty(), {}, {});
 FieldTable FieldTable::kErrorFieldTable = FieldTable();
 FieldInfo FieldTable::kErrorFieldInfo = FieldInfo{kErrorFieldId, TypeId::kError, {}, TypeId::kError, PosRange(-1, -1, -1), ""};
 
@@ -413,7 +414,7 @@ void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInf
     new_bad_fields.insert(pinfo.fields.bad_fields_.begin(), pinfo.fields.bad_fields_.end());
   }
 
-  tinfo->fields = FieldTable(new_good_fields, new_bad_fields);
+  tinfo->fields = FieldTable(fs_, new_good_fields, new_bad_fields);
 }
 
 TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
@@ -649,5 +650,36 @@ vector<TypeId> TypeInfoMapBuilder::VerifyAcyclicGraph(const multimap<TypeId, Typ
 
   return sorted;
 }
+
+FieldId FieldTable::ResolveAccess(TypeId callerType, CallContext ctx, string field_name, PosRange pos, ErrorList* errors) const {
+  auto finfo = field_names_.find(field_name);
+  if (finfo == field_names_.end()) {
+    errors->Append(MakeUndefinedReferenceError(field_name, pos));
+    return kErrorFieldId;
+  }
+
+  // Check whether correct calling context.
+  bool is_static = finfo->second.mods.HasModifier(lexer::Modifier::STATIC);
+  if (is_static && ctx != CallContext::STATIC) {
+    // TODO: Error.
+    return kErrorFieldId;
+  } else if (!is_static && ctx == CallContext::STATIC) {
+    // TODO: Error
+    return kErrorFieldId;
+  }
+
+  // TODO: Check permissions.
+
+  return finfo->second.fid;
+}
+
+Error* FieldTable::MakeUndefinedReferenceError(string name, PosRange pos) const {
+  stringstream ss;
+  ss << "Undefined reference to '";
+  ss << name;
+  ss << '\'';
+  return MakeSimplePosRangeError(fs_, pos, "UndefinedReferenceError", ss.str());
+}
+
 
 } // namespace types

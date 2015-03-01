@@ -65,7 +65,7 @@ bool TypeChecker::IsReference(TypeId tid) const {
     return true;
   }
 
-  return tid.base > TypeId::kIntBase;
+  return tid.base >= TypeId::kFirstRefTypeBase;
 }
 
 bool IsOneOf(TypeId::Base base, initializer_list<TypeId::Base> allowed) {

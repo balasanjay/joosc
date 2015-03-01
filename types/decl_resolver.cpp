@@ -107,8 +107,7 @@ REWRITE_DEFN(DeclResolver, FieldDecl, MemberDecl, field, ) {
     return nullptr;
   }
 
-  // TODO: put field in table keyed by (curtid_, field.Name()).
-  // TODO: assign member id to field.
+  builder_->PutField(curtype_, type->GetTypeId(), field);
   return make_shared<FieldDecl>(field.Mods(), type, field.Name(), field.NameToken(), field.ValPtr());
 }
 

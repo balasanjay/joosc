@@ -241,6 +241,9 @@ class PrintVisitor final : public Visitor {
     field.GetType().PrintTo(os_);
     *os_ << ' ';
     *os_ << field.Name();
+    if (field.GetFieldId() != ast::kErrorFieldId) {
+      *os_ << "f#" << field.GetFieldId();
+    }
     if (field.ValPtr() != nullptr) {
       *os_ << space_ << '=' << space_;
       Visit(field.ValPtr());

@@ -31,7 +31,6 @@ public:
     return SymbolTable(&base::FileSet::Empty(), {});
   }
 
-
   void EnterScope();
   void LeaveScope();
 

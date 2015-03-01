@@ -11,6 +11,10 @@
 
 namespace types {
 
+using ast::FieldId;
+using ast::kErrorFieldId;
+using ast::kFirstFieldId;
+
 struct TypeIdList {
 public:
   TypeIdList(const vector<ast::TypeId>& tids) : tids_(tids){}
@@ -85,6 +89,8 @@ public:
 
 private:
   friend class TypeInfoMapBuilder;
+  friend class TypeInfoMap;
+
   using MethodSignatureMap = std::map<MethodSignature, MethodInfo>;
   using MethodInfoMap = std::map<MethodId, MethodInfo>;
 
@@ -112,10 +118,6 @@ private:
   set<string> bad_methods_;
 };
 
-using FieldId = u64;
-const FieldId kErrorFieldId = 0;
-const FieldId kFirstFieldId = 1;
-
 struct FieldInfo {
   FieldId fid;
   ast::TypeId class_type;
@@ -127,7 +129,7 @@ struct FieldInfo {
 
 class FieldTable {
 public:
-  FieldId ResolveAccess(ast::TypeId callerType, CallContext ctx, base::ErrorList* out) const;
+  FieldId ResolveAccess(ast::TypeId callerType, CallContext ctx, string field_name, base::PosRange pos, base::ErrorList* out) const;
 
   // Given a valid FieldId, return all the associated info about it.
   const FieldInfo& LookupField(FieldId fid) const {
@@ -140,12 +142,21 @@ public:
     return info->second;
   }
 
+  // Given a field name, return all the associated info about it (no access checks).
+  const FieldInfo& LookupField(string field_name) const {
+    auto info = field_names_.find(field_name);
+    assert(info != field_names_.end());
+    return info->second;
+  }
+
 private:
   friend class TypeInfoMapBuilder;
+  friend class TypeInfoMap;
+
   using FieldNameMap = std::map<string, FieldInfo>;
   using FieldInfoMap = std::map<FieldId, FieldInfo>;
 
-  FieldTable(const FieldNameMap& entries, const set<string>& bad_fields) : field_names_(entries), bad_fields_(bad_fields) {
+  FieldTable(const base::FileSet* fs, const FieldNameMap& entries, const set<string>& bad_fields) : fs_(fs), field_names_(entries), bad_fields_(bad_fields) {
     for (const auto& entry : entries) {
       field_info_.insert({entry.second.fid, entry.second});
     }
@@ -153,10 +164,13 @@ private:
 
   FieldTable() : all_blacklisted_(true) {}
 
+  base::Error* MakeUndefinedReferenceError(string name, base::PosRange name_pos) const;
+
   static FieldTable kEmptyFieldTable;
   static FieldTable kErrorFieldTable;
   static FieldInfo kErrorFieldInfo;
 
+  const base::FileSet* fs_;
   FieldNameMap field_names_;
   FieldInfoMap field_info_;
 
@@ -191,10 +205,17 @@ public:
   }
 
   // TODO: handle blacklisting.
-  pair<const TypeInfo&, bool> LookupTypeInfo(ast::TypeId tid) {
+  pair<const TypeInfo&, bool> LookupTypeInfo(ast::TypeId tid) const {
     const auto info = type_info_.find(tid);
-    assert(info != type_info_.cend());
-    return make_pair(info->second, true);
+    std::cout << "HERE\n";
+    for (auto i : type_info_) {
+      std::cout << i.second.name << '\n';
+    }
+    if (info == type_info_.end()) {
+      return make_pair(kErrorTypeInfo, false);
+    } else {
+      return make_pair(info->second, true);
+    }
   }
 
 private:
@@ -204,7 +225,7 @@ private:
   TypeInfoMap(const Map& typeinfo) : type_info_(typeinfo) {}
 
   static TypeInfoMap kEmptyTypeInfoMap;
-  static TypeInfo kEmptyTypeInfo;
+  static TypeInfo kErrorTypeInfo;
 
   Map type_info_;
 };
@@ -222,8 +243,8 @@ public:
     method_entries_.push_back(MethodInfo{kErrorMethodId, curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{is_constructor, meth.Name(), TypeIdList(paramtids)}});
   }
 
-  void Putfield(ast::TypeId curtid, ast::TypeId fieldid, const ast::MemberDecl& field) {
-    field_entries_.push_back(FieldInfo{kErrorFieldId, curtid, field.Mods(), fieldid, field.NameToken().pos, ""});
+  void PutField(ast::TypeId curtid, ast::TypeId tid, const ast::MemberDecl& field) {
+    field_entries_.push_back(FieldInfo{kErrorFieldId, curtid, field.Mods(), tid, field.NameToken().pos, ""});
   }
 
   TypeInfoMap Build(base::ErrorList* out);
