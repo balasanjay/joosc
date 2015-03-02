@@ -226,8 +226,8 @@ private:
   using Map = map<ast::TypeId, TypeInfo>;
   friend class TypeInfoMapBuilder;
 
-  TypeInfoMap(const base::FileSet* fs, const Map& typeinfo) : fs_(fs), type_info_(typeinfo), kArrayTypeInfo(
-    TypeInfo{
+  TypeInfoMap(const base::FileSet* fs, const Map& typeinfo) : fs_(fs), type_info_(typeinfo),
+    kArrayTypeInfo({
       MakeModifierList(false, false, false),
       ast::TypeKind::CLASS,
       ast::TypeId::kError,
