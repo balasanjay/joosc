@@ -527,7 +527,7 @@ void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInf
   tinfo->fields = FieldTable(fs, new_good_fields, new_bad_fields);
 }
 
-TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
+TypeInfoMap TypeInfoMapBuilder::Build(const TypeSet& typeset, base::ErrorList* out) {
   map<TypeId, TypeInfo> typeinfo;
   vector<TypeId> all_types;
   set<TypeId> cycle_bad_types;
@@ -538,7 +538,7 @@ TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
     all_types.push_back(entry.type);
   }
 
-  ValidateExtendsImplementsGraph(&typeinfo, &cycle_bad_types, out);
+  ValidateExtendsImplementsGraph(typeset, &typeinfo, &cycle_bad_types, out);
 
   // Sort TypeId vector by the topological ordering of the types.
   {
@@ -590,7 +590,7 @@ TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
   return TypeInfoMap(fs_, typeinfo);
 }
 
-void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(map<TypeId, TypeInfo>* types, set<TypeId>* bad, ErrorList* errors) {
+void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(const TypeSet& typeset, map<TypeId, TypeInfo>* types, set<TypeId>* bad, ErrorList* errors) {
   using IdInfoMap = map<TypeId, TypeInfo>;
 
   // Bind a reference to make the code more readable.
@@ -600,6 +600,9 @@ void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(map<TypeId, TypeInfo>* t
   // Ensure that we blacklist any classes that introduce invalid edges into the
   // graph.
   PruneInvalidGraphEdges(all_types, &bad_types, errors);
+
+  // Make every class and interface extend Object.
+  IntroduceImplicitGraphEdges(typeset, bad_types, &all_types);
 
   // Now build a combined graph of edges.
   multimap<TypeId, TypeId> edges;
@@ -689,6 +692,40 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
         bad_types->insert(type);
       }
     }
+  }
+}
+
+void TypeInfoMapBuilder::IntroduceImplicitGraphEdges(const TypeSet& typeset, const set<TypeId>& bad, map<TypeId, TypeInfo>* types) {
+  using IdInfoMap = map<TypeId, TypeInfo>;
+
+  // Bind a reference to make the code more readable.
+  IdInfoMap& all_types = *types;
+
+  TypeId object = typeset.TryGet("java.lang.Object");
+  CHECK(object.IsValid());
+
+  for (auto tid_tinfo_iter : all_types) {
+    TypeId tid = tid_tinfo_iter.first;
+    TypeInfo& tinfo = tid_tinfo_iter.second;
+
+    // Do nothing for already blacklisted types.
+    if (bad.count(tid) == 1) {
+      continue;
+    }
+
+    // We don't insert implicit edges for Object.
+    if (tid == object) {
+      // TODO: validate that object has no fields.
+      continue;
+    }
+
+    // If the type is already extending things then do nothing. They'll get
+    // the implicit edge indirectly.
+    if (tinfo.extends.Size() > 0) {
+      continue;
+    }
+
+    tinfo.extends = TypeIdList({object});
   }
 }
 
