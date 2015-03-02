@@ -16,23 +16,23 @@ class TypeChecker final : public ast::Visitor {
    TypeChecker(const base::FileSet* fs, base::ErrorList* errors) : TypeChecker(fs, errors, TypeSet::Empty(), TypeInfoMap::Empty(fs)) {}
 
   TypeChecker WithTypeSet(const TypeSet& typeset) const {
-    assert(!belowCompUnit_);
+    CHECK(!belowCompUnit_);
     return TypeChecker(fs_, errors_, typeset, typeinfo_);
   }
 
   TypeChecker WithTypeInfoMap(const TypeInfoMap& typeinfo) const {
-    assert(!belowCompUnit_);
+    CHECK(!belowCompUnit_);
     return TypeChecker(fs_, errors_, typeset_, typeinfo);
   }
 
   TypeChecker InsideCompUnit(sptr<const ast::QualifiedName> package) const {
-    assert(!belowCompUnit_);
+    CHECK(!belowCompUnit_);
     return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package);
   }
 
   TypeChecker InsideTypeDecl(ast::TypeId curtype, const TypeSet& typeset) const {
-    assert(belowCompUnit_);
-    assert(!belowTypeDecl_);
+    CHECK(belowCompUnit_);
+    CHECK(!belowTypeDecl_);
     return TypeChecker(fs_, errors_, typeset, typeinfo_, true, package_, true, curtype);
   }
 
@@ -53,8 +53,8 @@ class TypeChecker final : public ast::Visitor {
       bool is_static,
       ast::TypeId cur_member_type = ast::TypeId::kError,
       const vector<VariableInfo>& paramInfos = {}) const {
-    assert(belowTypeDecl_);
-    assert(!belowMemberDecl_);
+    CHECK(belowTypeDecl_);
+    CHECK(!belowMemberDecl_);
 
     // Construct initial symbol table with params for this method.
     return TypeChecker(

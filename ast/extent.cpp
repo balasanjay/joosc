@@ -119,7 +119,7 @@ class ExtentVisitor final : public Visitor {
       return;
     }
 
-    assert(IS_CONST_REF(ReferenceType, type));
+    CHECK(IS_CONST_REF(ReferenceType, type));
     const ReferenceType& ref = dynamic_cast<const ReferenceType&>(type);
     const vector<lexer::Token> toks = ref.Name().Tokens();
     UpdatePos(toks.begin()->pos);
@@ -137,7 +137,7 @@ class ExtentVisitor final : public Visitor {
       extent_ = pos;
       return;
     }
-    assert(extent_.fileid == pos.fileid);
+    CHECK(extent_.fileid == pos.fileid);
     extent_.begin = std::min(extent_.begin, pos.begin);
     extent_.end = std::max(extent_.end, pos.end);
   }
@@ -148,7 +148,7 @@ class ExtentVisitor final : public Visitor {
 PosRange ExtentOf(sptr<const Expr> expr) {
   ExtentVisitor visitor;
   visitor.Visit(expr);
-  assert(visitor.Extent().fileid != -1);
+  CHECK(visitor.Extent().fileid != -1);
   return visitor.Extent();
 }
 

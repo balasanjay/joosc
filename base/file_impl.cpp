@@ -50,8 +50,8 @@ StringFile::StringFile(string path, string content)
 StringFile::~StringFile() { delete[] buf_; }
 
 bool DiskFile::LoadFile(string path, File** file_out, ErrorList* error_out) {
-  assert(file_out != nullptr);
-  assert(error_out != nullptr);
+  CHECK(file_out != nullptr);
+  CHECK(error_out != nullptr);
 
   RESET_ERRNO;
   int fd = open(path.c_str(), O_RDONLY);

@@ -70,7 +70,7 @@ TypeSetImpl::TypeSetImpl(const FileSet* fs, const set<string>& types, const set<
 
     auto result = types_.insert(make_pair(type, next));
     // Verify that we didn't overwrite a key.
-    assert(result.second);
+    CHECK(result.second);
   }
 
   for (const auto& bad_type : bad_types) {
@@ -78,14 +78,14 @@ TypeSetImpl::TypeSetImpl(const FileSet* fs, const set<string>& types, const set<
 
     auto result = types_.insert(make_pair(bad_type, next));
     // Verify that we didn't overwrite a key.
-    assert(result.second);
+    CHECK(result.second);
   }
 }
 
 sptr<TypeSetImpl> TypeSetImpl::WithPackage(const string& package, base::ErrorList* errors) const {
   static const PosRange fakepos(-1, -1, -1);
 
-  assert(pkg_prefix_ == "");
+  CHECK(pkg_prefix_ == "");
 
   string pkg = "";
   if (package == "") {
@@ -94,7 +94,7 @@ sptr<TypeSetImpl> TypeSetImpl::WithPackage(const string& package, base::ErrorLis
     pkg = kNamedPkgPrefix + "." + package;
   }
 
-  assert(pkgs_.count(pkg) == 1);
+  CHECK(pkgs_.count(pkg) == 1);
 
   TypeSetImpl view(*this);
   view.pkg_prefix_ = pkg + ".";
@@ -136,7 +136,7 @@ sptr<TypeSetImpl> TypeSetImpl::WithImports(const vector<ast::ImportDecl>& import
 void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRange pos, base::ErrorList* errors) {
   // Parse out the short version of the name.
   size_t last_dot = longname.find_last_of('.');
-  assert(last_dot != string::npos);
+  CHECK(last_dot != string::npos);
   string shortname = longname.substr(last_dot + 1);
 
   // First, lookup this type.
@@ -191,7 +191,7 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
     return;
   }
 
-  assert(num_entries == 1);
+  CHECK(num_entries == 1);
   TypeInfo prev = begin->second;
 
   // If this name was previously blacklisted, then just leave it blacklisted
@@ -230,12 +230,12 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
   // The only remaining case is that there are two identical names
   // compilation-unit level, which is an error. So we emit an error, and
   // blacklist this name.
-  assert(info.base != prev.base);
-  assert(info.scope == ImportScope::COMP_UNIT);
-  assert(prev.scope == ImportScope::COMP_UNIT);
+  CHECK(info.base != prev.base);
+  CHECK(info.scope == ImportScope::COMP_UNIT);
+  CHECK(prev.scope == ImportScope::COMP_UNIT);
 
   // TODO: emit an error.
-  throw;
+  CHECK(false);
 }
 
 TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList* errors) const {
@@ -269,7 +269,7 @@ TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList*
 
   // There are multiple entries for this key, meaning that we have multiple
   // conflicting wildcard entries.
-  assert(num_entries > 1);
+  CHECK(num_entries > 1);
 
   stringstream ss;
   ss << "'" << name << "' is ambiguous; it could refer to ";

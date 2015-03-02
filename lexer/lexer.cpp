@@ -114,7 +114,7 @@ std::ostream& operator<<(std::ostream& out, const TokenTypeInfo& t) {
 }
 
 TokenTypeInfo TokenTypeInfo::FromTokenType(TokenType type) {
-  assert(0 <= type && type < NUM_TOKEN_TYPES);
+  CHECK(0 <= type && type < NUM_TOKEN_TYPES);
   return kTokenTypeInfo[type];
 }
 
@@ -163,11 +163,7 @@ struct LexState {
   // Emit a token starting at the end of the previous token (or 0 by default),
   // and ending at the cursor.
   void EmitToken(TokenType tok) {
-    // TODO: implement some assert macro.
-    if (begin >= end) {
-      throw "weird state";
-    }
-
+    CHECK(begin < end);
     tokens->push_back(Token(tok, PosRange(fileid, begin, end)));
     begin = end;
   }

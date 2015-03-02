@@ -195,7 +195,7 @@ Error* TypeInfoMapBuilder::MakeNeedAbstractClassError(const TypeInfo& tinfo, con
 Error* TypeInfoMapBuilder::MakeExtendsCycleError(const vector<TypeInfo>& cycle) const {
   const FileSet* fs = fs_;
   return MakeError([=](ostream* out, const OutputOptions& opt) {
-    assert(cycle.size() > 1);
+    CHECK(cycle.size() > 1);
     if (opt.simple) {
       *out << "ExtendsCycleError{";
       for (uint i = 0; i < cycle.size() - 1; ++i) {
@@ -255,7 +255,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
   for (int i = 0; i < parents.Size(); ++i) {
     const auto info_pair = sofar.find(parents.At(i));
-    assert(info_pair != sofar.cend());
+    CHECK(info_pair != sofar.cend());
     const TypeInfo& pinfo = info_pair->second;
 
     // Early return if any of our parents are broken.
@@ -319,8 +319,8 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
         continue;
       }
 
-      assert(!pminfo.mods.HasModifier(NATIVE));
-      assert(!mminfo.mods.HasModifier(NATIVE));
+      CHECK(!pminfo.mods.HasModifier(NATIVE));
+      CHECK(!mminfo.mods.HasModifier(NATIVE));
 
       // We can't lower visibility of inherited methods.
       // TODO: Point to class and two methods.
@@ -417,7 +417,7 @@ void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeIn
       }
 
       // Emit error for duped methods.
-      assert(ndups > 1);
+      CHECK(ndups > 1);
 
       vector<PosRange> defs;
       for (auto cur = lbegin; cur != lend; ++cur) {
@@ -471,7 +471,7 @@ void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInf
       }
 
       // Emit error for duped fields.
-      assert(ndups > 1);
+      CHECK(ndups > 1);
 
       vector<PosRange> defs;
       for (auto cur = lbegin; cur != lend; ++cur) {
@@ -493,7 +493,7 @@ void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInf
 
   for (int i = 0; i < parents.Size(); ++i) {
     const auto info_pair = sofar.find(parents.At(i));
-    assert(info_pair != sofar.cend());
+    CHECK(info_pair != sofar.cend());
     const TypeInfo& pinfo = info_pair->second;
 
     // Early return if any of our parents are broken.
@@ -660,7 +660,7 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
 
     if (typeinfo.kind == TypeKind::INTERFACE) {
       // Previous passes validate that interfaces cannot implement anything.
-      assert(typeinfo.implements.Size() == 0);
+      CHECK(typeinfo.implements.Size() == 0);
 
       // An interface can only extend other interfaces.
       for (int i = 0; i < typeinfo.extends.Size(); ++i) {
@@ -673,8 +673,8 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
       continue;
     }
 
-    assert(typeinfo.kind == TypeKind::CLASS);
-    assert(typeinfo.extends.Size() <= 1);
+    CHECK(typeinfo.kind == TypeKind::CLASS);
+    CHECK(typeinfo.extends.Size() <= 1);
     if (typeinfo.extends.Size() == 1) {
       TypeId parent_tid = typeinfo.extends.At(0);
       if (!match_relationship(parent_tid, type, TypeKind::CLASS)) {
@@ -720,7 +720,7 @@ vector<TypeId> TypeInfoMapBuilder::VerifyAcyclicGraph(const multimap<TypeId, Typ
     if (open.count(tid) == 1) {
       // Find the start of the cycle.
       auto iter = find(path.begin(), path.end(), tid);
-      assert(iter != path.end());
+      CHECK(iter != path.end());
 
       vector<TypeId> cycle(iter, path.end());
       cycle.push_back(tid);
@@ -738,15 +738,15 @@ vector<TypeId> TypeInfoMapBuilder::VerifyAcyclicGraph(const multimap<TypeId, Typ
     for (auto cur = iter_pair.first; cur != iter_pair.second; ++cur) {
       size_t prev_path_size = path.size();
       ok = ok && fn(cur->second);
-      assert(path.size() == prev_path_size);
+      CHECK(path.size() == prev_path_size);
 
       if (!ok) {
         break;
       }
     }
 
-    assert(path.size() > 0);
-    assert(path.back() == tid);
+    CHECK(path.size() > 0);
+    CHECK(path.back() == tid);
     path.pop_back();
     open.erase(tid);
 
@@ -755,7 +755,7 @@ vector<TypeId> TypeInfoMapBuilder::VerifyAcyclicGraph(const multimap<TypeId, Typ
       return false;
     }
 
-    assert(ok);
+    CHECK(ok);
     good.insert(tid);
     sorted.push_back(tid);
 
@@ -784,10 +784,10 @@ MethodId MethodTable::ResolveCall(TypeId callerType, CallContext ctx, const Type
   // Check whether calling context is correct.
   bool is_static = minfo->second.mods.HasModifier(lexer::STATIC);
   if (is_static && ctx != CallContext::STATIC) {
-    errors->Append(MakeWrongMethodContextError(is_static, pos));
+    errors->Append(MakeInstanceMethodOnStaticError(pos));
     return kErrorMethodId;
   } else if (!is_static && ctx == CallContext::STATIC) {
-    errors->Append(MakeWrongMethodContextError(is_static, pos));
+    errors->Append(MakeStaticMethodOnInstanceError(pos));
     return kErrorMethodId;
   }
 
@@ -796,6 +796,8 @@ MethodId MethodTable::ResolveCall(TypeId callerType, CallContext ctx, const Type
 }
 
 Error* MethodTable::MakeUndefinedMethodError(MethodSignature sig, PosRange pos) const {
+  // TODO: make this error better.
+
   stringstream ss;
   ss << "Couldn't find ";
   if (sig.is_constructor) {
@@ -816,22 +818,14 @@ Error* MethodTable::MakeUndefinedMethodError(MethodSignature sig, PosRange pos) 
   return MakeSimplePosRangeError(fs_, pos, "UndefinedMethodError", ss.str());
 }
 
-Error* MethodTable::MakeWrongMethodContextError(bool expected_static, PosRange pos) const {
-  stringstream ss;
-  ss << "Can't call ";
-  if (expected_static) {
-    ss << "an instance";
-  } else {
-    ss << "a static";
-  }
-  ss << " method from a ";
-  if (expected_static) {
-    ss << "static";
-  } else {
-    ss << "instance";
-  }
-  ss << " method";
-  return MakeSimplePosRangeError(fs_, pos, "WrongMethodContextError", ss.str());
+Error* MethodTable::MakeInstanceMethodOnStaticError(PosRange pos) const {
+  const static string msg = "Cannot call an instance method as a static method.";
+  return MakeSimplePosRangeError(fs_, pos, "InstanceMethodOnStaticError", msg);
+}
+
+Error* MethodTable::MakeStaticMethodOnInstanceError(PosRange pos) const {
+  const static string msg = "Cannot call a static method as an instance method.";
+  return MakeSimplePosRangeError(fs_, pos, "StaticMethodOnInstanceError", msg);
 }
 
 FieldId FieldTable::ResolveAccess(TypeId callerType, CallContext ctx, string field_name, PosRange pos, ErrorList* errors) const {
@@ -847,10 +841,10 @@ FieldId FieldTable::ResolveAccess(TypeId callerType, CallContext ctx, string fie
   // Check whether correct calling context.
   bool is_static = finfo->second.mods.HasModifier(lexer::Modifier::STATIC);
   if (is_static && ctx != CallContext::STATIC) {
-    errors->Append(MakeWrongFieldContextError(is_static, pos));
+    errors->Append(MakeStaticFieldOnInstanceError(pos));
     return kErrorFieldId;
   } else if (!is_static && ctx == CallContext::STATIC) {
-    errors->Append(MakeWrongFieldContextError(is_static, pos));
+    errors->Append(MakeInstanceFieldOnStaticError(pos));
     return kErrorFieldId;
   }
 
@@ -867,23 +861,14 @@ Error* FieldTable::MakeUndefinedReferenceError(string name, PosRange pos) const 
   return MakeSimplePosRangeError(fs_, pos, "UndefinedReferenceError", ss.str());
 }
 
-Error* FieldTable::MakeWrongFieldContextError(bool expected_static, PosRange pos) const {
-  stringstream ss;
-  ss << "Can't access ";
-  if (expected_static) {
-    ss << "an instance";
-  } else {
-    ss << "a static";
-  }
-  ss << " field from a ";
-  if (expected_static) {
-    ss << "static";
-  } else {
-    ss << "instance";
-  }
-  ss << " method";
-  return MakeSimplePosRangeError(fs_, pos, "WrongFieldContextError", ss.str());
+Error* FieldTable::MakeInstanceFieldOnStaticError(PosRange pos) const {
+  const static string msg = "Cannot access an instance field without an instance.";
+  return MakeSimplePosRangeError(fs_, pos, "InstanceFieldOnStaticError", msg);
 }
 
+Error* FieldTable::MakeStaticFieldOnInstanceError(PosRange pos) const {
+  const static string msg = "Cannot access a static field as an instance field.";
+  return MakeSimplePosRangeError(fs_, pos, "StaticFieldOnInstanceError", msg);
+}
 
 } // namespace types

@@ -17,8 +17,8 @@ namespace ast {
 #define ACCEPT_VISITOR(type, ret_type) \
   virtual sptr<const ret_type> Accept(Visitor* visitor, sptr<const ret_type> ptr) const { \
     sptr<const type> downcasted = std::dynamic_pointer_cast<const type, const ret_type>(ptr); \
-    assert(downcasted != nullptr); \
-    assert(downcasted.get() == this); \
+    CHECK(downcasted != nullptr); \
+    CHECK(downcasted.get() == this); \
     return visitor->Rewrite##type(*this, downcasted); \
   }
 
@@ -94,7 +94,7 @@ class ReferenceType : public Type {
   void PrintTo(std::ostream* os) const override {
     name_.PrintTo(os);
 
-    assert(GetTypeId().ndims == 0);
+    CHECK(GetTypeId().ndims == 0);
     if (GetTypeId() != TypeId::kUnassigned) {
       *os << "#t" << GetTypeId().base;
     }
@@ -185,7 +185,7 @@ class InstanceOfExpr : public Expr {
 
 class ParenExpr : public Expr {
  public:
-  ParenExpr(lexer::Token lparen, sptr<const Expr> nested, lexer::Token rparen) : lparen_(lparen), nested_(nested), rparen_(rparen) { assert(nested_ != nullptr); }
+  ParenExpr(lexer::Token lparen, sptr<const Expr> nested, lexer::Token rparen) : lparen_(lparen), nested_(nested), rparen_(rparen) { CHECK(nested_ != nullptr); }
 
   ACCEPT_VISITOR(ParenExpr, Expr);
 
@@ -203,9 +203,9 @@ class BinExpr : public Expr {
  public:
   BinExpr(sptr<const Expr> lhs, lexer::Token op, sptr<const Expr> rhs, TypeId tid = TypeId::kUnassigned)
       : Expr(tid), op_(op), lhs_(lhs), rhs_(rhs) {
-    assert(lhs != nullptr);
-    assert(op.TypeInfo().IsBinOp());
-    assert(rhs != nullptr);
+    CHECK(lhs != nullptr);
+    CHECK(op.TypeInfo().IsBinOp());
+    CHECK(rhs != nullptr);
   }
 
   ACCEPT_VISITOR(BinExpr, Expr);
@@ -223,8 +223,8 @@ class BinExpr : public Expr {
 class UnaryExpr : public Expr {
  public:
   UnaryExpr(lexer::Token op, sptr<const Expr> rhs, TypeId tid = TypeId::kUnassigned) : Expr(tid), op_(op), rhs_(rhs) {
-    assert(op.TypeInfo().IsUnaryOp());
-    assert(rhs != nullptr);
+    CHECK(op.TypeInfo().IsUnaryOp());
+    CHECK(rhs != nullptr);
   }
 
   ACCEPT_VISITOR(UnaryExpr, Expr);
@@ -615,7 +615,7 @@ class ModifierList {
   }
 
   lexer::Token GetModifierToken(lexer::Modifier m) const {
-    assert(HasModifier(m));
+    CHECK(HasModifier(m));
     return mods_[m];
   }
 

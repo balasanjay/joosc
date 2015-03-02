@@ -86,7 +86,7 @@ public:
     }
 
     auto info = method_info_.find(mid);
-    assert(info != method_info_.end());
+    CHECK(info != method_info_.end());
     return info->second;
   }
 
@@ -94,7 +94,7 @@ public:
   const MethodInfo& LookupMethod(const MethodSignature& msig) const {
     auto info = method_signatures_.find(msig);
     if (info == method_signatures_.end()) {
-      assert(bad_methods_.count(msig.name) == 1);
+      CHECK(bad_methods_.count(msig.name) == 1);
       return kErrorMethodInfo;
     }
     return info->second;
@@ -116,7 +116,9 @@ private:
   MethodTable() : all_blacklisted_(true) {}
 
   base::Error* MakeUndefinedMethodError(MethodSignature sig, base::PosRange pos) const;
-  base::Error* MakeWrongMethodContextError(bool expected_static, base::PosRange pos) const;
+
+  base::Error* MakeInstanceMethodOnStaticError(base::PosRange pos) const;
+  base::Error* MakeStaticMethodOnInstanceError(base::PosRange pos) const;
 
   static MethodTable kEmptyMethodTable;
   static MethodTable kErrorMethodTable;
@@ -155,7 +157,7 @@ public:
     }
 
     auto info = field_info_.find(fid);
-    assert(info != field_info_.end());
+    CHECK(info != field_info_.end());
     return info->second;
   }
 
@@ -163,7 +165,7 @@ public:
   const FieldInfo& LookupField(string field_name) const {
     auto info = field_names_.find(field_name);
     if (info == field_names_.end()) {
-      assert(bad_fields_.count(field_name) == 1);
+      CHECK(bad_fields_.count(field_name) == 1);
       return kErrorFieldInfo;
     }
     return info->second;
@@ -185,7 +187,8 @@ private:
   FieldTable() : all_blacklisted_(true) {}
 
   base::Error* MakeUndefinedReferenceError(string name, base::PosRange name_pos) const;
-  base::Error* MakeWrongFieldContextError(bool expected_static, base::PosRange pos) const;
+  base::Error* MakeInstanceFieldOnStaticError(base::PosRange pos) const;
+  base::Error* MakeStaticFieldOnInstanceError(base::PosRange pos) const;
 
   static FieldTable kEmptyFieldTable;
   static FieldTable kErrorFieldTable;
@@ -231,7 +234,7 @@ public:
     }
 
     const auto info = type_info_.find(tid);
-    assert(info != type_info_.cend());
+    CHECK(info != type_info_.cend());
     return info->second;
   }
 
@@ -305,7 +308,7 @@ public:
   TypeInfoMapBuilder(const base::FileSet* fs) : fs_(fs) {}
 
   void PutType(ast::TypeId tid, const ast::TypeDecl& type, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
-    assert(tid.ndims == 0);
+    CHECK(tid.ndims == 0);
     type_entries_.push_back(TypeInfo{type.Mods(), type.Kind(), tid, type.Name(), type.NameToken().pos, TypeIdList(extends), TypeIdList(implements), MethodTable::kEmptyMethodTable, FieldTable::kEmptyFieldTable, tid.base});
   }
 

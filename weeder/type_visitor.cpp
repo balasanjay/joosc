@@ -89,7 +89,7 @@ bool HasVoid(const Type& type, Token* out) {
     }
 
     // Primitive types.
-    assert(IS_CONST_PTR(PrimitiveType, cur));
+    CHECK(IS_CONST_PTR(PrimitiveType, cur));
     const PrimitiveType* prim = dynamic_cast<const PrimitiveType*>(cur);
     if (prim->GetToken().type == K_VOID) {
       *out = prim->GetToken();

@@ -131,7 +131,7 @@ vector<CompileInput> GetInputs(const string& stdlib, const string& dir, Compiler
     return true;
   };
 
-  assert(base::WalkDir(dir, cb));
+  CHECK(base::WalkDir(dir, cb));
   return inputs;
 }
 

@@ -45,7 +45,7 @@ Error* MakeInterfaceMethodImplError(const FileSet* fs, Token token) {
 }
 
 Error* MakeInterfaceMethodModifierError(const FileSet* fs, Token token) {
-  assert(token.TypeInfo().IsModifier());
+  CHECK(token.TypeInfo().IsModifier());
   return MakeSimplePosRangeError(
       fs, token.pos, "InterfaceMethodModifierError",
       "An interface method cannot be " + token.TypeInfo().Value() + ".");
@@ -80,7 +80,7 @@ Error* MakeClassNoAccessModError(const FileSet* fs, Token token) {
 }
 
 Error* MakeClassFieldModifierError(const FileSet* fs, Token token) {
-  assert(token.TypeInfo().IsModifier());
+  CHECK(token.TypeInfo().IsModifier());
   return MakeSimplePosRangeError(
       fs, token.pos, "ClassFieldModifierError",
       "A class field cannot be " + token.TypeInfo().Value() + ".");
@@ -99,7 +99,7 @@ Error* MakeClassMethodNotEmptyError(const FileSet* fs, Token token) {
 }
 
 Error* MakeClassMethodAbstractModifierError(const FileSet* fs, Token token) {
-  assert(token.TypeInfo().IsModifier());
+  CHECK(token.TypeInfo().IsModifier());
   return MakeSimplePosRangeError(
       fs, token.pos, "ClassMethodAbstractModifierError",
       "An abstract method cannot be " + token.TypeInfo().Value() + ".");
@@ -117,7 +117,7 @@ Error* MakeClassMethodNativeNotStaticError(const FileSet* fs, Token token) {
 }
 
 Error* MakeClassModifierError(const FileSet* fs, Token token) {
-  assert(token.TypeInfo().IsModifier());
+  CHECK(token.TypeInfo().IsModifier());
   return MakeSimplePosRangeError(
       fs, token.pos, "ClassModifierError",
       "A class cannot be " + token.TypeInfo().Value() + ".");
@@ -129,14 +129,14 @@ Error* MakeAbstractFinalClassError(const FileSet* fs, Token token) {
 }
 
 Error* MakeInterfaceModifierError(const FileSet* fs, Token token) {
-  assert(token.TypeInfo().IsModifier());
+  CHECK(token.TypeInfo().IsModifier());
   return MakeSimplePosRangeError(
       fs, token.pos, "InterfaceModifierError",
       "An interface cannot be " + token.TypeInfo().Value() + ".");
 }
 
 Error* MakeClassConstructorModifierError(const FileSet* fs, Token token) {
-  assert(token.TypeInfo().IsModifier());
+  CHECK(token.TypeInfo().IsModifier());
   return MakeSimplePosRangeError(
       fs, token.pos, "ClassConstructorModifierError",
       "A class constructor cannot be " + token.TypeInfo().Value() + ".");
@@ -305,7 +305,7 @@ REWRITE_DEFN(ModifierVisitor, TypeDecl, TypeDecl, decl, declptr) {
     return visitor.Rewrite(declptr);
   }
 
-  assert(decl.Kind() == TypeKind::INTERFACE);
+  CHECK(decl.Kind() == TypeKind::INTERFACE);
   // An interface cannot be protected, static, final, or native.
   VerifyNoneOf(fs_, decl.Mods(), errors_, MakeInterfaceModifierError,
                {PROTECTED, STATIC, FINAL, NATIVE});

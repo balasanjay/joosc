@@ -119,11 +119,11 @@ bool TypeChecker::IsReferenceWidening(TypeId lhs, TypeId rhs) const {
   if (!IsReference(lhs) || !IsReference(rhs)) {
     return false;
   }
-  assert(lhs.base != TypeId::kNullBase);
+  CHECK(lhs.base != TypeId::kNullBase);
 
   // null widens to any reference type.
   if (rhs.base == TypeId::kNullBase) {
-    assert(rhs.ndims == 0);
+    CHECK(rhs.ndims == 0);
     return true;
   }
 
@@ -179,7 +179,7 @@ bool TypeChecker::IsComparable(TypeId lhs, TypeId rhs) const {
     return false;
   }
 
-  assert(IsReference(lhs) && IsReference(rhs));
+  CHECK(IsReference(lhs) && IsReference(rhs));
   const TypeId kNull = TypeId{TypeId::kNullBase, 0};
 
   if (lhs == kNull || rhs == kNull) {
