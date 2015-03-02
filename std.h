@@ -46,7 +46,11 @@ using sptr = std::shared_ptr<T>;
   void operator=(const TypeName&) = delete
 
 #define CHECK(cond) { \
-  if (!(cond)) { throw std::logic_error(#cond); } \
+  if (!(cond)) { \
+    stringstream ss; \
+    ss << __FILE__ << ':' << __LINE__ << ' ' << #cond; \
+    throw std::logic_error(ss.str()); \
+  } \
 }
 
 #endif
