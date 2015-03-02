@@ -397,8 +397,8 @@ class CastExpr : public Expr {
 
 class NewClassExpr : public Expr {
  public:
-  NewClassExpr(lexer::Token newTok, sptr<const Type> type, lexer::Token lparen, const base::SharedPtrVector<const Expr>& args, lexer::Token rparen, TypeId tid = TypeId::kUnassigned)
-      : Expr(tid), newTok_(newTok), type_(type), lparen_(lparen), args_(args), rparen_(rparen) {}
+  NewClassExpr(lexer::Token newTok, sptr<const Type> type, lexer::Token lparen, const base::SharedPtrVector<const Expr>& args, lexer::Token rparen, MethodId mid = kUnassignedMethodId, TypeId tid = TypeId::kUnassigned)
+      : Expr(tid), newTok_(newTok), type_(type), lparen_(lparen), args_(args), rparen_(rparen), mid_(mid) {}
 
   ACCEPT_VISITOR(NewClassExpr, Expr);
 
@@ -407,6 +407,7 @@ class NewClassExpr : public Expr {
   VAL_GETTER(lexer::Token, Lparen, lparen_);
   REF_GETTER(base::SharedPtrVector<const Expr>, Args, args_);
   VAL_GETTER(lexer::Token, Rparen, rparen_);
+  VAL_GETTER(MethodId, GetMethodId, mid_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NewClassExpr);
@@ -416,6 +417,7 @@ class NewClassExpr : public Expr {
   lexer::Token lparen_;
   base::SharedPtrVector<const Expr> args_;
   lexer::Token rparen_;
+  MethodId mid_;
 };
 
 class NewArrayExpr : public Expr {

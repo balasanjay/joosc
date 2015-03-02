@@ -303,7 +303,7 @@ REWRITE_DEFN(TypeChecker, NewClassExpr, Expr, expr,) {
   }
 
   const MethodInfo& minfo = tinfo.methods.LookupMethod(mid);
-  return make_shared<NewClassExpr>(expr.NewToken(), type, expr.Lparen(), expr.Args(), expr.Rparen(), minfo.return_type);
+  return make_shared<NewClassExpr>(expr.NewToken(), type, expr.Lparen(), expr.Args(), expr.Rparen(), minfo.mid, minfo.return_type);
 }
 
 REWRITE_DEFN(TypeChecker, CastExpr, Expr, expr, exprptr) {
