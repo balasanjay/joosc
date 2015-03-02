@@ -184,17 +184,16 @@ const static string kTest5 = "third_party/cs444/assignment_testcases/a5";
 INSTANTIATE_TEST_CASE_P(MarmosetA1, CompilerSuccessTest2,
     testing::ValuesIn(GetGoodInputs(
         kStdlib1, kTest1, CompilerStage::WEED)));
-
 INSTANTIATE_TEST_CASE_P(MarmosetA1, CompilerFailureTest2,
     testing::ValuesIn(GetBadInputs(
         kStdlib1, kTest1, CompilerStage::WEED)));
 
-INSTANTIATE_TEST_CASE_P(MarmosetA2, CompilerSuccessTest2,
-    testing::ValuesIn(GetGoodInputs(
-        kStdlib2, kTest2, CompilerStage::TYPE_CHECK)));
-
-INSTANTIATE_TEST_CASE_P(MarmosetA2, CompilerFailureTest2,
-    testing::ValuesIn(GetBadInputs(
-        kStdlib2, kTest2, CompilerStage::TYPE_CHECK)));
+// TODO: enable.
+// INSTANTIATE_TEST_CASE_P(MarmosetA2, CompilerSuccessTest2,
+//     testing::ValuesIn(GetGoodInputs(
+//         kStdlib2, kTest2, CompilerStage::TYPE_CHECK)));
+// INSTANTIATE_TEST_CASE_P(MarmosetA2, CompilerFailureTest2,
+//     testing::ValuesIn(GetBadInputs(
+//         kStdlib2, kTest2, CompilerStage::TYPE_CHECK)));
 
 }  // namespace
