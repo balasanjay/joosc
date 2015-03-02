@@ -1,8 +1,6 @@
 #ifndef BASE_UNIQUE_PTR_VECTOR
 #define BASE_UNIQUE_PTR_VECTOR
 
-#include <cassert>
-
 namespace base {
 
 template <typename T>
@@ -20,7 +18,7 @@ class UniquePtrVector {
   T* At(int i) const { return vec_.at(i).get(); }
 
   // Adds t to the vector; takes ownership of t.
-  void Append(T* t) { assert(t != nullptr); vec_.emplace_back(t); }
+  void Append(T* t) { CHECK(t != nullptr); vec_.emplace_back(t); }
 
   T* ReleaseBack() {
     T* t = vec_.at(Size() - 1).release();
@@ -66,12 +64,12 @@ class UniquePtrVectorIter : public std::iterator<std::forward_iterator_tag, T> {
     }
 
     const T& operator*() const {
-      assert(vec_ != nullptr);
+      CHECK(vec_ != nullptr);
       return *(vec_->At(idx_));
     }
 
     const T* operator->() const {
-      assert(vec_ != nullptr);
+      CHECK(vec_ != nullptr);
       return vec_->Get(idx_);
     }
 

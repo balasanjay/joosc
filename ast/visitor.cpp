@@ -116,6 +116,15 @@ REWRITE_DEFN(Visitor, StringLitExpr, Expr, expr, exprptr) {
   }
   return exprptr;
 }
+
+REWRITE_DEFN(Visitor, StaticRefExpr, Expr, expr, exprptr) {
+  SHORT_CIRCUIT(StaticRefExpr, expr, exprptr);
+  if (SHOULD_PRUNE_AFTER) {
+    return nullptr;
+  }
+  return exprptr;
+}
+
 REWRITE_DEFN(Visitor, NullLitExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(NullLitExpr, expr, exprptr);
   if (SHOULD_PRUNE_AFTER) {
@@ -452,7 +461,7 @@ REWRITE_DEFN(Visitor, Program, Program, prog, progptr) {
   if (result == VisitResult::SKIP) {
     return progptr;
   }
-  assert(result == VisitResult::RECURSE);
+  CHECK(result == VisitResult::RECURSE);
 
   bool unitsChanged = false;
   SharedPtrVector<const CompUnit> units = AcceptMulti(prog.CompUnits(), &unitsChanged);

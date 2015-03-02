@@ -17,8 +17,8 @@ namespace ast {
 #define ACCEPT_VISITOR(type, ret_type) \
   virtual sptr<const ret_type> Accept(Visitor* visitor, sptr<const ret_type> ptr) const { \
     sptr<const type> downcasted = std::dynamic_pointer_cast<const type, const ret_type>(ptr); \
-    assert(downcasted != nullptr); \
-    assert(downcasted.get() == this); \
+    CHECK(downcasted != nullptr); \
+    CHECK(downcasted.get() == this); \
     return visitor->Rewrite##type(*this, downcasted); \
   }
 
@@ -94,7 +94,7 @@ class ReferenceType : public Type {
   void PrintTo(std::ostream* os) const override {
     name_.PrintTo(os);
 
-    assert(GetTypeId().ndims == 0);
+    CHECK(GetTypeId().ndims == 0);
     if (GetTypeId() != TypeId::kUnassigned) {
       *os << "#t" << GetTypeId().base;
     }
@@ -185,7 +185,7 @@ class InstanceOfExpr : public Expr {
 
 class ParenExpr : public Expr {
  public:
-  ParenExpr(lexer::Token lparen, sptr<const Expr> nested, lexer::Token rparen) : lparen_(lparen), nested_(nested), rparen_(rparen) { assert(nested_ != nullptr); }
+  ParenExpr(lexer::Token lparen, sptr<const Expr> nested, lexer::Token rparen) : lparen_(lparen), nested_(nested), rparen_(rparen) { CHECK(nested_ != nullptr); }
 
   ACCEPT_VISITOR(ParenExpr, Expr);
 
@@ -203,9 +203,9 @@ class BinExpr : public Expr {
  public:
   BinExpr(sptr<const Expr> lhs, lexer::Token op, sptr<const Expr> rhs, TypeId tid = TypeId::kUnassigned)
       : Expr(tid), op_(op), lhs_(lhs), rhs_(rhs) {
-    assert(lhs != nullptr);
-    assert(op.TypeInfo().IsBinOp());
-    assert(rhs != nullptr);
+    CHECK(lhs != nullptr);
+    CHECK(op.TypeInfo().IsBinOp());
+    CHECK(rhs != nullptr);
   }
 
   ACCEPT_VISITOR(BinExpr, Expr);
@@ -223,8 +223,8 @@ class BinExpr : public Expr {
 class UnaryExpr : public Expr {
  public:
   UnaryExpr(lexer::Token op, sptr<const Expr> rhs, TypeId tid = TypeId::kUnassigned) : Expr(tid), op_(op), rhs_(rhs) {
-    assert(op.TypeInfo().IsUnaryOp());
-    assert(rhs != nullptr);
+    CHECK(op.TypeInfo().IsUnaryOp());
+    CHECK(rhs != nullptr);
   }
 
   ACCEPT_VISITOR(UnaryExpr, Expr);
@@ -321,25 +321,27 @@ class ArrayIndexExpr : public Expr {
 
 class FieldDerefExpr : public Expr {
  public:
-  FieldDerefExpr(sptr<const Expr> base, const string& fieldname, lexer::Token token)
-      : base_(base), fieldname_(fieldname), token_(token) {}
+  FieldDerefExpr(sptr<const Expr> base, const string& fieldname, lexer::Token token, FieldId fid = kErrorFieldId, TypeId tid = TypeId::kUnassigned)
+      : Expr(tid), base_(base), fieldname_(fieldname), token_(token), fid_(fid) {}
 
   ACCEPT_VISITOR(FieldDerefExpr, Expr);
 
   SPTR_GETTER(Expr, Base, base_);
   REF_GETTER(string, FieldName, fieldname_);
   REF_GETTER(lexer::Token, GetToken, token_);
+  VAL_GETTER(FieldId, GetFieldId, fid_);
 
  private:
   sptr<const Expr> base_;
   string fieldname_;
   lexer::Token token_;
+  FieldId fid_;
 };
 
 class CallExpr : public Expr {
  public:
-  CallExpr(sptr<const Expr> base, lexer::Token lparen, const base::SharedPtrVector<const Expr>& args, lexer::Token rparen)
-      : base_(base), lparen_(lparen), args_(args), rparen_(rparen) {}
+  CallExpr(sptr<const Expr> base, lexer::Token lparen, const base::SharedPtrVector<const Expr>& args, lexer::Token rparen, MethodId mid = kUnassignedMethodId, TypeId tid = TypeId::kUnassigned)
+      : Expr(tid), base_(base), lparen_(lparen), args_(args), rparen_(rparen), mid_(mid) {}
 
   ACCEPT_VISITOR(CallExpr, Expr);
 
@@ -348,11 +350,29 @@ class CallExpr : public Expr {
   REF_GETTER(base::SharedPtrVector<const Expr>, Args, args_);
   VAL_GETTER(lexer::Token, Rparen, rparen_);
 
+  VAL_GETTER(MethodId, GetMethodId, mid_);
+
  private:
   sptr<const Expr> base_;
   lexer::Token lparen_;
   base::SharedPtrVector<const Expr> args_;
   lexer::Token rparen_;
+
+  MethodId mid_;
+};
+
+class StaticRefExpr : public Expr {
+public:
+  StaticRefExpr(sptr<const Type> ref_type) : Expr(TypeId::kType), ref_type_(ref_type) {}
+
+  ACCEPT_VISITOR(StaticRefExpr, Expr);
+
+  SPTR_GETTER(Type, GetRefType, ref_type_);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(StaticRefExpr);
+
+  sptr<const Type> ref_type_;
 };
 
 class CastExpr : public Expr {
@@ -377,8 +397,8 @@ class CastExpr : public Expr {
 
 class NewClassExpr : public Expr {
  public:
-  NewClassExpr(lexer::Token newTok, sptr<const Type> type, lexer::Token lparen, const base::SharedPtrVector<const Expr>& args, lexer::Token rparen, TypeId tid = TypeId::kUnassigned)
-      : Expr(tid), newTok_(newTok), type_(type), lparen_(lparen), args_(args), rparen_(rparen) {}
+  NewClassExpr(lexer::Token newTok, sptr<const Type> type, lexer::Token lparen, const base::SharedPtrVector<const Expr>& args, lexer::Token rparen, MethodId mid = kUnassignedMethodId, TypeId tid = TypeId::kUnassigned)
+      : Expr(tid), newTok_(newTok), type_(type), lparen_(lparen), args_(args), rparen_(rparen), mid_(mid) {}
 
   ACCEPT_VISITOR(NewClassExpr, Expr);
 
@@ -387,6 +407,7 @@ class NewClassExpr : public Expr {
   VAL_GETTER(lexer::Token, Lparen, lparen_);
   REF_GETTER(base::SharedPtrVector<const Expr>, Args, args_);
   VAL_GETTER(lexer::Token, Rparen, rparen_);
+  VAL_GETTER(MethodId, GetMethodId, mid_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NewClassExpr);
@@ -396,6 +417,7 @@ class NewClassExpr : public Expr {
   lexer::Token lparen_;
   base::SharedPtrVector<const Expr> args_;
   lexer::Token rparen_;
+  MethodId mid_;
 };
 
 class NewArrayExpr : public Expr {
@@ -593,7 +615,7 @@ class ModifierList {
   }
 
   lexer::Token GetModifierToken(lexer::Modifier m) const {
-    assert(HasModifier(m));
+    CHECK(HasModifier(m));
     return mods_[m];
   }
 
@@ -660,37 +682,42 @@ class MemberDecl {
 
 class FieldDecl : public MemberDecl {
  public:
-  FieldDecl(const ModifierList& mods, sptr<const Type> type, const string& name, lexer::Token nameToken, sptr<const Expr> val)
+  FieldDecl(const ModifierList& mods, sptr<const Type> type, const string& name, lexer::Token nameToken, sptr<const Expr> val, FieldId fid = kErrorFieldId)
       : MemberDecl(mods, name, nameToken),
         type_(type),
-        val_(val) {}
+        val_(val),
+        fid_(fid) {}
 
   ACCEPT_VISITOR(FieldDecl, MemberDecl);
 
   SPTR_GETTER(Type, GetType, type_);
   VAL_GETTER(sptr<const Expr>, ValPtr, val_);
+  VAL_GETTER(FieldId, GetFieldId, fid_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FieldDecl);
 
   sptr<const Type> type_;
   sptr<const Expr> val_;  // Might be nullptr.
+  FieldId fid_ = kErrorFieldId;
 };
 
 class MethodDecl : public MemberDecl {
  public:
   MethodDecl(const ModifierList& mods, sptr<const Type> type, const string& name, lexer::Token nameToken,
-             sptr<const ParamList> params, sptr<const Stmt> body)
+             sptr<const ParamList> params, sptr<const Stmt> body, MethodId mid = kErrorMethodId)
       : MemberDecl(mods, name, nameToken),
         type_(type),
         params_(params),
-        body_(body) {}
+        body_(body),
+        mid_(mid) {}
 
   ACCEPT_VISITOR(MethodDecl, MemberDecl);
 
   VAL_GETTER(sptr<const Type>, TypePtr, type_);
   SPTR_GETTER(ParamList, Params, params_);
   SPTR_GETTER(Stmt, Body, body_);
+  VAL_GETTER(MethodId, GetMethodId, mid_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MethodDecl);
@@ -698,6 +725,7 @@ class MethodDecl : public MemberDecl {
   sptr<const Type> type_; // nullptr for constructors.
   sptr<const ParamList> params_;
   sptr<const Stmt> body_;
+  MethodId mid_;
 };
 
 enum class TypeKind {

@@ -43,6 +43,11 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(CallExpr, expr,) {
     Visit(expr.BasePtr());
+
+    if (expr.GetMethodId() != kUnassignedMethodId) {
+      *os_ << "#m" << expr.GetMethodId();
+    }
+
     *os_ << '(';
     PrintArgList(expr.Args());
     *os_ << ')';
@@ -69,7 +74,8 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(FieldDerefExpr, expr,) {
     Visit(expr.BasePtr());
-    *os_ << '.' << expr.FieldName();
+    *os_ << '.';
+    PrintFieldName(os_, expr.FieldName(), expr.GetFieldId());
     return VisitResult::SKIP;
   }
 
@@ -117,7 +123,11 @@ class PrintVisitor final : public Visitor {
   VISIT_DECL(NewClassExpr, expr,) {
     *os_ << "new<" << RepStr(NumDelimiters(), " ");
     expr.GetType().PrintTo(os_);
-    *os_ << RepStr(NumDelimiters(), " ") << ">(";
+    *os_ << ">";
+    if (expr.GetMethodId() != kUnassignedMethodId) {
+      *os_ << "#m" << expr.GetMethodId();
+    }
+    *os_ << "(";
     PrintArgList(expr.Args());
     *os_ << ")";
     return VisitResult::SKIP;
@@ -132,6 +142,11 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(ThisExpr, ,) {
     *os_ << "this";
+    return VisitResult::SKIP;
+  }
+
+  VISIT_DECL(StaticRefExpr, expr,) {
+    expr.GetRefType().PrintTo(os_);
     return VisitResult::SKIP;
   }
 
@@ -252,7 +267,7 @@ class PrintVisitor final : public Visitor {
     *os_ << RepStr(NumDelimiters(), " ");
     field.GetType().PrintTo(os_);
     *os_ << RepStr(NumDelimiters(1), " ");
-    *os_ << field.Name();
+    PrintFieldName(os_, field.Name(), field.GetFieldId());
     if (field.ValPtr() != nullptr) {
       *os_ << RepStr(NumDelimiters(), space_) << '='
            << RepStr(NumDelimiters(), space_);
@@ -270,7 +285,7 @@ class PrintVisitor final : public Visitor {
       meth.TypePtr()->PrintTo(os_);
       *os_ << RepStr(NumDelimiters(1), " ");
     }
-    *os_ << meth.Name();
+    PrintMethodName(os_, meth.Name(), meth.GetMethodId());
     *os_ << '(';
     Visit(meth.ParamsPtr());
     *os_ << ')' << RepStr(NumDelimiters(), space_);
@@ -374,6 +389,20 @@ class PrintVisitor final : public Visitor {
     *os << name;
     if (vid != kVarUnassigned) {
       *os << "#v" << vid;
+    }
+  }
+
+  void PrintFieldName(std::ostream* os, string name, FieldId fid) {
+    *os << name;
+    if (fid != kErrorFieldId) {
+      *os << "#f" << fid;
+    }
+  }
+
+  void PrintMethodName(std::ostream* os, string name, MethodId mid) {
+    *os << name;
+    if (mid != kErrorMethodId) {
+      *os << "#m" << mid;
     }
   }
 

@@ -29,7 +29,7 @@ Error* MakeMultipleTypesPerCompUnitError(const FileSet* fs, Token token) {
 
 VISIT_DEFN(StructureVisitor, Program, prog,) {
   // TODO: store fileid in CompUnit, and use that instead of this assertion.
-  assert(prog.CompUnits().Size() == fs_->Size());
+  CHECK(prog.CompUnits().Size() == fs_->Size());
 
   for (int i = 0; i < prog.CompUnits().Size(); ++i) {
     const File* file = fs_->Get(i);
@@ -45,7 +45,7 @@ VISIT_DEFN(StructureVisitor, Program, prog,) {
       continue;
     }
 
-    assert(unit->Types().Size() == 1);
+    CHECK(unit->Types().Size() == 1);
     string typeName = unit->Types().At(0)->Name();
     string expectedFilename = typeName + ".java";
 

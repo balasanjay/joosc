@@ -163,7 +163,7 @@ struct Parser {
   bool Failed() const { return failed_; }
 
   lexer::Token GetNext() const {
-    assert(!IsAtEnd());
+    CHECK(!IsAtEnd());
     return tokens_->at(index_);
   }
 

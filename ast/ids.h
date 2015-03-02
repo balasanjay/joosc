@@ -9,17 +9,19 @@ struct TypeId {
   static const Base kUnassignedBase = 0;
   static const Base kErrorBase = 1;
   static const Base kNullBase = 2;
-  static const Base kVoidBase = 3;
-  static const Base kBoolBase = 4;
-  static const Base kByteBase = 5;
-  static const Base kCharBase = 6;
-  static const Base kShortBase = 7;
-  static const Base kIntBase = 8;
+  static const Base kTypeBase = 3;
+  static const Base kVoidBase = 4;
+  static const Base kBoolBase = 5;
+  static const Base kByteBase = 6;
+  static const Base kCharBase = 7;
+  static const Base kShortBase = 8;
+  static const Base kIntBase = 9;
   static const Base kFirstRefTypeBase = 16;
 
   static const TypeId kUnassigned;
   static const TypeId kError;
   static const TypeId kNull;
+  static const TypeId kType;
   static const TypeId kVoid;
   static const TypeId kBool;
   static const TypeId kByte;
@@ -54,6 +56,17 @@ struct TypeId {
 using LocalVarId = u64;
 const LocalVarId kVarUnassigned = 0;
 const LocalVarId kVarFirst = 100;
+
+using MethodId = u64;
+const MethodId kUnassignedMethodId = 0;
+const MethodId kErrorMethodId = 1;
+const MethodId kFirstMethodId = 2;
+
+using FieldId = u64;
+const FieldId kErrorFieldId = 0;
+const FieldId kArrayLengthFieldId = 1;
+const FieldId kFirstFieldId = 10;
+
 
 } // namespace ast
 

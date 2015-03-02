@@ -13,26 +13,26 @@ namespace types {
 
 class TypeChecker final : public ast::Visitor {
  public:
-   TypeChecker(const base::FileSet* fs, base::ErrorList* errors) : TypeChecker(fs, errors, TypeSet::Empty(), TypeInfoMap::Empty()) {}
+   TypeChecker(const base::FileSet* fs, base::ErrorList* errors) : TypeChecker(fs, errors, TypeSet::Empty(), TypeInfoMap::Empty(fs)) {}
 
   TypeChecker WithTypeSet(const TypeSet& typeset) const {
-    assert(!belowCompUnit_);
+    CHECK(!belowCompUnit_);
     return TypeChecker(fs_, errors_, typeset, typeinfo_);
   }
 
   TypeChecker WithTypeInfoMap(const TypeInfoMap& typeinfo) const {
-    assert(!belowCompUnit_);
+    CHECK(!belowCompUnit_);
     return TypeChecker(fs_, errors_, typeset_, typeinfo);
   }
 
   TypeChecker InsideCompUnit(sptr<const ast::QualifiedName> package) const {
-    assert(!belowCompUnit_);
+    CHECK(!belowCompUnit_);
     return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package);
   }
 
   TypeChecker InsideTypeDecl(ast::TypeId curtype, const TypeSet& typeset) const {
-    assert(belowCompUnit_);
-    assert(!belowTypeDecl_);
+    CHECK(belowCompUnit_);
+    CHECK(!belowTypeDecl_);
     return TypeChecker(fs_, errors_, typeset, typeinfo_, true, package_, true, curtype);
   }
 
@@ -53,8 +53,8 @@ class TypeChecker final : public ast::Visitor {
       bool is_static,
       ast::TypeId cur_member_type = ast::TypeId::kError,
       const vector<VariableInfo>& paramInfos = {}) const {
-    assert(belowTypeDecl_);
-    assert(!belowMemberDecl_);
+    CHECK(belowTypeDecl_);
+    CHECK(!belowMemberDecl_);
 
     // Construct initial symbol table with params for this method.
     return TypeChecker(
@@ -67,13 +67,16 @@ class TypeChecker final : public ast::Visitor {
   REWRITE_DECL(ArrayIndexExpr, Expr, expr, exprptr);
   REWRITE_DECL(BinExpr, Expr, expr, exprptr);
   REWRITE_DECL(BoolLitExpr, Expr, expr, exprptr);
+  REWRITE_DECL(CallExpr, Expr, expr, exprptr);
   REWRITE_DECL(CastExpr, Expr, expr, exprptr);
   REWRITE_DECL(CharLitExpr, Expr, expr, exprptr);
   REWRITE_DECL(InstanceOfExpr, Expr, expr, exprptr);
   REWRITE_DECL(IntLitExpr, Expr, expr, exprptr);
   REWRITE_DECL(NameExpr, Expr, expr,);
   REWRITE_DECL(NewArrayExpr, Expr, expr, exprptr);
+  REWRITE_DECL(NewClassExpr, Expr, expr, exprptr);
   REWRITE_DECL(NullLitExpr, Expr, expr, exprptr);
+  REWRITE_DECL(FieldDerefExpr, Expr, expr,);
   REWRITE_DECL(ParenExpr, Expr, expr, exprptr);
   REWRITE_DECL(StringLitExpr, Expr, expr, exprptr);
   REWRITE_DECL(ThisExpr, Expr, expr, exprptr);

@@ -6,6 +6,7 @@
 #include <memory>
 #include <set>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -43,5 +44,9 @@ using sptr = std::shared_ptr<T>;
 #define DISALLOW_COPY_AND_ASSIGN(TypeName) \
   TypeName(const TypeName&) = delete;      \
   void operator=(const TypeName&) = delete
+
+#define CHECK(cond) { \
+  if (!(cond)) { throw std::logic_error(#cond); } \
+}
 
 #endif

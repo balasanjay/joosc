@@ -200,12 +200,12 @@ struct TokenTypeInfo {
   bool IsSkippable() const { return (kind_ & SKIPPABLE) == SKIPPABLE; }
   bool IsModifier() const { return (kind_ & MODIFIER) == MODIFIER; }
   Modifier GetModifier() const {
-    assert(IsModifier());
+    CHECK(IsModifier());
     return mod_;
   }
 
   int BinOpPrec() const {
-    assert(IsBinOp());
+    CHECK(IsBinOp());
     return precedence_;
   }
 

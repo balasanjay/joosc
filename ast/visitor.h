@@ -22,6 +22,7 @@ namespace ast {
   code(NewClassExpr, Expr, expr) \
   code(NullLitExpr, Expr, expr) \
   code(ParenExpr, Expr, expr) \
+  code(StaticRefExpr, Expr, expr) \
   code(StringLitExpr, Expr, expr) \
   code(ThisExpr, Expr, expr) \
   code(UnaryExpr, Expr, expr) \
@@ -52,13 +53,13 @@ class Visitor {
 public:
   template <typename T>
   auto WARN_UNUSED Rewrite(sptr<const T> t) -> decltype(t->Accept(this, t)) {
-    assert(t != nullptr);
+    CHECK(t != nullptr);
     return t->Accept(this, t);
   }
 
   template <typename T>
   void Visit(sptr<const T> t) {
-    assert(t == Rewrite(t));
+    CHECK(t == Rewrite(t));
   }
 
 #define _REWRITE_DECL(type, rettype, name) virtual sptr<const rettype> Rewrite##type(const type& name, sptr<const type> name##ptr);
