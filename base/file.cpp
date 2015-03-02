@@ -45,7 +45,7 @@ File::File(const string& path, u8* buf, int len)
       buf_(buf),
       len_(len),
       linestarts_(FindLineStarts(buf_, len_)) {
-  assert(buf != nullptr && len >= 0);
+  CHECK(buf != nullptr && len >= 0);
 }
 
 u8 File::At(int index) const {

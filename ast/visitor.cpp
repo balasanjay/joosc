@@ -461,7 +461,7 @@ REWRITE_DEFN(Visitor, Program, Program, prog, progptr) {
   if (result == VisitResult::SKIP) {
     return progptr;
   }
-  assert(result == VisitResult::RECURSE);
+  CHECK(result == VisitResult::RECURSE);
 
   bool unitsChanged = false;
   SharedPtrVector<const CompUnit> units = AcceptMulti(prog.CompUnits(), &unitsChanged);

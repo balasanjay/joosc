@@ -73,7 +73,7 @@ sptr<const Type> ResolveType(sptr<const Type> type, const TypeSet& typeset, Erro
   }
 
   // Arrays.
-  assert(IS_CONST_PTR(ArrayType, cur));
+  CHECK(IS_CONST_PTR(ArrayType, cur));
   const ArrayType* arr = dynamic_cast<const ArrayType*>(cur);
 
   sptr<const Type> nested = ResolveType(arr->ElemTypePtr(), typeset, errors);
