@@ -239,11 +239,13 @@ public:
   }
 
   bool IsAncestor(ast::TypeId child, ast::TypeId ancestor) const {
-    auto is_ancestor = inherit_map_.find(make_pair(child, ancestor));
-    if (is_ancestor != inherit_map_.end()) {
-      return is_ancestor->second;
+    auto ancestor_lookup = inherit_map_.find(make_pair(child, ancestor));
+    if (ancestor_lookup != inherit_map_.end()) {
+      return ancestor_lookup->second;
     }
-    return IsAncestorRec(child, ancestor);
+    bool is_ancestor = IsAncestorRec(child, ancestor);
+    inherit_map_.insert({make_pair(child, ancestor), is_ancestor});
+    return is_ancestor;
   }
 
 private:
@@ -275,9 +277,6 @@ private:
     }
     types::TypeIdList parents = Concat({tinfo.extends, tinfo.implements});
     for (int i = 0; i < parents.Size(); ++i) {
-      // Store this child-parent relationship as we search.
-      inherit_map_.insert({make_pair(child, parents.At(i)), true});
-
       // If this parent is the ancestor we're looking for, return immediately.
       if (parents.At(i) == ancestor) {
         return true;
@@ -289,8 +288,6 @@ private:
       }
     }
 
-    // Not an ancestor; cache this information.
-    inherit_map_.insert({make_pair(child, ancestor), false});
     return false;
   }
 
