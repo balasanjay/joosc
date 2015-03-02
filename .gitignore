@@ -1,12 +1,12 @@
 # All intermediate objects.
-.build
+/.build
 
 # All binaries.
-./joosc
-./test
+/joosc
+/test
 
 # Stuff.
-./tags
+/tags
 
 # Submission archive.
-./submit.zip
+/submit.zip
