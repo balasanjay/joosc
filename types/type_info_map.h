@@ -116,6 +116,8 @@ private:
 
   MethodTable() : all_blacklisted_(true) {}
 
+  bool IsBlacklisted(CallContext ctx, const string& name) const;
+
   base::Error* MakeUndefinedMethodError(MethodSignature sig, base::PosRange pos) const;
 
   base::Error* MakeInstanceMethodOnStaticError(base::PosRange pos) const;

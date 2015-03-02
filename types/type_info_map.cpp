@@ -671,7 +671,7 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
       for (int i = 0; i < typeinfo.extends.Size(); ++i) {
         TypeId extends_tid = typeinfo.extends.At(i);
         auto is_duplicate = already_extended.insert(extends_tid);
-        if (is_duplicate.second) {
+        if (!is_duplicate.second) {
           errors->Append(MakeDuplicateInheritanceError(fs, true, typeinfo.pos, typeinfo.type, extends_tid));
           bad_types->insert(type);
         }
@@ -851,13 +851,23 @@ bool TypeInfoMap::IsAncestorRec(TypeId child, TypeId ancestor) const {
   return false;
 }
 
+bool MethodTable::IsBlacklisted(CallContext ctx, const string& name) const {
+  if (all_blacklisted_) {
+    return true;
+  }
+  if (ctx == CallContext::CONSTRUCTOR) {
+    return has_bad_constructor_;
+  }
+  return bad_methods_.count(name) == 1;
+}
+
 MethodId MethodTable::ResolveCall(TypeId callerType, CallContext ctx, const TypeIdList& params, const string& method_name, PosRange pos, ErrorList* errors) const {
   // TODO: More things.
   MethodSignature sig = MethodSignature{(ctx == CallContext::CONSTRUCTOR), method_name, params};
   auto minfo = method_signatures_.find(sig);
   if (minfo == method_signatures_.end()) {
     // Only emit error if this isn't blacklisted.
-    if (bad_methods_.count(method_name) == 0) {
+    if (!IsBlacklisted(ctx, method_name)) {
       errors->Append(MakeUndefinedMethodError(sig, pos));
     }
     return kErrorMethodId;
@@ -914,7 +924,7 @@ FieldId FieldTable::ResolveAccess(TypeId callerType, CallContext ctx, string fie
   auto finfo = field_names_.find(field_name);
   if (finfo == field_names_.end()) {
     // Only emit error if this isn't blacklisted.
-    if (bad_fields_.count(field_name) == 0) {
+    if (!all_blacklisted_ && bad_fields_.count(field_name) == 0) {
       errors->Append(MakeUndefinedReferenceError(field_name, pos));
     }
     return kErrorFieldId;

@@ -57,7 +57,7 @@ Error* MakeDuplicateInheritanceError(const FileSet* fs, bool is_extends, PosRang
     ss << "implements";
   }
   ss << " " << inheriting_tid.base << " twice.";
-  return MakeSimplePosRangeError(fs, pos, "DuplicateInheritanceError", "Unknown type name.");
+  return MakeSimplePosRangeError(fs, pos, "DuplicateInheritanceError", ss.str());
 }
 
 sptr<const Type> ResolveType(sptr<const Type> type, const TypeSet& typeset, ErrorList* errors) {
