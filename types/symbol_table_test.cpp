@@ -32,7 +32,7 @@ class SymbolTableTest : public ::testing::Test {
     ASSERT_TRUE(base::FileSet::Builder().AddStringFile("Foo.java", "").Build(
         &fs, &errors_));
     fs_.reset(fs);
-    symbs_.reset(new SymbolTable(fs_.get(), paramInfos));
+    symbs_.reset(new SymbolTable(fs_.get(), paramInfos, &errors_));
   }
 
   base::ErrorList errors_;

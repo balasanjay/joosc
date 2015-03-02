@@ -15,7 +15,7 @@ using base::Error;
 using base::ErrorList;
 using base::PosRange;
 
-SymbolTable::SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& params)
+SymbolTable::SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& params, ErrorList* errors)
   : fs_(fs), cur_scope_len_(0), currently_declaring_(kVarUnassigned) {
   var_id_counter_ = kVarFirst;
   for (const VariableInfo& param : params) {
@@ -25,7 +25,10 @@ SymbolTable::SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& pa
       param.pos,
       var_id_counter_
     );
-    params_[var_info.name] = var_info;
+    auto inserted = params_.insert({var_info.name, var_info});
+    if (!inserted.second) {
+      errors->Append(MakeDuplicateVarDeclError(param.name, inserted.first->second.pos, param.pos));
+    }
     ++var_id_counter_;
   }
 }
