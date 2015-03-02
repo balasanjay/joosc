@@ -149,9 +149,9 @@ vector<CompileInput> GetBadInputs(const string& stdlib, const string& dir, Compi
   return GetInputs(stdlib, dir, stage, pred);
 }
 
-class CompilerSuccessTest2 : public testing::TestWithParam<CompileInput> {};
+class CompilerSuccessTest : public testing::TestWithParam<CompileInput> {};
 
-TEST_P(CompilerSuccessTest2, ShouldCompile) {
+TEST_P(CompilerSuccessTest, ShouldCompile) {
   vector<string> files;
   ASSERT_TRUE(GetParam().GetAllFiles(&files));
 
@@ -159,9 +159,9 @@ TEST_P(CompilerSuccessTest2, ShouldCompile) {
   ASSERT_TRUE(CompilerMain(GetParam().stage, files, &blackhole, &blackhole));
 }
 
-class CompilerFailureTest2 : public testing::TestWithParam<CompileInput> {};
+class CompilerFailureTest : public testing::TestWithParam<CompileInput> {};
 
-TEST_P(CompilerFailureTest2, ShouldNotCompile) {
+TEST_P(CompilerFailureTest, ShouldNotCompile) {
   vector<string> files;
   ASSERT_TRUE(GetParam().GetAllFiles(&files));
 
@@ -181,18 +181,18 @@ const static string kTest3 = "third_party/cs444/assignment_testcases/a3";
 const static string kTest4 = "third_party/cs444/assignment_testcases/a4";
 const static string kTest5 = "third_party/cs444/assignment_testcases/a5";
 
-INSTANTIATE_TEST_CASE_P(MarmosetA1, CompilerSuccessTest2,
+INSTANTIATE_TEST_CASE_P(MarmosetA1, CompilerSuccessTest,
     testing::ValuesIn(GetGoodInputs(
         kStdlib1, kTest1, CompilerStage::WEED)));
-INSTANTIATE_TEST_CASE_P(MarmosetA1, CompilerFailureTest2,
+INSTANTIATE_TEST_CASE_P(MarmosetA1, CompilerFailureTest,
     testing::ValuesIn(GetBadInputs(
         kStdlib1, kTest1, CompilerStage::WEED)));
 
 // TODO: enable.
-// INSTANTIATE_TEST_CASE_P(MarmosetA2, CompilerSuccessTest2,
+// INSTANTIATE_TEST_CASE_P(MarmosetA2, CompilerSuccessTest,
 //     testing::ValuesIn(GetGoodInputs(
 //         kStdlib2, kTest2, CompilerStage::TYPE_CHECK)));
-// INSTANTIATE_TEST_CASE_P(MarmosetA2, CompilerFailureTest2,
+// INSTANTIATE_TEST_CASE_P(MarmosetA2, CompilerFailureTest,
 //     testing::ValuesIn(GetBadInputs(
 //         kStdlib2, kTest2, CompilerStage::TYPE_CHECK)));
 
