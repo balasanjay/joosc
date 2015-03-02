@@ -208,13 +208,13 @@ struct TypeInfo {
 
 class TypeInfoMap {
 public:
-  static const TypeInfoMap& Empty() {
-    return kEmptyTypeInfoMap;
+  static const TypeInfoMap Empty(const base::FileSet* fs) {
+    return TypeInfoMap(fs, {});
   }
 
   const TypeInfo& LookupTypeInfo(ast::TypeId tid) const {
     if (tid.ndims > 0) {
-      return GetArrayInfoMap(fs_);
+      return kArrayTypeInfo;
     }
 
     const auto info = type_info_.find(tid);
@@ -226,32 +226,25 @@ private:
   using Map = map<ast::TypeId, TypeInfo>;
   friend class TypeInfoMapBuilder;
 
-  TypeInfoMap(const base::FileSet* fs, const Map& typeinfo) : fs_(fs), type_info_(typeinfo) {}
+  TypeInfoMap(const base::FileSet* fs, const Map& typeinfo) : fs_(fs), type_info_(typeinfo), kArrayTypeInfo(
+    TypeInfo{
+      MakeModifierList(false, false, false),
+      ast::TypeKind::CLASS,
+      ast::TypeId::kError,
+      "array",
+      base::PosRange(-1, -1, -1),
+      TypeIdList({}),
+      TypeIdList({}),
+      MethodTable({}, {}, false),
+      FieldTable(fs, {{"length", FieldInfo{kArrayLengthFieldId, ast::TypeId::kError, MakeModifierList(false, false, false), ast::TypeId::kInt, base::PosRange(-1, -1, -1), "length"}}}, {}),
+      0
+    }) {}
 
-  static const TypeInfo& GetArrayInfoMap(const base::FileSet* fs) {
-    if (kArrayTypeInfo == nullptr) {
-      kArrayTypeInfo.reset(new TypeInfo{
-        MakeModifierList(false, false, false),
-        ast::TypeKind::CLASS,
-        ast::TypeId::kError,
-        "array",
-        base::PosRange(-1, -1, -1),
-        TypeIdList({}),
-        TypeIdList({}),
-        MethodTable({}, {}, false),
-        FieldTable(fs, {{"length", FieldInfo{kArrayLengthFieldId, ast::TypeId::kError, MakeModifierList(false, false, false), ast::TypeId::kInt, base::PosRange(-1, -1, -1), "length"}}}, {}),
-        0
-      });
-    }
-    return *kArrayTypeInfo;
-  }
-
-  static TypeInfoMap kEmptyTypeInfoMap;
   static TypeInfo kErrorTypeInfo;
-  static uptr<TypeInfo> kArrayTypeInfo;
 
   const base::FileSet* fs_;
   Map type_info_;
+  TypeInfo kArrayTypeInfo;
 };
 
 class TypeInfoMapBuilder {

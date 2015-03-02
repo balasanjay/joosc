@@ -34,8 +34,6 @@ using lexer::Token;
 
 namespace types {
 
-uptr<TypeInfo> TypeInfoMap::kArrayTypeInfo;
-
 namespace {
 
 static PosRange kFakePos(-1, -1, -1);
@@ -97,8 +95,6 @@ ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract
   return mods;
 }
 
-// TODO: Don't empty fs ever.
-TypeInfoMap TypeInfoMap::kEmptyTypeInfoMap = TypeInfoMap(&FileSet::Empty(), {});
 TypeInfo TypeInfoMap::kErrorTypeInfo = TypeInfo{{}, TypeKind::CLASS, TypeId::kError, "", kFakePos, TypeIdList({}), TypeIdList({}), MethodTable::kErrorMethodTable, FieldTable::kErrorFieldTable, 0};
 
 MethodTable MethodTable::kEmptyMethodTable = MethodTable({}, {}, false);

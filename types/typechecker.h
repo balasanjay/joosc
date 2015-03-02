@@ -13,7 +13,7 @@ namespace types {
 
 class TypeChecker final : public ast::Visitor {
  public:
-   TypeChecker(const base::FileSet* fs, base::ErrorList* errors) : TypeChecker(fs, errors, TypeSet::Empty(), TypeInfoMap::Empty()) {}
+   TypeChecker(const base::FileSet* fs, base::ErrorList* errors) : TypeChecker(fs, errors, TypeSet::Empty(), TypeInfoMap::Empty(fs)) {}
 
   TypeChecker WithTypeSet(const TypeSet& typeset) const {
     assert(!belowCompUnit_);
