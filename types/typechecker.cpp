@@ -27,7 +27,7 @@ QualifiedName SliceFirstN(const QualifiedName& name, int n) {
   const vector<string>& old_parts = name.Parts();
   const vector<Token>& old_toks = name.Tokens();
 
-  assert(n > 0);
+  CHECK(n > 0);
 
   vector<string> parts;
   vector<Token> toks;
@@ -180,7 +180,7 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
     return make_shared<BinExpr>(lhs, expr.Op(), rhs, kStrType);
   }
 
-  assert(IsNumericOp(op));
+  CHECK(IsNumericOp(op));
   if (IsNumeric(lhsType) && IsNumeric(rhsType)) {
     return make_shared<BinExpr>(lhs, expr.Op(), rhs, TypeId::kInt);
   }
@@ -202,7 +202,7 @@ REWRITE_DEFN(TypeChecker, CallExpr, Expr, expr,) {
   const FieldDerefExpr* field_deref = dynamic_cast<const FieldDerefExpr*>(expr.BasePtr().get());
   const NameExpr* name_expr = dynamic_cast<const NameExpr*>(expr.BasePtr().get());
 
-  assert(field_deref != nullptr || name_expr != nullptr);
+  CHECK(field_deref != nullptr || name_expr != nullptr);
 
   // First, if we have a NameExpr with more than one part in its QualifiedName,
   // then we can immediately split it, and recurse on the result.
@@ -218,7 +218,7 @@ REWRITE_DEFN(TypeChecker, CallExpr, Expr, expr,) {
   // Now, we rewrite a single-token NameExpr to a CallExpr of a FieldDerefExpr
   // of a synthesized ThisExpr.
   if (name_expr != nullptr) {
-    assert(name_expr->Name().Parts().size() == 1);
+    CHECK(name_expr->Name().Parts().size() == 1);
     PosRange pos = name_expr->Name().Tokens().front().pos;
     sptr<const FieldDerefExpr> field_deref = make_shared<FieldDerefExpr>(
           MakeImplicitThis(pos, curtype_), name_expr->Name().Parts().front(), name_expr->Name().Tokens().front());
@@ -228,8 +228,8 @@ REWRITE_DEFN(TypeChecker, CallExpr, Expr, expr,) {
 
   // Finally, we are guaranteed that we can only be dealing with a
   // FieldDerefExpr.
-  assert(name_expr == nullptr);
-  assert(field_deref != nullptr);
+  CHECK(name_expr == nullptr);
+  CHECK(field_deref != nullptr);
 
   sptr<const Expr> lhs = Rewrite(field_deref->BasePtr());
 
@@ -298,7 +298,7 @@ REWRITE_DEFN(TypeChecker, NewClassExpr, Expr, expr,) {
   const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(tid);
 
   const ReferenceType* ref_type = dynamic_cast<const ReferenceType*>(type.get());
-  assert(ref_type != nullptr);
+  CHECK(ref_type != nullptr);
 
   MethodId mid = tinfo.methods.ResolveCall(curtype_, cc, TypeIdList(arg_tids), tinfo.name, ref_type->Name().Tokens().back().pos, errors_);
   if (mid == kErrorMethodId) {
@@ -386,18 +386,18 @@ sptr<const Expr> SplitQualifiedToFieldDerefs(
     sptr<const Expr> base, const QualifiedName& name, int start_idx) {
   const vector<string> parts = name.Parts();
   const vector<Token> toks = name.Tokens();
-  assert(start_idx > 0);
+  CHECK(start_idx > 0);
 
   // If they want to split past-the-end, then just use the base.
   if ((uint)start_idx == parts.size()) {
     return base;
   }
 
-  assert((uint)start_idx < parts.size());
+  CHECK((uint)start_idx < parts.size());
 
   // Parts includes the dots between tokens; quickly validate this assumption
   // holds.
-  assert(((parts.size() - 1) * 2) + 1 == toks.size());
+  CHECK(((parts.size() - 1) * 2) + 1 == toks.size());
 
   sptr<const Expr> cur_base = base;
   for (uint i = (uint)start_idx; i < parts.size(); ++i) {
@@ -416,8 +416,8 @@ REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr, exprptr) {
 
   const vector<string> parts = expr.Name().Parts();
   const vector<Token> toks = expr.Name().Tokens();
-  assert(parts.size() > 0);
-  assert(belowTypeDecl_);
+  CHECK(parts.size() > 0);
+  CHECK(belowTypeDecl_);
 
   // First, try resolving it as a local variable or a param.
   {
@@ -545,7 +545,7 @@ REWRITE_DEFN(TypeChecker, UnaryExpr, Expr, expr, exprptr) {
     return make_shared<UnaryExpr>(expr.Op(), rhs, TypeId::kInt);
   }
 
-  assert(op == lexer::NOT);
+  CHECK(op == lexer::NOT);
   TypeId expected = TypeId::kBool;
   if (rhsType != expected) {
     errors_->Append(MakeUnaryNonBoolError(rhsType, ExtentOf(exprptr)));
@@ -652,7 +652,7 @@ REWRITE_DEFN(TypeChecker, ReturnStmt, Stmt, stmt,) {
     exprType = expr->GetTypeId();
   }
 
-  assert(belowMemberDecl_);
+  CHECK(belowMemberDecl_);
   if (!IsAssignable(curMemberType_, exprType)) {
     errors_->Append(MakeInvalidReturnError(curMemberType_, exprType, stmt.ReturnToken().pos));
     return nullptr;
@@ -715,7 +715,7 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
     rettype = decl.TypePtr()->GetTypeId();
 
     // This should have been pruned by previous pass if the type is invalid.
-    assert(!rettype.IsError());
+    CHECK(!rettype.IsError());
   }
 
   // Create a sub-visitor that has the method info, and let it rewrite this
@@ -752,7 +752,7 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
 REWRITE_DEFN(TypeChecker, Param, Param, param,) {
   LocalVarId vid;
   std::tie(std::ignore, vid) = symbol_table_.ResolveLocal(param.Name(), param.NameToken().pos, errors_);
-  assert(vid != kVarUnassigned);
+  CHECK(vid != kVarUnassigned);
   return make_shared<Param>(param.GetTypePtr(), param.Name(), param.NameToken(), vid);
 }
 
@@ -768,7 +768,7 @@ REWRITE_DEFN(TypeChecker, TypeDecl, TypeDecl, type, typeptr) {
 
   TypeSet scoped_typeset = typeset_.WithType(type.Name(), type.NameToken().pos, errors_);
   TypeId curtid = scoped_typeset.TryGet(type.Name());
-  assert(!curtid.IsError()); // Pruned in DeclResolver.
+  CHECK(!curtid.IsError()); // Pruned in DeclResolver.
 
   TypeChecker below = InsideTypeDecl(curtid, scoped_typeset);
   return below.Rewrite(typeptr);

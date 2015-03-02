@@ -80,14 +80,14 @@ TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
       if (ndups == 1) {
         return;
       }
-      assert(ndups > 1);
+      CHECK(ndups > 1);
 
       vector<PosRange> defs;
       for (auto cur = start; cur != end; ++cur) {
         defs.push_back(cur->second);
       }
 
-      assert(defs.size() == (size_t)ndups);
+      CHECK(defs.size() == (size_t)ndups);
 
       string without_prefix = start->first.substr(TypeSetImpl::kPkgPrefixLen+1);
       stringstream msgstream;
@@ -109,7 +109,7 @@ TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
       return;
     }
     auto iterok = out->insert(name);
-    assert(iterok.second);
+    CHECK(iterok.second);
   };
 
   for (const auto& type : declared_types) {

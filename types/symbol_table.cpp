@@ -31,7 +31,7 @@ SymbolTable::SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& pa
 }
 
 LocalVarId SymbolTable::DeclareLocalStart(ast::TypeId tid, const string& name, PosRange name_pos, ErrorList* errors) {
-  assert(currently_declaring_ == kVarUnassigned);
+  CHECK(currently_declaring_ == kVarUnassigned);
 
   // Check if already defined (not as a parameter).
   auto previousDef = cur_symbols_.find(name);
@@ -95,13 +95,13 @@ void SymbolTable::EnterScope() {
 }
 
 void SymbolTable::LeaveScope() {
-  assert(scopes_.size() >= cur_scope_len_
+  CHECK(scopes_.size() >= cur_scope_len_
       && !scope_lengths_.empty());
   for (u32 i = 0; i < cur_scope_len_; ++i) {
     string name = scopes_.back();
     scopes_.pop_back();
     auto found = cur_symbols_.find(name);
-    assert(found != cur_symbols_.end());
+    CHECK(found != cur_symbols_.end());
     cur_symbols_.erase(found);
   }
   cur_scope_len_ = scope_lengths_.back();

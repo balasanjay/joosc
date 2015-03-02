@@ -1,8 +1,6 @@
 #ifndef BASE_SHARED_PTR_VECTOR
 #define BASE_SHARED_PTR_VECTOR
 
-#include <cassert>
-
 namespace base {
 
 template <typename T>
@@ -24,7 +22,7 @@ class SharedPtrVector {
   sptr<T> At(int i) const { return vec_.at(i); }
 
   // Adds t to the vector; takes ownership of t.
-  void Append(sptr<T> t) { assert(t != nullptr); vec_.push_back(t); }
+  void Append(sptr<T> t) { CHECK(t != nullptr); vec_.push_back(t); }
 
   sptr<T> PopBack() {
     sptr<T> ret = vec_.at(vec_.size() - 1);
@@ -59,12 +57,12 @@ class SharedPtrVectorIter : public std::iterator<std::forward_iterator_tag, T> {
     }
 
     const T& operator*() const {
-      assert(vec_ != nullptr);
+      CHECK(vec_ != nullptr);
       return *(vec_->At(idx_));
     }
 
     const T* operator->() const {
-      assert(vec_ != nullptr);
+      CHECK(vec_ != nullptr);
       return vec_->Get(idx_);
     }
 

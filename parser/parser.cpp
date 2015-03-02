@@ -109,7 +109,7 @@ sptr<const Expr> FixPrecedence(const SharedPtrVector<const Expr>& owned_exprs,
     exprs.push_back(owned_exprs.At(i));
   }
 
-  assert(exprs.size() == ops.size() + 1);
+  CHECK(exprs.size() == ops.size() + 1);
 
   uint i = 0;
   while (i < exprs.size() + ops.size() || opstack.size() > 0) {
@@ -123,7 +123,7 @@ sptr<const Expr> FixPrecedence(const SharedPtrVector<const Expr>& owned_exprs,
       }
 
       // Op off input.
-      assert(i % 2 == 1);
+      CHECK(i % 2 == 1);
       Token op = ops.at(i / 2);
 
       if (opstack.empty() || (op.type == ASSG &&
@@ -138,7 +138,7 @@ sptr<const Expr> FixPrecedence(const SharedPtrVector<const Expr>& owned_exprs,
       }
     }
 
-    assert(outstack.size() >= 2);
+    CHECK(outstack.size() >= 2);
 
     sptr<const Expr> rhs = *outstack.rbegin();
     sptr<const Expr> lhs = *(outstack.rbegin() + 1);
@@ -151,8 +151,8 @@ sptr<const Expr> FixPrecedence(const SharedPtrVector<const Expr>& owned_exprs,
     outstack.push_back(make_shared<BinExpr>(lhs, nextop, rhs));
   }
 
-  assert(outstack.size() == 1);
-  assert(opstack.size() == 0);
+  CHECK(outstack.size() == 1);
+  CHECK(opstack.size() == 0);
   return outstack.at(0);
 }
 
@@ -166,8 +166,8 @@ string TokenString(const File* file, Token token) {
 
 QualifiedName MakeQualifiedName(const File* file,
                                 const vector<Token>& tokens) {
-  assert(tokens.size() > 0);
-  assert((tokens.size() - 1) % 2 == 0);
+  CHECK(tokens.size() > 0);
+  CHECK((tokens.size() - 1) % 2 == 0);
 
   stringstream fullname;
   vector<string> parts;
@@ -200,7 +200,7 @@ bool HasPrimitive(const Type& type) {
     }
 
     // Primitive types.
-    assert(IS_CONST_PTR(PrimitiveType, cur));
+    CHECK(IS_CONST_PTR(PrimitiveType, cur));
     return true;
   }
 }
@@ -568,7 +568,7 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
     return afterCall.Success(newExpr, out);
   }
 
-  assert(afterType.IsNext(LBRACK));
+  CHECK(afterType.IsNext(LBRACK));
   Result<Token> lbrack;
   sptr<const Expr> sizeExpr = nullptr;
   Result<Token> rbrack;
@@ -634,7 +634,7 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
       case STRING:
         return after.Success(new StringLitExpr(lit), out);
       default:
-        throw;
+        CHECK(false);
     }
   }
 
@@ -1559,7 +1559,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
 sptr<const Program> Parse(const FileSet* fs,
                           const vector<vector<lexer::Token>>& tokens,
                           ErrorList* error_out) {
-  assert((uint)fs->Size() == tokens.size());
+  CHECK((uint)fs->Size() == tokens.size());
 
   SharedPtrVector<const CompUnit> units;
   bool failed = false;
