@@ -127,8 +127,8 @@ bool TypeChecker::IsReferenceWidening(TypeId lhs, TypeId rhs) const {
     return true;
   }
 
-  // TODO: Handle reference types correctly.
-  return false;
+  // Do memoized inheritance check.
+  return typeinfo_.IsAncestor(rhs, lhs);
 }
 
 bool TypeChecker::IsAssignable(TypeId lhs, TypeId rhs) const {
