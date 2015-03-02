@@ -272,6 +272,40 @@ REWRITE_DEFN(TypeChecker, CallExpr, Expr, expr,) {
   return make_shared<CallExpr>(lhs, expr.Lparen(), args, expr.Rparen(), mid, minfo.return_type);
 }
 
+REWRITE_DEFN(TypeChecker, NewClassExpr, Expr, expr,) {
+  sptr<const Type> type = MustResolveType(expr.GetTypePtr());
+
+  // Rewrite args.
+  base::SharedPtrVector<const Expr> args;
+  vector<TypeId> arg_tids;
+  for (int i = 0; i < expr.Args().Size(); ++i) {
+    sptr<const Expr> old_arg = expr.Args().At(i);
+    sptr<const Expr> new_arg = Rewrite(old_arg);
+
+    if (new_arg != nullptr) {
+      args.Append(new_arg);
+      arg_tids.push_back(new_arg->GetTypeId());
+    }
+  }
+
+  if (type == nullptr || expr.Args().Size() != args.Size()) {
+    return nullptr;
+  }
+
+  CallContext cc = CallContext::CONSTRUCTOR;
+  TypeId tid = type->GetTypeId();
+
+  const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(tid);
+
+  MethodId mid = tinfo.methods.ResolveCall(curtype_, cc, TypeIdList(arg_tids), tinfo.name, errors_);
+  if (mid == kErrorMethodId) {
+    return nullptr;
+  }
+
+  const MethodInfo& minfo = tinfo.methods.LookupMethod(mid);
+  return make_shared<NewClassExpr>(expr.NewToken(), type, expr.Lparen(), expr.Args(), expr.Rparen(), minfo.return_type);
+}
+
 REWRITE_DEFN(TypeChecker, CastExpr, Expr, expr, exprptr) {
   sptr<const Expr> castedExpr = Rewrite(expr.GetExprPtr());
   sptr<const Type> type = MustResolveType(expr.GetTypePtr());
