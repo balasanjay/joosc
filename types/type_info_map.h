@@ -8,6 +8,7 @@
 #include "ast/ids.h"
 #include "base/errorlist.h"
 #include "base/fileset.h"
+#include "types/typeset.h"
 
 namespace types {
 
@@ -238,15 +239,7 @@ public:
     return info->second;
   }
 
-  bool IsAncestor(ast::TypeId child, ast::TypeId ancestor) const {
-    auto ancestor_lookup = inherit_map_.find(make_pair(child, ancestor));
-    if (ancestor_lookup != inherit_map_.end()) {
-      return ancestor_lookup->second;
-    }
-    bool is_ancestor = IsAncestorRec(child, ancestor);
-    inherit_map_.insert({make_pair(child, ancestor), is_ancestor});
-    return is_ancestor;
-  }
+  bool IsAncestor(ast::TypeId child, ast::TypeId ancestor) const;
 
 private:
   friend class TypeInfoMapBuilder;
@@ -269,28 +262,7 @@ private:
       0
     }) {}
 
-  bool IsAncestorRec(ast::TypeId child, ast::TypeId ancestor) const {
-    const TypeInfo& tinfo = LookupTypeInfo(child);
-    if (tinfo.type == ast::TypeId::kError) {
-      // If blacklisted, allow any inheritance check.
-      return true;
-    }
-    types::TypeIdList parents = Concat({tinfo.extends, tinfo.implements});
-    for (int i = 0; i < parents.Size(); ++i) {
-      // If this parent is the ancestor we're looking for, return immediately.
-      if (parents.At(i) == ancestor) {
-        return true;
-      }
-
-      // Recurse using the cached/memoized lookup on our parents.
-      if (IsAncestor(parents.At(i), ancestor)) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
+  bool IsAncestorRec(ast::TypeId child, ast::TypeId ancestor) const;
 
   static TypeInfo kErrorTypeInfo;
 
@@ -317,7 +289,7 @@ public:
     field_entries_.insert({curtid, FieldInfo{kErrorFieldId, curtid, field.Mods(), tid, field.NameToken().pos, field.Name()}});
   }
 
-  TypeInfoMap Build(base::ErrorList* out);
+  TypeInfoMap Build(const TypeSet& typeset, base::ErrorList* out);
 
 private:
   using MInfoIter = vector<MethodInfo>::iterator;
@@ -331,8 +303,9 @@ private:
 
   void BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInfo* tinfo, FieldId* cur_fid, const map<ast::TypeId, TypeInfo>& sofar, base::ErrorList* out);
 
-  void ValidateExtendsImplementsGraph(map<ast::TypeId, TypeInfo>* m, set<ast::TypeId>* bad, base::ErrorList* errors);
+  void ValidateExtendsImplementsGraph(const TypeSet& typeset, map<ast::TypeId, TypeInfo>* m, set<ast::TypeId>* bad, base::ErrorList* errors);
   void PruneInvalidGraphEdges(const map<ast::TypeId, TypeInfo>&, set<ast::TypeId>*, base::ErrorList*);
+  void IntroduceImplicitGraphEdges(const TypeSet& typeset, const set<ast::TypeId>& bad, map<ast::TypeId, TypeInfo>* types);
   vector<ast::TypeId> VerifyAcyclicGraph(const multimap<ast::TypeId, ast::TypeId>&, set<ast::TypeId>*, std::function<void(const vector<ast::TypeId>&)>);
 
   base::Error* MakeConstructorNameError(base::PosRange pos) const;

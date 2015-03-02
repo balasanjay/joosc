@@ -527,7 +527,7 @@ void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInf
   tinfo->fields = FieldTable(fs, new_good_fields, new_bad_fields);
 }
 
-TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
+TypeInfoMap TypeInfoMapBuilder::Build(const TypeSet& typeset, base::ErrorList* out) {
   map<TypeId, TypeInfo> typeinfo;
   vector<TypeId> all_types;
   set<TypeId> cycle_bad_types;
@@ -538,7 +538,7 @@ TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
     all_types.push_back(entry.type);
   }
 
-  ValidateExtendsImplementsGraph(&typeinfo, &cycle_bad_types, out);
+  ValidateExtendsImplementsGraph(typeset, &typeinfo, &cycle_bad_types, out);
 
   // Sort TypeId vector by the topological ordering of the types.
   {
@@ -590,7 +590,7 @@ TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
   return TypeInfoMap(fs_, typeinfo);
 }
 
-void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(map<TypeId, TypeInfo>* types, set<TypeId>* bad, ErrorList* errors) {
+void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(const TypeSet& typeset, map<TypeId, TypeInfo>* types, set<TypeId>* bad, ErrorList* errors) {
   using IdInfoMap = map<TypeId, TypeInfo>;
 
   // Bind a reference to make the code more readable.
@@ -600,6 +600,9 @@ void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(map<TypeId, TypeInfo>* t
   // Ensure that we blacklist any classes that introduce invalid edges into the
   // graph.
   PruneInvalidGraphEdges(all_types, &bad_types, errors);
+
+  // Make every class and interface extend Object.
+  IntroduceImplicitGraphEdges(typeset, bad_types, &all_types);
 
   // Now build a combined graph of edges.
   multimap<TypeId, TypeId> edges;
@@ -692,6 +695,40 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
   }
 }
 
+void TypeInfoMapBuilder::IntroduceImplicitGraphEdges(const TypeSet& typeset, const set<TypeId>& bad, map<TypeId, TypeInfo>* types) {
+  using IdInfoMap = map<TypeId, TypeInfo>;
+
+  // Bind a reference to make the code more readable.
+  IdInfoMap& all_types = *types;
+
+  TypeId object = typeset.TryGet("java.lang.Object");
+  CHECK(object.IsValid());
+
+  for (auto& tid_tinfo_iter : all_types) {
+    TypeId tid = tid_tinfo_iter.first;
+    TypeInfo& tinfo = tid_tinfo_iter.second;
+
+    // Do nothing for already blacklisted types.
+    if (bad.count(tid) == 1) {
+      continue;
+    }
+
+    // We don't insert implicit edges for Object.
+    if (tid == object) {
+      // TODO: validate that object has no fields.
+      continue;
+    }
+
+    // If the type is already extending things then do nothing. They'll get
+    // the implicit edge indirectly.
+    if (tinfo.extends.Size() > 0) {
+      continue;
+    }
+
+    tinfo.extends = TypeIdList({object});
+  }
+}
+
 vector<TypeId> TypeInfoMapBuilder::VerifyAcyclicGraph(const multimap<TypeId, TypeId>& edges, set<TypeId>* bad_types, function<void(const vector<TypeId>& cycle)> cb) {
   // Both of these store different representations of the current recursion
   // path.
@@ -767,6 +804,38 @@ vector<TypeId> TypeInfoMapBuilder::VerifyAcyclicGraph(const multimap<TypeId, Typ
   }
 
   return sorted;
+}
+
+bool TypeInfoMap::IsAncestor(TypeId child, TypeId ancestor) const {
+  auto ancestor_lookup = inherit_map_.find(make_pair(child, ancestor));
+  if (ancestor_lookup != inherit_map_.end()) {
+    return ancestor_lookup->second;
+  }
+  bool is_ancestor = IsAncestorRec(child, ancestor);
+  inherit_map_.insert({make_pair(child, ancestor), is_ancestor});
+  return is_ancestor;
+}
+
+bool TypeInfoMap::IsAncestorRec(TypeId child, TypeId ancestor) const {
+  const TypeInfo& tinfo = LookupTypeInfo(child);
+  if (tinfo.type == ast::TypeId::kError) {
+    // If blacklisted, allow any inheritance check.
+    return true;
+  }
+  types::TypeIdList parents = Concat({tinfo.extends, tinfo.implements});
+  for (int i = 0; i < parents.Size(); ++i) {
+    // If this parent is the ancestor we're looking for, return immediately.
+    if (parents.At(i) == ancestor) {
+      return true;
+    }
+
+    // Recurse using the cached/memoized lookup on our parents.
+    if (IsAncestor(parents.At(i), ancestor)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 MethodId MethodTable::ResolveCall(TypeId callerType, CallContext ctx, const TypeIdList& params, const string& method_name, PosRange pos, ErrorList* errors) const {
