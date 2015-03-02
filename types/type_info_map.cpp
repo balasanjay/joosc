@@ -273,9 +273,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
     for (const auto& psig_pair : pinfo.methods.method_signatures_) {
       const MethodSignature& psig = psig_pair.first;
-      const MethodInfo& implicit_pminfo = psig_pair.second;
-      // Make all implicit modifiers explicit.
-      const MethodInfo pminfo = FixMods(pinfo, implicit_pminfo);
+      const MethodInfo& pminfo = psig_pair.second;
 
       // Skip constructors since they are not inherited.
       if (psig.is_constructor) {
@@ -298,9 +296,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
         continue;
       }
 
-      const MethodInfo& implicit_mminfo = msig_pair->second;
-      // Make all implicit modifiers explicit.
-      const MethodInfo mminfo = FixMods(*tinfo, implicit_mminfo);
+      const MethodInfo& mminfo = msig_pair->second;
 
       // We cannot inherit methods of the same signature but differing return
       // types.
@@ -564,7 +560,7 @@ TypeInfoMap TypeInfoMapBuilder::Build(const TypeSet& typeset, base::ErrorList* o
         auto iter_pair = method_entries_.equal_range(type_id);
         vector<MethodInfo> methods;
         for (auto cur = iter_pair.first; cur != iter_pair.second; ++cur) {
-          methods.push_back(cur->second);
+          methods.push_back(FixMods(*tinfo, cur->second));
         }
 
         BuildMethodTable(methods.begin(), methods.end(), tinfo, &cur_mid, typeinfo, cycle_bad_types, &parent_bad_types, out);
