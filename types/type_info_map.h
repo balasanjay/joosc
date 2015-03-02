@@ -214,8 +214,23 @@ public:
 
   const TypeInfo& LookupTypeInfo(ast::TypeId tid) const {
     if (tid.ndims > 0) {
-      // TODO: Don't leak this.
-      TypeInfo* ainfo = new TypeInfo{
+      return GetArrayInfoMap(fs_);
+    }
+
+    const auto info = type_info_.find(tid);
+    assert(info != type_info_.cend());
+    return info->second;
+  }
+
+private:
+  using Map = map<ast::TypeId, TypeInfo>;
+  friend class TypeInfoMapBuilder;
+
+  TypeInfoMap(const base::FileSet* fs, const Map& typeinfo) : fs_(fs), type_info_(typeinfo) {}
+
+  static const TypeInfo& GetArrayInfoMap(const base::FileSet* fs) {
+    if (kArrayTypeInfo == nullptr) {
+      kArrayTypeInfo.reset(new TypeInfo{
         MakeModifierList(false, false, false),
         ast::TypeKind::CLASS,
         ast::TypeId::kError,
@@ -224,27 +239,16 @@ public:
         TypeIdList({}),
         TypeIdList({}),
         MethodTable({}, {}, false),
-        FieldTable(fs_, {{"length", FieldInfo{kArrayLengthFieldId, ast::TypeId::kError, MakeModifierList(false, false, false), ast::TypeId::kInt, base::PosRange(-1, -1, -1), "length"}}}, {}),
+        FieldTable(fs, {{"length", FieldInfo{kArrayLengthFieldId, ast::TypeId::kError, MakeModifierList(false, false, false), ast::TypeId::kInt, base::PosRange(-1, -1, -1), "length"}}}, {}),
         0
-      };
-      return *ainfo;
+      });
     }
-
-    const auto info = type_info_.find(tid);
-    assert(info != type_info_.cend());
-    return info->second;
+    return *kArrayTypeInfo;
   }
-
-  static const TypeInfo kArrayInfo;
-
-private:
-  using Map = map<ast::TypeId, TypeInfo>;
-  friend class TypeInfoMapBuilder;
-
-  TypeInfoMap(const base::FileSet* fs, const Map& typeinfo) : fs_(fs), type_info_(typeinfo) {}
 
   static TypeInfoMap kEmptyTypeInfoMap;
   static TypeInfo kErrorTypeInfo;
+  static uptr<TypeInfo> kArrayTypeInfo;
 
   const base::FileSet* fs_;
   Map type_info_;

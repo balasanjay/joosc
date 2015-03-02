@@ -34,6 +34,8 @@ using lexer::Token;
 
 namespace types {
 
+uptr<TypeInfo> TypeInfoMap::kArrayTypeInfo;
+
 namespace {
 
 static PosRange kFakePos(-1, -1, -1);
