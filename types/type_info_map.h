@@ -75,7 +75,7 @@ struct MethodInfo {
 
 class MethodTable {
 public:
-  MethodId ResolveCall(ast::TypeId callerType, CallContext ctx, const TypeIdList& params, const string& name, base::ErrorList* out) const;
+  MethodId ResolveCall(ast::TypeId callerType, CallContext ctx, const TypeIdList& params, const string& method_name, base::PosRange pos, base::ErrorList* out) const;
 
   // Given a valid MethodId, return all the associated info about it.
   const MethodInfo& LookupMethod(MethodId mid) const {
@@ -102,7 +102,7 @@ private:
   using MethodSignatureMap = std::map<MethodSignature, MethodInfo>;
   using MethodInfoMap = std::map<MethodId, MethodInfo>;
 
-  MethodTable(const MethodSignatureMap& entries, const set<string>& bad_methods, bool has_bad_constructor) : method_signatures_(entries), has_bad_constructor_(has_bad_constructor), bad_methods_(bad_methods) {
+  MethodTable(const base::FileSet* fs, const MethodSignatureMap& entries, const set<string>& bad_methods, bool has_bad_constructor) : fs_(fs), method_signatures_(entries), has_bad_constructor_(has_bad_constructor), bad_methods_(bad_methods) {
     for (const auto& entry : entries) {
       method_info_.insert({entry.second.mid, entry.second});
     }
@@ -110,10 +110,13 @@ private:
 
   MethodTable() : all_blacklisted_(true) {}
 
+  base::Error* MakeUndefinedMethodError(MethodSignature sig, base::PosRange pos) const;
+
   static MethodTable kEmptyMethodTable;
   static MethodTable kErrorMethodTable;
   static MethodInfo kErrorMethodInfo;
 
+  const base::FileSet* fs_;
   MethodSignatureMap method_signatures_;
   MethodInfoMap method_info_;
 
@@ -235,7 +238,7 @@ private:
       base::PosRange(-1, -1, -1),
       TypeIdList({}),
       TypeIdList({}),
-      MethodTable({}, {}, false),
+      MethodTable(fs, {}, {}, false),
       FieldTable(fs, {{"length", FieldInfo{kArrayLengthFieldId, ast::TypeId::kError, MakeModifierList(false, false, false), ast::TypeId::kInt, base::PosRange(-1, -1, -1), "length"}}}, {}),
       0
     }) {}

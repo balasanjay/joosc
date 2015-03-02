@@ -116,7 +116,11 @@ class PrintVisitor final : public Visitor {
   VISIT_DECL(NewClassExpr, expr,) {
     *os_ << "new<";
     expr.GetType().PrintTo(os_);
-    *os_ << ">#m" << expr.GetMethodId() << "(";
+    *os_ << ">";
+    if (expr.GetMethodId() != kUnassignedMethodId) {
+      *os_ << "#m" << expr.GetMethodId();
+    }
+    *os_ << "(";
     PrintArgList(expr.Args());
     *os_ << ")";
     return VisitResult::SKIP;

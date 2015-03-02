@@ -263,7 +263,7 @@ REWRITE_DEFN(TypeChecker, CallExpr, Expr, expr,) {
 
   const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(lhs_tid);
 
-  MethodId mid = tinfo.methods.ResolveCall(curtype_, cc, TypeIdList(arg_tids), field_deref->FieldName(), errors_);
+  MethodId mid = tinfo.methods.ResolveCall(curtype_, cc, TypeIdList(arg_tids), field_deref->FieldName(), field_deref->GetToken().pos, errors_);
   if (mid == kErrorMethodId) {
     return nullptr;
   }
@@ -297,7 +297,10 @@ REWRITE_DEFN(TypeChecker, NewClassExpr, Expr, expr,) {
 
   const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(tid);
 
-  MethodId mid = tinfo.methods.ResolveCall(curtype_, cc, TypeIdList(arg_tids), tinfo.name, errors_);
+  const ReferenceType* ref_type = dynamic_cast<const ReferenceType*>(type.get());
+  assert(ref_type != nullptr);
+
+  MethodId mid = tinfo.methods.ResolveCall(curtype_, cc, TypeIdList(arg_tids), tinfo.name, ref_type->Name().Tokens().back().pos, errors_);
   if (mid == kErrorMethodId) {
     return nullptr;
   }
