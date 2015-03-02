@@ -239,15 +239,7 @@ public:
     return info->second;
   }
 
-  bool IsAncestor(ast::TypeId child, ast::TypeId ancestor) const {
-    auto ancestor_lookup = inherit_map_.find(make_pair(child, ancestor));
-    if (ancestor_lookup != inherit_map_.end()) {
-      return ancestor_lookup->second;
-    }
-    bool is_ancestor = IsAncestorRec(child, ancestor);
-    inherit_map_.insert({make_pair(child, ancestor), is_ancestor});
-    return is_ancestor;
-  }
+  bool IsAncestor(ast::TypeId child, ast::TypeId ancestor) const;
 
 private:
   friend class TypeInfoMapBuilder;
@@ -270,28 +262,7 @@ private:
       0
     }) {}
 
-  bool IsAncestorRec(ast::TypeId child, ast::TypeId ancestor) const {
-    const TypeInfo& tinfo = LookupTypeInfo(child);
-    if (tinfo.type == ast::TypeId::kError) {
-      // If blacklisted, allow any inheritance check.
-      return true;
-    }
-    types::TypeIdList parents = Concat({tinfo.extends, tinfo.implements});
-    for (int i = 0; i < parents.Size(); ++i) {
-      // If this parent is the ancestor we're looking for, return immediately.
-      if (parents.At(i) == ancestor) {
-        return true;
-      }
-
-      // Recurse using the cached/memoized lookup on our parents.
-      if (IsAncestor(parents.At(i), ancestor)) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
+  bool IsAncestorRec(ast::TypeId child, ast::TypeId ancestor) const;
 
   static TypeInfo kErrorTypeInfo;
 

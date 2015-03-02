@@ -127,7 +127,7 @@ bool TypeChecker::IsReferenceWidening(TypeId lhs, TypeId rhs) const {
     return true;
   }
 
-  // Do memoized inheritance check.
+  // Check if rhs is an ancestor of lhs.
   return typeinfo_.IsAncestor(rhs, lhs);
 }
 

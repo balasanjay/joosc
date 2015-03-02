@@ -806,6 +806,38 @@ vector<TypeId> TypeInfoMapBuilder::VerifyAcyclicGraph(const multimap<TypeId, Typ
   return sorted;
 }
 
+bool TypeInfoMap::IsAncestor(TypeId child, TypeId ancestor) const {
+  auto ancestor_lookup = inherit_map_.find(make_pair(child, ancestor));
+  if (ancestor_lookup != inherit_map_.end()) {
+    return ancestor_lookup->second;
+  }
+  bool is_ancestor = IsAncestorRec(child, ancestor);
+  inherit_map_.insert({make_pair(child, ancestor), is_ancestor});
+  return is_ancestor;
+}
+
+bool TypeInfoMap::IsAncestorRec(TypeId child, TypeId ancestor) const {
+  const TypeInfo& tinfo = LookupTypeInfo(child);
+  if (tinfo.type == ast::TypeId::kError) {
+    // If blacklisted, allow any inheritance check.
+    return true;
+  }
+  types::TypeIdList parents = Concat({tinfo.extends, tinfo.implements});
+  for (int i = 0; i < parents.Size(); ++i) {
+    // If this parent is the ancestor we're looking for, return immediately.
+    if (parents.At(i) == ancestor) {
+      return true;
+    }
+
+    // Recurse using the cached/memoized lookup on our parents.
+    if (IsAncestor(parents.At(i), ancestor)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 MethodId MethodTable::ResolveCall(TypeId callerType, CallContext ctx, const TypeIdList& params, const string& method_name, PosRange pos, ErrorList* errors) const {
   // TODO: More things.
   MethodSignature sig = MethodSignature{(ctx == CallContext::CONSTRUCTOR), method_name, params};
