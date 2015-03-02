@@ -44,6 +44,8 @@ private:
   vector<ast::TypeId> tids_;
 };
 
+TypeIdList Concat(const std::initializer_list<TypeIdList>& types);
+
 enum CallContext {
   INSTANCE,
   CONSTRUCTOR,
@@ -236,11 +238,24 @@ public:
     return info->second;
   }
 
+  bool IsAncestor(ast::TypeId child, ast::TypeId ancestor) const {
+    auto ancestor_lookup = inherit_map_.find(make_pair(child, ancestor));
+    if (ancestor_lookup != inherit_map_.end()) {
+      return ancestor_lookup->second;
+    }
+    bool is_ancestor = IsAncestorRec(child, ancestor);
+    inherit_map_.insert({make_pair(child, ancestor), is_ancestor});
+    return is_ancestor;
+  }
+
 private:
-  using Map = map<ast::TypeId, TypeInfo>;
   friend class TypeInfoMapBuilder;
 
-  TypeInfoMap(const base::FileSet* fs, const Map& typeinfo) : fs_(fs), type_info_(typeinfo),
+  using TypeMap = map<ast::TypeId, TypeInfo>;
+  // TODO: Make safe for parallel compilation.
+  using InheritMap = map<pair<ast::TypeId, ast::TypeId>, bool>;
+
+  TypeInfoMap(const base::FileSet* fs, const TypeMap& typeinfo) : fs_(fs), type_info_(typeinfo),
     kArrayTypeInfo({
       MakeModifierList(false, false, false),
       ast::TypeKind::CLASS,
@@ -254,10 +269,34 @@ private:
       0
     }) {}
 
+  bool IsAncestorRec(ast::TypeId child, ast::TypeId ancestor) const {
+    const TypeInfo& tinfo = LookupTypeInfo(child);
+    if (tinfo.type == ast::TypeId::kError) {
+      // If blacklisted, allow any inheritance check.
+      return true;
+    }
+    types::TypeIdList parents = Concat({tinfo.extends, tinfo.implements});
+    for (int i = 0; i < parents.Size(); ++i) {
+      // If this parent is the ancestor we're looking for, return immediately.
+      if (parents.At(i) == ancestor) {
+        return true;
+      }
+
+      // Recurse using the cached/memoized lookup on our parents.
+      if (IsAncestor(parents.At(i), ancestor)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+
   static TypeInfo kErrorTypeInfo;
 
   const base::FileSet* fs_;
-  Map type_info_;
+  TypeMap type_info_;
+  mutable InheritMap inherit_map_;
   TypeInfo kArrayTypeInfo;
 };
 
