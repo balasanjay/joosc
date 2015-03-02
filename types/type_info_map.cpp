@@ -298,6 +298,11 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
       const MethodInfo& mminfo = msig_pair->second;
 
+      // If inherited method is exactly the same one (diamond) then continue.
+      if (pminfo.mid == mminfo.mid) {
+        continue;
+      }
+
       // We cannot inherit methods of the same signature but differing return
       // types.
       if (pminfo.return_type != mminfo.return_type) {
