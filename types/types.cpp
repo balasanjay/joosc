@@ -8,14 +8,44 @@
 
 using ast::Program;
 using ast::QualifiedName;
+using ast::TypeId;
+using base::Error;
 using base::ErrorList;
 using base::FileSet;
+using base::MakeError;
+using base::OutputOptions;
 using base::PosRange;
 using lexer::Token;
 
 namespace types {
 
 namespace {
+
+Error* MakeMissingPredefError(const string& msg) {
+  return MakeError([=](std::ostream* out, const OutputOptions& opt) {
+    if (opt.simple) {
+      *out << "MissingPredefError";
+      return;
+    }
+
+    *out << opt.BoldOn() << opt.Red() << "error: " << opt.ResetColor()
+         << "Missing " << msg << "." << opt.BoldOff();
+  });
+}
+
+bool VerifyTypeSet(const TypeSet& typeset, ErrorList* out) {
+  const vector<string> lang_classes =
+    {"Boolean", "Byte", "Character", "Integer", "Object", "Short", "String"};
+  bool ok = true;
+  for (const string& name : lang_classes) {
+    const string& full_name = "java.lang." + name;
+    if (typeset.TryGet(full_name) == TypeId::kUnassigned) {
+      out->Append(MakeMissingPredefError("class " + full_name));
+      ok = false;
+    }
+  }
+  return ok;
+}
 
 vector<TypeSetBuilder::Elem> ExtractElems(const QualifiedName& name) {
   vector<TypeSetBuilder::Elem> v;
@@ -60,6 +90,9 @@ sptr<const Program> TypecheckProgram(sptr<const Program> prog, const FileSet* fs
                                ErrorList* out) {
   // Phase 1: build a typeset.
   TypeSet typeSet = BuildTypeSet(*prog, fs, out);
+  if (!VerifyTypeSet(typeSet, out)) {
+    return prog;
+  }
 
   // Phase 2: build a type info map.
   TypeInfoMap typeInfo = BuildTypeInfoMap(typeSet, prog, fs, &prog, out);
