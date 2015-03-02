@@ -91,7 +91,10 @@ public:
   // Given a method name and params, return all the associated info about it.
   const MethodInfo& LookupMethod(const MethodSignature& msig) const {
     auto info = method_signatures_.find(msig);
-    assert(info != method_signatures_.end());
+    if (info == method_signatures_.end()) {
+      assert(bad_methods_.count(msig.name) == 1);
+      return kErrorMethodInfo;
+    }
     return info->second;
   }
 
@@ -157,7 +160,10 @@ public:
   // Given a field name, return all the associated info about it (no access checks).
   const FieldInfo& LookupField(string field_name) const {
     auto info = field_names_.find(field_name);
-    assert(info != field_names_.end());
+    if (info == field_names_.end()) {
+      assert(bad_fields_.count(field_name) == 1);
+      return kErrorFieldInfo;
+    }
     return info->second;
   }
 

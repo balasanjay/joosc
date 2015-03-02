@@ -774,7 +774,10 @@ MethodId MethodTable::ResolveCall(TypeId callerType, CallContext ctx, const Type
   MethodSignature sig = MethodSignature{(ctx == CallContext::CONSTRUCTOR), method_name, params};
   auto minfo = method_signatures_.find(sig);
   if (minfo == method_signatures_.end()) {
-    errors->Append(MakeUndefinedMethodError(sig, pos));
+    // Only emit error if this isn't blacklisted.
+    if (bad_methods_.count(method_name) == 0) {
+      errors->Append(MakeUndefinedMethodError(sig, pos));
+    }
     return kErrorMethodId;
   }
 
@@ -834,7 +837,10 @@ Error* MethodTable::MakeWrongMethodContextError(bool expected_static, PosRange p
 FieldId FieldTable::ResolveAccess(TypeId callerType, CallContext ctx, string field_name, PosRange pos, ErrorList* errors) const {
   auto finfo = field_names_.find(field_name);
   if (finfo == field_names_.end()) {
-    errors->Append(MakeUndefinedReferenceError(field_name, pos));
+    // Only emit error if this isn't blacklisted.
+    if (bad_fields_.count(field_name) == 0) {
+      errors->Append(MakeUndefinedReferenceError(field_name, pos));
+    }
     return kErrorFieldId;
   }
 
