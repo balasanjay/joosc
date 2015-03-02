@@ -2,8 +2,8 @@
 .build
 
 # All binaries.
-joosc
-test
+./joosc
+./test
 
 # Stuff.
 tags
