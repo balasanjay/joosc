@@ -704,7 +704,7 @@ void TypeInfoMapBuilder::IntroduceImplicitGraphEdges(const TypeSet& typeset, con
   TypeId object = typeset.TryGet("java.lang.Object");
   CHECK(object.IsValid());
 
-  for (auto tid_tinfo_iter : all_types) {
+  for (auto& tid_tinfo_iter : all_types) {
     TypeId tid = tid_tinfo_iter.first;
     TypeInfo& tinfo = tid_tinfo_iter.second;
 
