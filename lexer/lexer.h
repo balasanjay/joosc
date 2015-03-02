@@ -119,17 +119,7 @@ struct TokenTypeInfo {
     return t;
   }
 
-  static TokenTypeInfo FromTokenType(TokenType type);
-
-  // NOTE: do not replace this with "= default", it triggers some weird codegen
-  // bug on linux.student.cs.
-  TokenTypeInfo(const TokenTypeInfo& other)
-      : type_(other.type_),
-        kind_(other.kind_),
-        precedence_(other.precedence_),
-        mod_(other.mod_),
-        repr_(other.repr_),
-        value_(other.value_) {}
+  static const TokenTypeInfo& FromTokenType(TokenType type);
 
   TokenTypeInfo Keyword() const {
     TokenTypeInfo ret = *this;
@@ -209,9 +199,21 @@ struct TokenTypeInfo {
     return precedence_;
   }
 
-  string Value() const { return value_; }
+  const string& Value() const { return value_; }
+
+  static const TokenTypeInfo kEntries[NUM_TOKEN_TYPES];
 
  private:
+  // NOTE: do not replace this with "= default", it triggers some weird codegen
+  // bug on linux.student.cs.
+  TokenTypeInfo(const TokenTypeInfo& other)
+      : type_(other.type_),
+        kind_(other.kind_),
+        precedence_(other.precedence_),
+        mod_(other.mod_),
+        repr_(other.repr_),
+        value_(other.value_) {}
+
   enum Kind {
     NONE = 0,
     SUPPORTED = 1 << 0,
@@ -247,7 +249,7 @@ struct Token {
   }
   bool operator!=(const Token& other) const { return !(*this == other); }
 
-  TokenTypeInfo TypeInfo() const;
+  const TokenTypeInfo& TypeInfo() const;
 
   TokenType type;
   base::PosRange pos;

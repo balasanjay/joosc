@@ -10,11 +10,9 @@ using base::PosRange;
 
 namespace lexer {
 
-namespace {
-
 #define NEW(repr, value) TokenTypeInfo::New(repr, #repr, value)
 
-const TokenTypeInfo kTokenTypeInfo[NUM_TOKEN_TYPES] = {
+const TokenTypeInfo TokenTypeInfo::kEntries[NUM_TOKEN_TYPES] = {
     NEW(LINE_COMMENT, "LINE_COMMENT").Skippable(),
     NEW(BLOCK_COMMENT, "BLOCK_COMMENT").Skippable(),
     NEW(WHITESPACE, "WHITESPACE").Skippable(),
@@ -107,18 +105,16 @@ const TokenTypeInfo kTokenTypeInfo[NUM_TOKEN_TYPES] = {
 
 #undef NEW
 
-}  // namespace
-
 std::ostream& operator<<(std::ostream& out, const TokenTypeInfo& t) {
   return out << t.repr_;
 }
 
-TokenTypeInfo TokenTypeInfo::FromTokenType(TokenType type) {
+const TokenTypeInfo& TokenTypeInfo::FromTokenType(TokenType type) {
   CHECK(0 <= type && type < NUM_TOKEN_TYPES);
-  return kTokenTypeInfo[type];
+  return kEntries[type];
 }
 
-TokenTypeInfo Token::TypeInfo() const {
+const TokenTypeInfo& Token::TypeInfo() const {
   return TokenTypeInfo::FromTokenType(type);
 }
 
@@ -147,7 +143,7 @@ struct LexState {
   u8 Peek() { return file->At(end); }
 
   // Returns true iff the file has a prefix s, starting at the current cursor.
-  bool HasPrefix(string s) {
+  bool HasPrefix(const string& s) {
     if (size_t(file->Size() - end) < s.size()) {
       return false;
     }
@@ -247,7 +243,7 @@ bool PosRangeStringMatches(const FileSet* fs, const PosRange& range,
  */
 TokenType MatchKeywords(const FileSet* fs, const PosRange& range) {
   for (int i = 0; i < NUM_TOKEN_TYPES; ++i) {
-    TokenTypeInfo typeInfo = kTokenTypeInfo[i];
+    const TokenTypeInfo& typeInfo = TokenTypeInfo::kEntries[i];
     if (!typeInfo.IsKeyword()) {
       continue;
     }
@@ -304,7 +300,7 @@ void Start(LexState* state) {
 
   // This should be run after checking for comment tokens.
   for (int i = 0; i < NUM_TOKEN_TYPES; ++i) {
-    TokenTypeInfo typeInfo = kTokenTypeInfo[i];
+    const TokenTypeInfo& typeInfo = TokenTypeInfo::kEntries[i];
     if (!typeInfo.IsSymbol()) {
       continue;
     }
