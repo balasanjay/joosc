@@ -36,10 +36,12 @@ SymbolTable::SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& pa
 LocalVarId SymbolTable::DeclareLocalStart(ast::TypeId tid, const string& name, PosRange name_pos, ErrorList* errors) {
   CHECK(currently_declaring_ == kVarUnassigned);
 
-  // Check if already defined (not as a parameter).
+  // TODO: Unify params into symbol table top scope.
+  // Check if already defined as either parameter or local var.
+  auto checkParam = params_.find(name);
   auto previousDef = cur_symbols_.find(name);
-  if (previousDef != cur_symbols_.end()) {
-    VariableInfo varInfo = previousDef->second;
+  if (checkParam != params_.end() || previousDef != cur_symbols_.end()) {
+    VariableInfo varInfo = checkParam != params_.end() ? checkParam->second : previousDef->second;
     errors->Append(MakeDuplicateVarDeclError(name, name_pos, varInfo.pos));
     return varInfo.vid;
   }
