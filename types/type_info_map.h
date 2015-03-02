@@ -12,8 +12,11 @@
 namespace types {
 
 using ast::FieldId;
+using ast::MethodId;
 using ast::kErrorFieldId;
+using ast::kErrorMethodId;
 using ast::kFirstFieldId;
+using ast::kFirstMethodId;
 
 struct TypeIdList {
 public:
@@ -37,10 +40,6 @@ public:
 private:
   vector<ast::TypeId> tids_;
 };
-
-using MethodId = u64;
-const MethodId kErrorMethodId = 0;
-const MethodId kFirstMethodId = 1;
 
 enum CallContext {
   INSTANCE,
@@ -73,8 +72,7 @@ struct MethodInfo {
 
 class MethodTable {
 public:
-  // TODO
-  MethodId ResolveCall(ast::TypeId callerType, CallContext ctx, const TypeIdList& params, base::ErrorList* out) const;
+  MethodId ResolveCall(ast::TypeId callerType, CallContext ctx, const TypeIdList& params, const string& name, base::ErrorList* out) const;
 
   // Given a valid MethodId, return all the associated info about it.
   const MethodInfo& LookupMethod(MethodId mid) const {
@@ -84,6 +82,13 @@ public:
 
     auto info = method_info_.find(mid);
     assert(info != method_info_.end());
+    return info->second;
+  }
+
+  // Given a method name and params, return all the associated info about it.
+  const MethodInfo& LookupMethod(const MethodSignature& msig) const {
+    auto info = method_signatures_.find(msig);
+    assert(info != method_signatures_.end());
     return info->second;
   }
 

@@ -340,8 +340,8 @@ class FieldDerefExpr : public Expr {
 
 class CallExpr : public Expr {
  public:
-  CallExpr(sptr<const Expr> base, lexer::Token lparen, const base::SharedPtrVector<const Expr>& args, lexer::Token rparen)
-      : base_(base), lparen_(lparen), args_(args), rparen_(rparen) {}
+  CallExpr(sptr<const Expr> base, lexer::Token lparen, const base::SharedPtrVector<const Expr>& args, lexer::Token rparen, MethodId mid = kUnassignedMethodId, TypeId tid = TypeId::kUnassigned)
+      : Expr(tid), base_(base), lparen_(lparen), args_(args), rparen_(rparen), mid_(mid) {}
 
   ACCEPT_VISITOR(CallExpr, Expr);
 
@@ -350,11 +350,15 @@ class CallExpr : public Expr {
   REF_GETTER(base::SharedPtrVector<const Expr>, Args, args_);
   VAL_GETTER(lexer::Token, Rparen, rparen_);
 
+  VAL_GETTER(MethodId, GetMethodId, mid_);
+
  private:
   sptr<const Expr> base_;
   lexer::Token lparen_;
   base::SharedPtrVector<const Expr> args_;
   lexer::Token rparen_;
+
+  MethodId mid_;
 };
 
 class StaticRefExpr : public Expr {
@@ -699,17 +703,19 @@ class FieldDecl : public MemberDecl {
 class MethodDecl : public MemberDecl {
  public:
   MethodDecl(const ModifierList& mods, sptr<const Type> type, const string& name, lexer::Token nameToken,
-             sptr<const ParamList> params, sptr<const Stmt> body)
+             sptr<const ParamList> params, sptr<const Stmt> body, MethodId mid = kErrorMethodId)
       : MemberDecl(mods, name, nameToken),
         type_(type),
         params_(params),
-        body_(body) {}
+        body_(body),
+        mid_(mid) {}
 
   ACCEPT_VISITOR(MethodDecl, MemberDecl);
 
   VAL_GETTER(sptr<const Type>, TypePtr, type_);
   SPTR_GETTER(ParamList, Params, params_);
   SPTR_GETTER(Stmt, Body, body_);
+  VAL_GETTER(MethodId, GetMethodId, mid_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MethodDecl);
@@ -717,6 +723,7 @@ class MethodDecl : public MemberDecl {
   sptr<const Type> type_; // nullptr for constructors.
   sptr<const ParamList> params_;
   sptr<const Stmt> body_;
+  MethodId mid_;
 };
 
 enum class TypeKind {
