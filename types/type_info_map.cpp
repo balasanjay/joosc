@@ -781,12 +781,10 @@ MethodId MethodTable::ResolveCall(TypeId callerType, CallContext ctx, const Type
   // Check whether calling context is correct.
   bool is_static = minfo->second.mods.HasModifier(lexer::STATIC);
   if (is_static && ctx != CallContext::STATIC) {
-    // TODO: error, calling static method from non-static context.
-    throw;
+    errors->Append(MakeWrongMethodContextError(is_static, pos));
     return kErrorMethodId;
   } else if (!is_static && ctx == CallContext::STATIC) {
-    // TODO: error, calling non-static method from static context.
-    throw;
+    errors->Append(MakeWrongMethodContextError(is_static, pos));
     return kErrorMethodId;
   }
 
@@ -815,6 +813,24 @@ Error* MethodTable::MakeUndefinedMethodError(MethodSignature sig, PosRange pos) 
   return MakeSimplePosRangeError(fs_, pos, "UndefinedMethodError", ss.str());
 }
 
+Error* MethodTable::MakeWrongMethodContextError(bool expected_static, PosRange pos) const {
+  stringstream ss;
+  ss << "Can't call ";
+  if (expected_static) {
+    ss << "an instance";
+  } else {
+    ss << "a static";
+  }
+  ss << " method from a ";
+  if (expected_static) {
+    ss << "static";
+  } else {
+    ss << "instance";
+  }
+  ss << " method";
+  return MakeSimplePosRangeError(fs_, pos, "WrongMethodContextError", ss.str());
+}
+
 FieldId FieldTable::ResolveAccess(TypeId callerType, CallContext ctx, string field_name, PosRange pos, ErrorList* errors) const {
   auto finfo = field_names_.find(field_name);
   if (finfo == field_names_.end()) {
@@ -825,12 +841,10 @@ FieldId FieldTable::ResolveAccess(TypeId callerType, CallContext ctx, string fie
   // Check whether correct calling context.
   bool is_static = finfo->second.mods.HasModifier(lexer::Modifier::STATIC);
   if (is_static && ctx != CallContext::STATIC) {
-    // TODO: Error.
-    throw;
+    errors->Append(MakeWrongFieldContextError(is_static, pos));
     return kErrorFieldId;
   } else if (!is_static && ctx == CallContext::STATIC) {
-    // TODO: Error
-    throw;
+    errors->Append(MakeWrongFieldContextError(is_static, pos));
     return kErrorFieldId;
   }
 
@@ -845,6 +859,24 @@ Error* FieldTable::MakeUndefinedReferenceError(string name, PosRange pos) const 
   ss << name;
   ss << '\'';
   return MakeSimplePosRangeError(fs_, pos, "UndefinedReferenceError", ss.str());
+}
+
+Error* FieldTable::MakeWrongFieldContextError(bool expected_static, PosRange pos) const {
+  stringstream ss;
+  ss << "Can't access ";
+  if (expected_static) {
+    ss << "an instance";
+  } else {
+    ss << "a static";
+  }
+  ss << " field from a ";
+  if (expected_static) {
+    ss << "static";
+  } else {
+    ss << "instance";
+  }
+  ss << " method";
+  return MakeSimplePosRangeError(fs_, pos, "WrongFieldContextError", ss.str());
 }
 
 

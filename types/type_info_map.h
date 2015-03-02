@@ -111,6 +111,7 @@ private:
   MethodTable() : all_blacklisted_(true) {}
 
   base::Error* MakeUndefinedMethodError(MethodSignature sig, base::PosRange pos) const;
+  base::Error* MakeWrongMethodContextError(bool expected_static, base::PosRange pos) const;
 
   static MethodTable kEmptyMethodTable;
   static MethodTable kErrorMethodTable;
@@ -176,6 +177,7 @@ private:
   FieldTable() : all_blacklisted_(true) {}
 
   base::Error* MakeUndefinedReferenceError(string name, base::PosRange name_pos) const;
+  base::Error* MakeWrongFieldContextError(bool expected_static, base::PosRange pos) const;
 
   static FieldTable kEmptyFieldTable;
   static FieldTable kErrorFieldTable;
