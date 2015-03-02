@@ -770,6 +770,31 @@ vector<TypeId> TypeInfoMapBuilder::VerifyAcyclicGraph(const multimap<TypeId, Typ
   return sorted;
 }
 
+MethodId MethodTable::ResolveCall(TypeId callerType, CallContext ctx, const TypeIdList& params, const string& name, ErrorList* out) const {
+  // TODO: More things.
+  auto minfo = method_signatures_.find(MethodSignature{(ctx == CallContext::CONSTRUCTOR), name, params});
+  if (minfo == method_signatures_.end()) {
+    // TODO: error, method not found
+    throw;
+    return kErrorMethodId;
+  }
+
+  // Check whether calling context is correct.
+  bool is_static = minfo->second.mods.HasModifier(lexer::STATIC);
+  if (is_static && ctx != CallContext::STATIC) {
+    // TODO: error, calling static method from non-static context.
+    throw;
+    return kErrorMethodId;
+  } else if (!is_static && ctx == CallContext::STATIC) {
+    // TODO: error, calling non-static method from static context.
+    throw;
+    return kErrorMethodId;
+  }
+
+  // TODO: Check permissions.
+  return minfo->second.mid;
+}
+
 FieldId FieldTable::ResolveAccess(TypeId callerType, CallContext ctx, string field_name, PosRange pos, ErrorList* errors) const {
   auto finfo = field_names_.find(field_name);
   if (finfo == field_names_.end()) {

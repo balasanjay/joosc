@@ -67,7 +67,6 @@ class TypeChecker final : public ast::Visitor {
   REWRITE_DECL(ArrayIndexExpr, Expr, expr, exprptr);
   REWRITE_DECL(BinExpr, Expr, expr, exprptr);
   REWRITE_DECL(BoolLitExpr, Expr, expr, exprptr);
-  REWRITE_DECL(CallExpr, Expr, expr, exprptr);
   REWRITE_DECL(CastExpr, Expr, expr, exprptr);
   REWRITE_DECL(CharLitExpr, Expr, expr, exprptr);
   REWRITE_DECL(InstanceOfExpr, Expr, expr, exprptr);

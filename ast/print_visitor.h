@@ -35,6 +35,11 @@ class PrintVisitor final : public Visitor {
 
   VISIT_DECL(CallExpr, expr,) {
     Visit(expr.BasePtr());
+
+    if (expr.GetMethodId() != kUnassignedMethodId) {
+      *os_ << "#m" << expr.GetMethodId();
+    }
+
     *os_ << '(';
     PrintArgList(expr.Args());
     *os_ << ')';
@@ -261,7 +266,7 @@ class PrintVisitor final : public Visitor {
       meth.TypePtr()->PrintTo(os_);
       *os_ << ' ';
     }
-    *os_ << meth.Name();
+    PrintMethodName(os_, meth.Name(), meth.GetMethodId());
     *os_ << '(';
     Visit(meth.ParamsPtr());
     *os_ << ')' << space_;
@@ -360,6 +365,13 @@ class PrintVisitor final : public Visitor {
     *os << name;
     if (fid != kErrorFieldId) {
       *os << "#f" << fid;
+    }
+  }
+
+  void PrintMethodName(std::ostream* os, string name, MethodId mid) {
+    *os << name;
+    if (mid != kErrorMethodId) {
+      *os << "#m" << mid;
     }
   }
 
