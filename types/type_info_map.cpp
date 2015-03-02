@@ -667,8 +667,14 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
       CHECK(typeinfo.implements.Size() == 0);
 
       // An interface can only extend other interfaces.
+      set<TypeId> already_extended;
       for (int i = 0; i < typeinfo.extends.Size(); ++i) {
         TypeId extends_tid = typeinfo.extends.At(i);
+        auto is_duplicate = already_extended.insert(extends_tid);
+        if (is_duplicate.second) {
+          errors->Append(MakeDuplicateInheritanceError(fs, true, typeinfo.pos, typeinfo.type, extends_tid));
+          bad_types->insert(type);
+        }
         if (!match_relationship(extends_tid, type, TypeKind::INTERFACE)) {
           errors->Append(MakeInterfaceExtendsClassError(fs, typeinfo.pos, all_types.at(extends_tid).name));
           bad_types->insert(type);
@@ -686,8 +692,14 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
         bad_types->insert(type);
       }
     }
+    set<TypeId> already_implemented;
     for (int i = 0; i < typeinfo.implements.Size(); ++i) {
       TypeId implement_tid = typeinfo.implements.At(i);
+      auto is_duplicate = already_implemented.insert(implement_tid);
+      if (!is_duplicate.second) {
+        errors->Append(MakeDuplicateInheritanceError(fs, false, typeinfo.pos, typeinfo.type, implement_tid));
+        bad_types->insert(type);
+      }
       if (!match_relationship(implement_tid, type, TypeKind::INTERFACE)) {
         errors->Append(MakeClassImplementsClassError(fs, typeinfo.pos, all_types.at(implement_tid).name));
         bad_types->insert(type);

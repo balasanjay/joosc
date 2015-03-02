@@ -48,6 +48,18 @@ Error* MakeDuplicateDefinitionError(const FileSet* fs, const vector<PosRange> du
   });
 }
 
+Error* MakeDuplicateInheritanceError(const FileSet* fs, bool is_extends, PosRange pos, TypeId base_tid, TypeId inheriting_tid) {
+  stringstream ss;
+  ss << "Type " << base_tid.base << " ";
+  if (is_extends) {
+    ss << "extends";
+  } else {
+    ss << "implements";
+  }
+  ss << " " << inheriting_tid.base << " twice.";
+  return MakeSimplePosRangeError(fs, pos, "DuplicateInheritanceError", "Unknown type name.");
+}
+
 sptr<const Type> ResolveType(sptr<const Type> type, const TypeSet& typeset, ErrorList* errors) {
   const Type* cur = type.get();
 
