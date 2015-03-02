@@ -97,7 +97,8 @@ ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract
 
 TypeInfo TypeInfoMap::kErrorTypeInfo = TypeInfo{{}, TypeKind::CLASS, TypeId::kError, "", kFakePos, TypeIdList({}), TypeIdList({}), MethodTable::kErrorMethodTable, FieldTable::kErrorFieldTable, 0};
 
-MethodTable MethodTable::kEmptyMethodTable = MethodTable({}, {}, false);
+// TODO: Empty filesets are no.
+MethodTable MethodTable::kEmptyMethodTable = MethodTable(&base::FileSet::Empty(), {}, {}, false);
 MethodTable MethodTable::kErrorMethodTable = MethodTable();
 MethodInfo MethodTable::kErrorMethodInfo = MethodInfo{kErrorMethodId, TypeId::kError, {}, TypeId::kError, kFakePos, {false, "", TypeIdList({})}};
 
@@ -374,7 +375,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
     }
   }
 
-  return MethodTable(new_good_methods, new_bad_methods, has_bad_constructor);
+  return MethodTable(fs_, new_good_methods, new_bad_methods, has_bad_constructor);
 }
 
 // Builds valid MethodTables for a TypeInfo. Emits errors if methods for the
@@ -768,24 +769,25 @@ vector<TypeId> TypeInfoMapBuilder::VerifyAcyclicGraph(const multimap<TypeId, Typ
   return sorted;
 }
 
-MethodId MethodTable::ResolveCall(TypeId callerType, CallContext ctx, const TypeIdList& params, const string& name, ErrorList* out) const {
+MethodId MethodTable::ResolveCall(TypeId callerType, CallContext ctx, const TypeIdList& params, const string& method_name, PosRange pos, ErrorList* errors) const {
   // TODO: More things.
-  auto minfo = method_signatures_.find(MethodSignature{(ctx == CallContext::CONSTRUCTOR), name, params});
+  MethodSignature sig = MethodSignature{(ctx == CallContext::CONSTRUCTOR), method_name, params};
+  auto minfo = method_signatures_.find(sig);
   if (minfo == method_signatures_.end()) {
-    // TODO: error, method not found
-    throw;
+    // Only emit error if this isn't blacklisted.
+    if (bad_methods_.count(method_name) == 0) {
+      errors->Append(MakeUndefinedMethodError(sig, pos));
+    }
     return kErrorMethodId;
   }
 
   // Check whether calling context is correct.
   bool is_static = minfo->second.mods.HasModifier(lexer::STATIC);
   if (is_static && ctx != CallContext::STATIC) {
-    // TODO: error, calling static method from non-static context.
-    throw;
+    errors->Append(MakeInstanceMethodOnStaticError(pos));
     return kErrorMethodId;
   } else if (!is_static && ctx == CallContext::STATIC) {
-    // TODO: error, calling non-static method from static context.
-    throw;
+    errors->Append(MakeStaticMethodOnInstanceError(pos));
     return kErrorMethodId;
   }
 
@@ -793,22 +795,56 @@ MethodId MethodTable::ResolveCall(TypeId callerType, CallContext ctx, const Type
   return minfo->second.mid;
 }
 
+Error* MethodTable::MakeUndefinedMethodError(MethodSignature sig, PosRange pos) const {
+  // TODO: make this error better.
+
+  stringstream ss;
+  ss << "Couldn't find ";
+  if (sig.is_constructor) {
+    ss << "constructor";
+  } else {
+    ss << "method";
+  }
+  ss << " '" << sig.name << '(';
+  if (sig.param_types.Size() > 0) {
+    for (int i = 0; i < sig.param_types.Size(); ++i) {
+      if (i > 0) {
+        ss << ", ";
+      }
+      ss << sig.param_types.At(i).base;
+    }
+  }
+  ss << ")'";
+  return MakeSimplePosRangeError(fs_, pos, "UndefinedMethodError", ss.str());
+}
+
+Error* MethodTable::MakeInstanceMethodOnStaticError(PosRange pos) const {
+  const static string msg = "Cannot call an instance method as a static method.";
+  return MakeSimplePosRangeError(fs_, pos, "InstanceMethodOnStaticError", msg);
+}
+
+Error* MethodTable::MakeStaticMethodOnInstanceError(PosRange pos) const {
+  const static string msg = "Cannot call a static method as an instance method.";
+  return MakeSimplePosRangeError(fs_, pos, "StaticMethodOnInstanceError", msg);
+}
+
 FieldId FieldTable::ResolveAccess(TypeId callerType, CallContext ctx, string field_name, PosRange pos, ErrorList* errors) const {
   auto finfo = field_names_.find(field_name);
   if (finfo == field_names_.end()) {
-    errors->Append(MakeUndefinedReferenceError(field_name, pos));
+    // Only emit error if this isn't blacklisted.
+    if (bad_fields_.count(field_name) == 0) {
+      errors->Append(MakeUndefinedReferenceError(field_name, pos));
+    }
     return kErrorFieldId;
   }
 
   // Check whether correct calling context.
   bool is_static = finfo->second.mods.HasModifier(lexer::Modifier::STATIC);
   if (is_static && ctx != CallContext::STATIC) {
-    // TODO: Error.
-    throw;
+    errors->Append(MakeStaticFieldOnInstanceError(pos));
     return kErrorFieldId;
   } else if (!is_static && ctx == CallContext::STATIC) {
-    // TODO: Error
-    throw;
+    errors->Append(MakeInstanceFieldOnStaticError(pos));
     return kErrorFieldId;
   }
 
@@ -825,5 +861,14 @@ Error* FieldTable::MakeUndefinedReferenceError(string name, PosRange pos) const 
   return MakeSimplePosRangeError(fs_, pos, "UndefinedReferenceError", ss.str());
 }
 
+Error* FieldTable::MakeInstanceFieldOnStaticError(PosRange pos) const {
+  const static string msg = "Cannot access an instance field without an instance.";
+  return MakeSimplePosRangeError(fs_, pos, "InstanceFieldOnStaticError", msg);
+}
+
+Error* FieldTable::MakeStaticFieldOnInstanceError(PosRange pos) const {
+  const static string msg = "Cannot access a static field as an instance field.";
+  return MakeSimplePosRangeError(fs_, pos, "StaticFieldOnInstanceError", msg);
+}
 
 } // namespace types

@@ -75,7 +75,7 @@ struct MethodInfo {
 
 class MethodTable {
 public:
-  MethodId ResolveCall(ast::TypeId callerType, CallContext ctx, const TypeIdList& params, const string& name, base::ErrorList* out) const;
+  MethodId ResolveCall(ast::TypeId callerType, CallContext ctx, const TypeIdList& params, const string& method_name, base::PosRange pos, base::ErrorList* out) const;
 
   // Given a valid MethodId, return all the associated info about it.
   const MethodInfo& LookupMethod(MethodId mid) const {
@@ -91,7 +91,10 @@ public:
   // Given a method name and params, return all the associated info about it.
   const MethodInfo& LookupMethod(const MethodSignature& msig) const {
     auto info = method_signatures_.find(msig);
-    assert(info != method_signatures_.end());
+    if (info == method_signatures_.end()) {
+      assert(bad_methods_.count(msig.name) == 1);
+      return kErrorMethodInfo;
+    }
     return info->second;
   }
 
@@ -102,7 +105,7 @@ private:
   using MethodSignatureMap = std::map<MethodSignature, MethodInfo>;
   using MethodInfoMap = std::map<MethodId, MethodInfo>;
 
-  MethodTable(const MethodSignatureMap& entries, const set<string>& bad_methods, bool has_bad_constructor) : method_signatures_(entries), has_bad_constructor_(has_bad_constructor), bad_methods_(bad_methods) {
+  MethodTable(const base::FileSet* fs, const MethodSignatureMap& entries, const set<string>& bad_methods, bool has_bad_constructor) : fs_(fs), method_signatures_(entries), has_bad_constructor_(has_bad_constructor), bad_methods_(bad_methods) {
     for (const auto& entry : entries) {
       method_info_.insert({entry.second.mid, entry.second});
     }
@@ -110,10 +113,16 @@ private:
 
   MethodTable() : all_blacklisted_(true) {}
 
+  base::Error* MakeUndefinedMethodError(MethodSignature sig, base::PosRange pos) const;
+
+  base::Error* MakeInstanceMethodOnStaticError(base::PosRange pos) const;
+  base::Error* MakeStaticMethodOnInstanceError(base::PosRange pos) const;
+
   static MethodTable kEmptyMethodTable;
   static MethodTable kErrorMethodTable;
   static MethodInfo kErrorMethodInfo;
 
+  const base::FileSet* fs_;
   MethodSignatureMap method_signatures_;
   MethodInfoMap method_info_;
 
@@ -153,7 +162,10 @@ public:
   // Given a field name, return all the associated info about it (no access checks).
   const FieldInfo& LookupField(string field_name) const {
     auto info = field_names_.find(field_name);
-    assert(info != field_names_.end());
+    if (info == field_names_.end()) {
+      assert(bad_fields_.count(field_name) == 1);
+      return kErrorFieldInfo;
+    }
     return info->second;
   }
 
@@ -173,6 +185,8 @@ private:
   FieldTable() : all_blacklisted_(true) {}
 
   base::Error* MakeUndefinedReferenceError(string name, base::PosRange name_pos) const;
+  base::Error* MakeInstanceFieldOnStaticError(base::PosRange pos) const;
+  base::Error* MakeStaticFieldOnInstanceError(base::PosRange pos) const;
 
   static FieldTable kEmptyFieldTable;
   static FieldTable kErrorFieldTable;
@@ -235,7 +249,7 @@ private:
       base::PosRange(-1, -1, -1),
       TypeIdList({}),
       TypeIdList({}),
-      MethodTable({}, {}, false),
+      MethodTable(fs, {}, {}, false),
       FieldTable(fs, {{"length", FieldInfo{kArrayLengthFieldId, ast::TypeId::kError, MakeModifierList(false, false, false), ast::TypeId::kInt, base::PosRange(-1, -1, -1), "length"}}}, {}),
       0
     }) {}
