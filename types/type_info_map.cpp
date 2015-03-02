@@ -73,7 +73,28 @@ Error* MakeResolveMethodTableError(const FileSet* fs, PosRange m_pos, const stri
 }
 
 } // namespace
-TypeInfoMap TypeInfoMap::kEmptyTypeInfoMap = TypeInfoMap({});
+
+ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract) {
+
+  ModifierList mods;
+
+  if (is_protected) {
+    mods.AddModifier(kProtected);
+  } else {
+    mods.AddModifier(kPublic);
+  }
+
+  if (is_final) {
+    mods.AddModifier(kFinal);
+  }
+
+  if (is_abstract) {
+    mods.AddModifier(kAbstract);
+  }
+
+  return mods;
+}
+
 TypeInfo TypeInfoMap::kErrorTypeInfo = TypeInfo{{}, TypeKind::CLASS, TypeId::kError, "", kFakePos, TypeIdList({}), TypeIdList({}), MethodTable::kErrorMethodTable, FieldTable::kErrorFieldTable, 0};
 
 MethodTable MethodTable::kEmptyMethodTable = MethodTable({}, {}, false);
@@ -225,27 +246,6 @@ MethodInfo FixMods(const TypeInfo& tinfo, const MethodInfo& minfo) {
   return ret_minfo;
 }
 
-ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract) {
-
-  ModifierList mods;
-
-  if (is_protected) {
-    mods.AddModifier(kProtected);
-  } else {
-    mods.AddModifier(kPublic);
-  }
-
-  if (is_final) {
-    mods.AddModifier(kFinal);
-  }
-
-  if (is_abstract) {
-    mods.AddModifier(kAbstract);
-  }
-
-  return mods;
-}
-
 MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const MethodTable::MethodSignatureMap& good_methods, const set<string>& bad_methods, bool has_bad_constructor, const map<TypeId, TypeInfo>& sofar, const set<TypeId>& bad_types, set<TypeId>* new_bad_types, ErrorList* out) {
   MethodTable::MethodSignatureMap new_good_methods(good_methods);
   set<string> new_bad_methods(bad_methods);
@@ -389,6 +389,7 @@ void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeIn
   MethodTable::MethodSignatureMap good_methods;
   set<string> bad_methods;
   bool has_bad_constructor = false;
+  const FileSet* fs = fs_;
 
   // Build MethodTable ignoring parent methods.
   {
@@ -428,7 +429,7 @@ void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeIn
         msgstream << "Method";
       }
       msgstream << " '" << lbegin->signature.name << "' was declared multiple times.";
-      out->Append(MakeDuplicateDefinitionError(fs_, defs, msgstream.str(), lbegin->signature.name));
+      out->Append(MakeDuplicateDefinitionError(fs, defs, msgstream.str(), lbegin->signature.name));
       bad_methods.insert(lbegin->signature.name);
     };
 
@@ -449,6 +450,8 @@ void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInf
 
   FieldTable::FieldNameMap good_fields;
   set<string> bad_fields;
+
+  const FileSet* fs = fs_;
 
   // Build FieldTable ignoring parent fields.
   {
@@ -475,7 +478,7 @@ void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInf
       }
       stringstream msgstream;
       msgstream << "Field '" << lbegin->name << "' was declared multiple times.";
-      out->Append(MakeDuplicateDefinitionError(fs_, defs, msgstream.str(), lbegin->name));
+      out->Append(MakeDuplicateDefinitionError(fs, defs, msgstream.str(), lbegin->name));
       bad_fields.insert(lbegin->name);
     };
 
@@ -520,7 +523,7 @@ void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInf
     new_bad_fields.insert(pinfo.fields.bad_fields_.begin(), pinfo.fields.bad_fields_.end());
   }
 
-  tinfo->fields = FieldTable(fs_, new_good_fields, new_bad_fields);
+  tinfo->fields = FieldTable(fs, new_good_fields, new_bad_fields);
 }
 
 TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
@@ -583,7 +586,7 @@ TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
     typeinfo.at(type_id) = TypeInfoMap::kErrorTypeInfo;
   }
 
-  return TypeInfoMap(typeinfo);
+  return TypeInfoMap(fs_, typeinfo);
 }
 
 void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(map<TypeId, TypeInfo>* types, set<TypeId>* bad, ErrorList* errors) {
@@ -631,6 +634,8 @@ void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(map<TypeId, TypeInfo>* t
 }
 
 void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all_types, set<TypeId>* bad_types, ErrorList* errors) {
+  const FileSet* fs = fs_;
+
   // Blacklists child if parent doesn't exist in all_types, or parent's kind
   // doesn't match expected_parent_kind.
   auto match_relationship = [&](TypeId parent, TypeId child, TypeKind expected_parent_kind) {
@@ -660,7 +665,7 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
       for (int i = 0; i < typeinfo.extends.Size(); ++i) {
         TypeId extends_tid = typeinfo.extends.At(i);
         if (!match_relationship(extends_tid, type, TypeKind::INTERFACE)) {
-          errors->Append(MakeInterfaceExtendsClassError(fs_, typeinfo.pos, all_types.at(extends_tid).name));
+          errors->Append(MakeInterfaceExtendsClassError(fs, typeinfo.pos, all_types.at(extends_tid).name));
           bad_types->insert(type);
         }
       }
@@ -672,14 +677,14 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
     if (typeinfo.extends.Size() == 1) {
       TypeId parent_tid = typeinfo.extends.At(0);
       if (!match_relationship(parent_tid, type, TypeKind::CLASS)) {
-        errors->Append(MakeClassExtendsInterfaceError(fs_, typeinfo.pos, all_types.at(parent_tid).name));
+        errors->Append(MakeClassExtendsInterfaceError(fs, typeinfo.pos, all_types.at(parent_tid).name));
         bad_types->insert(type);
       }
     }
     for (int i = 0; i < typeinfo.implements.Size(); ++i) {
       TypeId implement_tid = typeinfo.implements.At(i);
       if (!match_relationship(implement_tid, type, TypeKind::INTERFACE)) {
-        errors->Append(MakeClassImplementsClassError(fs_, typeinfo.pos, all_types.at(implement_tid).name));
+        errors->Append(MakeClassImplementsClassError(fs, typeinfo.pos, all_types.at(implement_tid).name));
         bad_types->insert(type);
       }
     }

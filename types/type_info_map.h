@@ -13,10 +13,13 @@ namespace types {
 
 using ast::FieldId;
 using ast::MethodId;
+using ast::kArrayLengthFieldId;
 using ast::kErrorFieldId;
 using ast::kErrorMethodId;
 using ast::kFirstFieldId;
 using ast::kFirstMethodId;
+
+ast::ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract);
 
 struct TypeIdList {
 public:
@@ -175,7 +178,7 @@ private:
   static FieldTable kErrorFieldTable;
   static FieldInfo kErrorFieldInfo;
 
-  const base::FileSet* fs_;
+  const base::FileSet* fs_ = nullptr;
   FieldNameMap field_names_;
   FieldInfoMap field_info_;
 
@@ -205,11 +208,15 @@ struct TypeInfo {
 
 class TypeInfoMap {
 public:
-  static const TypeInfoMap& Empty() {
-    return kEmptyTypeInfoMap;
+  static const TypeInfoMap Empty(const base::FileSet* fs) {
+    return TypeInfoMap(fs, {});
   }
 
   const TypeInfo& LookupTypeInfo(ast::TypeId tid) const {
+    if (tid.ndims > 0) {
+      return kArrayTypeInfo;
+    }
+
     const auto info = type_info_.find(tid);
     assert(info != type_info_.cend());
     return info->second;
@@ -219,12 +226,25 @@ private:
   using Map = map<ast::TypeId, TypeInfo>;
   friend class TypeInfoMapBuilder;
 
-  TypeInfoMap(const Map& typeinfo) : type_info_(typeinfo) {}
+  TypeInfoMap(const base::FileSet* fs, const Map& typeinfo) : fs_(fs), type_info_(typeinfo),
+    kArrayTypeInfo({
+      MakeModifierList(false, false, false),
+      ast::TypeKind::CLASS,
+      ast::TypeId::kError,
+      "array",
+      base::PosRange(-1, -1, -1),
+      TypeIdList({}),
+      TypeIdList({}),
+      MethodTable({}, {}, false),
+      FieldTable(fs, {{"length", FieldInfo{kArrayLengthFieldId, ast::TypeId::kError, MakeModifierList(false, false, false), ast::TypeId::kInt, base::PosRange(-1, -1, -1), "length"}}}, {}),
+      0
+    }) {}
 
-  static TypeInfoMap kEmptyTypeInfoMap;
   static TypeInfo kErrorTypeInfo;
 
+  const base::FileSet* fs_;
   Map type_info_;
+  TypeInfo kArrayTypeInfo;
 };
 
 class TypeInfoMapBuilder {
