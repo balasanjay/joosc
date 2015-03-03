@@ -301,6 +301,7 @@ TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList*
 
       // Look up candidate as a fully-qualified globally unique name.
       if (types_.count(kNamedPkgPrefix + "." + candidate)) {
+        // TODO: errors.
         PosRange pos(0, 0, 0);
         errors->Append(MakeUnknownTypenameError(fs_, pos));
         break;
@@ -310,6 +311,7 @@ TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList*
       if (candidate.find('.') == string::npos) {
         auto iter_pair = FindByShortName(candidate);
         if (iter_pair.first != iter_pair.second) {
+          // TODO: errors.
           PosRange pos(0, 0, 0);
           errors->Append(MakeUnknownTypenameError(fs_, pos));
           break;
