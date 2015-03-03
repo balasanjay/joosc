@@ -255,7 +255,9 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
   for (int i = 0; i < parents.Size(); ++i) {
     const auto info_pair = sofar.find(parents.At(i));
-    CHECK(info_pair != sofar.cend());
+    if (info_pair == sofar.cend()) {
+      continue;
+    }
     const TypeInfo& pinfo = info_pair->second;
 
     // Early return if any of our parents are broken.
@@ -494,7 +496,9 @@ void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInf
 
   for (int i = 0; i < parents.Size(); ++i) {
     const auto info_pair = sofar.find(parents.At(i));
-    CHECK(info_pair != sofar.cend());
+    if (info_pair == sofar.end()) {
+      continue;
+    }
     const TypeInfo& pinfo = info_pair->second;
 
     // Early return if any of our parents are broken.
@@ -633,7 +637,12 @@ void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(const TypeSet& typeset, 
 
     vector<TypeId> topsort = VerifyAcyclicGraph(edges, &bad_types, cycle_cb);
     for (uint i = 0; i < topsort.size(); ++i) {
-      all_types.at(topsort.at(i)).top_sort_index = i;
+      auto type_iter = all_types.find(topsort.at(i));
+      if (type_iter == all_types.end()) {
+        continue;
+      }
+
+      type_iter->second.top_sort_index = i;
     }
   }
 }
@@ -696,6 +705,12 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
     for (int i = 0; i < typeinfo.implements.Size(); ++i) {
       TypeId implement_tid = typeinfo.implements.At(i);
       auto is_duplicate = already_implemented.insert(implement_tid);
+
+      // TODO: don't do this.
+      if (all_types.count(implement_tid) == 0) {
+        continue;
+      }
+
       if (!is_duplicate.second) {
         errors->Append(MakeDuplicateInheritanceError(fs, false, typeinfo.pos, typeinfo.type, implement_tid));
         bad_types->insert(type);
