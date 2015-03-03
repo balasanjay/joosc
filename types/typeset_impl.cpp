@@ -282,11 +282,41 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
 TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList* errors) const {
   // For fully qualified names, look up in all types directly.
   if (name.find('.') != string::npos) {
-    auto t = types_.find(kNamedPkgPrefix + '.' + name);
+    string qualified = kNamedPkgPrefix + '.' + name;
+    auto t = types_.find(qualified);
     if (t == types_.end()) {
       errors->Append(MakeUnknownTypenameError(fs_, pos));
       return TypeId::kUnassigned;
     }
+
+    size_t search_begin = 0;
+    while (true) {
+      size_t next_dot = name.find('.', search_begin);
+      if (next_dot == string::npos) {
+        break;
+      }
+
+      string candidate = name.substr(0, next_dot);
+      search_begin = next_dot + 1;
+
+      // Look up candidate as a fully-qualified globally unique name.
+      if (types_.count(kNamedPkgPrefix + "." + candidate)) {
+        PosRange pos(0, 0, 0);
+        errors->Append(MakeUnknownTypenameError(fs_, pos));
+        break;
+      }
+
+      // Look up candidate in the current environment.
+      if (candidate.find('.') == string::npos) {
+        auto iter_pair = FindByShortName(candidate);
+        if (iter_pair.first != iter_pair.second) {
+          PosRange pos(0, 0, 0);
+          errors->Append(MakeUnknownTypenameError(fs_, pos));
+          break;
+        }
+      }
+    }
+
     return TypeId{t->second, 0};
   }
 
