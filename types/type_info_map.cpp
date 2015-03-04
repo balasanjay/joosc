@@ -902,11 +902,13 @@ MethodId MethodTable::ResolveCall(const TypeInfoMap* type_info_map, TypeId calle
   const TypeInfo& method_owner_tinfo = type_info_map->LookupTypeInfo(minfo->second.class_type);
   const TypeInfo& caller_tinfo = type_info_map->LookupTypeInfo(callerType);
   if (callerType != minfo->second.class_type) {
-    if (minfo->second.mods.HasModifier(lexer::PROTECTED)
-        && !type_info_map->IsAncestor(callerType, minfo->second.class_type)
-        && method_owner_tinfo.package != caller_tinfo.package) {
-      errors->Append(MakePermissionError(pos, minfo->second.pos));
-      return kErrorMethodId;
+    if (minfo->second.mods.HasModifier(lexer::PROTECTED)) {
+      if (ctx == CallContext::CONSTRUCTOR
+          || (!type_info_map->IsAncestor(callerType, minfo->second.class_type)
+          && method_owner_tinfo.package != caller_tinfo.package)) {
+        errors->Append(MakePermissionError(pos, minfo->second.pos));
+        return kErrorMethodId;
+      }
     }
   }
 
