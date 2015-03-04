@@ -95,7 +95,7 @@ ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract
   return mods;
 }
 
-TypeInfo TypeInfoMap::kErrorTypeInfo = TypeInfo{{}, TypeKind::CLASS, TypeId::kError, "", kFakePos, TypeIdList({}), TypeIdList({}), MethodTable::kErrorMethodTable, FieldTable::kErrorFieldTable, 0};
+TypeInfo TypeInfoMap::kErrorTypeInfo = TypeInfo{{}, TypeKind::CLASS, TypeId::kError, "", "", kFakePos, TypeIdList({}), TypeIdList({}), MethodTable::kErrorMethodTable, FieldTable::kErrorFieldTable, 0};
 
 // TODO: Empty filesets are no.
 MethodTable MethodTable::kEmptyMethodTable = MethodTable(&base::FileSet::Empty(), {}, {}, false);
@@ -899,10 +899,12 @@ MethodId MethodTable::ResolveCall(const TypeInfoMap* type_info_map, TypeId calle
   }
 
   // Check permissions.
-  // TODO: Check if in same package.
+  const TypeInfo& method_owner_tinfo = type_info_map->LookupTypeInfo(minfo->second.class_type);
+  const TypeInfo& caller_tinfo = type_info_map->LookupTypeInfo(callerType);
   if (callerType != minfo->second.class_type) {
     if (minfo->second.mods.HasModifier(lexer::PROTECTED)
-        && !type_info_map->IsAncestor(callerType, minfo->second.class_type)) {
+        && !type_info_map->IsAncestor(callerType, minfo->second.class_type)
+        && method_owner_tinfo.package != caller_tinfo.package) {
       errors->Append(MakePermissionError(pos, minfo->second.pos));
       return kErrorMethodId;
     }
@@ -981,10 +983,12 @@ FieldId FieldTable::ResolveAccess(const TypeInfoMap* type_info_map, TypeId calle
   }
 
   // Check permissions.
-  // TODO: Check if in same package.
+  const TypeInfo& field_owner_tinfo = type_info_map->LookupTypeInfo(finfo->second.class_type);
+  const TypeInfo& caller_tinfo = type_info_map->LookupTypeInfo(callerType);
   if (callerType != finfo->second.class_type) {
     if (finfo->second.mods.HasModifier(lexer::PROTECTED)
-        && !type_info_map->IsAncestor(callerType, finfo->second.class_type)) {
+        && !type_info_map->IsAncestor(callerType, finfo->second.class_type)
+        && field_owner_tinfo.package != caller_tinfo.package) {
       errors->Append(MakePermissionError(pos, finfo->second.pos));
       return kErrorFieldId;
     }
