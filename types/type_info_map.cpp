@@ -876,7 +876,7 @@ bool MethodTable::IsBlacklisted(CallContext ctx, const string& name) const {
   return bad_methods_.count(name) == 1;
 }
 
-MethodId MethodTable::ResolveCall(TypeId callerType, CallContext ctx, const TypeIdList& params, const string& method_name, PosRange pos, ErrorList* errors) const {
+MethodId MethodTable::ResolveCall(const TypeInfoMap* type_info_map, TypeId callerType, CallContext ctx, const TypeIdList& params, const string& method_name, PosRange pos, ErrorList* errors) const {
   // TODO: More things.
   MethodSignature sig = MethodSignature{(ctx == CallContext::CONSTRUCTOR), method_name, params};
   auto minfo = method_signatures_.find(sig);
@@ -898,8 +898,33 @@ MethodId MethodTable::ResolveCall(TypeId callerType, CallContext ctx, const Type
     return kErrorMethodId;
   }
 
-  // TODO: Check permissions.
+  // Check permissions.
+  // TODO: Check if in same package.
+  if (callerType != minfo->second.class_type) {
+    if (minfo->second.mods.HasModifier(lexer::PROTECTED)
+        && !type_info_map->IsAncestor(callerType, minfo->second.class_type)) {
+      errors->Append(MakePermissionError(pos, minfo->second.pos));
+      return kErrorMethodId;
+    }
+  }
+
   return minfo->second.mid;
+}
+
+Error* MethodTable::MakePermissionError(PosRange call_pos, PosRange method_pos) const {
+  const FileSet* fs = fs_;
+  return MakeError([=](ostream* out, const OutputOptions& opt) {
+    if (opt.simple) {
+      *out << "PermissionError";
+      return;
+    }
+
+    PrintDiagnosticHeader(out, opt, fs, call_pos, DiagnosticClass::ERROR, "Cannot access protected method from a non-descendant.");
+    PrintRangePtr(out, opt, fs, call_pos);
+    *out << '\n';
+    PrintDiagnosticHeader(out, opt, fs, method_pos, DiagnosticClass::INFO, "Defined here.");
+    PrintRangePtr(out, opt, fs, method_pos);
+  });
 }
 
 Error* MethodTable::MakeUndefinedMethodError(MethodSignature sig, PosRange pos) const {
@@ -935,7 +960,7 @@ Error* MethodTable::MakeStaticMethodOnInstanceError(PosRange pos) const {
   return MakeSimplePosRangeError(fs_, pos, "StaticMethodOnInstanceError", msg);
 }
 
-FieldId FieldTable::ResolveAccess(TypeId callerType, CallContext ctx, string field_name, PosRange pos, ErrorList* errors) const {
+FieldId FieldTable::ResolveAccess(const TypeInfoMap* type_info_map, TypeId callerType, CallContext ctx, string field_name, PosRange pos, ErrorList* errors) const {
   auto finfo = field_names_.find(field_name);
   if (finfo == field_names_.end()) {
     // Only emit error if this isn't blacklisted.
@@ -955,9 +980,33 @@ FieldId FieldTable::ResolveAccess(TypeId callerType, CallContext ctx, string fie
     return kErrorFieldId;
   }
 
-  // TODO: Check permissions.
+  // Check permissions.
+  // TODO: Check if in same package.
+  if (callerType != finfo->second.class_type) {
+    if (finfo->second.mods.HasModifier(lexer::PROTECTED)
+        && !type_info_map->IsAncestor(callerType, finfo->second.class_type)) {
+      errors->Append(MakePermissionError(pos, finfo->second.pos));
+      return kErrorFieldId;
+    }
+  }
 
   return finfo->second.fid;
+}
+
+Error* FieldTable::MakePermissionError(PosRange access_pos, PosRange field_pos) const {
+  const FileSet* fs = fs_;
+  return MakeError([=](ostream* out, const OutputOptions& opt) {
+    if (opt.simple) {
+      *out << "PermissionError";
+      return;
+    }
+
+    PrintDiagnosticHeader(out, opt, fs, access_pos, DiagnosticClass::ERROR, "Cannot access protected field from a non-descendant.");
+    PrintRangePtr(out, opt, fs, access_pos);
+    *out << '\n';
+    PrintDiagnosticHeader(out, opt, fs, field_pos, DiagnosticClass::INFO, "Defined here.");
+    PrintRangePtr(out, opt, fs, field_pos);
+  });
 }
 
 Error* FieldTable::MakeUndefinedReferenceError(string name, PosRange pos) const {

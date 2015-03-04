@@ -76,9 +76,11 @@ struct MethodInfo {
   MethodSignature signature;
 };
 
+class TypeInfoMap;
+
 class MethodTable {
 public:
-  MethodId ResolveCall(ast::TypeId callerType, CallContext ctx, const TypeIdList& params, const string& method_name, base::PosRange pos, base::ErrorList* out) const;
+  MethodId ResolveCall(const TypeInfoMap* type_info_map, ast::TypeId callerType, CallContext ctx, const TypeIdList& params, const string& method_name, base::PosRange pos, base::ErrorList* out) const;
 
   // Given a valid MethodId, return all the associated info about it.
   const MethodInfo& LookupMethod(MethodId mid) const {
@@ -122,6 +124,7 @@ private:
 
   base::Error* MakeInstanceMethodOnStaticError(base::PosRange pos) const;
   base::Error* MakeStaticMethodOnInstanceError(base::PosRange pos) const;
+  base::Error* MakePermissionError(base::PosRange call_pos, base::PosRange method_pos) const;
 
   static MethodTable kEmptyMethodTable;
   static MethodTable kErrorMethodTable;
@@ -151,7 +154,7 @@ struct FieldInfo {
 
 class FieldTable {
 public:
-  FieldId ResolveAccess(ast::TypeId callerType, CallContext ctx, string field_name, base::PosRange pos, base::ErrorList* out) const;
+  FieldId ResolveAccess(const TypeInfoMap* type_info_map, ast::TypeId callerType, CallContext ctx, string field_name, base::PosRange pos, base::ErrorList* out) const;
 
   // Given a valid FieldId, return all the associated info about it.
   const FieldInfo& LookupField(FieldId fid) const {
@@ -192,6 +195,7 @@ private:
   base::Error* MakeUndefinedReferenceError(string name, base::PosRange name_pos) const;
   base::Error* MakeInstanceFieldOnStaticError(base::PosRange pos) const;
   base::Error* MakeStaticFieldOnInstanceError(base::PosRange pos) const;
+  base::Error* MakePermissionError(base::PosRange access_pos, base::PosRange field_pos) const;
 
   static FieldTable kEmptyFieldTable;
   static FieldTable kErrorFieldTable;
