@@ -66,7 +66,11 @@ bool IsAccessible(const TypeInfoMap& types, const ModifierList& mods, CallContex
   if (!types.IsAncestor(caller, owner)) {
     return false;
   }
-  // Accessible only if callee is subtype of caller.
+  // It is sufficient that you are a descendent of the owner of a static member.
+  if (ctx == CallContext::STATIC) {
+    return true;
+  }
+  // Instance members are accessible only if callee is subtype of caller.
   return callee == caller || types.IsAncestor(callee, caller);
 }
 
