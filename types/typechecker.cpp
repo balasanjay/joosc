@@ -296,6 +296,9 @@ REWRITE_DEFN(TypeChecker, NewClassExpr, Expr, expr,) {
   TypeId tid = type->GetTypeId();
 
   const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(tid);
+  if (!tinfo.type.IsValid()) {
+    return nullptr;
+  }
 
   const ReferenceType* ref_type = dynamic_cast<const ReferenceType*>(type.get());
   CHECK(ref_type != nullptr);
@@ -704,6 +707,10 @@ REWRITE_DEFN(TypeChecker, FieldDecl, MemberDecl, decl, declptr) {
 
   // Lookup field and rewrite with fid.
   const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(curtype_);
+  // Can fail if type is blacklisted.
+  if (!tinfo.type.IsValid()) {
+    return nullptr;
+  }
   const FieldInfo& finfo = tinfo.fields.LookupField(decl.Name());
 
   return make_shared<FieldDecl>(decl.Mods(), type, decl.Name(), decl.NameToken(), val, finfo.fid);
@@ -733,6 +740,11 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
   }
 
   const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(curtype_);
+  // Can fail if type is blacklisted.
+  if (!tinfo.type.IsValid()) {
+    return nullptr;
+  }
+
   const MethodInfo& minfo = tinfo.methods.LookupMethod(MethodSignature{is_constructor, decl.Name(), paramtids});
   sptr<const Stmt> body = Rewrite(decl.BodyPtr());
 

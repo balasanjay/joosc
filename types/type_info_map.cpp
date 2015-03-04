@@ -273,9 +273,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
     for (const auto& psig_pair : pinfo.methods.method_signatures_) {
       const MethodSignature& psig = psig_pair.first;
-      const MethodInfo& implicit_pminfo = psig_pair.second;
-      // Make all implicit modifiers explicit.
-      const MethodInfo pminfo = FixMods(pinfo, implicit_pminfo);
+      const MethodInfo& pminfo = psig_pair.second;
 
       // Skip constructors since they are not inherited.
       if (psig.is_constructor) {
@@ -298,9 +296,12 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
         continue;
       }
 
-      const MethodInfo& implicit_mminfo = msig_pair->second;
-      // Make all implicit modifiers explicit.
-      const MethodInfo mminfo = FixMods(*tinfo, implicit_mminfo);
+      const MethodInfo& mminfo = msig_pair->second;
+
+      // If inherited method is exactly the same one (diamond) then continue.
+      if (pminfo.mid == mminfo.mid) {
+        continue;
+      }
 
       // We cannot inherit methods of the same signature but differing return
       // types.
@@ -527,7 +528,7 @@ void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInf
   tinfo->fields = FieldTable(fs, new_good_fields, new_bad_fields);
 }
 
-TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
+TypeInfoMap TypeInfoMapBuilder::Build(const TypeSet& typeset, base::ErrorList* out) {
   map<TypeId, TypeInfo> typeinfo;
   vector<TypeId> all_types;
   set<TypeId> cycle_bad_types;
@@ -538,7 +539,7 @@ TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
     all_types.push_back(entry.type);
   }
 
-  ValidateExtendsImplementsGraph(&typeinfo, &cycle_bad_types, out);
+  ValidateExtendsImplementsGraph(typeset, &typeinfo, &cycle_bad_types, out);
 
   // Sort TypeId vector by the topological ordering of the types.
   {
@@ -564,7 +565,7 @@ TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
         auto iter_pair = method_entries_.equal_range(type_id);
         vector<MethodInfo> methods;
         for (auto cur = iter_pair.first; cur != iter_pair.second; ++cur) {
-          methods.push_back(cur->second);
+          methods.push_back(FixMods(*tinfo, cur->second));
         }
 
         BuildMethodTable(methods.begin(), methods.end(), tinfo, &cur_mid, typeinfo, cycle_bad_types, &parent_bad_types, out);
@@ -590,7 +591,7 @@ TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
   return TypeInfoMap(fs_, typeinfo);
 }
 
-void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(map<TypeId, TypeInfo>* types, set<TypeId>* bad, ErrorList* errors) {
+void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(const TypeSet& typeset, map<TypeId, TypeInfo>* types, set<TypeId>* bad, ErrorList* errors) {
   using IdInfoMap = map<TypeId, TypeInfo>;
 
   // Bind a reference to make the code more readable.
@@ -600,6 +601,9 @@ void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(map<TypeId, TypeInfo>* t
   // Ensure that we blacklist any classes that introduce invalid edges into the
   // graph.
   PruneInvalidGraphEdges(all_types, &bad_types, errors);
+
+  // Make every class and interface extend Object.
+  IntroduceImplicitGraphEdges(typeset, bad_types, &all_types);
 
   // Now build a combined graph of edges.
   multimap<TypeId, TypeId> edges;
@@ -663,8 +667,14 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
       CHECK(typeinfo.implements.Size() == 0);
 
       // An interface can only extend other interfaces.
+      set<TypeId> already_extended;
       for (int i = 0; i < typeinfo.extends.Size(); ++i) {
         TypeId extends_tid = typeinfo.extends.At(i);
+        auto is_duplicate = already_extended.insert(extends_tid);
+        if (!is_duplicate.second) {
+          errors->Append(MakeDuplicateInheritanceError(fs, true, typeinfo.pos, typeinfo.type, extends_tid));
+          bad_types->insert(type);
+        }
         if (!match_relationship(extends_tid, type, TypeKind::INTERFACE)) {
           errors->Append(MakeInterfaceExtendsClassError(fs, typeinfo.pos, all_types.at(extends_tid).name));
           bad_types->insert(type);
@@ -682,13 +692,53 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
         bad_types->insert(type);
       }
     }
+    set<TypeId> already_implemented;
     for (int i = 0; i < typeinfo.implements.Size(); ++i) {
       TypeId implement_tid = typeinfo.implements.At(i);
+      auto is_duplicate = already_implemented.insert(implement_tid);
+      if (!is_duplicate.second) {
+        errors->Append(MakeDuplicateInheritanceError(fs, false, typeinfo.pos, typeinfo.type, implement_tid));
+        bad_types->insert(type);
+      }
       if (!match_relationship(implement_tid, type, TypeKind::INTERFACE)) {
         errors->Append(MakeClassImplementsClassError(fs, typeinfo.pos, all_types.at(implement_tid).name));
         bad_types->insert(type);
       }
     }
+  }
+}
+
+void TypeInfoMapBuilder::IntroduceImplicitGraphEdges(const TypeSet& typeset, const set<TypeId>& bad, map<TypeId, TypeInfo>* types) {
+  using IdInfoMap = map<TypeId, TypeInfo>;
+
+  // Bind a reference to make the code more readable.
+  IdInfoMap& all_types = *types;
+
+  TypeId object = typeset.TryGet("java.lang.Object");
+  CHECK(object.IsValid());
+
+  for (auto& tid_tinfo_iter : all_types) {
+    TypeId tid = tid_tinfo_iter.first;
+    TypeInfo& tinfo = tid_tinfo_iter.second;
+
+    // Do nothing for already blacklisted types.
+    if (bad.count(tid) == 1) {
+      continue;
+    }
+
+    // We don't insert implicit edges for Object.
+    if (tid == object) {
+      // TODO: validate that object has no fields.
+      continue;
+    }
+
+    // If the type is already extending things then do nothing. They'll get
+    // the implicit edge indirectly.
+    if (tinfo.extends.Size() > 0) {
+      continue;
+    }
+
+    tinfo.extends = TypeIdList({object});
   }
 }
 
@@ -769,13 +819,55 @@ vector<TypeId> TypeInfoMapBuilder::VerifyAcyclicGraph(const multimap<TypeId, Typ
   return sorted;
 }
 
+bool TypeInfoMap::IsAncestor(TypeId child, TypeId ancestor) const {
+  auto ancestor_lookup = inherit_map_.find(make_pair(child, ancestor));
+  if (ancestor_lookup != inherit_map_.end()) {
+    return ancestor_lookup->second;
+  }
+  bool is_ancestor = IsAncestorRec(child, ancestor);
+  inherit_map_.insert({make_pair(child, ancestor), is_ancestor});
+  return is_ancestor;
+}
+
+bool TypeInfoMap::IsAncestorRec(TypeId child, TypeId ancestor) const {
+  const TypeInfo& tinfo = LookupTypeInfo(child);
+  if (tinfo.type == ast::TypeId::kError) {
+    // If blacklisted, allow any inheritance check.
+    return true;
+  }
+  types::TypeIdList parents = Concat({tinfo.extends, tinfo.implements});
+  for (int i = 0; i < parents.Size(); ++i) {
+    // If this parent is the ancestor we're looking for, return immediately.
+    if (parents.At(i) == ancestor) {
+      return true;
+    }
+
+    // Recurse using the cached/memoized lookup on our parents.
+    if (IsAncestor(parents.At(i), ancestor)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool MethodTable::IsBlacklisted(CallContext ctx, const string& name) const {
+  if (all_blacklisted_) {
+    return true;
+  }
+  if (ctx == CallContext::CONSTRUCTOR) {
+    return has_bad_constructor_;
+  }
+  return bad_methods_.count(name) == 1;
+}
+
 MethodId MethodTable::ResolveCall(TypeId callerType, CallContext ctx, const TypeIdList& params, const string& method_name, PosRange pos, ErrorList* errors) const {
   // TODO: More things.
   MethodSignature sig = MethodSignature{(ctx == CallContext::CONSTRUCTOR), method_name, params};
   auto minfo = method_signatures_.find(sig);
   if (minfo == method_signatures_.end()) {
     // Only emit error if this isn't blacklisted.
-    if (bad_methods_.count(method_name) == 0) {
+    if (!IsBlacklisted(ctx, method_name)) {
       errors->Append(MakeUndefinedMethodError(sig, pos));
     }
     return kErrorMethodId;
@@ -832,7 +924,7 @@ FieldId FieldTable::ResolveAccess(TypeId callerType, CallContext ctx, string fie
   auto finfo = field_names_.find(field_name);
   if (finfo == field_names_.end()) {
     // Only emit error if this isn't blacklisted.
-    if (bad_fields_.count(field_name) == 0) {
+    if (!all_blacklisted_ && bad_fields_.count(field_name) == 0) {
       errors->Append(MakeUndefinedReferenceError(field_name, pos));
     }
     return kErrorFieldId;
