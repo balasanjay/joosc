@@ -56,7 +56,7 @@ TypeSetImpl::TypeSetImpl(const FileSet* fs, const set<string>& types, const set<
   // Insert all predefined types.
 #define INS(name, Name) \
   types_[#name] = TypeId::k##Name##Base; \
-  visible_types2_.insert(TypeInfo2{#name, TypeId::k##Name##Base, ImportScope::COMP_UNIT, #name})
+  visible_types2_.insert(TypeInfo{#name, TypeId::k##Name##Base, ImportScope::COMP_UNIT, #name})
 
   INS(void, Void);
   INS(boolean, Bool);
@@ -138,7 +138,7 @@ sptr<TypeSetImpl> TypeSetImpl::WithImports(const vector<ast::ImportDecl>& import
 }
 
 auto TypeSetImpl::FindByShortName(const string& shortname) const -> pair<VisibleSet::const_iterator, VisibleSet::const_iterator> {
-  TypeInfo2 query = {shortname, 0, ImportScope::COMP_UNIT, ""};
+  TypeInfo query = {shortname, 0, ImportScope::COMP_UNIT, ""};
   auto iter = visible_types2_.lower_bound(query);
   if (iter == visible_types2_.end()) {
     return make_pair(iter, iter);
@@ -173,8 +173,8 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
     visible_types2_.erase(short_iter.first, short_iter.second);
 
     // Blacklist both versions of the name.
-    visible_types2_.insert(TypeInfo2{longname, TypeId::kErrorBase, ImportScope::COMP_UNIT, longname});
-    visible_types2_.insert(TypeInfo2{shortname, TypeId::kErrorBase, ImportScope::COMP_UNIT, longname});
+    visible_types2_.insert(TypeInfo{longname, TypeId::kErrorBase, ImportScope::COMP_UNIT, longname});
+    visible_types2_.insert(TypeInfo{shortname, TypeId::kErrorBase, ImportScope::COMP_UNIT, longname});
     return;
   }
 
@@ -186,7 +186,7 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
   std::tie(begin, end) = FindByShortName(shortname);
   size_t num_entries = std::distance(begin, end);
 
-  TypeInfo2 info = TypeInfo2{shortname, base, scope, longname};
+  TypeInfo info = TypeInfo{shortname, base, scope, longname};
 
   // If this type is being blacklisted, then overwrite any entries with a
   // blacklist entry.
@@ -228,7 +228,7 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
   }
 
   CHECK(num_entries == 1);
-  TypeInfo2 prev = *begin;
+  TypeInfo prev = *begin;
 
   // If this name was previously blacklisted, then just leave it blacklisted
   // and don't do anything.

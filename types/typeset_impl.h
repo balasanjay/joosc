@@ -56,12 +56,6 @@ public:
   using TypeBase = ast::TypeId::Base;
 
   struct TypeInfo {
-    string full_name;
-    TypeBase base;
-    ImportScope scope;
-  };
-
-  struct TypeInfo2 {
     string shortname;
     TypeBase base;
     ImportScope scope;
@@ -69,14 +63,13 @@ public:
     string longname;
 
     struct ByName {
-      bool operator()(const TypeInfo2& lhs, const TypeInfo2& rhs) const {
+      bool operator()(const TypeInfo& lhs, const TypeInfo& rhs) const {
         return std::tie(lhs.shortname, lhs.base, lhs.scope) < std::tie(rhs.shortname, rhs.base, rhs.scope);
       }
     };
   };
 
-  using VisibleMap = multimap<string, TypeInfo>;
-  using VisibleSet = set<TypeInfo2, TypeInfo2::ByName>;
+  using VisibleSet = set<TypeInfo, TypeInfo::ByName>;
 
   pair<VisibleSet::const_iterator, VisibleSet::const_iterator> FindByShortName(const string& shortname) const;
 
