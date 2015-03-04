@@ -80,7 +80,7 @@ class TypeInfoMap;
 
 class MethodTable {
 public:
-  MethodId ResolveCall(const TypeInfoMap* type_info_map, ast::TypeId callerType, CallContext ctx, const TypeIdList& params, const string& method_name, base::PosRange pos, base::ErrorList* out) const;
+  MethodId ResolveCall(const TypeInfoMap& type_info_map, ast::TypeId caller_type, CallContext ctx, ast::TypeId callee_type, const TypeIdList& params, const string& method_name, base::PosRange pos, base::ErrorList* out) const;
 
   // Given a valid MethodId, return all the associated info about it.
   const MethodInfo& LookupMethod(MethodId mid) const {
@@ -154,7 +154,7 @@ struct FieldInfo {
 
 class FieldTable {
 public:
-  FieldId ResolveAccess(const TypeInfoMap* type_info_map, ast::TypeId callerType, CallContext ctx, string field_name, base::PosRange pos, base::ErrorList* out) const;
+  FieldId ResolveAccess(const TypeInfoMap& type_info_map, ast::TypeId callerType, CallContext ctx, ast::TypeId callee_type, string field_name, base::PosRange pos, base::ErrorList* out) const;
 
   // Given a valid FieldId, return all the associated info about it.
   const FieldInfo& LookupField(FieldId fid) const {

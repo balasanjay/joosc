@@ -42,6 +42,35 @@ static Token kProtected(K_PROTECTED, kFakePos);
 static Token kFinal(K_FINAL, kFakePos);
 static Token kAbstract(K_ABSTRACT, kFakePos);
 
+bool IsAccessible(const TypeInfoMap& types, const ModifierList& mods, CallContext ctx, TypeId owner, TypeId caller, TypeId callee) {
+  if (caller == owner) {
+    return true;
+  }
+  if (!mods.HasModifier(lexer::PROTECTED)) {
+    return true;
+  }
+
+  const TypeInfo& method_owner_tinfo = types.LookupTypeInfo(owner);
+  const TypeInfo& caller_tinfo = types.LookupTypeInfo(caller);
+  bool is_same_package = (method_owner_tinfo.package == caller_tinfo.package);
+
+  // All protected members accessible from same package.
+  if (is_same_package) {
+    return true;
+  }
+  // Protected constructor never accessible outside of package.
+  if (ctx == CallContext::CONSTRUCTOR) {
+    return false;
+  }
+  // Accessible only if caller is subtype of owner.
+  if (!types.IsAncestor(caller, owner)) {
+    return false;
+  }
+  // Accessible only if callee is subtype of caller.
+  return callee == caller || types.IsAncestor(callee, caller);
+}
+
+
 Error* MakeInterfaceExtendsClassError(const FileSet* fs, PosRange pos, const string& parent_class) {
   string msg = "An interface may not extend '" + parent_class + "', a class.";
   return MakeSimplePosRangeError(fs, pos, "InterfaceExtendsClassError", msg);
@@ -876,7 +905,7 @@ bool MethodTable::IsBlacklisted(CallContext ctx, const string& name) const {
   return bad_methods_.count(name) == 1;
 }
 
-MethodId MethodTable::ResolveCall(const TypeInfoMap* type_info_map, TypeId callerType, CallContext ctx, const TypeIdList& params, const string& method_name, PosRange pos, ErrorList* errors) const {
+MethodId MethodTable::ResolveCall(const TypeInfoMap& type_info_map, TypeId caller_type, CallContext ctx, TypeId callee_type, const TypeIdList& params, const string& method_name, PosRange pos, ErrorList* errors) const {
   // TODO: More things.
   MethodSignature sig = MethodSignature{(ctx == CallContext::CONSTRUCTOR), method_name, params};
   auto minfo = method_signatures_.find(sig);
@@ -899,17 +928,9 @@ MethodId MethodTable::ResolveCall(const TypeInfoMap* type_info_map, TypeId calle
   }
 
   // Check permissions.
-  const TypeInfo& method_owner_tinfo = type_info_map->LookupTypeInfo(minfo->second.class_type);
-  const TypeInfo& caller_tinfo = type_info_map->LookupTypeInfo(callerType);
-  if (callerType != minfo->second.class_type) {
-    if (minfo->second.mods.HasModifier(lexer::PROTECTED)) {
-      if (ctx == CallContext::CONSTRUCTOR
-          || (!type_info_map->IsAncestor(callerType, minfo->second.class_type)
-          && method_owner_tinfo.package != caller_tinfo.package)) {
-        errors->Append(MakePermissionError(pos, minfo->second.pos));
-        return kErrorMethodId;
-      }
-    }
+  if (!IsAccessible(type_info_map, minfo->second.mods, ctx, minfo->second.class_type, caller_type, callee_type)) {
+    errors->Append(MakePermissionError(pos, minfo->second.pos));
+    return kErrorMethodId;
   }
 
   return minfo->second.mid;
@@ -964,7 +985,8 @@ Error* MethodTable::MakeStaticMethodOnInstanceError(PosRange pos) const {
   return MakeSimplePosRangeError(fs_, pos, "StaticMethodOnInstanceError", msg);
 }
 
-FieldId FieldTable::ResolveAccess(const TypeInfoMap* type_info_map, TypeId callerType, CallContext ctx, string field_name, PosRange pos, ErrorList* errors) const {
+FieldId FieldTable::ResolveAccess(const TypeInfoMap& type_info_map, TypeId caller_type, CallContext ctx, TypeId callee_type, string field_name, PosRange pos, ErrorList* errors) const {
+  CHECK(ctx == CallContext::INSTANCE || ctx == CallContext::STATIC);
   auto finfo = field_names_.find(field_name);
   if (finfo == field_names_.end()) {
     // Only emit error if this isn't blacklisted.
@@ -985,15 +1007,9 @@ FieldId FieldTable::ResolveAccess(const TypeInfoMap* type_info_map, TypeId calle
   }
 
   // Check permissions.
-  const TypeInfo& field_owner_tinfo = type_info_map->LookupTypeInfo(finfo->second.class_type);
-  const TypeInfo& caller_tinfo = type_info_map->LookupTypeInfo(callerType);
-  if (callerType != finfo->second.class_type) {
-    if (finfo->second.mods.HasModifier(lexer::PROTECTED)
-        && !type_info_map->IsAncestor(callerType, finfo->second.class_type)
-        && field_owner_tinfo.package != caller_tinfo.package) {
-      errors->Append(MakePermissionError(pos, finfo->second.pos));
-      return kErrorFieldId;
-    }
+  if (!IsAccessible(type_info_map, finfo->second.mods, ctx, finfo->second.class_type, caller_type, callee_type)) {
+    errors->Append(MakePermissionError(pos, finfo->second.pos));
+    return kErrorFieldId;
   }
 
   return finfo->second.fid;
