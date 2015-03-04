@@ -110,20 +110,16 @@ TEST_F(SymbolTableTest, SimpleScope) {
 TEST_F(SymbolTableTest, LocalVarShadowsParam) {
   TypeId paramTid{100, 0};
   TypeId localTid{101, 2};
-  MakeSymbolTable({{paramTid, "foo", PosRange(0, 0, 1)}});
+  MakeSymbolTable({{paramTid, "foo", PosRange(0, 0, 5)}});
 
   symbs_->EnterScope();
-  VarDeclGuard(symbs_.get(), localTid, "foo", PosRange(0, 1, 2), &errors_);
-  EXPECT_NO_ERRS();
+  VarDeclGuard(symbs_.get(), localTid, "foo", PosRange(0, 5, 10), &errors_);
+  EXPECT_ERRS("foo: [0:5-10,0:0-5,]\n");
 
-  auto varInfo = symbs_->ResolveLocal("foo", PosRange(0, 3, 4), &errors_);
-  EXPECT_NO_ERRS();
-  EXPECT_EQ(localTid, varInfo.first);
-  EXPECT_NE(kVarUnassigned, varInfo.second);
-
-  symbs_->LeaveScope();
-  varInfo = symbs_->ResolveLocal("foo", PosRange(0, 4, 5), &errors_);
-  EXPECT_NO_ERRS();
+  // We expect a lookup to NOT emit a new error because the previous error
+  // would cause this name to be blacklisted.
+  auto varInfo = symbs_->ResolveLocal("foo", PosRange(0, 10, 15), &errors_);
+  EXPECT_ERRS("foo: [0:5-10,0:0-5,]\n");
   EXPECT_EQ(paramTid, varInfo.first);
   EXPECT_NE(kVarUnassigned, varInfo.second);
 }
@@ -142,7 +138,7 @@ TEST_F(SymbolTableTest, LocalVarDuplicateDef) {
 
 TEST_F(SymbolTableTest, LocalVarNonOverlappingScopes) {
   TypeId tid{100, 0};
-  MakeSymbolTable({{tid, "foo", PosRange(0, 0, 1)}});
+  MakeSymbolTable({});
 
   symbs_->EnterScope();
   VarDeclGuard(symbs_.get(), tid, "foo", PosRange(0, 1, 2), &errors_);
