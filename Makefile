@@ -25,7 +25,7 @@ CXX := /usr/local/clang-3.4/bin/clang++
 # CXXFLAGS are the flags passed to the C++ compiler.
 CXXFLAGS := -Wall -Wextra -std=c++11 -MMD -MP -g -pedantic -I ./ -include std.h
 # LDFLAGS are the flags passed to the C++ linker.
-LDFLAGS := -lpthread
+LDFLAGS := -lpthread -B third_party/bin/
 
 # If one of the sanitizers are enabled, then append the appropriate thing to
 # CXXFLAGS and LDFLAGS. Note that we do this before generating BUILD_CACHE_KEY,
@@ -66,12 +66,12 @@ clean:
 # Compile.
 ${FULL_OBJECTS}: ${BUILD_DIR}/%.o: ./%.cpp
 	@mkdir -p ${dir $@};
-	${CXX} ${CXXFLAGS} -o $@ $< -c;
+	${CXX} ${CXXFLAGS} -c $< -o $@;
 
 # Link.
 ${call TO_BUILD_DIR,${TARGETS}}:
 	@mkdir -p ${dir $@};
-	${CXX} -o $@ $^ ${LDFLAGS};
+	${CXX} ${LDFLAGS} $^ -o $@;
 
 # Copy.
 ${TARGETS}: %: ${call TO_BUILD_DIR,%}
