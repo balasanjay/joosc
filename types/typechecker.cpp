@@ -263,7 +263,7 @@ REWRITE_DEFN(TypeChecker, CallExpr, Expr, expr,) {
 
   const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(lhs_tid);
 
-  MethodId mid = tinfo.methods.ResolveCall(curtype_, cc, TypeIdList(arg_tids), field_deref->FieldName(), field_deref->GetToken().pos, errors_);
+  MethodId mid = tinfo.methods.ResolveCall(typeinfo_, curtype_, cc, lhs_tid, TypeIdList(arg_tids), field_deref->FieldName(), field_deref->GetToken().pos, errors_);
   if (mid == kErrorMethodId) {
     return nullptr;
   }
@@ -296,11 +296,14 @@ REWRITE_DEFN(TypeChecker, NewClassExpr, Expr, expr,) {
   TypeId tid = type->GetTypeId();
 
   const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(tid);
+  if (!tinfo.type.IsValid()) {
+    return nullptr;
+  }
 
   const ReferenceType* ref_type = dynamic_cast<const ReferenceType*>(type.get());
   CHECK(ref_type != nullptr);
 
-  MethodId mid = tinfo.methods.ResolveCall(curtype_, cc, TypeIdList(arg_tids), tinfo.name, ref_type->Name().Tokens().back().pos, errors_);
+  MethodId mid = tinfo.methods.ResolveCall(typeinfo_, curtype_, cc, tid, TypeIdList(arg_tids), tinfo.name, ref_type->Name().Tokens().back().pos, errors_);
   if (mid == kErrorMethodId) {
     return nullptr;
   }
@@ -348,7 +351,7 @@ REWRITE_DEFN(TypeChecker, FieldDerefExpr, Expr, expr,) {
   }
 
   const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(base_tid);
-  FieldId fid = tinfo.fields.ResolveAccess(curtype_, cc, expr.FieldName(), expr.GetToken().pos, errors_);
+  FieldId fid = tinfo.fields.ResolveAccess(typeinfo_, curtype_, cc, base_tid, expr.FieldName(), expr.GetToken().pos, errors_);
   if (fid == kErrorFieldId) {
     return nullptr;
   }
@@ -441,7 +444,7 @@ REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr, exprptr) {
   ErrorList field_errors;
   {
     TypeInfo tinfo = typeinfo_.LookupTypeInfo(curtype_);
-    FieldId fid = tinfo.fields.ResolveAccess(curtype_, CallContext::INSTANCE, parts.at(0), toks.at(0).pos, &field_errors);
+    FieldId fid = tinfo.fields.ResolveAccess(typeinfo_, curtype_, CallContext::INSTANCE, curtype_, parts.at(0), toks.at(0).pos, &field_errors);
     bool ok = fid != kErrorFieldId;
     if (ok) {
       sptr<const Expr> implicit_this = MakeImplicitThis(toks.at(0).pos, curtype_);
@@ -704,6 +707,10 @@ REWRITE_DEFN(TypeChecker, FieldDecl, MemberDecl, decl, declptr) {
 
   // Lookup field and rewrite with fid.
   const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(curtype_);
+  // Can fail if type is blacklisted.
+  if (!tinfo.type.IsValid()) {
+    return nullptr;
+  }
   const FieldInfo& finfo = tinfo.fields.LookupField(decl.Name());
 
   return make_shared<FieldDecl>(decl.Mods(), type, decl.Name(), decl.NameToken(), val, finfo.fid);
@@ -733,6 +740,11 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
   }
 
   const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(curtype_);
+  // Can fail if type is blacklisted.
+  if (!tinfo.type.IsValid()) {
+    return nullptr;
+  }
+
   const MethodInfo& minfo = tinfo.methods.LookupMethod(MethodSignature{is_constructor, decl.Name(), paramtids});
   sptr<const Stmt> body = Rewrite(decl.BodyPtr());
 

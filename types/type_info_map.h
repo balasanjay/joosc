@@ -76,9 +76,11 @@ struct MethodInfo {
   MethodSignature signature;
 };
 
+class TypeInfoMap;
+
 class MethodTable {
 public:
-  MethodId ResolveCall(ast::TypeId callerType, CallContext ctx, const TypeIdList& params, const string& method_name, base::PosRange pos, base::ErrorList* out) const;
+  MethodId ResolveCall(const TypeInfoMap& type_info_map, ast::TypeId caller_type, CallContext ctx, ast::TypeId callee_type, const TypeIdList& params, const string& method_name, base::PosRange pos, base::ErrorList* out) const;
 
   // Given a valid MethodId, return all the associated info about it.
   const MethodInfo& LookupMethod(MethodId mid) const {
@@ -116,10 +118,13 @@ private:
 
   MethodTable() : all_blacklisted_(true) {}
 
+  bool IsBlacklisted(CallContext ctx, const string& name) const;
+
   base::Error* MakeUndefinedMethodError(MethodSignature sig, base::PosRange pos) const;
 
   base::Error* MakeInstanceMethodOnStaticError(base::PosRange pos) const;
   base::Error* MakeStaticMethodOnInstanceError(base::PosRange pos) const;
+  base::Error* MakePermissionError(base::PosRange call_pos, base::PosRange method_pos) const;
 
   static MethodTable kEmptyMethodTable;
   static MethodTable kErrorMethodTable;
@@ -149,7 +154,7 @@ struct FieldInfo {
 
 class FieldTable {
 public:
-  FieldId ResolveAccess(ast::TypeId callerType, CallContext ctx, string field_name, base::PosRange pos, base::ErrorList* out) const;
+  FieldId ResolveAccess(const TypeInfoMap& type_info_map, ast::TypeId callerType, CallContext ctx, ast::TypeId callee_type, string field_name, base::PosRange pos, base::ErrorList* out) const;
 
   // Given a valid FieldId, return all the associated info about it.
   const FieldInfo& LookupField(FieldId fid) const {
@@ -190,6 +195,7 @@ private:
   base::Error* MakeUndefinedReferenceError(string name, base::PosRange name_pos) const;
   base::Error* MakeInstanceFieldOnStaticError(base::PosRange pos) const;
   base::Error* MakeStaticFieldOnInstanceError(base::PosRange pos) const;
+  base::Error* MakePermissionError(base::PosRange access_pos, base::PosRange field_pos) const;
 
   static FieldTable kEmptyFieldTable;
   static FieldTable kErrorFieldTable;
@@ -211,6 +217,7 @@ struct TypeInfo {
   ast::TypeKind kind;
   ast::TypeId type;
   string name;
+  string package;
   base::PosRange pos;
   TypeIdList extends;
   TypeIdList implements;
@@ -239,15 +246,7 @@ public:
     return info->second;
   }
 
-  bool IsAncestor(ast::TypeId child, ast::TypeId ancestor) const {
-    auto ancestor_lookup = inherit_map_.find(make_pair(child, ancestor));
-    if (ancestor_lookup != inherit_map_.end()) {
-      return ancestor_lookup->second;
-    }
-    bool is_ancestor = IsAncestorRec(child, ancestor);
-    inherit_map_.insert({make_pair(child, ancestor), is_ancestor});
-    return is_ancestor;
-  }
+  bool IsAncestor(ast::TypeId child, ast::TypeId ancestor) const;
 
 private:
   friend class TypeInfoMapBuilder;
@@ -260,38 +259,18 @@ private:
     kArrayTypeInfo({
       MakeModifierList(false, false, false),
       ast::TypeKind::CLASS,
-      ast::TypeId::kError,
+      ast::TypeId{ast::TypeId::kErrorBase, 1},
       "array",
+      "",
       base::PosRange(-1, -1, -1),
       TypeIdList({}),
       TypeIdList({}),
       MethodTable(fs, {}, {}, false),
-      FieldTable(fs, {{"length", FieldInfo{kArrayLengthFieldId, ast::TypeId::kError, MakeModifierList(false, false, false), ast::TypeId::kInt, base::PosRange(-1, -1, -1), "length"}}}, {}),
+      FieldTable(fs, {{"length", FieldInfo{kArrayLengthFieldId, ast::TypeId{ast::TypeId::kErrorBase, 1}, MakeModifierList(false, false, false), ast::TypeId::kInt, base::PosRange(-1, -1, -1), "length"}}}, {}),
       0
     }) {}
 
-  bool IsAncestorRec(ast::TypeId child, ast::TypeId ancestor) const {
-    const TypeInfo& tinfo = LookupTypeInfo(child);
-    if (tinfo.type == ast::TypeId::kError) {
-      // If blacklisted, allow any inheritance check.
-      return true;
-    }
-    types::TypeIdList parents = Concat({tinfo.extends, tinfo.implements});
-    for (int i = 0; i < parents.Size(); ++i) {
-      // If this parent is the ancestor we're looking for, return immediately.
-      if (parents.At(i) == ancestor) {
-        return true;
-      }
-
-      // Recurse using the cached/memoized lookup on our parents.
-      if (IsAncestor(parents.At(i), ancestor)) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
+  bool IsAncestorRec(ast::TypeId child, ast::TypeId ancestor) const;
 
   static TypeInfo kErrorTypeInfo;
 
@@ -305,9 +284,9 @@ class TypeInfoMapBuilder {
 public:
   TypeInfoMapBuilder(const base::FileSet* fs) : fs_(fs) {}
 
-  void PutType(ast::TypeId tid, const ast::TypeDecl& type, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
+  void PutType(ast::TypeId tid, const ast::TypeDecl& type, string package, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
     CHECK(tid.ndims == 0);
-    type_entries_.push_back(TypeInfo{type.Mods(), type.Kind(), tid, type.Name(), type.NameToken().pos, TypeIdList(extends), TypeIdList(implements), MethodTable::kEmptyMethodTable, FieldTable::kEmptyFieldTable, tid.base});
+    type_entries_.push_back(TypeInfo{type.Mods(), type.Kind(), tid, type.Name(), package, type.NameToken().pos, TypeIdList(extends), TypeIdList(implements), MethodTable::kEmptyMethodTable, FieldTable::kEmptyFieldTable, tid.base});
   }
 
   void PutMethod(ast::TypeId curtid, ast::TypeId rettid, const vector<ast::TypeId>& paramtids, const ast::MemberDecl& meth, bool is_constructor) {

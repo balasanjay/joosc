@@ -61,7 +61,7 @@ class TypeChecker final : public ast::Visitor {
         fs_, errors_, typeset_, typeinfo_,
         true, package_,
         true, curtype_,
-        true, is_static, cur_member_type, SymbolTable(fs_, paramInfos));
+        true, is_static, cur_member_type, SymbolTable(fs_, paramInfos, errors_));
   }
 
   REWRITE_DECL(ArrayIndexExpr, Expr, expr, exprptr);

@@ -87,7 +87,12 @@ REWRITE_DEFN(DeclResolver, TypeDecl, TypeDecl, type, ) {
     AddToTypeIdVector(name, &implements);
   }
 
-  builder_->PutType(curtid, type, extends, implements);
+  // Get the package name we're in. Root package is empty string.
+  string package_name = "";
+  if (package_ != nullptr) {
+    package_name = package_->Name();
+  }
+  builder_->PutType(curtid, type, package_name, extends, implements);
 
   DeclResolver memberResolver(builder_, typeset_, fs_, errors_, package_, curtid);
   SharedPtrVector<const MemberDecl> members;

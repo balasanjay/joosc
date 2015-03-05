@@ -25,10 +25,11 @@ public:
 
 class SymbolTable {
 public:
-  SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& params);
+  SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& params, base::ErrorList* errors);
 
   static SymbolTable Empty() {
-    return SymbolTable(&base::FileSet::Empty(), {});
+    base::ErrorList throwaway;
+    return SymbolTable(&base::FileSet::Empty(), {}, &throwaway);
   }
 
   void EnterScope();

@@ -119,7 +119,12 @@ bool TypeChecker::IsReferenceWidening(TypeId lhs, TypeId rhs) const {
   if (!IsReference(lhs) || !IsReference(rhs)) {
     return false;
   }
-  CHECK(lhs.base != TypeId::kNullBase);
+
+  // No reference type widens to null.
+  if (lhs.base == TypeId::kNullBase) {
+    CHECK(lhs.ndims == 0);
+    return false;
+  }
 
   // null widens to any reference type.
   if (rhs.base == TypeId::kNullBase) {
@@ -127,7 +132,7 @@ bool TypeChecker::IsReferenceWidening(TypeId lhs, TypeId rhs) const {
     return true;
   }
 
-  // Do memoized inheritance check.
+  // Check if lhs is an ancestor of rhs.
   return typeinfo_.IsAncestor(rhs, lhs);
 }
 

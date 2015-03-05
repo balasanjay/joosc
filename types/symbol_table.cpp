@@ -15,7 +15,7 @@ using base::Error;
 using base::ErrorList;
 using base::PosRange;
 
-SymbolTable::SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& params)
+SymbolTable::SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& params, ErrorList* errors)
   : fs_(fs), cur_scope_len_(0), currently_declaring_(kVarUnassigned) {
   var_id_counter_ = kVarFirst;
   for (const VariableInfo& param : params) {
@@ -25,7 +25,10 @@ SymbolTable::SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& pa
       param.pos,
       var_id_counter_
     );
-    params_[var_info.name] = var_info;
+    auto inserted = params_.insert({var_info.name, var_info});
+    if (!inserted.second) {
+      errors->Append(MakeDuplicateVarDeclError(param.name, inserted.first->second.pos, param.pos));
+    }
     ++var_id_counter_;
   }
 }
@@ -33,10 +36,12 @@ SymbolTable::SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& pa
 LocalVarId SymbolTable::DeclareLocalStart(ast::TypeId tid, const string& name, PosRange name_pos, ErrorList* errors) {
   CHECK(currently_declaring_ == kVarUnassigned);
 
-  // Check if already defined (not as a parameter).
+  // TODO: Unify params into symbol table top scope.
+  // Check if already defined as either parameter or local var.
+  auto checkParam = params_.find(name);
   auto previousDef = cur_symbols_.find(name);
-  if (previousDef != cur_symbols_.end()) {
-    VariableInfo varInfo = previousDef->second;
+  if (checkParam != params_.end() || previousDef != cur_symbols_.end()) {
+    VariableInfo varInfo = checkParam != params_.end() ? checkParam->second : previousDef->second;
     errors->Append(MakeDuplicateVarDeclError(name, name_pos, varInfo.pos));
     return varInfo.vid;
   }
