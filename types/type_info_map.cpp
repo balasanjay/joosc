@@ -42,6 +42,39 @@ static Token kProtected(K_PROTECTED, kFakePos);
 static Token kFinal(K_FINAL, kFakePos);
 static Token kAbstract(K_ABSTRACT, kFakePos);
 
+bool IsAccessible(const TypeInfoMap& types, const ModifierList& mods, CallContext ctx, TypeId owner, TypeId caller, TypeId callee) {
+  if (caller == owner) {
+    return true;
+  }
+  if (!mods.HasModifier(lexer::PROTECTED)) {
+    return true;
+  }
+
+  const TypeInfo& method_owner_tinfo = types.LookupTypeInfo(owner);
+  const TypeInfo& caller_tinfo = types.LookupTypeInfo(caller);
+  bool is_same_package = (method_owner_tinfo.package == caller_tinfo.package);
+
+  // All protected members accessible from same package.
+  if (is_same_package) {
+    return true;
+  }
+  // Protected constructor never accessible outside of package.
+  if (ctx == CallContext::CONSTRUCTOR) {
+    return false;
+  }
+  // Accessible only if caller is subtype of owner.
+  if (!types.IsAncestor(caller, owner)) {
+    return false;
+  }
+  // It is sufficient that you are a descendent of the owner of a static member.
+  if (ctx == CallContext::STATIC) {
+    return true;
+  }
+  // Instance members are accessible only if callee is subtype of caller.
+  return callee == caller || types.IsAncestor(callee, caller);
+}
+
+
 Error* MakeInterfaceExtendsClassError(const FileSet* fs, PosRange pos, const string& parent_class) {
   string msg = "An interface may not extend '" + parent_class + "', a class.";
   return MakeSimplePosRangeError(fs, pos, "InterfaceExtendsClassError", msg);
@@ -95,7 +128,7 @@ ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract
   return mods;
 }
 
-TypeInfo TypeInfoMap::kErrorTypeInfo = TypeInfo{{}, TypeKind::CLASS, TypeId::kError, "", kFakePos, TypeIdList({}), TypeIdList({}), MethodTable::kErrorMethodTable, FieldTable::kErrorFieldTable, 0};
+TypeInfo TypeInfoMap::kErrorTypeInfo = TypeInfo{{}, TypeKind::CLASS, TypeId::kError, "", "", kFakePos, TypeIdList({}), TypeIdList({}), MethodTable::kErrorMethodTable, FieldTable::kErrorFieldTable, 0};
 
 // TODO: Empty filesets are no.
 MethodTable MethodTable::kEmptyMethodTable = MethodTable(&base::FileSet::Empty(), {}, {}, false);
@@ -255,7 +288,9 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
   for (int i = 0; i < parents.Size(); ++i) {
     const auto info_pair = sofar.find(parents.At(i));
-    CHECK(info_pair != sofar.cend());
+    if (info_pair == sofar.cend()) {
+      continue;
+    }
     const TypeInfo& pinfo = info_pair->second;
 
     // Early return if any of our parents are broken.
@@ -494,7 +529,9 @@ void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInf
 
   for (int i = 0; i < parents.Size(); ++i) {
     const auto info_pair = sofar.find(parents.At(i));
-    CHECK(info_pair != sofar.cend());
+    if (info_pair == sofar.end()) {
+      continue;
+    }
     const TypeInfo& pinfo = info_pair->second;
 
     // Early return if any of our parents are broken.
@@ -633,7 +670,12 @@ void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(const TypeSet& typeset, 
 
     vector<TypeId> topsort = VerifyAcyclicGraph(edges, &bad_types, cycle_cb);
     for (uint i = 0; i < topsort.size(); ++i) {
-      all_types.at(topsort.at(i)).top_sort_index = i;
+      auto type_iter = all_types.find(topsort.at(i));
+      if (type_iter == all_types.end()) {
+        continue;
+      }
+
+      type_iter->second.top_sort_index = i;
     }
   }
 }
@@ -696,6 +738,12 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
     for (int i = 0; i < typeinfo.implements.Size(); ++i) {
       TypeId implement_tid = typeinfo.implements.At(i);
       auto is_duplicate = already_implemented.insert(implement_tid);
+
+      // TODO: don't do this.
+      if (all_types.count(implement_tid) == 0) {
+        continue;
+      }
+
       if (!is_duplicate.second) {
         errors->Append(MakeDuplicateInheritanceError(fs, false, typeinfo.pos, typeinfo.type, implement_tid));
         bad_types->insert(type);
@@ -861,7 +909,7 @@ bool MethodTable::IsBlacklisted(CallContext ctx, const string& name) const {
   return bad_methods_.count(name) == 1;
 }
 
-MethodId MethodTable::ResolveCall(TypeId callerType, CallContext ctx, const TypeIdList& params, const string& method_name, PosRange pos, ErrorList* errors) const {
+MethodId MethodTable::ResolveCall(const TypeInfoMap& type_info_map, TypeId caller_type, CallContext ctx, TypeId callee_type, const TypeIdList& params, const string& method_name, PosRange pos, ErrorList* errors) const {
   // TODO: More things.
   MethodSignature sig = MethodSignature{(ctx == CallContext::CONSTRUCTOR), method_name, params};
   auto minfo = method_signatures_.find(sig);
@@ -883,8 +931,29 @@ MethodId MethodTable::ResolveCall(TypeId callerType, CallContext ctx, const Type
     return kErrorMethodId;
   }
 
-  // TODO: Check permissions.
+  // Check permissions.
+  if (!IsAccessible(type_info_map, minfo->second.mods, ctx, minfo->second.class_type, caller_type, callee_type)) {
+    errors->Append(MakePermissionError(pos, minfo->second.pos));
+    return kErrorMethodId;
+  }
+
   return minfo->second.mid;
+}
+
+Error* MethodTable::MakePermissionError(PosRange call_pos, PosRange method_pos) const {
+  const FileSet* fs = fs_;
+  return MakeError([=](ostream* out, const OutputOptions& opt) {
+    if (opt.simple) {
+      *out << "PermissionError";
+      return;
+    }
+
+    PrintDiagnosticHeader(out, opt, fs, call_pos, DiagnosticClass::ERROR, "Cannot access protected method from a non-descendant.");
+    PrintRangePtr(out, opt, fs, call_pos);
+    *out << '\n';
+    PrintDiagnosticHeader(out, opt, fs, method_pos, DiagnosticClass::INFO, "Defined here.");
+    PrintRangePtr(out, opt, fs, method_pos);
+  });
 }
 
 Error* MethodTable::MakeUndefinedMethodError(MethodSignature sig, PosRange pos) const {
@@ -920,7 +989,8 @@ Error* MethodTable::MakeStaticMethodOnInstanceError(PosRange pos) const {
   return MakeSimplePosRangeError(fs_, pos, "StaticMethodOnInstanceError", msg);
 }
 
-FieldId FieldTable::ResolveAccess(TypeId callerType, CallContext ctx, string field_name, PosRange pos, ErrorList* errors) const {
+FieldId FieldTable::ResolveAccess(const TypeInfoMap& type_info_map, TypeId caller_type, CallContext ctx, TypeId callee_type, string field_name, PosRange pos, ErrorList* errors) const {
+  CHECK(ctx == CallContext::INSTANCE || ctx == CallContext::STATIC);
   auto finfo = field_names_.find(field_name);
   if (finfo == field_names_.end()) {
     // Only emit error if this isn't blacklisted.
@@ -940,9 +1010,29 @@ FieldId FieldTable::ResolveAccess(TypeId callerType, CallContext ctx, string fie
     return kErrorFieldId;
   }
 
-  // TODO: Check permissions.
+  // Check permissions.
+  if (!IsAccessible(type_info_map, finfo->second.mods, ctx, finfo->second.class_type, caller_type, callee_type)) {
+    errors->Append(MakePermissionError(pos, finfo->second.pos));
+    return kErrorFieldId;
+  }
 
   return finfo->second.fid;
+}
+
+Error* FieldTable::MakePermissionError(PosRange access_pos, PosRange field_pos) const {
+  const FileSet* fs = fs_;
+  return MakeError([=](ostream* out, const OutputOptions& opt) {
+    if (opt.simple) {
+      *out << "PermissionError";
+      return;
+    }
+
+    PrintDiagnosticHeader(out, opt, fs, access_pos, DiagnosticClass::ERROR, "Cannot access protected field from a non-descendant.");
+    PrintRangePtr(out, opt, fs, access_pos);
+    *out << '\n';
+    PrintDiagnosticHeader(out, opt, fs, field_pos, DiagnosticClass::INFO, "Defined here.");
+    PrintRangePtr(out, opt, fs, field_pos);
+  });
 }
 
 Error* FieldTable::MakeUndefinedReferenceError(string name, PosRange pos) const {
