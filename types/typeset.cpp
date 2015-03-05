@@ -10,8 +10,6 @@
 
 using std::back_inserter;
 using std::count;
-using std::cout;
-using std::ostream;
 using std::sort;
 using std::transform;
 
@@ -116,7 +114,7 @@ TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
     insert_if_not_bad(type.name, bad_names, &types);
   }
   for (const auto& pkg : declared_pkgs) {
-    insert_if_not_bad(pkg.first, bad_names, &pkgs);
+    pkgs.insert(pkg.first);
   }
 
   return TypeSet(make_shared<TypeSetImpl>(fs, types, pkgs, bad_names));

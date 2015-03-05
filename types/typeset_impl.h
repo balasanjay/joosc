@@ -38,9 +38,9 @@ public:
   ast::TypeId Get(const string&, base::PosRange, base::ErrorList*) const;
 
   void PrintTo(std::ostream* out) const {
-    for (const auto& name : visible_types_) {
-      *out << name.first << "->" << name.second.base << "(" <<
-        (int)name.second.scope << ")" << '\n';
+    for (const auto& name : visible_types2_) {
+      *out << name.shortname << "->" << name.base << "(" <<
+        (int)name.scope << ")" << '\n';
     }
   }
 
@@ -60,12 +60,30 @@ public:
     TypeBase base;
     ImportScope scope;
   };
-  using TypeInfoMap = multimap<string, TypeInfo>;
 
+  struct TypeInfo2 {
+    string shortname;
+    TypeBase base;
+    ImportScope scope;
+
+    string longname;
+
+    struct ByName {
+      bool operator()(const TypeInfo2& lhs, const TypeInfo2& rhs) const {
+        return std::tie(lhs.shortname, lhs.base, lhs.scope) < std::tie(rhs.shortname, rhs.base, rhs.scope);
+      }
+    };
+  };
+
+  using VisibleMap = multimap<string, TypeInfo>;
+  using VisibleSet = set<TypeInfo2, TypeInfo2::ByName>;
+
+  pair<VisibleSet::const_iterator, VisibleSet::const_iterator> FindByShortName(const string& shortname) const;
 
   const base::FileSet* fs_;
 
-  TypeInfoMap visible_types_;
+  // VisibleMap visible_types_;
+  VisibleSet visible_types2_;
 
   // All declared types. Kept immutable after recieving from Builder.
   map<string, TypeBase> types_;
