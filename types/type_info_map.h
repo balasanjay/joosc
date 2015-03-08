@@ -319,8 +319,8 @@ private:
   base::Error* MakeConstructorNameError(base::PosRange pos) const;
   base::Error* MakeParentFinalError(const TypeInfo& minfo, const TypeInfo& pinfo) const;
   base::Error* MakeDifferingReturnTypeError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const;
-  base::Error* MakeStaticMethodOverrideError(const MethodInfo& minfo, const MethodInfo& pinfo) const;
-  base::Error* MakeLowerVisibilityError(const MethodInfo& minfo, const MethodInfo& pinfo) const;
+  base::Error* MakeStaticMethodOverrideError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const;
+  base::Error* MakeLowerVisibilityError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const;
   base::Error* MakeOverrideFinalMethodError(const MethodInfo& minfo, const MethodInfo& pinfo) const;
   base::Error* MakeParentClassEmptyConstructorError(const TypeInfo& minfo, const TypeInfo& pinfo) const;
   base::Error* MakeNeedAbstractClassError(const TypeInfo& tinfo, const MethodTable::MethodSignatureMap& method_map) const;

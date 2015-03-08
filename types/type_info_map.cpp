@@ -90,7 +90,7 @@ Error* MakeClassExtendsInterfaceError(const FileSet* fs, PosRange pos, const str
   return MakeSimplePosRangeError(fs, pos, "ClassExtendInterfaceError", msg);
 }
 
-Error* MakeResolveMethodTableError(const FileSet* fs, PosRange m_pos, const string& m_string, PosRange p_pos, const string& p_string, const string& error_name) {
+Error* MakeSimpleMethodTableError(const FileSet* fs, PosRange m_pos, const string& m_string, PosRange p_pos, const string& p_string, const string& error_name) {
   return MakeError([=](ostream* out, const OutputOptions& opt) {
     if (opt.simple) {
       *out << error_name;
@@ -102,6 +102,32 @@ Error* MakeResolveMethodTableError(const FileSet* fs, PosRange m_pos, const stri
     *out << '\n';
     PrintDiagnosticHeader(out, opt, fs, p_pos, DiagnosticClass::INFO, p_string);
     PrintRangePtr(out, opt, fs, p_pos);
+  });
+}
+
+Error* MakeResolveMethodTableError(const FileSet* fs, const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo, const string& m_string, const string& p_string, const string& error_name) {
+  return MakeError([=](ostream* out, const OutputOptions& opt) {
+    if (opt.simple) {
+      *out << error_name;
+      return;
+    }
+
+    bool is_self_method = (mtinfo.type == mminfo.class_type);
+    PosRange m_pos = is_self_method ? mminfo.pos : mtinfo.pos;
+
+    PrintDiagnosticHeader(out, opt, fs, m_pos, DiagnosticClass::ERROR, m_string);
+    PrintRangePtr(out, opt, fs, m_pos);
+    *out << '\n';
+    if (is_self_method) {
+      PrintDiagnosticHeader(out, opt, fs, pminfo.pos, DiagnosticClass::INFO, p_string);
+      PrintRangePtr(out, opt, fs, pminfo.pos);
+    } else {
+      PrintDiagnosticHeader(out, opt, fs, mminfo.pos, DiagnosticClass::INFO, "First method declared here.");
+      PrintRangePtr(out, opt, fs, mminfo.pos);
+      *out << '\n';
+      PrintDiagnosticHeader(out, opt, fs, pminfo.pos, DiagnosticClass::INFO, "Second method declared here.");
+      PrintRangePtr(out, opt, fs, pminfo.pos);
+    }
   });
 }
 
@@ -147,58 +173,37 @@ Error* TypeInfoMapBuilder::MakeParentFinalError(const TypeInfo& minfo, const Typ
   stringstream msgstream;
   msgstream << "A class may not extend '" << pinfo.name << "', a final class.";
   const string p_msg = "Declared final here.";
-  return MakeResolveMethodTableError(fs_, minfo.pos, msgstream.str(), pinfo.pos, p_msg, "ParentFinalError");
+  return MakeSimpleMethodTableError(fs_, minfo.pos, msgstream.str(), pinfo.pos, p_msg, "ParentFinalError");
 }
 
 Error* TypeInfoMapBuilder::MakeDifferingReturnTypeError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const {
-  const FileSet* fs = fs_;
-  return MakeError([=](ostream* out, const OutputOptions& opt) {
-    if (opt.simple) {
-      *out << "DifferingReturnTypeError";
-      return;
-    }
-
-    const string message = "Cannot have methods with overloaded return types.";
-    bool is_self_method = (mtinfo.type == mminfo.class_type);
-    PosRange m_pos = is_self_method ? mminfo.pos : mtinfo.pos;
-
-    PrintDiagnosticHeader(out, opt, fs, m_pos, DiagnosticClass::ERROR, message);
-    PrintRangePtr(out, opt, fs, m_pos);
-    *out << '\n';
-    if (is_self_method) {
-      PrintDiagnosticHeader(out, opt, fs, pminfo.pos, DiagnosticClass::INFO, "Parent method declared here.");
-      PrintRangePtr(out, opt, fs, pminfo.pos);
-    } else {
-      PrintDiagnosticHeader(out, opt, fs, mminfo.pos, DiagnosticClass::INFO, "First method declared here.");
-      PrintRangePtr(out, opt, fs, mminfo.pos);
-      *out << '\n';
-      PrintDiagnosticHeader(out, opt, fs, pminfo.pos, DiagnosticClass::INFO, "Second method declared here.");
-      PrintRangePtr(out, opt, fs, pminfo.pos);
-    }
-  });
+  const string m_msg = "Cannot have methods with overloaded return types.";
+  const string p_msg = "Parent method declared here.";
+  return MakeResolveMethodTableError(fs_, mtinfo, mminfo, pminfo, m_msg, p_msg, "DifferingReturnTypeError");
 }
-Error* TypeInfoMapBuilder::MakeStaticMethodOverrideError(const MethodInfo& minfo, const MethodInfo& pinfo) const {
+
+Error* TypeInfoMapBuilder::MakeStaticMethodOverrideError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const {
   const string m_msg = "A class may not inherit a static method, nor may it override using a static method.";
   const string p_msg = "Parent method declared here.";
-  return MakeResolveMethodTableError(fs_, minfo.pos, m_msg, pinfo.pos, p_msg, "StaticMethodOverrideError");
+  return MakeResolveMethodTableError(fs_, mtinfo, mminfo, pminfo, m_msg, p_msg, "StaticMethodOverrideError");
 }
 
-Error* TypeInfoMapBuilder::MakeLowerVisibilityError(const MethodInfo& minfo, const MethodInfo& pinfo) const {
+Error* TypeInfoMapBuilder::MakeLowerVisibilityError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const {
   const string m_msg = "A class may not lower the visibility of an inherited method.";
   const string p_msg = "Parent method declared here.";
-  return MakeResolveMethodTableError(fs_, minfo.pos, m_msg, pinfo.pos, p_msg, "LowerVisibilityError");
+  return MakeResolveMethodTableError(fs_, mtinfo, mminfo, pminfo, m_msg, p_msg, "LowerVisibilityError");
 }
 
 Error* TypeInfoMapBuilder::MakeOverrideFinalMethodError(const MethodInfo& minfo, const MethodInfo& pinfo) const {
   const string m_msg = "A class may not override a final method.";
   const string p_msg = "Final method declared here.";
-  return MakeResolveMethodTableError(fs_, minfo.pos, m_msg, pinfo.pos, p_msg, "OverrideFinalMethodError");
+  return MakeSimpleMethodTableError(fs_, minfo.pos, m_msg, pinfo.pos, p_msg, "OverrideFinalMethodError");
 }
 
 Error* TypeInfoMapBuilder::MakeParentClassEmptyConstructorError(const TypeInfo& minfo, const TypeInfo& pinfo) const {
   const string p_msg = "An inherited class must have a zero-argument constructor.";
   const string m_msg = "Child class declared here.";
-  return MakeResolveMethodTableError(fs_, pinfo.pos, p_msg, minfo.pos, m_msg, "ParentClassEmptyConstructorError");
+  return MakeSimpleMethodTableError(fs_, pinfo.pos, p_msg, minfo.pos, m_msg, "ParentClassEmptyConstructorError");
 }
 
 Error* TypeInfoMapBuilder::MakeNeedAbstractClassError(const TypeInfo& tinfo, const MethodTable::MethodSignatureMap& method_map) const {
@@ -348,9 +353,8 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
       // Inheriting methods that are static or overriding with a static method
       // are not allowed.
-      // TODO: Point to class and two methods.
       if (pminfo.mods.HasModifier(lexer::STATIC) || mminfo.mods.HasModifier(lexer::STATIC)) {
-        out->Append(MakeStaticMethodOverrideError(mminfo, pminfo));
+        out->Append(MakeStaticMethodOverrideError(*tinfo, mminfo, pminfo));
         new_bad_methods.insert(mminfo.signature.name);
         continue;
       }
@@ -359,9 +363,8 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
       CHECK(!mminfo.mods.HasModifier(NATIVE));
 
       // We can't lower visibility of inherited methods.
-      // TODO: Point to class and two methods.
       if (pminfo.mods.HasModifier(PUBLIC) && mminfo.mods.HasModifier(PROTECTED)) {
-        out->Append(MakeLowerVisibilityError(mminfo, pminfo));
+        out->Append(MakeLowerVisibilityError(*tinfo, mminfo, pminfo));
         new_bad_methods.insert(mminfo.signature.name);
         continue;
       }
