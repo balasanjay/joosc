@@ -284,17 +284,29 @@ class TypeInfoMapBuilder {
 public:
   TypeInfoMapBuilder(const base::FileSet* fs, ast::TypeId object_tid) : fs_(fs), object_tid_(object_tid) {}
 
-  void PutType(ast::TypeId tid, const ast::TypeDecl& type, string package, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
+  void PutType(ast::TypeId tid, const ast::ModifierList& mods, ast::TypeKind kind, const string& name, const string& package, base::PosRange pos, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
     CHECK(tid.ndims == 0);
-    type_entries_.push_back(TypeInfo{type.Mods(), type.Kind(), tid, type.Name(), package, type.NameToken().pos, TypeIdList(extends), TypeIdList(implements), MethodTable::kEmptyMethodTable, FieldTable::kEmptyFieldTable, tid.base});
+    type_entries_.push_back(TypeInfo{mods, kind, tid, name, package, pos, TypeIdList(extends), TypeIdList(implements), MethodTable::kEmptyMethodTable, FieldTable::kEmptyFieldTable, tid.base});
+  }
+
+  void PutType(ast::TypeId tid, const ast::TypeDecl& type, const string& package, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
+    PutType(tid, type.Mods(), type.Kind(), type.Name(), package, type.NameToken().pos, extends, implements);
+  }
+
+  void PutMethod(ast::TypeId curtid, const MethodInfo& minfo) {
+    method_entries_.insert({curtid, minfo});
   }
 
   void PutMethod(ast::TypeId curtid, ast::TypeId rettid, const vector<ast::TypeId>& paramtids, const ast::MemberDecl& meth, bool is_constructor) {
-    method_entries_.insert({curtid, MethodInfo{kErrorMethodId, curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{is_constructor, meth.Name(), TypeIdList(paramtids)}}});
+    PutMethod(curtid, MethodInfo{kErrorMethodId, curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{is_constructor, meth.Name(), TypeIdList(paramtids)}});
+  }
+
+  void PutField(ast::TypeId curtid, const FieldInfo& finfo) {
+    field_entries_.insert({curtid, finfo});
   }
 
   void PutField(ast::TypeId curtid, ast::TypeId tid, const ast::MemberDecl& field) {
-    field_entries_.insert({curtid, FieldInfo{kErrorFieldId, curtid, field.Mods(), tid, field.NameToken().pos, field.Name()}});
+    PutField(curtid, FieldInfo{kErrorFieldId, curtid, field.Mods(), tid, field.NameToken().pos, field.Name()});
   }
 
   TypeInfoMap Build(const TypeSet& typeset, base::ErrorList* out);
