@@ -77,6 +77,7 @@ TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, sptr<const Program> prog,
                              const FileSet* fs, sptr<const Program>* new_prog,
                              ErrorList* error_out) {
   TypeId object_tid = typeset.TryGet("java.lang.Object");
+  CHECK(object_tid.IsValid());
   TypeInfoMapBuilder builder(fs, object_tid);
   DeclResolver resolver(&builder, typeset, fs, error_out);
 

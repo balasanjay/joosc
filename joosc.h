@@ -24,6 +24,6 @@ enum class CompilerStage {
 bool CompilerMain(CompilerStage stage, const vector<string>& files,
     std::ostream* out, std::ostream* err);
 
-sptr<const ast::Program> JooscImpl(CompilerStage stage, const base::FileSet* fs, base::ErrorList* out);
+sptr<const ast::Program> CompilerFrontend(CompilerStage stage, const base::FileSet* fs, base::ErrorList* out);
 
 #endif

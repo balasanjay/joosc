@@ -39,7 +39,7 @@ bool PrintErrors(const ErrorList& errors, ostream* err) {
 
 }
 
-sptr<const Program> JooscImpl(CompilerStage stage, FileSet* fs, ErrorList* out) {
+sptr<const Program> CompilerFrontend(CompilerStage stage, FileSet* fs, ErrorList* out) {
   // Lex files.
   vector<vector<Token>> tokens;
   LexJoosFiles(fs, &tokens, out);
@@ -101,7 +101,7 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
   }
 
   ErrorList errors;
-  sptr<const Program> program = JooscImpl(stage, fs, &errors);
+  sptr<const Program> program = CompilerFrontend(stage, fs, &errors);
   if (PrintErrors(errors, err)) {
     return false;
   }
