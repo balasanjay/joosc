@@ -1,7 +1,8 @@
 #include "types/typechecker.h"
 
-#include "base/file.h"
 #include "ast/ids.h"
+#include "base/file.h"
+#include "joosc.h"
 #include "lexer/lexer.h"
 #include "parser/parser_internal.h"
 #include "third_party/gtest/gtest.h"
@@ -80,6 +81,40 @@ class TypeCheckerTest : public ::testing::Test {
     Result<MemberDecl> memberResult;
     CHECK(!parser_->ParseMemberDecl(&memberResult).Failed());
     return memberResult.Get();
+  }
+
+  // Pairs of file name, file contents.
+  sptr<const Program> ParseProgram(const vector<pair<string, string>>& file_contents) {
+    static const vector<string> stdlib = {
+      "third_party/cs444/stdlib/3.0/java/io/Serializable.java",
+      "third_party/cs444/stdlib/3.0/java/io/PrintStream.java",
+      "third_party/cs444/stdlib/3.0/java/io/OutputStream.java",
+      "third_party/cs444/stdlib/3.0/java/util/Arrays.java",
+      "third_party/cs444/stdlib/3.0/java/lang/Byte.java",
+      "third_party/cs444/stdlib/3.0/java/lang/Short.java",
+      "third_party/cs444/stdlib/3.0/java/lang/Class.java",
+      "third_party/cs444/stdlib/3.0/java/lang/Number.java",
+      "third_party/cs444/stdlib/3.0/java/lang/Character.java",
+      "third_party/cs444/stdlib/3.0/java/lang/Object.java",
+      "third_party/cs444/stdlib/3.0/java/lang/Boolean.java",
+      "third_party/cs444/stdlib/3.0/java/lang/Integer.java",
+      "third_party/cs444/stdlib/3.0/java/lang/String.java",
+      "third_party/cs444/stdlib/3.0/java/lang/Cloneable.java",
+      "third_party/cs444/stdlib/3.0/java/lang/System.java"
+    };
+
+    base::FileSet* fs;
+    base::FileSet::Builder fs_builder;
+    for (auto contents : file_contents) {
+      fs_builder.AddStringFile(contents.first, contents.second);
+    }
+    for (const string& file_name : stdlib) {
+      fs_builder.AddDiskFile(file_name);
+    }
+    CHECK(fs_builder.Build(&fs, &errors_));
+    fs_.reset(fs);
+
+    return CompilerFrontend(CompilerStage::TYPE_CHECK, fs_.get(), &errors_);
   }
 
   base::ErrorList errors_;
@@ -252,8 +287,6 @@ TEST_F(TypeCheckerTest, CastExprCastable) {
   EXPECT_EQ(TypeId::kInt, after->GetTypeId());
   EXPECT_NO_ERRS();
 }
-
-// TODO: Cast expr tests with Reference type as LHS.
 
 TEST_F(TypeCheckerTest, CharLitExpr) {
   sptr<const Expr> before = ParseExpr("'0'");
@@ -505,12 +538,9 @@ TEST_F(TypeCheckerTest, FieldDeclStaticThis) {
 
 // TODO: MethodDecl
 
-
 // TODO: TypeDecl
 
-
 // TODO: CompUnit
-
 
 TEST(TypeCheckerUtilTest, IsCastablePrimitives) {
   TypeChecker typeChecker(nullptr, nullptr);
@@ -523,6 +553,14 @@ TEST(TypeCheckerUtilTest, IsCastablePrimitives) {
   EXPECT_TRUE(typeChecker.IsCastable(TypeId::kBool, TypeId::kBool));
 }
 
-// TODO: TEST(TypeCheckerUtilTest, IsCastableReference) - with inheritance.
+TEST_F(TypeCheckerTest, IsCastableReference) {
+  vector<pair<string, string>> test_files;
+  test_files.push_back({"A.java", "public class A { public A() {} }"});
+  test_files.push_back({"B.java", "public class B extends A { public B() {} }"});
+  test_files.push_back({"C.java", "public class C { public void foo() { B b = new B(); A a = (A)b; } }"});
+  sptr<const Program> program = ParseProgram(test_files);
+  EXPECT_NE(nullptr, program);
+  EXPECT_NO_ERRS();
+}
 
 }  // namespace types
