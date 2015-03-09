@@ -66,7 +66,8 @@ sptr<const Type> ResolveType(sptr<const Type> type, const TypeSet& typeset, Erro
   // References.
   if (IS_CONST_PTR(ReferenceType, cur)) {
     const ReferenceType* ref = dynamic_cast<const ReferenceType*>(cur);
-    PosRange pos = ref->Name().Tokens().back().pos;
+    PosRange pos = ref->Name().Tokens().front().pos;
+    pos.end = ref->Name().Tokens().back().pos.end;
     TypeId got = typeset.Get(ref->Name().Name(), pos, errors);
     if (got == cur->GetTypeId()) {
       return type;
