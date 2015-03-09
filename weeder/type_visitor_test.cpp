@@ -70,7 +70,7 @@ TEST_F(TypeVisitorTest, CastOk) {
   ASSERT_FALSE(parser_->ParseExpression(&expr).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -82,7 +82,7 @@ TEST_F(TypeVisitorTest, CastNotOk) {
   ASSERT_FALSE(parser_->ParseExpression(&expr).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -95,7 +95,7 @@ TEST_F(TypeVisitorTest, InstanceOfPrimitive) {
   ASSERT_FALSE(parser_->ParseExpression(&expr).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -109,7 +109,7 @@ TEST_F(TypeVisitorTest, InstanceOfArray) {
   ASSERT_FALSE(parser_->ParseExpression(&expr).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -121,7 +121,7 @@ TEST_F(TypeVisitorTest, NewClassOk) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -133,7 +133,7 @@ TEST_F(TypeVisitorTest, NewClassVoid) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -146,7 +146,7 @@ TEST_F(TypeVisitorTest, NewClassPrimitive) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -160,7 +160,7 @@ TEST_F(TypeVisitorTest, NewArrayOk) {
   ASSERT_FALSE(parser_->ParseExpression(&expr).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -172,7 +172,7 @@ TEST_F(TypeVisitorTest, NewArrayNotOk) {
   ASSERT_FALSE(parser_->ParseExpression(&expr).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -185,7 +185,7 @@ TEST_F(TypeVisitorTest, LocalDeclOk) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -198,7 +198,7 @@ TEST_F(TypeVisitorTest, LocalDeclNotOk) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -211,7 +211,7 @@ TEST_F(TypeVisitorTest, FieldDeclOk) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(decl.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -223,7 +223,7 @@ TEST_F(TypeVisitorTest, FieldDeclNotOk) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -236,7 +236,7 @@ TEST_F(TypeVisitorTest, ParamOk) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(decl.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -248,7 +248,7 @@ TEST_F(TypeVisitorTest, ParamNotOk) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -261,7 +261,7 @@ TEST_F(TypeVisitorTest, ForInitNotValid) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -274,7 +274,7 @@ TEST_F(TypeVisitorTest, ForInitNotArrayAccess) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -287,7 +287,7 @@ TEST_F(TypeVisitorTest, ForInitNewClassAllowed) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -299,7 +299,7 @@ TEST_F(TypeVisitorTest, ForInitMethodCallAllowed) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -311,7 +311,7 @@ TEST_F(TypeVisitorTest, ForInitAssignmentAllowed) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -323,7 +323,7 @@ TEST_F(TypeVisitorTest, ForInitJustIdNotAllowed) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -336,7 +336,7 @@ TEST_F(TypeVisitorTest, ForInitAssignmentInParensDisallowed) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -349,7 +349,7 @@ TEST_F(TypeVisitorTest, ForInitUpdateExprWorks) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -361,7 +361,7 @@ TEST_F(TypeVisitorTest, ForInitUpdateExprNotTopLevel) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -374,7 +374,7 @@ TEST_F(TypeVisitorTest, ForBodyNotTopLevel) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -387,7 +387,7 @@ TEST_F(TypeVisitorTest, IfBodyNotTopLevel) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -400,7 +400,7 @@ TEST_F(TypeVisitorTest, BlockNotStmt) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  TypeVisitor visitor(fs_.get(), &errors);
+  TypeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());

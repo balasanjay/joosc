@@ -17,7 +17,7 @@ TEST_F(ModifierVisitorTest, ClassConstructorDeclConflicting) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  ClassModifierVisitor visitor(fs_.get(), &errors);
+  ClassModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   string expected =
@@ -34,7 +34,7 @@ TEST_F(ModifierVisitorTest, ClassConstructorDeclDisallowed) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  ClassModifierVisitor visitor(fs_.get(), &errors);
+  ClassModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   string expected =
@@ -53,7 +53,7 @@ TEST_F(ModifierVisitorTest, ClassConstructorDeclInvalidEmpty) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  ClassModifierVisitor visitor(fs_.get(), &errors);
+  ClassModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -67,7 +67,7 @@ TEST_F(ModifierVisitorTest, ClassConstructorOk) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  ClassModifierVisitor visitor(fs_.get(), &errors);
+  ClassModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -79,7 +79,7 @@ TEST_F(ModifierVisitorTest, ClassFieldDeclConflicting) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  ClassModifierVisitor visitor(fs_.get(), &errors);
+  ClassModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   string expected =
@@ -96,7 +96,7 @@ TEST_F(ModifierVisitorTest, ClassFieldDeclDisallowed) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  ClassModifierVisitor visitor(fs_.get(), &errors);
+  ClassModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   string expected =
@@ -114,7 +114,7 @@ TEST_F(ModifierVisitorTest, ClassFieldOk) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  ClassModifierVisitor visitor(fs_.get(), &errors);
+  ClassModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -126,7 +126,7 @@ TEST_F(ModifierVisitorTest, ClassMethodDeclConflicting) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  ClassModifierVisitor visitor(fs_.get(), &errors);
+  ClassModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   string expected =
@@ -143,7 +143,7 @@ TEST_F(ModifierVisitorTest, ClassMethodDeclInvalidEmpty) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  ClassModifierVisitor visitor(fs_.get(), &errors);
+  ClassModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -156,7 +156,7 @@ TEST_F(ModifierVisitorTest, ClassMethodDeclInvalidBody) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  ClassModifierVisitor visitor(fs_.get(), &errors);
+  ClassModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -169,7 +169,7 @@ TEST_F(ModifierVisitorTest, ClassMethodAbstractStatic) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  ClassModifierVisitor visitor(fs_.get(), &errors);
+  ClassModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -183,7 +183,7 @@ TEST_F(ModifierVisitorTest, ClassMethodAbstractFinal) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  ClassModifierVisitor visitor(fs_.get(), &errors);
+  ClassModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -197,7 +197,7 @@ TEST_F(ModifierVisitorTest, ClassMethodStaticFinal) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  ClassModifierVisitor visitor(fs_.get(), &errors);
+  ClassModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -211,7 +211,7 @@ TEST_F(ModifierVisitorTest, ClassMethodNativeNotStatic) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  ClassModifierVisitor visitor(fs_.get(), &errors);
+  ClassModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -225,7 +225,7 @@ TEST_F(ModifierVisitorTest, ClassMethodOk) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  ClassModifierVisitor visitor(fs_.get(), &errors);
+  ClassModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -237,7 +237,7 @@ TEST_F(ModifierVisitorTest, InterfaceConstructorDeclFail) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  InterfaceModifierVisitor visitor(fs_.get(), &errors);
+  InterfaceModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -251,7 +251,7 @@ TEST_F(ModifierVisitorTest, InterfaceFieldDeclFail) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  InterfaceModifierVisitor visitor(fs_.get(), &errors);
+  InterfaceModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -264,7 +264,7 @@ TEST_F(ModifierVisitorTest, InterfaceMethodDisallowed) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  InterfaceModifierVisitor visitor(fs_.get(), &errors);
+  InterfaceModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   string expected =
@@ -283,7 +283,7 @@ TEST_F(ModifierVisitorTest, InterfaceMethodDeclInvalidBody) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  InterfaceModifierVisitor visitor(fs_.get(), &errors);
+  InterfaceModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -296,7 +296,7 @@ TEST_F(ModifierVisitorTest, InterfaceMethodOk) {
   ASSERT_FALSE(parser_->ParseMemberDecl(&decl).Failed());
 
   ErrorList errors;
-  InterfaceModifierVisitor visitor(fs_.get(), &errors);
+  InterfaceModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -308,7 +308,7 @@ TEST_F(ModifierVisitorTest, ClassBadModifiers) {
   ASSERT_FALSE(parser_->ParseTypeDecl(&decl).Failed());
 
   ErrorList errors;
-  ModifierVisitor visitor(fs_.get(), &errors);
+  ModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   string expected =
@@ -326,7 +326,7 @@ TEST_F(ModifierVisitorTest, ClassBadAbstractFinal) {
   ASSERT_FALSE(parser_->ParseTypeDecl(&decl).Failed());
 
   ErrorList errors;
-  ModifierVisitor visitor(fs_.get(), &errors);
+  ModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -339,7 +339,7 @@ TEST_F(ModifierVisitorTest, ClassOk) {
   ASSERT_FALSE(parser_->ParseTypeDecl(&decl).Failed());
 
   ErrorList errors;
-  ModifierVisitor visitor(fs_.get(), &errors);
+  ModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -351,7 +351,7 @@ TEST_F(ModifierVisitorTest, InterfaceBadModifiers) {
   ASSERT_FALSE(parser_->ParseTypeDecl(&decl).Failed());
 
   ErrorList errors;
-  ModifierVisitor visitor(fs_.get(), &errors);
+  ModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   string expected =
@@ -370,7 +370,7 @@ TEST_F(ModifierVisitorTest, InterfaceOk) {
   ASSERT_FALSE(parser_->ParseTypeDecl(&decl).Failed());
 
   ErrorList errors;
-  ModifierVisitor visitor(fs_.get(), &errors);
+  ModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -382,7 +382,7 @@ TEST_F(ModifierVisitorTest, RecursionInterfaceOk) {
   ASSERT_FALSE(parser_->ParseTypeDecl(&decl).Failed());
 
   ErrorList errors;
-  ModifierVisitor visitor(fs_.get(), &errors);
+  ModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -396,7 +396,7 @@ TEST_F(ModifierVisitorTest, RecursionClassOk) {
   ASSERT_FALSE(parser_->ParseTypeDecl(&decl).Failed());
 
   ErrorList errors;
-  ModifierVisitor visitor(fs_.get(), &errors);
+  ModifierVisitor visitor(&errors);
   visitor.Visit(decl.Get());
 
   EXPECT_TRUE(errors.IsFatal());

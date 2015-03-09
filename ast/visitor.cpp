@@ -7,7 +7,6 @@ namespace ast {
 
 using lexer::Token;
 using base::Error;
-using base::FileSet;
 using base::SharedPtrVector;
 
 #define SHORT_CIRCUIT(type, var, varptr) \

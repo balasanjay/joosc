@@ -3,7 +3,6 @@
 
 #include "ast/visitor.h"
 #include "base/errorlist.h"
-#include "base/fileset.h"
 
 namespace weeder {
 
@@ -13,8 +12,7 @@ namespace weeder {
 //   3) RHS of an instanceof must be a NameExpr.
 class TypeVisitor : public ast::Visitor {
  public:
-  TypeVisitor(const base::FileSet* fs, base::ErrorList* errors)
-      : fs_(fs), errors_(errors) {}
+  TypeVisitor(base::ErrorList* errors) : errors_(errors) {}
 
   VISIT_DECL(CastExpr, expr,);
   VISIT_DECL(InstanceOfExpr, expr,);
@@ -31,7 +29,6 @@ class TypeVisitor : public ast::Visitor {
   VISIT_DECL(ExprStmt, stmt,);
 
  private:
-  const base::FileSet* fs_;
   base::ErrorList* errors_;
 };
 

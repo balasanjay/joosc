@@ -14,25 +14,23 @@ using base::FileSet;
 namespace weeder {
 
 sptr<const Program> WeedProgram(const FileSet* fs, sptr<const Program> prog, ErrorList* out) {
-  AssignmentVisitor assignmentChecker(fs, out);
+  AssignmentVisitor assignmentChecker(out);
   prog = assignmentChecker.Rewrite(prog);
 
-  CallVisitor callChecker(fs, out);
+  CallVisitor callChecker(out);
   prog = callChecker.Rewrite(prog);
 
-  TypeVisitor typeChecker(fs, out);
+  TypeVisitor typeChecker(out);
   prog = typeChecker.Rewrite(prog);
 
-  ModifierVisitor modifierChecker(fs, out);
+  ModifierVisitor modifierChecker(out);
   prog = modifierChecker.Rewrite(prog);
 
-  IntRangeVisitor intRangeChecker(fs, out);
+  IntRangeVisitor intRangeChecker(out);
   prog = intRangeChecker.Rewrite(prog);
 
   StructureVisitor structureChecker(fs, out);
   prog = structureChecker.Rewrite(prog);
-
-  // More weeding required.
 
   return prog;
 }

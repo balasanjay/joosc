@@ -7,7 +7,6 @@
 #include "ast/ast.h"
 #include "ast/ids.h"
 #include "base/errorlist.h"
-#include "base/fileset.h"
 #include "types/typeset.h"
 
 namespace types {
@@ -110,7 +109,7 @@ private:
   using MethodSignatureMap = std::map<MethodSignature, MethodInfo>;
   using MethodInfoMap = std::map<MethodId, MethodInfo>;
 
-  MethodTable(const base::FileSet* fs, const MethodSignatureMap& entries, const set<string>& bad_methods, bool has_bad_constructor) : fs_(fs), method_signatures_(entries), has_bad_constructor_(has_bad_constructor), bad_methods_(bad_methods) {
+  MethodTable(const MethodSignatureMap& entries, const set<string>& bad_methods, bool has_bad_constructor) : method_signatures_(entries), has_bad_constructor_(has_bad_constructor), bad_methods_(bad_methods) {
     for (const auto& entry : entries) {
       method_info_.insert({entry.second.mid, entry.second});
     }
@@ -130,7 +129,6 @@ private:
   static MethodTable kErrorMethodTable;
   static MethodInfo kErrorMethodInfo;
 
-  const base::FileSet* fs_;
   MethodSignatureMap method_signatures_;
   MethodInfoMap method_info_;
 
@@ -184,7 +182,7 @@ private:
   using FieldNameMap = std::map<string, FieldInfo>;
   using FieldInfoMap = std::map<FieldId, FieldInfo>;
 
-  FieldTable(const base::FileSet* fs, const FieldNameMap& entries, const set<string>& bad_fields) : fs_(fs), field_names_(entries), bad_fields_(bad_fields) {
+  FieldTable(const FieldNameMap& entries, const set<string>& bad_fields) : field_names_(entries), bad_fields_(bad_fields) {
     for (const auto& entry : entries) {
       field_info_.insert({entry.second.fid, entry.second});
     }
@@ -201,7 +199,6 @@ private:
   static FieldTable kErrorFieldTable;
   static FieldInfo kErrorFieldInfo;
 
-  const base::FileSet* fs_ = nullptr;
   FieldNameMap field_names_;
   FieldInfoMap field_info_;
 
@@ -232,8 +229,8 @@ struct TypeInfo {
 
 class TypeInfoMap {
 public:
-  static const TypeInfoMap Empty(const base::FileSet* fs) {
-    return TypeInfoMap(fs, {});
+  static const TypeInfoMap& Empty() {
+    return kEmptyTypeInfoMap;
   }
 
   const TypeInfo& LookupTypeInfo(ast::TypeId tid) const {
@@ -255,7 +252,7 @@ private:
   // TODO: Make safe for parallel compilation.
   using InheritMap = map<pair<ast::TypeId, ast::TypeId>, bool>;
 
-  TypeInfoMap(const base::FileSet* fs, const TypeMap& typeinfo) : fs_(fs), type_info_(typeinfo),
+  TypeInfoMap(const TypeMap& typeinfo) : type_info_(typeinfo),
     kArrayTypeInfo({
       MakeModifierList(false, false, false),
       ast::TypeKind::CLASS,
@@ -265,16 +262,16 @@ private:
       base::PosRange(-1, -1, -1),
       TypeIdList({}),
       TypeIdList({}),
-      MethodTable(fs, {}, {}, false),
-      FieldTable(fs, {{"length", FieldInfo{kArrayLengthFieldId, ast::TypeId{ast::TypeId::kErrorBase, 1}, MakeModifierList(false, false, false), ast::TypeId::kInt, base::PosRange(-1, -1, -1), "length"}}}, {}),
+      MethodTable({}, {}, false),
+      FieldTable({{"length", FieldInfo{kArrayLengthFieldId, ast::TypeId{ast::TypeId::kErrorBase, 1}, MakeModifierList(false, false, false), ast::TypeId::kInt, base::PosRange(-1, -1, -1), "length"}}}, {}),
       0
     }) {}
 
   bool IsAncestorRec(ast::TypeId child, ast::TypeId ancestor) const;
 
+  static TypeInfoMap kEmptyTypeInfoMap;
   static TypeInfo kErrorTypeInfo;
 
-  const base::FileSet* fs_;
   TypeMap type_info_;
   mutable InheritMap inherit_map_;
   TypeInfo kArrayTypeInfo;
@@ -282,7 +279,7 @@ private:
 
 class TypeInfoMapBuilder {
 public:
-  TypeInfoMapBuilder(const base::FileSet* fs, ast::TypeId object_tid) : fs_(fs), object_tid_(object_tid) {}
+  TypeInfoMapBuilder(ast::TypeId object_tid) : object_tid_(object_tid) {}
 
   void PutType(ast::TypeId tid, const ast::ModifierList& mods, ast::TypeKind kind, const string& name, const string& package, base::PosRange pos, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
     CHECK(tid.ndims == 0);
@@ -339,7 +336,6 @@ private:
 
   base::Error* MakeExtendsCycleError(const vector<TypeInfo>& cycle) const;
 
-  const base::FileSet* fs_;
   ast::TypeId object_tid_;
   vector<TypeInfo> type_entries_;
   multimap<ast::TypeId, MethodInfo> method_entries_;

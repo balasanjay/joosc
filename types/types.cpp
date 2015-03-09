@@ -11,7 +11,6 @@ using ast::QualifiedName;
 using ast::TypeId;
 using base::Error;
 using base::ErrorList;
-using base::FileSet;
 using base::MakeError;
 using base::OutputOptions;
 using base::PosRange;
@@ -22,7 +21,7 @@ namespace types {
 namespace {
 
 Error* MakeMissingPredefError(const string& msg) {
-  return MakeError([=](std::ostream* out, const OutputOptions& opt) {
+  return MakeError([=](std::ostream* out, const OutputOptions& opt, const base::FileSet*) {
     if (opt.simple) {
       *out << "MissingPredefError";
       return;
@@ -58,7 +57,7 @@ vector<TypeSetBuilder::Elem> ExtractElems(const QualifiedName& name) {
   return v;
 }
 
-TypeSet BuildTypeSet(const Program& prog, const FileSet* fs, ErrorList* out) {
+TypeSet BuildTypeSet(const Program& prog, ErrorList* out) {
   types::TypeSetBuilder typeSetBuilder;
   for (const auto& unit : prog.CompUnits()) {
     vector<TypeSetBuilder::Elem> pkg;
@@ -70,16 +69,15 @@ TypeSet BuildTypeSet(const Program& prog, const FileSet* fs, ErrorList* out) {
       typeSetBuilder.AddType(pkg, {decl.Name(), decl.NameToken().pos});
     }
   }
-  return typeSetBuilder.Build(fs, out);
+  return typeSetBuilder.Build(out);
 }
 
 TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, sptr<const Program> prog,
-                             const FileSet* fs, sptr<const Program>* new_prog,
-                             ErrorList* error_out) {
+                             sptr<const Program>* new_prog, ErrorList* error_out) {
   TypeId object_tid = typeset.TryGet("java.lang.Object");
   CHECK(object_tid.IsValid());
-  TypeInfoMapBuilder builder(fs, object_tid);
-  DeclResolver resolver(&builder, typeset, fs, error_out);
+  TypeInfoMapBuilder builder(object_tid);
+  DeclResolver resolver(&builder, typeset, error_out);
 
   *new_prog = resolver.Rewrite(prog);
 
@@ -88,20 +86,19 @@ TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, sptr<const Program> prog,
 
 }  // namespace
 
-sptr<const Program> TypecheckProgram(sptr<const Program> prog, const FileSet* fs,
-                               ErrorList* out) {
+sptr<const Program> TypecheckProgram(sptr<const Program> prog, ErrorList* out) {
   // Phase 1: build a typeset.
-  TypeSet typeSet = BuildTypeSet(*prog, fs, out);
+  TypeSet typeSet = BuildTypeSet(*prog, out);
   if (!VerifyTypeSet(typeSet, out)) {
     return prog;
   }
 
   // Phase 2: build a type info map.
-  TypeInfoMap typeInfo = BuildTypeInfoMap(typeSet, prog, fs, &prog, out);
+  TypeInfoMap typeInfo = BuildTypeInfoMap(typeSet, prog, &prog, out);
 
   // Phase 3: typecheck.
   {
-    TypeChecker typechecker = TypeChecker(fs, out)
+    TypeChecker typechecker = TypeChecker(out)
         .WithTypeSet(typeSet)
         .WithTypeInfoMap(typeInfo);
 
