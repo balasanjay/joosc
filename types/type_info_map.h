@@ -282,7 +282,7 @@ private:
 
 class TypeInfoMapBuilder {
 public:
-  TypeInfoMapBuilder(const base::FileSet* fs) : fs_(fs) {}
+  TypeInfoMapBuilder(const base::FileSet* fs, ast::TypeId object_tid) : fs_(fs), object_tid_(object_tid) {}
 
   void PutType(ast::TypeId tid, const ast::TypeDecl& type, string package, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
     CHECK(tid.ndims == 0);
@@ -328,6 +328,7 @@ private:
   base::Error* MakeExtendsCycleError(const vector<TypeInfo>& cycle) const;
 
   const base::FileSet* fs_;
+  ast::TypeId object_tid_;
   vector<TypeInfo> type_entries_;
   multimap<ast::TypeId, MethodInfo> method_entries_;
   multimap<ast::TypeId, FieldInfo> field_entries_;

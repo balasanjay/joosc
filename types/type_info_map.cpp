@@ -765,9 +765,6 @@ void TypeInfoMapBuilder::IntroduceImplicitGraphEdges(const TypeSet& typeset, con
   // Bind a reference to make the code more readable.
   IdInfoMap& all_types = *types;
 
-  TypeId object = typeset.TryGet("java.lang.Object");
-  CHECK(object.IsValid());
-
   for (auto& tid_tinfo_iter : all_types) {
     TypeId tid = tid_tinfo_iter.first;
     TypeInfo& tinfo = tid_tinfo_iter.second;
@@ -778,8 +775,7 @@ void TypeInfoMapBuilder::IntroduceImplicitGraphEdges(const TypeSet& typeset, con
     }
 
     // We don't insert implicit edges for Object.
-    if (tid == object) {
-      // TODO: validate that object has no fields.
+    if (tid == object_tid_) {
       continue;
     }
 
@@ -789,7 +785,7 @@ void TypeInfoMapBuilder::IntroduceImplicitGraphEdges(const TypeSet& typeset, con
       continue;
     }
 
-    tinfo.extends = TypeIdList({object});
+    tinfo.extends = TypeIdList({object_tid_});
   }
 }
 
