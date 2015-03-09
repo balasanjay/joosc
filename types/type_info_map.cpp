@@ -616,7 +616,7 @@ void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(const TypeSet& typeset, 
   PruneInvalidGraphEdges(all_types, &bad_types, errors);
 
   // Make every class and interface extend Object.
-  IntroduceImplicitGraphEdges(typeset, bad_types, &all_types);
+  IntroduceImplicitGraphEdges(bad_types, &all_types);
 
   // Now build a combined graph of edges.
   multimap<TypeId, TypeId> edges;
@@ -732,7 +732,7 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
   }
 }
 
-void TypeInfoMapBuilder::IntroduceImplicitGraphEdges(const TypeSet& typeset, const set<TypeId>& bad, map<TypeId, TypeInfo>* types) {
+void TypeInfoMapBuilder::IntroduceImplicitGraphEdges(const set<TypeId>& bad, map<TypeId, TypeInfo>* types) {
   using IdInfoMap = map<TypeId, TypeInfo>;
 
   // Bind a reference to make the code more readable.
