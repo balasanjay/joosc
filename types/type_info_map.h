@@ -282,19 +282,31 @@ private:
 
 class TypeInfoMapBuilder {
 public:
-  TypeInfoMapBuilder(const base::FileSet* fs) : fs_(fs) {}
+  TypeInfoMapBuilder(const base::FileSet* fs, ast::TypeId object_tid) : fs_(fs), object_tid_(object_tid) {}
 
-  void PutType(ast::TypeId tid, const ast::TypeDecl& type, string package, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
+  void PutType(ast::TypeId tid, const ast::ModifierList& mods, ast::TypeKind kind, const string& name, const string& package, base::PosRange pos, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
     CHECK(tid.ndims == 0);
-    type_entries_.push_back(TypeInfo{type.Mods(), type.Kind(), tid, type.Name(), package, type.NameToken().pos, TypeIdList(extends), TypeIdList(implements), MethodTable::kEmptyMethodTable, FieldTable::kEmptyFieldTable, tid.base});
+    type_entries_.push_back(TypeInfo{mods, kind, tid, name, package, pos, TypeIdList(extends), TypeIdList(implements), MethodTable::kEmptyMethodTable, FieldTable::kEmptyFieldTable, tid.base});
+  }
+
+  void PutType(ast::TypeId tid, const ast::TypeDecl& type, const string& package, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
+    PutType(tid, type.Mods(), type.Kind(), type.Name(), package, type.NameToken().pos, extends, implements);
+  }
+
+  void PutMethod(ast::TypeId curtid, const MethodInfo& minfo) {
+    method_entries_.insert({curtid, minfo});
   }
 
   void PutMethod(ast::TypeId curtid, ast::TypeId rettid, const vector<ast::TypeId>& paramtids, const ast::MemberDecl& meth, bool is_constructor) {
-    method_entries_.insert({curtid, MethodInfo{kErrorMethodId, curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{is_constructor, meth.Name(), TypeIdList(paramtids)}}});
+    PutMethod(curtid, MethodInfo{kErrorMethodId, curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{is_constructor, meth.Name(), TypeIdList(paramtids)}});
+  }
+
+  void PutField(ast::TypeId curtid, const FieldInfo& finfo) {
+    field_entries_.insert({curtid, finfo});
   }
 
   void PutField(ast::TypeId curtid, ast::TypeId tid, const ast::MemberDecl& field) {
-    field_entries_.insert({curtid, FieldInfo{kErrorFieldId, curtid, field.Mods(), tid, field.NameToken().pos, field.Name()}});
+    PutField(curtid, FieldInfo{kErrorFieldId, curtid, field.Mods(), tid, field.NameToken().pos, field.Name()});
   }
 
   TypeInfoMap Build(const TypeSet& typeset, base::ErrorList* out);
@@ -313,14 +325,14 @@ private:
 
   void ValidateExtendsImplementsGraph(const TypeSet& typeset, map<ast::TypeId, TypeInfo>* m, set<ast::TypeId>* bad, base::ErrorList* errors);
   void PruneInvalidGraphEdges(const map<ast::TypeId, TypeInfo>&, set<ast::TypeId>*, base::ErrorList*);
-  void IntroduceImplicitGraphEdges(const TypeSet& typeset, const set<ast::TypeId>& bad, map<ast::TypeId, TypeInfo>* types);
+  void IntroduceImplicitGraphEdges(const set<ast::TypeId>& bad, map<ast::TypeId, TypeInfo>* types);
   vector<ast::TypeId> VerifyAcyclicGraph(const multimap<ast::TypeId, ast::TypeId>&, set<ast::TypeId>*, std::function<void(const vector<ast::TypeId>&)>);
 
   base::Error* MakeConstructorNameError(base::PosRange pos) const;
   base::Error* MakeParentFinalError(const TypeInfo& minfo, const TypeInfo& pinfo) const;
   base::Error* MakeDifferingReturnTypeError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const;
-  base::Error* MakeStaticMethodOverrideError(const MethodInfo& minfo, const MethodInfo& pinfo) const;
-  base::Error* MakeLowerVisibilityError(const MethodInfo& minfo, const MethodInfo& pinfo) const;
+  base::Error* MakeStaticMethodOverrideError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const;
+  base::Error* MakeLowerVisibilityError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const;
   base::Error* MakeOverrideFinalMethodError(const MethodInfo& minfo, const MethodInfo& pinfo) const;
   base::Error* MakeParentClassEmptyConstructorError(const TypeInfo& minfo, const TypeInfo& pinfo) const;
   base::Error* MakeNeedAbstractClassError(const TypeInfo& tinfo, const MethodTable::MethodSignatureMap& method_map) const;
@@ -328,6 +340,7 @@ private:
   base::Error* MakeExtendsCycleError(const vector<TypeInfo>& cycle) const;
 
   const base::FileSet* fs_;
+  ast::TypeId object_tid_;
   vector<TypeInfo> type_entries_;
   multimap<ast::TypeId, MethodInfo> method_entries_;
   multimap<ast::TypeId, FieldInfo> field_entries_;

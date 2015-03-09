@@ -9,11 +9,19 @@
 
 namespace types {
 
+extern const base::PosRange kFakePos;
+extern const lexer::Token kPublic;
+extern const lexer::Token kProtected;
+extern const lexer::Token kFinal;
+extern const lexer::Token kAbstract;
+
 base::Error* MakeUnknownTypenameError(const base::FileSet* fs, base::PosRange pos);
 base::Error* MakeDuplicateDefinitionError(const base::FileSet* fs, const vector<base::PosRange> dupes, const string& main_message, const string& name);
 base::Error* MakeDuplicateInheritanceError(const base::FileSet* fs, bool is_extends, base::PosRange pos, ast::TypeId base_tid, ast::TypeId inheriting_tid);
 
 sptr<const ast::Type> ResolveType(sptr<const ast::Type>, const TypeSet&, base::ErrorList*);
+
+ast::ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract);
 
 } // namespace types
 
