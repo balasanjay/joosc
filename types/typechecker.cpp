@@ -793,11 +793,14 @@ REWRITE_DEFN(TypeChecker, CompUnit, CompUnit, unit, unitptr) {
     return Visitor::RewriteCompUnit(unit, unitptr);
   }
 
+  // Don't emit import errors again - they are already emitted in decl_resolver.
+  ErrorList throwaway;
+
   // Otherwise create a sub-visitor that has the import info, and let it
   // rewrite this node.
   TypeSet scoped_typeset = typeset_
       .WithPackage(unit.PackagePtr(), errors_)
-      .WithImports(unit.Imports(), errors_);
+      .WithImports(unit.Imports(), &throwaway);
 
   TypeChecker below = (*this)
       .WithTypeSet(scoped_typeset)
