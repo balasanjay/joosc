@@ -18,6 +18,10 @@ using base::PosRange;
 SymbolTable::SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& params, ErrorList* errors)
   : fs_(fs), cur_scope_len_(0), currently_declaring_(kVarUnassigned) {
   var_id_counter_ = kVarFirst;
+
+  // Enter param scope.
+  EnterScope();
+
   for (const VariableInfo& param : params) {
     VariableInfo var_info(
       param.tid,
@@ -25,7 +29,7 @@ SymbolTable::SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& pa
       param.pos,
       var_id_counter_
     );
-    auto inserted = params_.insert({var_info.name, var_info});
+    auto inserted = cur_symbols_.insert({var_info.name, var_info});
     if (!inserted.second) {
       errors->Append(MakeDuplicateVarDeclError(param.name, inserted.first->second.pos, param.pos));
     }
@@ -33,15 +37,19 @@ SymbolTable::SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& pa
   }
 }
 
+SymbolTable::~SymbolTable() {
+  // Leave param scope.
+  LeaveScope();
+  CHECK(scopes_.empty());
+}
+
 LocalVarId SymbolTable::DeclareLocalStart(ast::TypeId tid, const string& name, PosRange name_pos, ErrorList* errors) {
   CHECK(currently_declaring_ == kVarUnassigned);
 
-  // TODO: Unify params into symbol table top scope.
-  // Check if already defined as either parameter or local var.
-  auto checkParam = params_.find(name);
+  // Check if already defined.
   auto previousDef = cur_symbols_.find(name);
-  if (checkParam != params_.end() || previousDef != cur_symbols_.end()) {
-    VariableInfo varInfo = checkParam != params_.end() ? checkParam->second : previousDef->second;
+  if (previousDef != cur_symbols_.end()) {
+    VariableInfo varInfo = previousDef->second;
     errors->Append(MakeDuplicateVarDeclError(name, name_pos, varInfo.pos));
     return varInfo.vid;
   }
@@ -64,26 +72,14 @@ void SymbolTable::DeclareLocalEnd() {
   currently_declaring_ = kVarUnassigned;
 }
 
-const VariableInfo* SymbolTable::LookupVar(string name) const {
-  const VariableInfo* var = nullptr;
-  auto findVar = cur_symbols_.find(name);
-  auto findParam = params_.find(name);
-
-  // Local var shadows parameter.
-  if (findVar != cur_symbols_.end()) {
-    var = &findVar->second;
-  } else if (findParam != params_.end()) {
-    var = &findParam->second;
-  }
-  return var;
-}
-
 pair<TypeId, LocalVarId> SymbolTable::ResolveLocal(const string& name, PosRange name_pos, ErrorList* errors) const {
-  const VariableInfo* var = LookupVar(name);
-  if (var == nullptr) {
+  auto findVar = cur_symbols_.find(name);
+  if (findVar == cur_symbols_.end()) {
     errors->Append(MakeUndefinedReferenceError(name, name_pos));
     return make_pair(TypeId::kUnassigned, kVarUnassigned);
   }
+
+  const VariableInfo* var = &findVar->second;
 
   // Check if currently in this variable's initializer.
   if (currently_declaring_ == var->vid) {
