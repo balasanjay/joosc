@@ -47,8 +47,7 @@ private:
   base::Error* MakeVariableInitializerSelfReferenceError(base::PosRange pos) const;
 
   const base::FileSet* fs_;
-  std::map<string, VariableInfo> params_;
-  std::map<string, VariableInfo> cur_symbols_; // Doesn't include params.
+  std::map<string, VariableInfo> cur_symbols_;
   u32 cur_scope_len_;
   vector<string> scopes_;
   vector<u32> scope_lengths_;
