@@ -321,7 +321,7 @@ REWRITE_DEFN(TypeChecker, CastExpr, Expr, expr, exprptr) {
   TypeId exprType = castedExpr->GetTypeId();
   TypeId castType = type->GetTypeId();
 
-  if (!exprType.IsValid() || castType.IsValid()) {
+  if (!exprType.IsValid() || !castType.IsValid()) {
     return nullptr;
   }
 
