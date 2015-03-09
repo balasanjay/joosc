@@ -255,7 +255,7 @@ struct Token {
   base::PosRange pos;
 };
 
-void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
+void LexJoosFiles(const base::FileSet* fs, vector<vector<Token>>* tokens_out,
                   base::ErrorList* errors_out);
 
 void StripSkippableTokens(const vector<Token>& tokens, vector<Token>* out);
