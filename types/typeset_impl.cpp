@@ -16,7 +16,6 @@ using ast::TypeId;
 using base::DiagnosticClass;
 using base::Error;
 using base::ErrorList;
-using base::FileSet;
 using base::MakeError;
 using base::OutputOptions;
 using base::Pos;
@@ -26,23 +25,23 @@ namespace types {
 
 namespace {
 
-Error* MakeUnknownImportError(const FileSet* fs, PosRange pos) {
-  return MakeSimplePosRangeError(fs, pos, "UnknownImportError",
+Error* MakeUnknownImportError(PosRange pos) {
+  return MakeSimplePosRangeError(pos, "UnknownImportError",
                                  "Cannot find imported class.");
 }
 
-Error* MakeAmbiguousTypeError(const FileSet* fs, PosRange pos, const string& msg) {
-  return MakeSimplePosRangeError(fs, pos, "AmbiguousType", msg);
+Error* MakeAmbiguousTypeError(PosRange pos, const string& msg) {
+  return MakeSimplePosRangeError(pos, "AmbiguousType", msg);
 }
 
-Error* MakeUnknownPackageError(const FileSet* fs, PosRange pos) {
-  return MakeSimplePosRangeError(fs, pos, "UnknownPackageError",
+Error* MakeUnknownPackageError(PosRange pos) {
+  return MakeSimplePosRangeError(pos, "UnknownPackageError",
                                  "Cannot find imported package.");
 }
 
-Error* MakePackageTypeAmbiguityError(const FileSet* fs, PosRange first, PosRange second) {
+Error* MakePackageTypeAmbiguityError(PosRange first, PosRange second) {
   // TODO: use MakeError.
-  return MakeSimplePosRangeError(fs, first, "PackageTypeAmbiguityError",
+  return MakeSimplePosRangeError(first, "PackageTypeAmbiguityError",
                                  "PackageTypeAmbiguity");
 }
 
@@ -52,7 +51,7 @@ const int TypeSetImpl::kPkgPrefixLen = 3;
 const string TypeSetImpl::kUnnamedPkgPrefix = "<0>";
 const string TypeSetImpl::kNamedPkgPrefix = "<1>";
 
-TypeSetImpl::TypeSetImpl(const FileSet* fs, const set<string>& types, const set<string>& pkgs, const set<string>& bad_types) : fs_(fs), pkgs_(pkgs) {
+TypeSetImpl::TypeSetImpl(const set<string>& types, const set<string>& pkgs, const set<string>& bad_types) : pkgs_(pkgs) {
   // Insert all predefined types.
 #define INS(name, Name) \
   types_[#name] = TypeId::k##Name##Base; \
@@ -164,7 +163,7 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
   // First, lookup this type.
   auto iter = types_.find(longname);
   if (iter == types_.end()) {
-    errors->Append(MakeUnknownImportError(fs_, pos));
+    errors->Append(MakeUnknownImportError(pos));
 
     // Erase both versions of the name.
     auto long_iter = FindByShortName(longname);
@@ -202,7 +201,7 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
   auto types_iter = types_.find(kNamedPkgPrefix + "." + shortname);
   if (scope != ImportScope::WILDCARD && types_iter != types_.end()) {
     PosRange pkg_pos = PosRange(0, 0, 0);
-    errors->Append(MakePackageTypeAmbiguityError(fs_, pkg_pos, pkg_pos));
+    errors->Append(MakePackageTypeAmbiguityError(pkg_pos, pkg_pos));
 
     // TODO: consider blacklisting shortname.
     return;
@@ -274,7 +273,7 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
   CHECK(prev.scope == ImportScope::COMP_UNIT);
 
   // TODO: emit an error.
-  errors->Append(MakeUnknownTypenameError(fs_, pos));
+  errors->Append(MakeUnknownTypenameError(pos));
 
   // TODO: blacklist.
 }
@@ -285,7 +284,7 @@ TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList*
     string qualified = kNamedPkgPrefix + '.' + name;
     auto t = types_.find(qualified);
     if (t == types_.end()) {
-      errors->Append(MakeUnknownTypenameError(fs_, pos));
+      errors->Append(MakeUnknownTypenameError(pos));
       return TypeId::kUnassigned;
     }
 
@@ -303,7 +302,7 @@ TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList*
       if (types_.count(kNamedPkgPrefix + "." + candidate)) {
         // TODO: errors.
         PosRange pos(0, 0, 0);
-        errors->Append(MakeUnknownTypenameError(fs_, pos));
+        errors->Append(MakeUnknownTypenameError(pos));
         break;
       }
 
@@ -313,7 +312,7 @@ TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList*
         if (iter_pair.first != iter_pair.second) {
           // TODO: errors.
           PosRange pos(0, 0, 0);
-          errors->Append(MakeUnknownTypenameError(fs_, pos));
+          errors->Append(MakeUnknownTypenameError(pos));
           break;
         }
       }
@@ -328,7 +327,7 @@ TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList*
   size_t num_entries = std::distance(begin, end);
 
   if (num_entries == 0) {
-    errors->Append(MakeUnknownTypenameError(fs_, pos));
+    errors->Append(MakeUnknownTypenameError(pos));
     return TypeId::kUnassigned;
   }
 
@@ -351,14 +350,14 @@ TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList*
     ss << cur->longname.substr(kPkgPrefixLen + 1);
   }
   ss << '.';
-  errors->Append(MakeAmbiguousTypeError(fs_, pos, ss.str()));
+  errors->Append(MakeAmbiguousTypeError(pos, ss.str()));
 
   return TypeId::kError;
 }
 
 void TypeSetImpl::InsertWildCard(ImportScope scope, const string& basename, base::PosRange pos, base::ErrorList* errors) {
   if (pkgs_.count(basename) == 0) {
-    errors->Append(MakeUnknownPackageError(fs_, pos));
+    errors->Append(MakeUnknownPackageError(pos));
     return;
   }
 

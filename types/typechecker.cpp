@@ -11,7 +11,6 @@ using namespace ast;
 
 using base::Error;
 using base::ErrorList;
-using base::FileSet;
 using base::Pos;
 using base::PosRange;
 using base::SharedPtrVector;

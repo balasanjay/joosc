@@ -30,7 +30,7 @@ class Error {
  public:
   virtual ~Error() = default;
 
-  virtual void PrintTo(std::ostream* out, const OutputOptions& opt) const = 0;
+  virtual void PrintTo(std::ostream* out, const OutputOptions& opt, const FileSet* fs) const = 0;
 
  protected:
   Error() = default;
@@ -40,7 +40,7 @@ class Error {
 };
 std::ostream& operator<<(std::ostream& out, const Error& e);
 
-using PrintFn = std::function<void(std::ostream*, const OutputOptions&)>;
+using PrintFn = std::function<void(std::ostream*, const OutputOptions&, const FileSet*)>;
 Error* MakeError(PrintFn printfn);
 
 enum class DiagnosticClass {
@@ -59,19 +59,19 @@ void PrintRangePtr(std::ostream* out, const OutputOptions& opt,
 // TODO: delete all uses of this in lexer_error.h, and delete this class.
 class PosRangeError : public Error {
  protected:
-  PosRangeError(const FileSet* fs, PosRange posrange)
-      : fs_(fs), posrange_(posrange) {}
+  PosRangeError(PosRange posrange)
+      : posrange_(posrange) {}
 
  public:
-  void PrintTo(std::ostream* out, const OutputOptions& opt) const override {
+  void PrintTo(std::ostream* out, const OutputOptions& opt, const FileSet* fs) const override {
     if (opt.simple) {
       *out << SimpleError() << "(" << posrange_ << ")";
       return;
     }
 
-    PrintDiagnosticHeader(out, opt, fs_, posrange_, DiagnosticClass::ERROR,
+    PrintDiagnosticHeader(out, opt, fs, posrange_, DiagnosticClass::ERROR,
                           Error());
-    PrintRangePtr(out, opt, fs_, posrange_);
+    PrintRangePtr(out, opt, fs, posrange_);
   }
 
  protected:
@@ -79,12 +79,10 @@ class PosRangeError : public Error {
   virtual string Error() const = 0;
 
  private:
-  const FileSet* fs_;
   PosRange posrange_;
 };
 
-Error* MakeSimplePosRangeError(const FileSet* fs, PosRange pos, string name,
-                               string msg);
+Error* MakeSimplePosRangeError(PosRange pos, string name, string msg);
 
 }  // namespace base
 

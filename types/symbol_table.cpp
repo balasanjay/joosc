@@ -15,8 +15,8 @@ using base::Error;
 using base::ErrorList;
 using base::PosRange;
 
-SymbolTable::SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& params, ErrorList* errors)
-  : fs_(fs), cur_scope_len_(0), currently_declaring_(kVarUnassigned) {
+SymbolTable::SymbolTable(const vector<VariableInfo>& params, ErrorList* errors)
+  : cur_scope_len_(0), currently_declaring_(kVarUnassigned) {
   var_id_counter_ = kVarFirst;
 
   // Enter param scope.
@@ -114,17 +114,17 @@ Error* SymbolTable::MakeUndefinedReferenceError(string name, PosRange pos) const
   ss << "Undefined reference to '";
   ss << name;
   ss << '\'';
-  return MakeSimplePosRangeError(fs_, pos, "UndefinedReferenceError", ss.str());
+  return MakeSimplePosRangeError(pos, "UndefinedReferenceError", ss.str());
 }
 
 Error* SymbolTable::MakeDuplicateVarDeclError(string name, PosRange pos, PosRange old_pos) const {
   stringstream msgstream;
   msgstream << "Local variable '" << name << "' was declared multiple times.";
-  return MakeDuplicateDefinitionError(fs_, {pos, old_pos}, msgstream.str(), name);
+  return MakeDuplicateDefinitionError({pos, old_pos}, msgstream.str(), name);
 }
 
 Error* SymbolTable::MakeVariableInitializerSelfReferenceError(PosRange pos) const {
-  return MakeSimplePosRangeError(fs_, pos, "VariableInitializerSelfReferenceError", "A variable cannot be used in its own initializer.");
+  return MakeSimplePosRangeError(pos, "VariableInitializerSelfReferenceError", "A variable cannot be used in its own initializer.");
 }
 
 } // namespace types
