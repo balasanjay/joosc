@@ -85,6 +85,7 @@ class TypeCheckerTest : public ::testing::Test {
 
   // Pairs of file name, file contents.
   sptr<const Program> ParseProgram(const vector<pair<string, string>>& file_contents) {
+    // find third_party/cs444/stdlib/3.0 -type f -name '*.java'
     static const vector<string> stdlib = {
       "third_party/cs444/stdlib/3.0/java/io/Serializable.java",
       "third_party/cs444/stdlib/3.0/java/io/PrintStream.java",
@@ -105,11 +106,11 @@ class TypeCheckerTest : public ::testing::Test {
 
     base::FileSet* fs;
     base::FileSet::Builder fs_builder;
-    for (auto contents : file_contents) {
-      fs_builder.AddStringFile(contents.first, contents.second);
-    }
     for (const string& file_name : stdlib) {
       fs_builder.AddDiskFile(file_name);
+    }
+    for (auto contents : file_contents) {
+      fs_builder.AddStringFile(contents.first, contents.second);
     }
     CHECK(fs_builder.Build(&fs, &errors_));
     fs_.reset(fs);
@@ -554,10 +555,11 @@ TEST(TypeCheckerUtilTest, IsCastablePrimitives) {
 }
 
 TEST_F(TypeCheckerTest, IsCastableReference) {
-  vector<pair<string, string>> test_files;
-  test_files.push_back({"A.java", "public class A { public A() {} }"});
-  test_files.push_back({"B.java", "public class B extends A { public B() {} }"});
-  test_files.push_back({"C.java", "public class C { public void foo() { B b = new B(); A a = (A)b; } }"});
+  vector<pair<string, string>> test_files = {
+    {"A.java", "public class A { public A() {} }"},
+    {"B.java", "public class B extends A { public B() {} }"},
+    {"C.java", "public class C { public void foo() { B b = new B(); A a = (A)b; } }"},
+  };
   sptr<const Program> program = ParseProgram(test_files);
   EXPECT_NE(nullptr, program);
   EXPECT_NO_ERRS();
