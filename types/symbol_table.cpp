@@ -72,20 +72,14 @@ void SymbolTable::DeclareLocalEnd() {
   currently_declaring_ = kVarUnassigned;
 }
 
-const VariableInfo* SymbolTable::LookupVar(string name) const {
-  auto findVar = cur_symbols_.find(name);
-  if (findVar != cur_symbols_.end()) {
-    return &findVar->second;
-  }
-  return nullptr;
-}
-
 pair<TypeId, LocalVarId> SymbolTable::ResolveLocal(const string& name, PosRange name_pos, ErrorList* errors) const {
-  const VariableInfo* var = LookupVar(name);
-  if (var == nullptr) {
+  auto findVar = cur_symbols_.find(name);
+  if (findVar == cur_symbols_.end()) {
     errors->Append(MakeUndefinedReferenceError(name, name_pos));
     return make_pair(TypeId::kUnassigned, kVarUnassigned);
   }
+
+  const VariableInfo* var = &findVar->second;
 
   // Check if currently in this variable's initializer.
   if (currently_declaring_ == var->vid) {

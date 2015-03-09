@@ -41,8 +41,6 @@ public:
   pair<ast::TypeId, ast::LocalVarId> ResolveLocal(const string& name, base::PosRange name_pos, base::ErrorList* errors) const;
 
 private:
-  const VariableInfo* LookupVar(string name) const;
-
   base::Error* MakeUndefinedReferenceError(string var_name, base::PosRange name_pos) const;
   base::Error* MakeDuplicateVarDeclError(string varName, base::PosRange varPos, base::PosRange original_pos) const;
   base::Error* MakeVariableInitializerSelfReferenceError(base::PosRange pos) const;
