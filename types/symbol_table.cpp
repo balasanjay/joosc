@@ -18,6 +18,10 @@ using base::PosRange;
 SymbolTable::SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& params, ErrorList* errors)
   : fs_(fs), cur_scope_len_(0), currently_declaring_(kVarUnassigned) {
   var_id_counter_ = kVarFirst;
+
+  // Enter param scope.
+  EnterScope();
+
   for (const VariableInfo& param : params) {
     VariableInfo var_info(
       param.tid,
@@ -31,8 +35,12 @@ SymbolTable::SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& pa
     }
     ++var_id_counter_;
   }
-  // Enter the body scope.
-  EnterScope();
+}
+
+SymbolTable::~SymbolTable() {
+  // Leave param scope.
+  LeaveScope();
+  CHECK(scopes_.empty());
 }
 
 LocalVarId SymbolTable::DeclareLocalStart(ast::TypeId tid, const string& name, PosRange name_pos, ErrorList* errors) {

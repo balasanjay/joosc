@@ -26,6 +26,7 @@ public:
 class SymbolTable {
 public:
   SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& params, base::ErrorList* errors);
+  virtual ~SymbolTable();
 
   static SymbolTable Empty() {
     base::ErrorList throwaway;
