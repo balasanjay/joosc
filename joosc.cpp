@@ -30,9 +30,9 @@ using weeder::WeedProgram;
 
 namespace {
 
-bool PrintErrors(const ErrorList& errors, ostream* err) {
+bool PrintErrors(const ErrorList& errors, ostream* err, const FileSet* fs) {
   if (errors.Size() > 0) {
-    errors.PrintTo(err, base::OutputOptions::kUserOutput);
+    errors.PrintTo(err, base::OutputOptions::kUserOutput, fs);
   }
   return errors.IsFatal();
 }
@@ -52,7 +52,7 @@ sptr<const Program> CompilerFrontend(CompilerStage stage, FileSet* fs, ErrorList
   StripSkippableTokens(tokens, &filtered_tokens);
 
   // Look for unsupported tokens.
-  FindUnsupportedTokens(fs, tokens, out);
+  FindUnsupportedTokens(tokens, out);
   if (out->IsFatal() || stage == CompilerStage::UNSUPPORTED_TOKS) {
     return nullptr;
   }
@@ -70,7 +70,7 @@ sptr<const Program> CompilerFrontend(CompilerStage stage, FileSet* fs, ErrorList
   }
 
   // Type-checking.
-  program = TypecheckProgram(program, fs, out);
+  program = TypecheckProgram(program, out);
   if (out->IsFatal() || stage == CompilerStage::TYPE_CHECK) {
     return program;
   }
@@ -91,7 +91,7 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
     }
 
     if (!builder.Build(&fs, &errors)) {
-      errors.PrintTo(&cerr, base::OutputOptions::kUserOutput);
+      errors.PrintTo(&cerr, base::OutputOptions::kUserOutput, fs);
       return false;
     }
   }
@@ -102,7 +102,7 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
 
   ErrorList errors;
   sptr<const Program> program = CompilerFrontend(stage, fs, &errors);
-  if (PrintErrors(errors, err)) {
+  if (PrintErrors(errors, err, fs)) {
     return false;
   }
 

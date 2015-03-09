@@ -3,7 +3,6 @@
 
 #include "ast/ast.h"
 #include "base/errorlist.h"
-#include "base/fileset.h"
 
 namespace weeder {
 

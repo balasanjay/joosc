@@ -15,7 +15,7 @@ TEST_F(AssignmentVisitorTest, Name) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  AssignmentVisitor visitor(fs_.get(), &errors);
+  AssignmentVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -27,7 +27,7 @@ TEST_F(AssignmentVisitorTest, FieldDeref) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  AssignmentVisitor visitor(fs_.get(), &errors);
+  AssignmentVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -39,7 +39,7 @@ TEST_F(AssignmentVisitorTest, ArrayIndex) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  AssignmentVisitor visitor(fs_.get(), &errors);
+  AssignmentVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -51,7 +51,7 @@ TEST_F(AssignmentVisitorTest, Fail) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  AssignmentVisitor visitor(fs_.get(), &errors);
+  AssignmentVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());

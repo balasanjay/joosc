@@ -58,7 +58,7 @@ class TypeCheckerTest : public ::testing::Test {
 
     parser_.reset(new parser::Parser(fs, fs->Get(0), &tokens[0]));
 
-    typeChecker_.reset(new TypeChecker(fs_.get(), &errors_));
+    typeChecker_.reset(new TypeChecker(&errors_));
   }
 
   sptr<const Expr> ParseExpr(string s) {
@@ -513,7 +513,7 @@ TEST_F(TypeCheckerTest, FieldDeclStaticThis) {
 
 
 TEST(TypeCheckerUtilTest, IsCastablePrimitives) {
-  TypeChecker typeChecker(nullptr, nullptr);
+  TypeChecker typeChecker(nullptr);
   auto numTids = {TypeId::kInt, TypeId::kChar, TypeId::kShort, TypeId::kByte};
   for (TypeId tidA : numTids) {
     for (TypeId tidB : numTids) {

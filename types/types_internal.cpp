@@ -33,13 +33,13 @@ const Token kProtected(K_PROTECTED, kFakePos);
 const Token kFinal(K_FINAL, kFakePos);
 const Token kAbstract(K_ABSTRACT, kFakePos);
 
-Error* MakeUnknownTypenameError(const FileSet* fs, PosRange pos) {
-  return MakeSimplePosRangeError(fs, pos, "UnknownTypenameError",
+Error* MakeUnknownTypenameError(PosRange pos) {
+  return MakeSimplePosRangeError(pos, "UnknownTypenameError",
                                  "Unknown type name.");
 }
 
-Error* MakeDuplicateDefinitionError(const FileSet* fs, const vector<PosRange> dupes, const string& main_message, const string& name) {
-  return MakeError([=](ostream* out, const OutputOptions& opt) {
+Error* MakeDuplicateDefinitionError(const vector<PosRange> dupes, const string& main_message, const string& name) {
+  return MakeError([=](ostream* out, const OutputOptions& opt, const FileSet* fs) {
     if (opt.simple) {
       *out << name << ": [";
       for (const auto& dupe : dupes) {
@@ -60,7 +60,7 @@ Error* MakeDuplicateDefinitionError(const FileSet* fs, const vector<PosRange> du
   });
 }
 
-Error* MakeDuplicateInheritanceError(const FileSet* fs, bool is_extends, PosRange pos, TypeId base_tid, TypeId inheriting_tid) {
+Error* MakeDuplicateInheritanceError(bool is_extends, PosRange pos, TypeId base_tid, TypeId inheriting_tid) {
   stringstream ss;
   ss << "Type " << base_tid.base << " ";
   if (is_extends) {
@@ -69,7 +69,7 @@ Error* MakeDuplicateInheritanceError(const FileSet* fs, bool is_extends, PosRang
     ss << "implements";
   }
   ss << " " << inheriting_tid.base << " twice.";
-  return MakeSimplePosRangeError(fs, pos, "DuplicateInheritanceError", ss.str());
+  return MakeSimplePosRangeError(pos, "DuplicateInheritanceError", ss.str());
 }
 
 sptr<const Type> ResolveType(sptr<const Type> type, const TypeSet& typeset, ErrorList* errors) {

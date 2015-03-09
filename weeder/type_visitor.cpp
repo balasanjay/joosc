@@ -27,7 +27,6 @@ using ast::Type;
 using ast::VisitResult;
 using base::Error;
 using base::ErrorList;
-using base::FileSet;
 using base::Pos;
 using base::PosRange;
 using lexer::ASSG;
@@ -46,26 +45,26 @@ bool IsTopLevelExpr(const Expr* expr) {
   return IS_CONST_PTR(CallExpr, expr) || IS_CONST_PTR(NewClassExpr, expr);
 }
 
-Error* MakeInvalidVoidTypeError(const FileSet* fs, Token token) {
+Error* MakeInvalidVoidTypeError(Token token) {
   return MakeSimplePosRangeError(
-      fs, token.pos, "InvalidVoidTypeError",
+      token.pos, "InvalidVoidTypeError",
       "'void' is only valid as the return type of a method.");
 }
 
-Error* MakeNewNonReferenceTypeError(const FileSet* fs, Token token) {
+Error* MakeNewNonReferenceTypeError(Token token) {
   return MakeSimplePosRangeError(
-      fs, token.pos, "NewNonReferenceTypeError",
+      token.pos, "NewNonReferenceTypeError",
       "Can only instantiate non-array reference types.");
 }
 
-Error* MakeInvalidInstanceOfType(const FileSet* fs, Token token) {
+Error* MakeInvalidInstanceOfType(Token token) {
   return MakeSimplePosRangeError(
-      fs, token.pos, "InvalidInstanceOfTypeError",
+      token.pos, "InvalidInstanceOfTypeError",
       "Right-hand-side of 'instanceof' must be a reference type or an array.");
 }
 
-Error* MakeInvalidTopLevelStatement(const FileSet* fs, PosRange pos) {
-  return MakeSimplePosRangeError(fs, pos, "InvalidTopLevelStatement",
+Error* MakeInvalidTopLevelStatement(PosRange pos) {
+  return MakeSimplePosRangeError(pos, "InvalidTopLevelStatement",
                                  "A top level statement can only be an "
                                  "assignment, a method call, or a class "
                                  "instantiation.");
@@ -102,7 +101,7 @@ bool HasVoid(const Type& type, Token* out) {
 VISIT_DEFN(TypeVisitor, CastExpr, expr,) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(expr.GetType(), &voidTok)) {
-    errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
+    errors_->Append(MakeInvalidVoidTypeError(voidTok));
     return VisitResult::RECURSE_PRUNE;
   }
   return VisitResult::RECURSE;
@@ -111,9 +110,9 @@ VISIT_DEFN(TypeVisitor, CastExpr, expr,) {
 VISIT_DEFN(TypeVisitor, InstanceOfExpr, expr,) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(expr.GetType(), &voidTok)) {
-    errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
+    errors_->Append(MakeInvalidVoidTypeError(voidTok));
   } else if (IS_CONST_REF(PrimitiveType, expr.GetType())) {
-    errors_->Append(MakeInvalidInstanceOfType(fs_, expr.InstanceOf()));
+    errors_->Append(MakeInvalidInstanceOfType(expr.InstanceOf()));
   }
   return VisitResult::RECURSE;
 }
@@ -121,10 +120,10 @@ VISIT_DEFN(TypeVisitor, InstanceOfExpr, expr,) {
 VISIT_DEFN(TypeVisitor, NewClassExpr, expr,) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(expr.GetType(), &voidTok)) {
-    errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
+    errors_->Append(MakeInvalidVoidTypeError(voidTok));
     return VisitResult::RECURSE_PRUNE;
   } else if (!IS_CONST_REF(ReferenceType, expr.GetType())) {
-    errors_->Append(MakeNewNonReferenceTypeError(fs_, expr.NewToken()));
+    errors_->Append(MakeNewNonReferenceTypeError(expr.NewToken()));
     return VisitResult::RECURSE_PRUNE;
   }
   return VisitResult::RECURSE;
@@ -133,7 +132,7 @@ VISIT_DEFN(TypeVisitor, NewClassExpr, expr,) {
 VISIT_DEFN(TypeVisitor, NewArrayExpr, expr,) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(expr.GetType(), &voidTok)) {
-    errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
+    errors_->Append(MakeInvalidVoidTypeError(voidTok));
     return VisitResult::RECURSE_PRUNE;
   }
   return VisitResult::RECURSE;
@@ -142,7 +141,7 @@ VISIT_DEFN(TypeVisitor, NewArrayExpr, expr,) {
 VISIT_DEFN(TypeVisitor, LocalDeclStmt, stmt,) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(stmt.GetType(), &voidTok)) {
-    errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
+    errors_->Append(MakeInvalidVoidTypeError(voidTok));
     return VisitResult::RECURSE_PRUNE;
   }
   return VisitResult::RECURSE;
@@ -151,7 +150,7 @@ VISIT_DEFN(TypeVisitor, LocalDeclStmt, stmt,) {
 VISIT_DEFN(TypeVisitor, FieldDecl, stmt,) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(stmt.GetType(), &voidTok)) {
-    errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
+    errors_->Append(MakeInvalidVoidTypeError(voidTok));
     return VisitResult::RECURSE_PRUNE;
   }
   return VisitResult::RECURSE;
@@ -160,7 +159,7 @@ VISIT_DEFN(TypeVisitor, FieldDecl, stmt,) {
 VISIT_DEFN(TypeVisitor, Param, param,) {
   Token voidTok(K_VOID, Pos(-1, -1));
   if (HasVoid(param.GetType(), &voidTok)) {
-    errors_->Append(MakeInvalidVoidTypeError(fs_, voidTok));
+    errors_->Append(MakeInvalidVoidTypeError(voidTok));
     return VisitResult::RECURSE_PRUNE;
   }
   return VisitResult::RECURSE;
@@ -170,7 +169,7 @@ VISIT_DEFN(TypeVisitor, ForStmt, stmt,) {
   // Check only update expr.
   sptr<const Expr> updatePtr = stmt.UpdatePtr();
   if (updatePtr != nullptr && !IsTopLevelExpr(updatePtr.get())) {
-    errors_->Append(MakeInvalidTopLevelStatement(fs_, ExtentOf(stmt.UpdatePtr())));
+    errors_->Append(MakeInvalidTopLevelStatement(ExtentOf(stmt.UpdatePtr())));
     return VisitResult::RECURSE_PRUNE;
   }
   return VisitResult::RECURSE;
@@ -178,7 +177,7 @@ VISIT_DEFN(TypeVisitor, ForStmt, stmt,) {
 
 VISIT_DEFN(TypeVisitor, ExprStmt, stmt, stmtptr) {
   if (!IsTopLevelExpr(stmt.GetExprPtr().get())) {
-    errors_->Append(MakeInvalidTopLevelStatement(fs_, ExtentOf(stmtptr)));
+    errors_->Append(MakeInvalidTopLevelStatement(ExtentOf(stmtptr)));
     return VisitResult::RECURSE_PRUNE;
   }
   return VisitResult::RECURSE;

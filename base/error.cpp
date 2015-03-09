@@ -26,13 +26,11 @@ string OutputOptions::BoldOn() const { return IfColor(*this, "1m"); }
 string OutputOptions::BoldOff() const { return IfColor(*this, "22m"); }
 
 std::ostream& operator<<(std::ostream& out, const Error& e) {
-  e.PrintTo(&out, OutputOptions::kSimpleOutput);
+  e.PrintTo(&out, OutputOptions::kSimpleOutput, nullptr);
   return out;
 }
-
-Error* MakeSimplePosRangeError(const FileSet* fs, PosRange pos, string name,
-                               string msg) {
-  return MakeError([=](std::ostream* out, const OutputOptions& opt) {
+Error* MakeSimplePosRangeError(PosRange pos, string name, string msg) {
+  return MakeError([=](std::ostream* out, const OutputOptions& opt, const FileSet* fs) {
     if (opt.simple) {
       *out << name << '(' << pos << ')';
       return;
@@ -48,8 +46,8 @@ Error* MakeError(PrintFn printfn) {
    public:
     Err(PrintFn printfn) : printfn_(printfn) {}
 
-    void PrintTo(std::ostream* out, const OutputOptions& opt) const override {
-      printfn_(out, opt);
+    void PrintTo(std::ostream* out, const OutputOptions& opt, const FileSet* fs) const override {
+      printfn_(out, opt, fs);
     }
 
    private:
