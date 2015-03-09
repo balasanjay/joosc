@@ -7,6 +7,7 @@
 using std::ostream;
 
 using ast::ArrayType;
+using ast::ModifierList;
 using ast::PrimitiveType;
 using ast::ReferenceType;
 using ast::Type;
@@ -18,8 +19,19 @@ using base::FileSet;
 using base::MakeError;
 using base::OutputOptions;
 using base::PosRange;
+using lexer::K_ABSTRACT;
+using lexer::K_FINAL;
+using lexer::K_PROTECTED;
+using lexer::K_PUBLIC;
+using lexer::Token;
 
 namespace types {
+
+const PosRange kFakePos(-1, -1, -1);
+const Token kPublic(K_PUBLIC, kFakePos);
+const Token kProtected(K_PROTECTED, kFakePos);
+const Token kFinal(K_FINAL, kFakePos);
+const Token kAbstract(K_ABSTRACT, kFakePos);
 
 Error* MakeUnknownTypenameError(const FileSet* fs, PosRange pos) {
   return MakeSimplePosRangeError(fs, pos, "UnknownTypenameError",
@@ -100,5 +112,25 @@ sptr<const Type> ResolveType(sptr<const Type> type, const TypeSet& typeset, Erro
   return make_shared<ArrayType>(nested, arr->Lbrack(), arr->Rbrack(), tid);
 }
 
+ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract) {
+
+  ModifierList mods;
+
+  if (is_protected) {
+    mods.AddModifier(kProtected);
+  } else {
+    mods.AddModifier(kPublic);
+  }
+
+  if (is_final) {
+    mods.AddModifier(kFinal);
+  }
+
+  if (is_abstract) {
+    mods.AddModifier(kAbstract);
+  }
+
+  return mods;
+}
 
 } // namespace types

@@ -36,12 +36,6 @@ namespace types {
 
 namespace {
 
-static PosRange kFakePos(-1, -1, -1);
-static Token kPublic(K_PUBLIC, kFakePos);
-static Token kProtected(K_PROTECTED, kFakePos);
-static Token kFinal(K_FINAL, kFakePos);
-static Token kAbstract(K_ABSTRACT, kFakePos);
-
 bool IsAccessible(const TypeInfoMap& types, const ModifierList& mods, CallContext ctx, TypeId owner, TypeId caller, TypeId callee) {
   if (caller == owner) {
     return true;
@@ -132,27 +126,6 @@ Error* MakeResolveMethodTableError(const FileSet* fs, const TypeInfo& mtinfo, co
 }
 
 } // namespace
-
-ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract) {
-
-  ModifierList mods;
-
-  if (is_protected) {
-    mods.AddModifier(kProtected);
-  } else {
-    mods.AddModifier(kPublic);
-  }
-
-  if (is_final) {
-    mods.AddModifier(kFinal);
-  }
-
-  if (is_abstract) {
-    mods.AddModifier(kAbstract);
-  }
-
-  return mods;
-}
 
 TypeInfo TypeInfoMap::kErrorTypeInfo = TypeInfo{{}, TypeKind::CLASS, TypeId::kError, "", "", kFakePos, TypeIdList({}), TypeIdList({}), MethodTable::kErrorMethodTable, FieldTable::kErrorFieldTable, 0};
 
