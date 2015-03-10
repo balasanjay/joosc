@@ -8,6 +8,7 @@
 
 using std::back_inserter;
 using std::count;
+using std::ostream;
 using std::sort;
 using std::transform;
 
@@ -30,13 +31,47 @@ Error* MakeUnknownImportError(PosRange pos) {
                                  "Cannot find imported class.");
 }
 
-Error* MakeAmbiguousTypeError(PosRange pos, const string& msg) {
-  return MakeSimplePosRangeError(pos, "AmbiguousType", msg);
+Error* MakeAmbiguousTypeError(PosRange pos, const string& name, const vector<PosRange>& imports) {
+  return MakeError([=](ostream* out, const OutputOptions& opt, const base::FileSet* fs) {
+    if (opt.simple) {
+      *out << "AmbiguousTypeError:[";
+      for (auto pos : imports) {
+        *out << pos << ",";
+      }
+      *out << "]";
+      return;
+    }
+
+    string msg = "'" + name + "' is ambiguous.";
+    PrintDiagnosticHeader(out, opt, fs, pos, DiagnosticClass::ERROR, msg);
+    PrintRangePtr(out, opt, fs, pos);
+
+    for (auto import : imports) {
+      *out << '\n';
+
+      // If fileid == -1, then we conflicted with the implicit import of
+      // java.lang.*. Special-case this situation, and point the error back to
+      // the standard usage.
+      if (import.fileid == -1) {
+        string msg = "Implicitly imported from java.lang.";
+        PrintDiagnosticHeader(out, opt, fs, pos, DiagnosticClass::INFO, msg);
+        continue;
+      }
+
+      string msg = "Imported here.";
+      PrintDiagnosticHeader(out, opt, fs, import, DiagnosticClass::INFO, msg);
+      PrintRangePtr(out, opt, fs, import);
+    }
+  });
 }
 
 Error* MakeUnknownPackageError(PosRange pos) {
   return MakeSimplePosRangeError(pos, "UnknownPackageError",
                                  "Cannot find imported package.");
+}
+
+Error* MakeTypeWithTypePrefixError(PosRange pos, const string& msg) {
+  return MakeSimplePosRangeError(pos, "TypeWithTypePrefixError", msg);
 }
 
 } // namespace
@@ -173,7 +208,6 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
   }
 
   TypeBase base = iter->second.first;
-  PosRange base_pos = iter->second.second;
 
   // Lookup the shortname in the current visible set.
   VisibleSet::iterator begin;
@@ -283,38 +317,31 @@ TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList*
       return TypeId::kUnassigned;
     }
 
-    // If this type has been blacklisted don't bother checking all the prefixes
-    // and stuff.
+    // If this type has been blacklisted, then we can just return it
+    // immediately.
     if (t->second.first == TypeId::kErrorBase) {
       return TypeId::kError;
     }
 
-    size_t search_begin = 0;
-    while (true) {
-      size_t next_dot = name.find('.', search_begin);
-      if (next_dot == string::npos) {
-        break;
-      }
+    // Check that the first element of the qualified name does not also resolve
+    // to a type in the current environment.
+    //
+    // Technically, every other prefix of the qualified name also should not
+    // resolve to a type. However, these other prefixes cannot resolve to a
+    // type. They are a package in this context, and our earlier check that we
+    // don't have a package and a class named the same thing would have caught
+    // this case.
+    {
+      size_t next_dot = name.find('.');
+      CHECK(next_dot != string::npos);
 
       string candidate = name.substr(0, next_dot);
-      search_begin = next_dot + 1;
-
-      // Look up candidate as a fully-qualified globally unique name.
-      if (types_.count(kNamedPkgPrefix + "." + candidate)) {
-        // TODO: errors.
-        PosRange pos(0, 0, 0);
-        errors->Append(MakeUnknownTypenameError(pos));
-        break;
-      }
-
-      // Look up candidate in the current environment.
-      if (candidate.find('.') == string::npos) {
-        auto iter_pair = FindByShortName(candidate);
-        if (iter_pair.first != iter_pair.second) {
-          PosRange pos(0, 0, 0);
-          errors->Append(MakeUnknownTypenameError(pos));
-          break;
-        }
+      auto iter_pair = FindByShortName(candidate);
+      if (iter_pair.first != iter_pair.second) {
+        stringstream ss;
+        ss << "'" << candidate << "' resolves as both a type and a package in this context.";
+        errors->Append(MakeTypeWithTypePrefixError(pos, ss.str()));
+        return TypeId::kError;
       }
     }
 
@@ -341,16 +368,11 @@ TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList*
   // conflicting wildcard entries.
   CHECK(num_entries > 1);
 
-  stringstream ss;
-  ss << "'" << name << "' is ambiguous; it could refer to ";
+  vector<PosRange> imports;
   for (auto cur = begin; cur != end; ++cur) {
-    if (cur != begin) {
-      ss << ", or ";
-    }
-    ss << cur->longname.substr(kPkgPrefixLen + 1);
+    imports.push_back(cur->pos);
   }
-  ss << '.';
-  errors->Append(MakeAmbiguousTypeError(pos, ss.str()));
+  errors->Append(MakeAmbiguousTypeError(pos, name, imports));
 
   return TypeId::kError;
 }
