@@ -100,8 +100,6 @@ TEST_F(FieldTableTest, ReferencingStaticSameClassNoQualifier) {
   EXPECT_ERRS("StaticFieldOnInstanceError(0:62)\n");
 }
 
-// TODO: Check all user errors visually.
-
 TEST_F(FieldTableTest, ReferencingNonExistantField) {
   ParseProgram({
     {"A.java", "public class A { public A() {} }"},
