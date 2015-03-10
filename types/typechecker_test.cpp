@@ -272,11 +272,18 @@ TEST_F(TypeCheckerTest, CharLitExpr) {
 
 // TODO: FieldDerefExpr
 
-TEST_F(TypeCheckerTest, InstanceOfExprWorks) {
+TEST_F(TypeCheckerTest, InstanceOfWorks) {
   ParseProgram({
-      {"F.java", "public class F{public F(){}}"}
+      {"F.java", "public class F{public F(){} public boolean f(){return new F() instanceof F;}}"}
   });
   EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, InstanceOfPrimitive) {
+  ParseProgram({
+      {"F.java", "public class F{public boolean f(){return 1 instanceof int;}}"}
+  });
+  EXPECT_ERRS("InvalidInstanceOfTypeError(0:43-53)\n");
 }
 
 TEST_F(TypeCheckerTest, InstanceOfExprUncastable) {
@@ -626,12 +633,11 @@ TEST(TypeCheckerUtilTest, IsCastablePrimitives) {
 }
 
 TEST_F(TypeCheckerTest, IsCastableReference) {
-  vector<pair<string, string>> test_files = {
+  ParseProgram({
     {"A.java", "public class A { public A() {} }"},
     {"B.java", "public class B extends A { public B() {} }"},
     {"C.java", "public class C { public void foo() { B b = new B(); A a = (A)b; } }"},
-  };
-  ParseProgram(test_files);
+  });
   EXPECT_NO_ERRS();
 }
 
