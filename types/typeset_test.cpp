@@ -27,8 +27,8 @@ TEST_F(TypeSetTest, TwoClassesWithSameQualifiedName) {
     {"a/Foo.java", "package foo; public class Foo {}"},
     {"b/Foo.java", "package foo; public class Foo {}"},
   };
-  sptr<const Program> program = ParseProgram(test_files);
-  EXPECT_ERRS("foo.Foo: [0:26-29,1:26-29,]\n");
+  ParseProgram(test_files);
+  EXPECT_ERRS("TypeDuplicateDefinitionError: [0:26-29,1:26-29,]\n");
 }
 
 TEST_F(TypeSetTest, ClassAndPackageWithSameQualifiedName) {
@@ -36,8 +36,8 @@ TEST_F(TypeSetTest, ClassAndPackageWithSameQualifiedName) {
     {"a/Foo.java", "package foo.bar; public class Foo {}"},
     {"b/bar.java", "package foo; public class bar {}"},
   };
-  sptr<const Program> program = ParseProgram(test_files);
-  EXPECT_ERRS("foo.bar: [1:26-29,0:12-15,]\n");
+  ParseProgram(test_files);
+  EXPECT_ERRS("TypeDuplicateDefinitionError: [1:26-29,0:12-15,]\n");
 }
 
 TEST_F(TypeSetTest, UnknownImport) {
@@ -51,7 +51,7 @@ TEST_F(TypeSetTest, UnknownImport) {
       "}"
     },
   };
-  sptr<const Program> program = ParseProgram(test_files);
+  ParseProgram(test_files);
   EXPECT_ERRS("UnknownImportError(0:7-20)\n");
 }
 
@@ -70,7 +70,7 @@ TEST_F(TypeSetTest, MultipleWildcards) {
       "public class gee {}"
     },
   };
-  sptr<const Program> program = ParseProgram(test_files);
+  ParseProgram(test_files);
   EXPECT_NO_ERRS();
 }
 
@@ -89,7 +89,7 @@ TEST_F(TypeSetTest, MultipleWildcardsAmbiguity) {
       "public class gee extends bar {}"
     },
   };
-  sptr<const Program> program = ParseProgram(test_files);
+  ParseProgram(test_files);
   EXPECT_ERRS("AmbiguousType(3:72-75)\n");
 }
 
@@ -107,7 +107,7 @@ TEST_F(TypeSetTest, WildcardsOverruledByPackage) {
       "public class gee extends bar {}"
     },
   };
-  sptr<const Program> program = ParseProgram(test_files);
+  ParseProgram(test_files);
   EXPECT_NO_ERRS();
 }
 
@@ -126,7 +126,7 @@ TEST_F(TypeSetTest, WildcardsOverruledBySingleImport) {
       "public class gee extends bar {}"
     },
   };
-  sptr<const Program> program = ParseProgram(test_files);
+  ParseProgram(test_files);
   EXPECT_NO_ERRS();
 }
 
@@ -142,7 +142,7 @@ TEST_F(TypeSetTest, RedundantImport) {
       "public class gee extends bar {}"
     },
   };
-  sptr<const Program> program = ParseProgram(test_files);
+  ParseProgram(test_files);
   EXPECT_NO_ERRS();
 }
 
@@ -159,7 +159,7 @@ TEST_F(TypeSetTest, ConflictingImports) {
       "public class gee {}"
     },
   };
-  sptr<const Program> program = ParseProgram(test_files);
+  ParseProgram(test_files);
   EXPECT_ERRS("DuplicateCompUnitNames: [2:32-37,2:18-23,]\n");
 }
 
@@ -168,7 +168,7 @@ TEST_F(TypeSetTest, ConflictingImportAndType) {
     {"a/bar.java", "package a; public class bar {}"},
     {"b/bar.java", "package b; import a.bar; public class bar {}"},
   };
-  sptr<const Program> program = ParseProgram(test_files);
+  ParseProgram(test_files);
   EXPECT_ERRS("DuplicateCompUnitNames: [1:38-41,1:18-23,]\n");
 }
 
