@@ -165,6 +165,7 @@ TEST_F(FieldTableTest, ProtectedAccessOutsidePackage) {
 }
 
 // TODO: Test only using fields defined above.
+// TODO: Test that in field initializer having both own field and external type will resolve to currently initializing field and fail.
 
 } // namespace types
 
