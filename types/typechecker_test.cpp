@@ -272,7 +272,20 @@ TEST_F(TypeCheckerTest, CharLitExpr) {
 
 // TODO: FieldDerefExpr
 
-// TODO: InstanceOfExpr
+TEST_F(TypeCheckerTest, InstanceOfExprWorks) {
+  sptr<const ast::Program> program = ParseProgram({
+      {"F.java", "public class F{public F(){}}"}
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, InstanceOfExprUncastable) {
+  sptr<const ast::Program> program = ParseProgram({
+      {"F.java", "public class F{public F(){}}"},
+      {"G.java", "public class G{public boolean g(){return new F() instanceof G;}}"}
+  });
+  EXPECT_ERRS("IncompatibleInstanceOfError(1:41-61)\n");
+}
 
 TEST_F(TypeCheckerTest, IntLitExpr) {
   sptr<const Expr> before = ParseExpr("0");
@@ -286,7 +299,35 @@ TEST_F(TypeCheckerTest, IntLitExpr) {
 
 // TODO: NewArrayExpr
 
-// TODO: NewClassExpr
+TEST_F(TypeCheckerTest, NewClassExpr) {
+  sptr<const ast::Program> program = ParseProgram({
+      {"F.java", "public class F{public F(){F f=new F();}}"}
+  });
+  EXPECT_NE(nullptr, program);
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, NewClassExprArg) {
+  sptr<const ast::Program> program = ParseProgram({
+      {"F.java", "public class F{public F(int i){F f=new F(1);}}"}
+  });
+  EXPECT_NE(nullptr, program);
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, NewClassExprBadConstructor) {
+  sptr<const ast::Program> program = ParseProgram({
+      {"F.java", "public class F{public F(){F f=new F(1);}}"}
+  });
+  EXPECT_ERRS("UndefinedMethodError(0:34)\n");
+}
+
+TEST_F(TypeCheckerTest, NewClassExprBadType) {
+  sptr<const ast::Program> program = ParseProgram({
+      {"F.java", "public class F{public F(){F f=new A();}}"}
+  });
+  EXPECT_ERRS("UnknownTypenameError(0:34)\n");
+}
 
 TEST_F(TypeCheckerTest, NullLitExpr) {
   sptr<const Expr> before = ParseExpr("null");
@@ -311,7 +352,26 @@ TEST_F(TypeCheckerTest, ParenExprErrorInside) {
   EXPECT_ERRS("TypeMismatchError(0:1-5)\n");
 }
 
-// TODO: StringLitExpr
+TEST_F(TypeCheckerTest, StringLitExpr) {
+  sptr<const ast::Program> program = ParseProgram({
+      {"F.java", "public class F{public String f(){return \"Hi.\";}}"}
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, StringLitExprAddOtherThings) {
+  sptr<const ast::Program> program = ParseProgram({
+      {"F.java", "public class F{public String f(){return 1 + \"\" + 'a' + null;}}"}
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, StringLitExprAddOtherThingsOneError) {
+  sptr<const ast::Program> program = ParseProgram({
+      {"F.java", "public class F{public String f(){return null + 1 + \"\" + 'a' + null;}}"}
+  });
+  EXPECT_ERRS("TypeMismatchError(0:40-44)\n");
+}
 
 TEST_F(TypeCheckerTest, ThisLitExpr) {
   const auto insideType = TypeId{100, 0};
@@ -455,9 +515,47 @@ TEST_F(TypeCheckerTest, IfStmtOk) {
   EXPECT_NO_ERRS();
 }
 
-// TODO: LocalDeclStmt
+TEST_F(TypeCheckerTest, ReturnStmt) {
+  sptr<const ast::Program> program = ParseProgram({
+      {"F.java", "public class F{public int f(){return 1;}}"}
+  });
+  EXPECT_NO_ERRS();
+}
 
-// TODO: ReturnStmt
+TEST_F(TypeCheckerTest, ReturnStmtWrongType) {
+  sptr<const ast::Program> program = ParseProgram({
+      {"F.java", "public class F{public int f(){return true;}}"}
+  });
+  EXPECT_ERRS("InvalidReturnError(0:30-36)\n");
+}
+
+TEST_F(TypeCheckerTest, LocalDeclStmt) {
+  sptr<const ast::Program> program = ParseProgram({
+      {"F.java", "public class F{public void f(){int x = 0; return;}}"}
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, LocalDeclStmtBadTypeOneError) {
+  sptr<const ast::Program> program = ParseProgram({
+      {"F.java", "public class F{public int f(){A x = null; return x;}}"}
+  });
+  EXPECT_ERRS("UnknownTypenameError(0:30)\n");
+}
+
+TEST_F(TypeCheckerTest, LocalDeclStmtBadAssign) {
+  sptr<const ast::Program> program = ParseProgram({
+      {"F.java", "public class F{public void f(){char x = null; return;}}"}
+  });
+  EXPECT_ERRS("UnassignableError(0:40-44)\n");
+}
+
+TEST_F(TypeCheckerTest, LocalDeclStmtCreatesSymbol) {
+  sptr<const ast::Program> program = ParseProgram({
+      {"F.java", "public class F{public int f(){int x = 0; return x;}}"}
+  });
+  EXPECT_NO_ERRS();
+}
 
 TEST_F(TypeCheckerTest, WhileStmtCondError) {
   sptr<const Stmt> before = ParseStmt("while(true + 1);");

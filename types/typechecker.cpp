@@ -174,6 +174,7 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
     return make_shared<BinExpr>(lhs, expr.Op(), rhs, TypeId::kBool);
   }
 
+  // Can add anything to a String.
   const TypeId kStrType = JavaLangType("String");
   if (op == lexer::ADD && !kStrType.IsError() && (lhsType == kStrType || rhsType == kStrType)) {
     return make_shared<BinExpr>(lhs, expr.Op(), rhs, kStrType);
@@ -656,6 +657,9 @@ REWRITE_DEFN(TypeChecker, ReturnStmt, Stmt, stmt,) {
   TypeId exprType = TypeId::kVoid;
   if (expr != nullptr) {
     exprType = expr->GetTypeId();
+  }
+  if (!exprType.IsValid()) {
+    return nullptr;
   }
 
   CHECK(belowMemberDecl_);
