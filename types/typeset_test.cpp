@@ -1,26 +1,8 @@
-#include "third_party/gtest/gtest.h"
 #include "types/types_test.h"
-
-using ast::Program;
-
-#define EXPECT_ERRS(msg) EXPECT_EQ(msg, testing::PrintToString(errors_))
-#define EXPECT_NO_ERRS() EXPECT_EQ(0, errors_.Size())
-#define PRINT_ERRS() errors_.PrintTo(&std::cerr, base::OutputOptions::kUserOutput, fs_.get())
 
 namespace types {
 
-class TypeSetTest : public ::testing::Test {
-protected:
-  sptr<const Program> ParseProgram(const vector<pair<string, string>>& file_contents) {
-    base::FileSet* fs;
-    sptr<const Program> program = ParseProgramWithStdlib(&fs, file_contents, &errors_);
-    fs_.reset(fs);
-    return program;
-  }
-
-  base::ErrorList errors_;
-  uptr<base::FileSet> fs_;
-};
+class TypeSetTest : public TypesTest {};
 
 TEST_F(TypeSetTest, TwoClassesWithSameQualifiedName) {
   vector<pair<string, string>> test_files = {
