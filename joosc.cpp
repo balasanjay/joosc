@@ -39,7 +39,7 @@ bool PrintErrors(const ErrorList& errors, ostream* err, const FileSet* fs) {
 
 }
 
-sptr<const Program> CompilerFrontend(CompilerStage stage, FileSet* fs, ErrorList* out) {
+sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, ErrorList* out) {
   // Lex files.
   vector<vector<Token>> tokens;
   LexJoosFiles(fs, &tokens, out);

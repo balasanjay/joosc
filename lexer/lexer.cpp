@@ -121,7 +121,7 @@ const TokenTypeInfo& Token::TypeInfo() const {
 namespace internal {
 
 struct LexState {
-  LexState(FileSet* fs, File* file, int fileid, vector<Token>* tokens,
+  LexState(const FileSet* fs, const File* file, int fileid, vector<Token>* tokens,
            base::ErrorList* errors)
       : fs(fs), file(file), fileid(fileid), tokens(tokens), errors(errors) {}
 
@@ -185,8 +185,8 @@ struct LexState {
     }
   }
 
-  FileSet* fs;
-  File* file;
+  const FileSet* fs;
+  const File* file;
   int fileid;
 
   // This is the range of the lexeme currently being constructed.
@@ -511,7 +511,7 @@ void String(LexState* state) {
 
 }  // namespace internal
 
-void LexJoosFile(base::FileSet* fs, base::File* file, int fileid,
+void LexJoosFile(const base::FileSet* fs, const base::File* file, int fileid,
                  vector<Token>* tokens_out, base::ErrorList* errors_out) {
   // Remove anything with non-ANSI characters.
   for (int i = 0; i < file->Size(); i++) {
@@ -527,7 +527,7 @@ void LexJoosFile(base::FileSet* fs, base::File* file, int fileid,
   state.Run();
 }
 
-void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
+void LexJoosFiles(const base::FileSet* fs, vector<vector<Token>>* tokens_out,
                   base::ErrorList* errors_out) {
   tokens_out->clear();
   tokens_out->resize(fs->Size());
