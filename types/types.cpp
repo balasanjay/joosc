@@ -51,7 +51,7 @@ vector<TypeSetBuilder::Elem> ExtractElems(const QualifiedName& name) {
   v.reserve(name.Parts().size());
 
   for (size_t i = 0; i < name.Parts().size(); ++i) {
-    v.push_back({name.Parts().at(i), name.Tokens().at(i).pos});
+    v.push_back({name.Parts().at(i), name.Tokens().at(i*2).pos});
   }
 
   return v;
@@ -63,8 +63,9 @@ TypeSet BuildTypeSet(const Program& prog, ErrorList* out) {
     vector<TypeSetBuilder::Elem> pkg;
     if (unit.PackagePtr() != nullptr) {
       pkg = ExtractElems(*unit.PackagePtr());
-      typeSetBuilder.AddPackage(pkg);
     }
+    typeSetBuilder.AddPackage(pkg);
+
     for (const auto& decl : unit.Types()) {
       typeSetBuilder.AddType(pkg, {decl.Name(), decl.NameToken().pos});
     }
