@@ -306,7 +306,7 @@ public:
     PutField(curtid, FieldInfo{kErrorFieldId, curtid, field.Mods(), tid, field.NameToken().pos, field.Name()});
   }
 
-  TypeInfoMap Build(const TypeSet& typeset, base::ErrorList* out);
+  TypeInfoMap Build(base::ErrorList* out);
 
 private:
   using MInfoIter = vector<MethodInfo>::iterator;
@@ -320,7 +320,7 @@ private:
 
   void BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInfo* tinfo, FieldId* cur_fid, const map<ast::TypeId, TypeInfo>& sofar, base::ErrorList* out);
 
-  void ValidateExtendsImplementsGraph(const TypeSet& typeset, map<ast::TypeId, TypeInfo>* m, set<ast::TypeId>* bad, base::ErrorList* errors);
+  void ValidateExtendsImplementsGraph(map<ast::TypeId, TypeInfo>* m, set<ast::TypeId>* bad, base::ErrorList* errors);
   void PruneInvalidGraphEdges(const map<ast::TypeId, TypeInfo>&, set<ast::TypeId>*, base::ErrorList*);
   void IntroduceImplicitGraphEdges(const set<ast::TypeId>& bad, map<ast::TypeId, TypeInfo>* types);
   vector<ast::TypeId> VerifyAcyclicGraph(const multimap<ast::TypeId, ast::TypeId>&, set<ast::TypeId>*, std::function<void(const vector<ast::TypeId>&)>);

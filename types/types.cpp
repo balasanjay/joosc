@@ -81,7 +81,7 @@ TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, sptr<const Program> prog,
 
   *new_prog = resolver.Rewrite(prog);
 
-  return builder.Build(typeset, error_out);
+  return builder.Build(error_out);
 }
 
 }  // namespace

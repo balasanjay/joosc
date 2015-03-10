@@ -535,7 +535,7 @@ void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInf
   tinfo->fields = FieldTable(new_good_fields, new_bad_fields);
 }
 
-TypeInfoMap TypeInfoMapBuilder::Build(const TypeSet& typeset, base::ErrorList* out) {
+TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
   map<TypeId, TypeInfo> typeinfo;
   vector<TypeId> all_types;
   set<TypeId> cycle_bad_types;
@@ -546,7 +546,7 @@ TypeInfoMap TypeInfoMapBuilder::Build(const TypeSet& typeset, base::ErrorList* o
     all_types.push_back(entry.type);
   }
 
-  ValidateExtendsImplementsGraph(typeset, &typeinfo, &cycle_bad_types, out);
+  ValidateExtendsImplementsGraph(&typeinfo, &cycle_bad_types, out);
 
   // Sort TypeId vector by the topological ordering of the types.
   {
@@ -598,7 +598,7 @@ TypeInfoMap TypeInfoMapBuilder::Build(const TypeSet& typeset, base::ErrorList* o
   return TypeInfoMap(typeinfo);
 }
 
-void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(const TypeSet& typeset, map<TypeId, TypeInfo>* types, set<TypeId>* bad, ErrorList* errors) {
+void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(map<TypeId, TypeInfo>* types, set<TypeId>* bad, ErrorList* errors) {
   using IdInfoMap = map<TypeId, TypeInfo>;
 
   // Bind a reference to make the code more readable.
