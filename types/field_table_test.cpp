@@ -103,17 +103,17 @@ TEST_F(FieldTableTest, ReferencingStaticSameClassNoQualifier) {
 TEST_F(FieldTableTest, ReferencingNonExistantField) {
   ParseProgram({
     {"A.java", "public class A { public A() {} }"},
-    {"B.java", "public class B { public int f() { return new A().x; }}"}
+    {"B.java", "public class B { public int f() { return new A().foo; }}"}
   });
-  EXPECT_ERRS("UndefinedReferenceError(1:49)\n");
+  EXPECT_ERRS("UndefinedReferenceError(1:49-52)\n");
 }
 
 TEST_F(FieldTableTest, ReferencingInstanceFromStaticOtherClass) {
   ParseProgram({
-    {"A.java", "public class A { public int x; public A() {} }"},
-    {"B.java", "public class B { public int f() { return A.x; } }"}
+    {"A.java", "public class A { public int foo; public A() {} }"},
+    {"B.java", "public class B { public int f() { return A.foo; } }"}
   });
-  EXPECT_ERRS("InstanceFieldOnStaticError(1:43)\n");
+  EXPECT_ERRS("InstanceFieldOnStaticError(1:43-46)\n");
 }
 
 TEST_F(FieldTableTest, ReferencingInstanceFromStaticSameClass) {
