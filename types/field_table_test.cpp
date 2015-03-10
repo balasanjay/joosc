@@ -1,40 +1,9 @@
 #include "third_party/gtest/gtest.h"
 #include "types/types_test.h"
-#include "base/fileset.h"
-
-using namespace ast;
-
-using base::ErrorList;
-using base::FileSet;
-
-#define EXPECT_ERRS(msg) EXPECT_EQ(msg, testing::PrintToString(errors_))
-#define EXPECT_NO_ERRS() EXPECT_EQ(0, errors_.Size())
 
 namespace types {
 
-class FieldTableTest : public ::testing::Test {
- protected:
-  virtual void SetUp() {
-    errors_.Clear();
-    fs_.reset();
-  }
-
-  virtual void TearDown() {
-    errors_.Clear();
-    fs_.reset();
-  }
-
-  // Pairs of file name, file contents.
-  sptr<const Program> ParseProgram(const vector<pair<string, string>>& file_contents) {
-    base::FileSet* fs;
-    sptr<const Program> program = ParseProgramWithStdlib(&fs, file_contents, &errors_);
-    fs_.reset(fs);
-    return program;
-  }
-
-  base::ErrorList errors_;
-  uptr<base::FileSet> fs_;
-};
+class FieldTableTest : public TypesTest {};
 
 TEST_F(FieldTableTest, Duplicate) {
   ParseProgram({
