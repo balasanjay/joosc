@@ -327,6 +327,8 @@ TEST_F(TypeCheckerTest, NewClassExprBadType) {
   EXPECT_ERRS("UnknownTypenameError(0:34)\n");
 }
 
+// TODO: Test new class expr with abstract class.
+
 TEST_F(TypeCheckerTest, NullLitExpr) {
   sptr<const Expr> before = ParseExpr("null");
   auto after = typeChecker_->Rewrite(before);
