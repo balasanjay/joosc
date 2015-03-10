@@ -261,6 +261,10 @@ REWRITE_DEFN(TypeChecker, CallExpr, Expr, expr,) {
     }
   }
 
+  if (!lhs_tid.IsValid()) {
+    return nullptr;
+  }
+
   const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(lhs_tid);
 
   MethodId mid = tinfo.methods.ResolveCall(typeinfo_, curtype_, cc, lhs_tid, TypeIdList(arg_tids), field_deref->FieldName(), field_deref->GetToken().pos, errors_);
@@ -352,6 +356,10 @@ REWRITE_DEFN(TypeChecker, FieldDerefExpr, Expr, expr,) {
       cc = CallContext::STATIC;
       base_tid = stat->GetRefTypePtr()->GetTypeId();
     }
+  }
+
+  if (!base_tid.IsValid()) {
+    return nullptr;
   }
 
   const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(base_tid);
