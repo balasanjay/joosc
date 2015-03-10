@@ -68,7 +68,7 @@ Error* MakeDuplicateInheritanceError(bool is_extends, PosRange pos, TypeId base_
   } else {
     ss << "implements";
   }
-  ss << " " << inheriting_tid.base << " twice.";
+  ss << " " << inheriting_tid.base << " multiple times.";
   return MakeSimplePosRangeError(pos, "DuplicateInheritanceError", ss.str());
 }
 
