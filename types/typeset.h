@@ -22,10 +22,13 @@ public:
   // package.
   TypeSet WithPackage(sptr<const ast::QualifiedName> package, base::ErrorList* errors) const {
     string pkg = "";
+    base::PosRange pos(-1, -1, -1);
     if (package != nullptr) {
       pkg = package->Name();
+      pos = package->Tokens().front().pos;
+      pos.end = package->Tokens().back().pos.end;
     }
-    return TypeSet(impl_->WithPackage(pkg, errors));
+    return TypeSet(impl_->WithPackage(pkg, pos, errors));
   }
 
   // Provides a `view' into the TypeSet assuming the provided imports are in

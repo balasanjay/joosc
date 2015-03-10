@@ -97,26 +97,18 @@ TypeSet TypeSetBuilder::Build(base::ErrorList* out) const {
   }
 
   // Build final set of types and packages by filtering out blacklisted names.
-  set<string> types;
-  set<string> pkgs;
-
-  // Helper that inserts a string into a set, if its not blacklisted.
-  auto insert_if_not_bad = [](const string& name, const set<string>& bad, set<string>* out) {
-    if (bad.count(name) == 1) {
-      return;
-    }
-    auto iterok = out->insert(name);
-    CHECK(iterok.second);
-  };
+  NamePosMap types;
 
   for (const auto& type : declared_types) {
-    insert_if_not_bad(type.name, bad_names, &types);
-  }
-  for (const auto& pkg : declared_pkgs) {
-    pkgs.insert(pkg.first);
+    if (bad_names.count(type.name) == 1) {
+      continue;
+    }
+
+    auto iterok = types.insert({type.name, type.pos});
+    CHECK(iterok.second);
   }
 
-  return TypeSet(make_shared<TypeSetImpl>(types, pkgs, bad_names));
+  return TypeSet(make_shared<TypeSetImpl>(types, declared_pkgs, bad_names));
 }
 
 } // namespace types
