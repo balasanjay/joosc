@@ -14,19 +14,33 @@ TEST_F(FieldTableTest, Duplicate) {
 
 TEST_F(FieldTableTest, DuplicateDiffTypes) {
   ParseProgram({
-    {"A.java", "public class A { public int x; public boolean x; }"},
+    {"A.java", "public class A { public int x; public boolean x; }"}
   });
   EXPECT_ERRS("x: [0:28,0:46,]\n");
 }
 
 TEST_F(FieldTableTest, DuplicateDiffContexts) {
   ParseProgram({
-    {"A.java", "public class A { public int x; public static int x; }"},
+    {"A.java", "public class A { public int x; public static int x; }"}
   });
   EXPECT_ERRS("x: [0:28,0:49,]\n");
 }
 
-// TODO: Inheritance.
+TEST_F(FieldTableTest, InheritedField) {
+  ParseProgram({
+    {"A.java", "public class A { public int x; public A() {} }"},
+    {"B.java", "public class B extends A { public int f() { return x; } }"}
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(FieldTableTest, InheritedStaticField) {
+  ParseProgram({
+    {"A.java", "public class A { public static int x; public A() {} }"},
+    {"B.java", "public class B extends A { public int f() { return B.x; } }"}
+  });
+  EXPECT_NO_ERRS();
+}
 
 TEST_F(FieldTableTest, Uninitialized) {
   ParseProgram({
@@ -124,6 +138,30 @@ TEST_F(FieldTableTest, ReferencingStaticFromInstanceSameClass) {
     {"A.java", "public class A { public static int x;  public int f(){ return x; } }"},
   });
   EXPECT_ERRS("StaticFieldOnInstanceError(0:62)\n");
+}
+
+TEST_F(FieldTableTest, ProtectedAccessInChild) {
+  ParseProgram({
+    {"A.java", "public class A { protected int x; public A() {} }"},
+    {"B.java", "public class B extends A { public int f() { return x; } }"}
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(FieldTableTest, ProtectedAccessPackage) {
+  ParseProgram({
+    {"p/A.java", "package p; public class A { protected static int x; }"},
+    {"p/B.java", "package p; public class B { public int f() { return A.x; } }"}
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(FieldTableTest, ProtectedAccessOutsidePackage) {
+  ParseProgram({
+    {"p/A.java", "package p; public class A { protected static int x; }"},
+    {"p2/B.java", "package p2; import p.A; public class B { public int f() { return A.x; } }"}
+  });
+  EXPECT_ERRS("PermissionError(0:49)\n");
 }
 
 // TODO: Test only using fields defined above.

@@ -991,7 +991,7 @@ FieldId FieldTable::ResolveAccess(const TypeInfoMap& type_info_map, TypeId calle
 Error* FieldTable::MakePermissionError(PosRange access_pos, PosRange field_pos) const {
   return MakeError([=](ostream* out, const OutputOptions& opt, const base::FileSet* fs) {
     if (opt.simple) {
-      *out << "PermissionError";
+      *out << "PermissionError(" << field_pos << ")";;
       return;
     }
 
