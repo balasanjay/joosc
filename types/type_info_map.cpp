@@ -86,7 +86,7 @@ Error* MakeClassExtendsInterfaceError(PosRange pos, const string& parent_iface) 
 Error* MakeSimpleMethodTableError(PosRange m_pos, const string& m_string, PosRange p_pos, const string& p_string, const string& error_name) {
   return MakeError([=](ostream* out, const OutputOptions& opt, const base::FileSet* fs) {
     if (opt.simple) {
-      *out << error_name;
+      *out << error_name << ": [" << m_pos << ',' << p_pos << ']';
       return;
     }
 
@@ -100,13 +100,18 @@ Error* MakeSimpleMethodTableError(PosRange m_pos, const string& m_string, PosRan
 
 Error* MakeResolveMethodTableError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo, const string& m_string, const string& p_string, const string& error_name) {
   return MakeError([=](ostream* out, const OutputOptions& opt, const base::FileSet* fs) {
-    if (opt.simple) {
-      *out << error_name;
-      return;
-    }
-
     bool is_self_method = (mtinfo.type == mminfo.class_type);
     PosRange m_pos = is_self_method ? mminfo.pos : mtinfo.pos;
+    if (opt.simple) {
+      *out << error_name << ": [" << m_pos << ',';
+      if (is_self_method) {
+        *out << pminfo.pos;
+      } else {
+        *out << mminfo.pos << ',' << pminfo.pos;
+      }
+      *out << ']';
+      return;
+    }
 
     PrintDiagnosticHeader(out, opt, fs, m_pos, DiagnosticClass::ERROR, m_string);
     PrintRangePtr(out, opt, fs, m_pos);
@@ -181,7 +186,7 @@ Error* TypeInfoMapBuilder::MakeParentClassEmptyConstructorError(const TypeInfo& 
 Error* TypeInfoMapBuilder::MakeNeedAbstractClassError(const TypeInfo& tinfo, const MethodTable::MethodSignatureMap& method_map) const {
   return MakeError([=](ostream* out, const OutputOptions& opt, const base::FileSet* fs) {
     if (opt.simple) {
-      *out << "NeedAbstractClassError";
+      *out << "NeedAbstractClassError" << ": [" << tinfo.pos << ']';
       return;
     }
     const string m_msg = "A class containing abstract methods must be abstract.";
@@ -875,6 +880,7 @@ bool MethodTable::IsBlacklisted(CallContext ctx, const string& name) const {
 
 MethodId MethodTable::ResolveCall(const TypeInfoMap& type_info_map, TypeId caller_type, CallContext ctx, TypeId callee_type, const TypeIdList& params, const string& method_name, PosRange pos, ErrorList* errors) const {
   // TODO: More things.
+  // TODO: Test for abstract constructor call.
   MethodSignature sig = MethodSignature{(ctx == CallContext::CONSTRUCTOR), method_name, params};
   auto minfo = method_signatures_.find(sig);
   if (minfo == method_signatures_.end()) {
@@ -907,7 +913,7 @@ MethodId MethodTable::ResolveCall(const TypeInfoMap& type_info_map, TypeId calle
 Error* MethodTable::MakePermissionError(PosRange call_pos, PosRange method_pos) const {
   return MakeError([=](ostream* out, const OutputOptions& opt, const base::FileSet* fs) {
     if (opt.simple) {
-      *out << "PermissionError";
+      *out << "PermissionError: [" << call_pos << ',' << method_pos <<  ']';
       return;
     }
 
@@ -943,12 +949,12 @@ Error* MethodTable::MakeUndefinedMethodError(MethodSignature sig, PosRange pos) 
 }
 
 Error* MethodTable::MakeInstanceMethodOnStaticError(PosRange pos) const {
-  const static string msg = "Cannot call an instance method as a static method.";
+  const static string msg = "Cannot call a static method as an instance method.";
   return MakeSimplePosRangeError(pos, "InstanceMethodOnStaticError", msg);
 }
 
 Error* MethodTable::MakeStaticMethodOnInstanceError(PosRange pos) const {
-  const static string msg = "Cannot call a static method as an instance method.";
+  const static string msg = "Cannot call an instance method as a static method.";
   return MakeSimplePosRangeError(pos, "StaticMethodOnInstanceError", msg);
 }
 
