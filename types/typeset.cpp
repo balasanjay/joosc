@@ -89,7 +89,7 @@ TypeSet TypeSetBuilder::Build(base::ErrorList* out) const {
       string without_prefix = start->first.substr(TypeSetImpl::kPkgPrefixLen+1);
       stringstream msgstream;
       msgstream << "Type '" << without_prefix << "' was declared multiple times.";
-      out->Append(MakeDuplicateDefinitionError(defs, msgstream.str(), without_prefix));
+      out->Append(MakeDuplicateDefinitionError(defs, msgstream.str(), "TypeDuplicateDefinitionError"));
       bad_names.insert(start->first);
     };
 
