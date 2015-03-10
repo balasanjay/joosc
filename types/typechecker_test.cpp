@@ -1,10 +1,11 @@
 #include "types/typechecker.h"
 
-#include "base/file.h"
 #include "ast/ids.h"
+#include "base/file.h"
 #include "lexer/lexer.h"
 #include "parser/parser_internal.h"
 #include "third_party/gtest/gtest.h"
+#include "types/types_test.h"
 
 using namespace ast;
 
@@ -80,6 +81,14 @@ class TypeCheckerTest : public ::testing::Test {
     Result<MemberDecl> memberResult;
     CHECK(!parser_->ParseMemberDecl(&memberResult).Failed());
     return memberResult.Get();
+  }
+
+  // Pairs of file name, file contents.
+  sptr<const Program> ParseProgram(const vector<pair<string, string>>& file_contents) {
+    base::FileSet* fs;
+    sptr<const Program> program = ParseProgramWithStdlib(&fs, file_contents, &errors_);
+    fs_.reset(fs);
+    return program;
   }
 
   base::ErrorList errors_;
@@ -252,8 +261,6 @@ TEST_F(TypeCheckerTest, CastExprCastable) {
   EXPECT_EQ(TypeId::kInt, after->GetTypeId());
   EXPECT_NO_ERRS();
 }
-
-// TODO: Cast expr tests with Reference type as LHS.
 
 TEST_F(TypeCheckerTest, CharLitExpr) {
   sptr<const Expr> before = ParseExpr("'0'");
@@ -505,12 +512,9 @@ TEST_F(TypeCheckerTest, FieldDeclStaticThis) {
 
 // TODO: MethodDecl
 
-
 // TODO: TypeDecl
 
-
 // TODO: CompUnit
-
 
 TEST(TypeCheckerUtilTest, IsCastablePrimitives) {
   TypeChecker typeChecker(nullptr);
@@ -523,6 +527,15 @@ TEST(TypeCheckerUtilTest, IsCastablePrimitives) {
   EXPECT_TRUE(typeChecker.IsCastable(TypeId::kBool, TypeId::kBool));
 }
 
-// TODO: TEST(TypeCheckerUtilTest, IsCastableReference) - with inheritance.
+TEST_F(TypeCheckerTest, IsCastableReference) {
+  vector<pair<string, string>> test_files = {
+    {"A.java", "public class A { public A() {} }"},
+    {"B.java", "public class B extends A { public B() {} }"},
+    {"C.java", "public class C { public void foo() { B b = new B(); A a = (A)b; } }"},
+  };
+  sptr<const Program> program = ParseProgram(test_files);
+  EXPECT_NE(nullptr, program);
+  EXPECT_NO_ERRS();
+}
 
 }  // namespace types
