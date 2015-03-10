@@ -174,6 +174,7 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
     return make_shared<BinExpr>(lhs, expr.Op(), rhs, TypeId::kBool);
   }
 
+  // Can add anything to a String.
   const TypeId kStrType = JavaLangType("String");
   if (op == lexer::ADD && !kStrType.IsError() && (lhsType == kStrType || rhsType == kStrType)) {
     return make_shared<BinExpr>(lhs, expr.Op(), rhs, kStrType);
@@ -258,6 +259,10 @@ REWRITE_DEFN(TypeChecker, CallExpr, Expr, expr,) {
       cc = CallContext::STATIC;
       lhs_tid = stat->GetRefTypePtr()->GetTypeId();
     }
+  }
+
+  if (!lhs_tid.IsValid()) {
+    return nullptr;
   }
 
   const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(lhs_tid);
@@ -351,6 +356,10 @@ REWRITE_DEFN(TypeChecker, FieldDerefExpr, Expr, expr,) {
       cc = CallContext::STATIC;
       base_tid = stat->GetRefTypePtr()->GetTypeId();
     }
+  }
+
+  if (!base_tid.IsValid()) {
+    return nullptr;
   }
 
   const TypeInfo& tinfo = typeinfo_.LookupTypeInfo(base_tid);
@@ -657,6 +666,9 @@ REWRITE_DEFN(TypeChecker, ReturnStmt, Stmt, stmt,) {
   if (expr != nullptr) {
     exprType = expr->GetTypeId();
   }
+  if (!exprType.IsValid()) {
+    return nullptr;
+  }
 
   CHECK(belowMemberDecl_);
   if (!IsAssignable(curMemberType_, exprType)) {
@@ -778,10 +790,13 @@ REWRITE_DEFN(TypeChecker, TypeDecl, TypeDecl, type, typeptr) {
     return Visitor::RewriteTypeDecl(type, typeptr);
   }
 
+  // Don't emit import errors again - they are already emitted in decl_resolver.
+  ErrorList throwaway;
+
   // Otherwise create a sub-visitor that has the type info, and let it rewrite
   // this node.
-
-  TypeSet scoped_typeset = typeset_.WithType(type.Name(), type.NameToken().pos, errors_);
+  TypeSet scoped_typeset = typeset_
+    .WithType(type.Name(), type.NameToken().pos, &throwaway);
   TypeId curtid = scoped_typeset.TryGet(type.Name());
   CHECK(!curtid.IsError()); // Pruned in DeclResolver.
 
@@ -802,7 +817,7 @@ REWRITE_DEFN(TypeChecker, CompUnit, CompUnit, unit, unitptr) {
   // Otherwise create a sub-visitor that has the import info, and let it
   // rewrite this node.
   TypeSet scoped_typeset = typeset_
-      .WithPackage(unit.PackagePtr(), errors_)
+      .WithPackage(unit.PackagePtr(), &throwaway)
       .WithImports(unit.Imports(), &throwaway);
 
   TypeChecker below = (*this)

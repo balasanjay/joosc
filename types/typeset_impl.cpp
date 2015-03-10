@@ -39,12 +39,6 @@ Error* MakeUnknownPackageError(PosRange pos) {
                                  "Cannot find imported package.");
 }
 
-Error* MakePackageTypeAmbiguityError(PosRange first, PosRange second) {
-  // TODO: use MakeError.
-  return MakeSimplePosRangeError(first, "PackageTypeAmbiguityError",
-                                 "PackageTypeAmbiguity");
-}
-
 } // namespace
 
 const int TypeSetImpl::kPkgPrefixLen = 3;
@@ -173,8 +167,7 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
     visible_types_.erase(long_iter.first, long_iter.second);
     visible_types_.erase(short_iter.first, short_iter.second);
 
-    // Blacklist both versions of the name.
-    visible_types_.insert(TypeInfo{longname, TypeId::kErrorBase, ImportScope::COMP_UNIT, longname, kFakePos});
+    // Blacklist the short name.
     visible_types_.insert(TypeInfo{shortname, TypeId::kErrorBase, ImportScope::COMP_UNIT, longname, kFakePos});
     return;
   }
@@ -195,19 +188,6 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
   if (base == TypeId::kErrorBase) {
     visible_types_.erase(begin, end);
     visible_types_.insert(info);
-    return;
-  }
-
-  // If we import a type a.b.c, and there is another package c.d, then this
-  // would introduce an ambiguity when we see "c.d". The only exception to this
-  // rule is a wildcard import. In this case, we allow the import, but fail
-  // when the import is used.
-  auto types_iter = types_.find(kNamedPkgPrefix + "." + shortname);
-  if (scope != ImportScope::WILDCARD && types_iter != types_.end()) {
-    PosRange pkg_pos = PosRange(0, 0, 0);
-    errors->Append(MakePackageTypeAmbiguityError(pkg_pos, pkg_pos));
-
-    // TODO: consider blacklisting shortname.
     return;
   }
 
@@ -276,10 +256,21 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
   CHECK(info.scope == ImportScope::COMP_UNIT);
   CHECK(prev.scope == ImportScope::COMP_UNIT);
 
-  // TODO: emit an error.
-  errors->Append(MakeUnknownTypenameError(pos));
+  vector<PosRange> dupes;
+  dupes.push_back(info.pos);
+  dupes.push_back(prev.pos);
 
-  // TODO: blacklist.
+  stringstream ss;
+  ss << "Name '" << info.shortname << "' declared multiple times.";
+
+  errors->Append(MakeDuplicateDefinitionError(dupes, ss.str(), "DuplicateCompUnitNames"));
+
+  // TODO(sjy): this causes some tests to fail. Look into why.
+
+  // Blacklist.
+  // info.base = TypeId::kErrorBase;
+  // visible_types_.erase(begin);
+  // visible_types_.insert(info);
 }
 
 TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList* errors) const {
@@ -290,6 +281,12 @@ TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList*
     if (t == types_.end()) {
       errors->Append(MakeUnknownTypenameError(pos));
       return TypeId::kUnassigned;
+    }
+
+    // If this type has been blacklisted don't bother checking all the prefixes
+    // and stuff.
+    if (t->second.first == TypeId::kErrorBase) {
+      return TypeId::kError;
     }
 
     size_t search_begin = 0;

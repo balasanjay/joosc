@@ -41,4 +41,4 @@ namespace types {
     return CompilerFrontend(CompilerStage::TYPE_CHECK, *fs, out);
   }
 
-}
+} // namespace types
