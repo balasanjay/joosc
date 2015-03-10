@@ -324,7 +324,7 @@ TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList*
     }
 
     // Check that the first element of the qualified name does not also resolve
-    // to a type in the current envitonment
+    // to a type in the current environment.
     //
     // Technically, every other prefix of the qualified name also should not
     // resolve to a type. However, these other prefixes cannot resolve to a
