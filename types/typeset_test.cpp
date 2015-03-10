@@ -172,6 +172,14 @@ TEST_F(TypeSetTest, ConflictingImportAndType) {
   EXPECT_ERRS("DuplicateCompUnitNames: [1:38-41,1:18-23,]\n");
 }
 
+TEST_F(TypeSetTest, UnknownQualifiedName) {
+  vector<pair<string, string>> test_files = {
+    {"bar.java", "public class bar { public unknown.pkg.Class foo = null; }"},
+  };
+  ParseProgram(test_files);
+  EXPECT_ERRS("UnknownTypenameError(0:26-43)\n");
+}
+
 // TODO: tests for TypeSetImpl::Get.
 
 // TODO: Test for wildcard import of package that doesn't exist. Also another

@@ -289,32 +289,24 @@ TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList*
       return TypeId::kError;
     }
 
-    size_t search_begin = 0;
-    while (true) {
-      size_t next_dot = name.find('.', search_begin);
-      if (next_dot == string::npos) {
-        break;
-      }
+    // Check that the first element of the qualified name does not also resolve
+    // to a type in the current envitonment
+    //
+    // Technically, every other prefix of the qualified name also should not
+    // resolve to a type. However, these other prefixes cannot resolve to a
+    // type. They are a package in this context, and our earlier check that we
+    // don't have a package and a class named the same thing would have caught
+    // this case.
+    {
+      size_t next_dot = name.find('.');
+      CHECK(next_dot != string::npos);
 
       string candidate = name.substr(0, next_dot);
-      search_begin = next_dot + 1;
-
-      // Look up candidate as a fully-qualified globally unique name.
-      if (types_.count(kNamedPkgPrefix + "." + candidate)) {
-        // TODO: errors.
+      auto iter_pair = FindByShortName(candidate);
+      if (iter_pair.first != iter_pair.second) {
         PosRange pos(0, 0, 0);
         errors->Append(MakeUnknownTypenameError(pos));
-        break;
-      }
-
-      // Look up candidate in the current environment.
-      if (candidate.find('.') == string::npos) {
-        auto iter_pair = FindByShortName(candidate);
-        if (iter_pair.first != iter_pair.second) {
-          PosRange pos(0, 0, 0);
-          errors->Append(MakeUnknownTypenameError(pos));
-          break;
-        }
+        return TypeId::kError;
       }
     }
 
