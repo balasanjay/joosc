@@ -6,8 +6,6 @@
 #include "ast/ast.h"
 #include "ast/ids.h"
 #include "base/errorlist.h"
-#include "base/file.h"
-#include "base/fileset.h"
 #include "types/typeset_impl.h"
 
 namespace types {
@@ -102,7 +100,7 @@ class TypeSetBuilder {
   // Returns a TypeSet with all types inserted with Add*. If a type was defined
   // multiple times, an Error will be appended to the ErrorList for each
   // duplicate location.
-  TypeSet Build(const base::FileSet* fs, base::ErrorList* out) const;
+  TypeSet Build(base::ErrorList* out) const;
 
  private:
   struct Entry {

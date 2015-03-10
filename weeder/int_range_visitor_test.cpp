@@ -16,7 +16,7 @@ TEST_F(IntRangeVisitorTest, IntTooNegative) {
   ASSERT_FALSE(parser_->ParseExpression(&expr).Failed());
 
   ErrorList errors;
-  IntRangeVisitor visitor(fs_.get(), &errors);
+  IntRangeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -29,7 +29,7 @@ TEST_F(IntRangeVisitorTest, IntExactNegative) {
   ASSERT_FALSE(parser_->ParseExpression(&expr).Failed());
 
   ErrorList errors;
-  IntRangeVisitor visitor(fs_.get(), &errors);
+  IntRangeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -41,7 +41,7 @@ TEST_F(IntRangeVisitorTest, IntOneOffNegative) {
   ASSERT_FALSE(parser_->ParseExpression(&expr).Failed());
 
   ErrorList errors;
-  IntRangeVisitor visitor(fs_.get(), &errors);
+  IntRangeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -54,7 +54,7 @@ TEST_F(IntRangeVisitorTest, IntTooPositive) {
   ASSERT_FALSE(parser_->ParseExpression(&expr).Failed());
 
   ErrorList errors;
-  IntRangeVisitor visitor(fs_.get(), &errors);
+  IntRangeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -67,7 +67,7 @@ TEST_F(IntRangeVisitorTest, IntExactPositive) {
   ASSERT_FALSE(parser_->ParseExpression(&expr).Failed());
 
   ErrorList errors;
-  IntRangeVisitor visitor(fs_.get(), &errors);
+  IntRangeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -79,7 +79,7 @@ TEST_F(IntRangeVisitorTest, IntOneOffPositive) {
   ASSERT_FALSE(parser_->ParseExpression(&expr).Failed());
 
   ErrorList errors;
-  IntRangeVisitor visitor(fs_.get(), &errors);
+  IntRangeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -92,7 +92,7 @@ TEST_F(IntRangeVisitorTest, Int64Overflow) {
   ASSERT_FALSE(parser_->ParseExpression(&expr).Failed());
 
   ErrorList errors;
-  IntRangeVisitor visitor(fs_.get(), &errors);
+  IntRangeVisitor visitor(&errors);
   auto _ = visitor.Rewrite(expr.Get());
 
   EXPECT_TRUE(errors.IsFatal());

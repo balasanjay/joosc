@@ -18,7 +18,6 @@ using ast::TypeId;
 using base::DiagnosticClass;
 using base::Error;
 using base::ErrorList;
-using base::FileSet;
 using base::FindEqualRanges;
 using base::MakeError;
 using base::OutputOptions;
@@ -27,7 +26,7 @@ using base::PosRange;
 
 namespace types {
 
-TypeSet TypeSet::kEmptyTypeSet(sptr<TypeSetImpl>(new TypeSetImpl(&FileSet::Empty(), {}, {}, {})));
+TypeSet TypeSet::kEmptyTypeSet(sptr<TypeSetImpl>(new TypeSetImpl({}, {}, {})));
 
 string TypeSetBuilder::FullyQualifiedTypeName(const Entry& entry) const {
   stringstream ss;
@@ -43,7 +42,7 @@ string TypeSetBuilder::FullyQualifiedTypeName(const Entry& entry) const {
   return ss.str();
 }
 
-TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
+TypeSet TypeSetBuilder::Build(base::ErrorList* out) const {
   using NamePos = pair<string, base::PosRange>;
   using NamePosMap = map<string, base::PosRange>;
   using NamePosMultiMap = multimap<string, base::PosRange>;
@@ -90,7 +89,7 @@ TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
       string without_prefix = start->first.substr(TypeSetImpl::kPkgPrefixLen+1);
       stringstream msgstream;
       msgstream << "Type '" << without_prefix << "' was declared multiple times.";
-      out->Append(MakeDuplicateDefinitionError(fs, defs, msgstream.str(), without_prefix));
+      out->Append(MakeDuplicateDefinitionError(defs, msgstream.str(), without_prefix));
       bad_names.insert(start->first);
     };
 
@@ -109,7 +108,7 @@ TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
     CHECK(iterok.second);
   }
 
-  return TypeSet(make_shared<TypeSetImpl>(fs, types, declared_pkgs, bad_names));
+  return TypeSet(make_shared<TypeSetImpl>(types, declared_pkgs, bad_names));
 }
 
 } // namespace types

@@ -8,7 +8,7 @@ namespace base {
 
 class ErrorList : public UniquePtrVector<Error> {
  public:
-  void PrintTo(std::ostream* out, const OutputOptions& opt) const;
+  void PrintTo(std::ostream* out, const OutputOptions& opt, const FileSet* fs) const;
 
   bool IsFatal() const {
     // TODO: handle non-fatal errors.

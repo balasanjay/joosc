@@ -15,7 +15,6 @@ using std::move;
 using base::Error;
 using base::ErrorList;
 using base::File;
-using base::FileSet;
 using base::Pos;
 using base::UniquePtrVector;
 using base::SharedPtrVector;
@@ -218,17 +217,17 @@ Parser Parser::EatSemis() const {
 
 Error* Parser::MakeUnexpectedTokenError(Token token) const {
   // TODO: say what you expected instead.
-  return MakeSimplePosRangeError(fs_, Pos(token.pos.fileid, token.pos.begin),
+  return MakeSimplePosRangeError(Pos(token.pos.fileid, token.pos.begin),
                                  "UnexpectedTokenError", "Unexpected token.");
 }
 
 Error* Parser::MakeDuplicateModifierError(Token token) const {
-  return MakeSimplePosRangeError(fs_, token.pos, "DuplicateModifierError",
+  return MakeSimplePosRangeError(token.pos, "DuplicateModifierError",
                                  "Duplicate modifier.");
 }
 
 Error* Parser::MakeParamRequiresNameError(Token token) const {
-  return MakeSimplePosRangeError(fs_, token.pos, "ParamRequiresNameError",
+  return MakeSimplePosRangeError(token.pos, "ParamRequiresNameError",
                                  "A parameter requires a type and a name.");
 }
 
@@ -236,7 +235,7 @@ Error* Parser::MakeUnexpectedEOFError() const {
   // TODO: say what you expected instead.
   // TODO: this will crash on an empty file.
   return MakeSimplePosRangeError(
-      fs_, Pos(tokens_->at(0).pos.fileid, file_->Size() - 1),
+      Pos(tokens_->at(0).pos.fileid, file_->Size() - 1),
       "UnexpectedEOFError", "Unexpected end-of-file.");
 }
 
@@ -1556,7 +1555,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
       new CompUnit(packageName, imports, types), out);
 }
 
-sptr<const Program> Parse(const FileSet* fs,
+sptr<const Program> Parse(const base::FileSet* fs,
                           const vector<vector<lexer::Token>>& tokens,
                           ErrorList* error_out) {
   CHECK((uint)fs->Size() == tokens.size());

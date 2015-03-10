@@ -4,8 +4,6 @@
 #include <map>
 
 #include "base/errorlist.h"
-#include "base/file.h"
-#include "base/fileset.h"
 #include "ast/ast.h"
 #include "ast/ids.h"
 
@@ -29,7 +27,7 @@ public:
     WILDCARD = 2,
   };
 
-  TypeSetImpl(const base::FileSet* fs, const map<string, base::PosRange>& types, const map<string, base::PosRange>& pkgs, const set<string>& bad_types);
+  TypeSetImpl(const map<string, base::PosRange>& types, const map<string, base::PosRange>& pkgs, const set<string>& bad_types);
 
   // See TypeSet for docs.
   sptr<TypeSetImpl> WithPackage(const string&, base::PosRange, base::ErrorList*) const;
@@ -75,8 +73,6 @@ public:
   using VisibleSet = set<TypeInfo, TypeInfo::ByName>;
 
   pair<VisibleSet::const_iterator, VisibleSet::const_iterator> FindByShortName(const string& shortname) const;
-
-  const base::FileSet* fs_;
 
   VisibleSet visible_types_;
 

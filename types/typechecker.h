@@ -4,7 +4,6 @@
 #include "third_party/gtest/gtest.h"
 #include "ast/visitor.h"
 #include "base/errorlist.h"
-#include "base/fileset.h"
 #include "types/type_info_map.h"
 #include "types/typeset.h"
 #include "types/symbol_table.h"
@@ -13,27 +12,27 @@ namespace types {
 
 class TypeChecker final : public ast::Visitor {
  public:
-   TypeChecker(const base::FileSet* fs, base::ErrorList* errors) : TypeChecker(fs, errors, TypeSet::Empty(), TypeInfoMap::Empty(fs)) {}
+   TypeChecker(base::ErrorList* errors) : TypeChecker(errors, TypeSet::Empty(), TypeInfoMap::Empty()) {}
 
   TypeChecker WithTypeSet(const TypeSet& typeset) const {
     CHECK(!belowCompUnit_);
-    return TypeChecker(fs_, errors_, typeset, typeinfo_);
+    return TypeChecker(errors_, typeset, typeinfo_);
   }
 
   TypeChecker WithTypeInfoMap(const TypeInfoMap& typeinfo) const {
     CHECK(!belowCompUnit_);
-    return TypeChecker(fs_, errors_, typeset_, typeinfo);
+    return TypeChecker(errors_, typeset_, typeinfo);
   }
 
   TypeChecker InsideCompUnit(sptr<const ast::QualifiedName> package) const {
     CHECK(!belowCompUnit_);
-    return TypeChecker(fs_, errors_, typeset_, typeinfo_, true, package);
+    return TypeChecker(errors_, typeset_, typeinfo_, true, package);
   }
 
   TypeChecker InsideTypeDecl(ast::TypeId curtype, const TypeSet& typeset) const {
     CHECK(belowCompUnit_);
     CHECK(!belowTypeDecl_);
-    return TypeChecker(fs_, errors_, typeset, typeinfo_, true, package_, true, curtype);
+    return TypeChecker(errors_, typeset, typeinfo_, true, package_, true, curtype);
   }
 
   TypeChecker InsideMemberDecl(bool is_static, ast::TypeId cur_member_type, const ast::ParamList& params) const {
@@ -58,10 +57,10 @@ class TypeChecker final : public ast::Visitor {
 
     // Construct initial symbol table with params for this method.
     return TypeChecker(
-        fs_, errors_, typeset_, typeinfo_,
+        errors_, typeset_, typeinfo_,
         true, package_,
         true, curtype_,
-        true, is_static, cur_member_type, SymbolTable(fs_, paramInfos, errors_));
+        true, is_static, cur_member_type, SymbolTable(paramInfos, errors_));
   }
 
   REWRITE_DECL(ArrayIndexExpr, Expr, expr, exprptr);
@@ -100,13 +99,13 @@ class TypeChecker final : public ast::Visitor {
  private:
   FRIEND_TEST(TypeCheckerUtilTest, IsCastablePrimitives);
 
-  TypeChecker(const base::FileSet* fs, base::ErrorList* errors,
+  TypeChecker(base::ErrorList* errors,
               const TypeSet& typeset, const TypeInfoMap& typeinfo,
               bool belowCompUnit = false, sptr<const ast::QualifiedName> package = nullptr,
               bool belowTypeDecl = false, ast::TypeId curtype = ast::TypeId::kUnassigned,
               bool belowMemberDecl = false, bool belowStaticMember = false, ast::TypeId curMethRet = ast::TypeId::kUnassigned,
               SymbolTable symbol_table = SymbolTable::Empty())
-      : fs_(fs), errors_(errors), typeset_(typeset), typeinfo_(typeinfo),
+      : errors_(errors), typeset_(typeset), typeinfo_(typeinfo),
         belowCompUnit_(belowCompUnit), package_(package),
         belowTypeDecl_(belowTypeDecl), curtype_(curtype),
         belowMemberDecl_(belowMemberDecl), belowStaticMember_(belowStaticMember), curMemberType_(curMethRet),
@@ -138,7 +137,6 @@ class TypeChecker final : public ast::Visitor {
   base::Error* MakeIncomparableTypeError(ast::TypeId lhs, ast::TypeId rhs, base::PosRange pos);
   base::Error* MakeThisInStaticMemberError(base::PosRange this_pos);
 
-  const base::FileSet* fs_;
   base::ErrorList* errors_;
 
   const TypeSet& typeset_;

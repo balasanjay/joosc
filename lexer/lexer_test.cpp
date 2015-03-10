@@ -355,7 +355,7 @@ TEST_F(LexerTest, UnexpectedChar) {
 
 TEST_F(LexerTest, UnsupportedToken) {
   LexString("synchronized do");
-  FindUnsupportedTokens(fs, tokens, &errors);
+  FindUnsupportedTokens(tokens, &errors);
   ASSERT_TRUE(errors.IsFatal());
   EXPECT_EQ("UnsupportedTokenError(0:0-12)",
             testing::PrintToString(*errors.At(0)));

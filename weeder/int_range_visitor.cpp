@@ -15,14 +15,14 @@ namespace weeder {
 
 namespace {
 
-Error* MakeInvalidIntRangeError(const FileSet* fs, Token token) {
+Error* MakeInvalidIntRangeError(Token token) {
   return MakeSimplePosRangeError(
-      fs, token.pos, "InvalidIntRangeError",
+      token.pos, "InvalidIntRangeError",
       "Ints must be between -2^-31 and 2^31 - 1 inclusive.");
 }
 
 bool VerifyIsInRange(const string& strVal, Token token, bool isNegated,
-                     const base::FileSet* fs, base::ErrorList* errors) {
+                     base::ErrorList* errors) {
   const i64 INT_32_MIN = -(1L << 31L);
   const i64 INT_32_MAX = (1L << 31L) - 1L;
   i64 intVal = 0;
@@ -35,7 +35,7 @@ bool VerifyIsInRange(const string& strVal, Token token, bool isNegated,
   }
 
   if (intVal < INT_32_MIN || intVal > INT_32_MAX || !ss) {
-    errors->Append(MakeInvalidIntRangeError(fs, token));
+    errors->Append(MakeInvalidIntRangeError(token));
     return false;
   }
   return true;
@@ -47,7 +47,7 @@ VISIT_DEFN(IntRangeVisitor, IntLitExpr, expr,) {
   const string& strVal = expr.Value();
   Token token = expr.GetToken();
 
-  if (!VerifyIsInRange(strVal, token, false, fs_, errors_)) {
+  if (!VerifyIsInRange(strVal, token, false, errors_)) {
     return VisitResult::RECURSE_PRUNE;
   }
   return VisitResult::RECURSE;
@@ -59,7 +59,7 @@ VISIT_DEFN(IntRangeVisitor, UnaryExpr, expr,) {
   }
 
   const IntLitExpr& intExpr = dynamic_cast<const IntLitExpr&>(expr.Rhs());
-  if (!VerifyIsInRange(intExpr.Value(), intExpr.GetToken(), true, fs_, errors_)) {
+  if (!VerifyIsInRange(intExpr.Value(), intExpr.GetToken(), true, errors_)) {
     return VisitResult::SKIP_PRUNE;
   }
 

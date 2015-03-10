@@ -16,7 +16,6 @@ using ast::TypeKind;
 using base::DiagnosticClass;
 using base::Error;
 using base::ErrorList;
-using base::FileSet;
 using base::FindEqualRanges;
 using base::MakeError;
 using base::OutputOptions;
@@ -35,12 +34,6 @@ using lexer::Token;
 namespace types {
 
 namespace {
-
-static PosRange kFakePos(-1, -1, -1);
-static Token kPublic(K_PUBLIC, kFakePos);
-static Token kProtected(K_PROTECTED, kFakePos);
-static Token kFinal(K_FINAL, kFakePos);
-static Token kAbstract(K_ABSTRACT, kFakePos);
 
 bool IsAccessible(const TypeInfoMap& types, const ModifierList& mods, CallContext ctx, TypeId owner, TypeId caller, TypeId callee) {
   if (caller == owner) {
@@ -75,23 +68,23 @@ bool IsAccessible(const TypeInfoMap& types, const ModifierList& mods, CallContex
 }
 
 
-Error* MakeInterfaceExtendsClassError(const FileSet* fs, PosRange pos, const string& parent_class) {
+Error* MakeInterfaceExtendsClassError(PosRange pos, const string& parent_class) {
   string msg = "An interface may not extend '" + parent_class + "', a class.";
-  return MakeSimplePosRangeError(fs, pos, "InterfaceExtendsClassError", msg);
+  return MakeSimplePosRangeError(pos, "InterfaceExtendsClassError", msg);
 }
 
-Error* MakeClassImplementsClassError(const FileSet* fs, PosRange pos, const string& parent_class) {
+Error* MakeClassImplementsClassError(PosRange pos, const string& parent_class) {
   string msg = "A class may not implement '" + parent_class + "', a class.";
-  return MakeSimplePosRangeError(fs, pos, "ClassImplementsClassError", msg);
+  return MakeSimplePosRangeError(pos, "ClassImplementsClassError", msg);
 }
 
-Error* MakeClassExtendsInterfaceError(const FileSet* fs, PosRange pos, const string& parent_iface) {
+Error* MakeClassExtendsInterfaceError(PosRange pos, const string& parent_iface) {
   string msg = "A class may not extend '" + parent_iface + "', an interface.";
-  return MakeSimplePosRangeError(fs, pos, "ClassExtendInterfaceError", msg);
+  return MakeSimplePosRangeError(pos, "ClassExtendInterfaceError", msg);
 }
 
-Error* MakeResolveMethodTableError(const FileSet* fs, PosRange m_pos, const string& m_string, PosRange p_pos, const string& p_string, const string& error_name) {
-  return MakeError([=](ostream* out, const OutputOptions& opt) {
+Error* MakeSimpleMethodTableError(PosRange m_pos, const string& m_string, PosRange p_pos, const string& p_string, const string& error_name) {
+  return MakeError([=](ostream* out, const OutputOptions& opt, const base::FileSet* fs) {
     if (opt.simple) {
       *out << error_name;
       return;
@@ -105,68 +98,21 @@ Error* MakeResolveMethodTableError(const FileSet* fs, PosRange m_pos, const stri
   });
 }
 
-} // namespace
-
-ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract) {
-
-  ModifierList mods;
-
-  if (is_protected) {
-    mods.AddModifier(kProtected);
-  } else {
-    mods.AddModifier(kPublic);
-  }
-
-  if (is_final) {
-    mods.AddModifier(kFinal);
-  }
-
-  if (is_abstract) {
-    mods.AddModifier(kAbstract);
-  }
-
-  return mods;
-}
-
-TypeInfo TypeInfoMap::kErrorTypeInfo = TypeInfo{{}, TypeKind::CLASS, TypeId::kError, "", "", kFakePos, TypeIdList({}), TypeIdList({}), MethodTable::kErrorMethodTable, FieldTable::kErrorFieldTable, 0};
-
-// TODO: Empty filesets are no.
-MethodTable MethodTable::kEmptyMethodTable = MethodTable(&base::FileSet::Empty(), {}, {}, false);
-MethodTable MethodTable::kErrorMethodTable = MethodTable();
-MethodInfo MethodTable::kErrorMethodInfo = MethodInfo{kErrorMethodId, TypeId::kError, {}, TypeId::kError, kFakePos, {false, "", TypeIdList({})}};
-
-FieldTable FieldTable::kEmptyFieldTable = FieldTable(&base::FileSet::Empty(), {}, {});
-FieldTable FieldTable::kErrorFieldTable = FieldTable();
-FieldInfo FieldTable::kErrorFieldInfo = FieldInfo{kErrorFieldId, TypeId::kError, {}, TypeId::kError, kFakePos, ""};
-
-Error* TypeInfoMapBuilder::MakeConstructorNameError(PosRange pos) const {
-  return MakeSimplePosRangeError(fs_, pos, "ConstructorNameError", "Constructors must have the same name as its class.");
-}
-
-Error* TypeInfoMapBuilder::MakeParentFinalError(const TypeInfo& minfo, const TypeInfo& pinfo) const {
-  stringstream msgstream;
-  msgstream << "A class may not extend '" << pinfo.name << "', a final class.";
-  const string p_msg = "Declared final here.";
-  return MakeResolveMethodTableError(fs_, minfo.pos, msgstream.str(), pinfo.pos, p_msg, "ParentFinalError");
-}
-
-Error* TypeInfoMapBuilder::MakeDifferingReturnTypeError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const {
-  const FileSet* fs = fs_;
-  return MakeError([=](ostream* out, const OutputOptions& opt) {
+Error* MakeResolveMethodTableError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo, const string& m_string, const string& p_string, const string& error_name) {
+  return MakeError([=](ostream* out, const OutputOptions& opt, const base::FileSet* fs) {
     if (opt.simple) {
-      *out << "DifferingReturnTypeError";
+      *out << error_name;
       return;
     }
 
-    const string message = "Cannot have methods with overloaded return types.";
     bool is_self_method = (mtinfo.type == mminfo.class_type);
     PosRange m_pos = is_self_method ? mminfo.pos : mtinfo.pos;
 
-    PrintDiagnosticHeader(out, opt, fs, m_pos, DiagnosticClass::ERROR, message);
+    PrintDiagnosticHeader(out, opt, fs, m_pos, DiagnosticClass::ERROR, m_string);
     PrintRangePtr(out, opt, fs, m_pos);
     *out << '\n';
     if (is_self_method) {
-      PrintDiagnosticHeader(out, opt, fs, pminfo.pos, DiagnosticClass::INFO, "Parent method declared here.");
+      PrintDiagnosticHeader(out, opt, fs, pminfo.pos, DiagnosticClass::INFO, p_string);
       PrintRangePtr(out, opt, fs, pminfo.pos);
     } else {
       PrintDiagnosticHeader(out, opt, fs, mminfo.pos, DiagnosticClass::INFO, "First method declared here.");
@@ -177,33 +123,63 @@ Error* TypeInfoMapBuilder::MakeDifferingReturnTypeError(const TypeInfo& mtinfo, 
     }
   });
 }
-Error* TypeInfoMapBuilder::MakeStaticMethodOverrideError(const MethodInfo& minfo, const MethodInfo& pinfo) const {
-  const string m_msg = "A class may not inherit a static method, nor may it override using a static method.";
-  const string p_msg = "Parent method declared here.";
-  return MakeResolveMethodTableError(fs_, minfo.pos, m_msg, pinfo.pos, p_msg, "StaticMethodOverrideError");
+
+} // namespace
+
+TypeInfoMap TypeInfoMap::kEmptyTypeInfoMap = TypeInfoMap{{}};
+TypeInfo TypeInfoMap::kErrorTypeInfo = TypeInfo{{}, TypeKind::CLASS, TypeId::kError, "", "", kFakePos, TypeIdList({}), TypeIdList({}), MethodTable::kErrorMethodTable, FieldTable::kErrorFieldTable, 0};
+
+MethodTable MethodTable::kEmptyMethodTable = MethodTable({}, {}, false);
+MethodTable MethodTable::kErrorMethodTable = MethodTable();
+MethodInfo MethodTable::kErrorMethodInfo = MethodInfo{kErrorMethodId, TypeId::kError, {}, TypeId::kError, kFakePos, {false, "", TypeIdList({})}};
+
+FieldTable FieldTable::kEmptyFieldTable = FieldTable({}, {});
+FieldTable FieldTable::kErrorFieldTable = FieldTable();
+FieldInfo FieldTable::kErrorFieldInfo = FieldInfo{kErrorFieldId, TypeId::kError, {}, TypeId::kError, kFakePos, ""};
+
+Error* TypeInfoMapBuilder::MakeConstructorNameError(PosRange pos) const {
+  return MakeSimplePosRangeError(pos, "ConstructorNameError", "Constructors must have the same name as its class.");
 }
 
-Error* TypeInfoMapBuilder::MakeLowerVisibilityError(const MethodInfo& minfo, const MethodInfo& pinfo) const {
+Error* TypeInfoMapBuilder::MakeParentFinalError(const TypeInfo& minfo, const TypeInfo& pinfo) const {
+  stringstream msgstream;
+  msgstream << "A class may not extend '" << pinfo.name << "', a final class.";
+  const string p_msg = "Declared final here.";
+  return MakeSimpleMethodTableError(minfo.pos, msgstream.str(), pinfo.pos, p_msg, "ParentFinalError");
+}
+
+Error* TypeInfoMapBuilder::MakeDifferingReturnTypeError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const {
+  const string m_msg = "Cannot have methods with overloaded return types.";
+  const string p_msg = "Parent method declared here.";
+  return MakeResolveMethodTableError(mtinfo, mminfo, pminfo, m_msg, p_msg, "DifferingReturnTypeError");
+}
+
+Error* TypeInfoMapBuilder::MakeStaticMethodOverrideError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const {
+  const string m_msg = "A class may not inherit a static method, nor may it override using a static method.";
+  const string p_msg = "Parent method declared here.";
+  return MakeResolveMethodTableError(mtinfo, mminfo, pminfo, m_msg, p_msg, "StaticMethodOverrideError");
+}
+
+Error* TypeInfoMapBuilder::MakeLowerVisibilityError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const {
   const string m_msg = "A class may not lower the visibility of an inherited method.";
   const string p_msg = "Parent method declared here.";
-  return MakeResolveMethodTableError(fs_, minfo.pos, m_msg, pinfo.pos, p_msg, "LowerVisibilityError");
+  return MakeResolveMethodTableError(mtinfo, mminfo, pminfo, m_msg, p_msg, "LowerVisibilityError");
 }
 
 Error* TypeInfoMapBuilder::MakeOverrideFinalMethodError(const MethodInfo& minfo, const MethodInfo& pinfo) const {
   const string m_msg = "A class may not override a final method.";
   const string p_msg = "Final method declared here.";
-  return MakeResolveMethodTableError(fs_, minfo.pos, m_msg, pinfo.pos, p_msg, "OverrideFinalMethodError");
+  return MakeSimpleMethodTableError(minfo.pos, m_msg, pinfo.pos, p_msg, "OverrideFinalMethodError");
 }
 
 Error* TypeInfoMapBuilder::MakeParentClassEmptyConstructorError(const TypeInfo& minfo, const TypeInfo& pinfo) const {
   const string p_msg = "An inherited class must have a zero-argument constructor.";
   const string m_msg = "Child class declared here.";
-  return MakeResolveMethodTableError(fs_, pinfo.pos, p_msg, minfo.pos, m_msg, "ParentClassEmptyConstructorError");
+  return MakeSimpleMethodTableError(pinfo.pos, p_msg, minfo.pos, m_msg, "ParentClassEmptyConstructorError");
 }
 
 Error* TypeInfoMapBuilder::MakeNeedAbstractClassError(const TypeInfo& tinfo, const MethodTable::MethodSignatureMap& method_map) const {
-  const FileSet* fs = fs_;
-  return MakeError([=](ostream* out, const OutputOptions& opt) {
+  return MakeError([=](ostream* out, const OutputOptions& opt, const base::FileSet* fs) {
     if (opt.simple) {
       *out << "NeedAbstractClassError";
       return;
@@ -226,8 +202,7 @@ Error* TypeInfoMapBuilder::MakeNeedAbstractClassError(const TypeInfo& tinfo, con
 }
 
 Error* TypeInfoMapBuilder::MakeExtendsCycleError(const vector<TypeInfo>& cycle) const {
-  const FileSet* fs = fs_;
-  return MakeError([=](ostream* out, const OutputOptions& opt) {
+  return MakeError([=](ostream* out, const OutputOptions& opt, const base::FileSet* fs) {
     CHECK(cycle.size() > 1);
     if (opt.simple) {
       *out << "ExtendsCycleError{";
@@ -348,9 +323,8 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
 
       // Inheriting methods that are static or overriding with a static method
       // are not allowed.
-      // TODO: Point to class and two methods.
       if (pminfo.mods.HasModifier(lexer::STATIC) || mminfo.mods.HasModifier(lexer::STATIC)) {
-        out->Append(MakeStaticMethodOverrideError(mminfo, pminfo));
+        out->Append(MakeStaticMethodOverrideError(*tinfo, mminfo, pminfo));
         new_bad_methods.insert(mminfo.signature.name);
         continue;
       }
@@ -359,9 +333,8 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
       CHECK(!mminfo.mods.HasModifier(NATIVE));
 
       // We can't lower visibility of inherited methods.
-      // TODO: Point to class and two methods.
       if (pminfo.mods.HasModifier(PUBLIC) && mminfo.mods.HasModifier(PROTECTED)) {
-        out->Append(MakeLowerVisibilityError(mminfo, pminfo));
+        out->Append(MakeLowerVisibilityError(*tinfo, mminfo, pminfo));
         new_bad_methods.insert(mminfo.signature.name);
         continue;
       }
@@ -411,7 +384,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
     }
   }
 
-  return MethodTable(fs_, new_good_methods, new_bad_methods, has_bad_constructor);
+  return MethodTable(new_good_methods, new_bad_methods, has_bad_constructor);
 }
 
 // Builds valid MethodTables for a TypeInfo. Emits errors if methods for the
@@ -426,7 +399,6 @@ void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeIn
   MethodTable::MethodSignatureMap good_methods;
   set<string> bad_methods;
   bool has_bad_constructor = false;
-  const FileSet* fs = fs_;
 
   // Build MethodTable ignoring parent methods.
   {
@@ -466,7 +438,7 @@ void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeIn
         msgstream << "Method";
       }
       msgstream << " '" << lbegin->signature.name << "' was declared multiple times.";
-      out->Append(MakeDuplicateDefinitionError(fs, defs, msgstream.str(), lbegin->signature.name));
+      out->Append(MakeDuplicateDefinitionError(defs, msgstream.str(), lbegin->signature.name));
       bad_methods.insert(lbegin->signature.name);
     };
 
@@ -487,8 +459,6 @@ void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInf
 
   FieldTable::FieldNameMap good_fields;
   set<string> bad_fields;
-
-  const FileSet* fs = fs_;
 
   // Build FieldTable ignoring parent fields.
   {
@@ -515,7 +485,7 @@ void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInf
       }
       stringstream msgstream;
       msgstream << "Field '" << lbegin->name << "' was declared multiple times.";
-      out->Append(MakeDuplicateDefinitionError(fs, defs, msgstream.str(), lbegin->name));
+      out->Append(MakeDuplicateDefinitionError(defs, msgstream.str(), lbegin->name));
       bad_fields.insert(lbegin->name);
     };
 
@@ -562,7 +532,7 @@ void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInf
     new_bad_fields.insert(pinfo.fields.bad_fields_.begin(), pinfo.fields.bad_fields_.end());
   }
 
-  tinfo->fields = FieldTable(fs, new_good_fields, new_bad_fields);
+  tinfo->fields = FieldTable(new_good_fields, new_bad_fields);
 }
 
 TypeInfoMap TypeInfoMapBuilder::Build(const TypeSet& typeset, base::ErrorList* out) {
@@ -625,7 +595,7 @@ TypeInfoMap TypeInfoMapBuilder::Build(const TypeSet& typeset, base::ErrorList* o
     typeinfo.at(type_id) = TypeInfoMap::kErrorTypeInfo;
   }
 
-  return TypeInfoMap(fs_, typeinfo);
+  return TypeInfoMap(typeinfo);
 }
 
 void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(const TypeSet& typeset, map<TypeId, TypeInfo>* types, set<TypeId>* bad, ErrorList* errors) {
@@ -640,7 +610,7 @@ void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(const TypeSet& typeset, 
   PruneInvalidGraphEdges(all_types, &bad_types, errors);
 
   // Make every class and interface extend Object.
-  IntroduceImplicitGraphEdges(typeset, bad_types, &all_types);
+  IntroduceImplicitGraphEdges(bad_types, &all_types);
 
   // Now build a combined graph of edges.
   multimap<TypeId, TypeId> edges;
@@ -681,8 +651,6 @@ void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(const TypeSet& typeset, 
 }
 
 void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all_types, set<TypeId>* bad_types, ErrorList* errors) {
-  const FileSet* fs = fs_;
-
   // Blacklists child if parent doesn't exist in all_types, or parent's kind
   // doesn't match expected_parent_kind.
   auto match_relationship = [&](TypeId parent, TypeId child, TypeKind expected_parent_kind) {
@@ -714,11 +682,11 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
         TypeId extends_tid = typeinfo.extends.At(i);
         auto is_duplicate = already_extended.insert(extends_tid);
         if (!is_duplicate.second) {
-          errors->Append(MakeDuplicateInheritanceError(fs, true, typeinfo.pos, typeinfo.type, extends_tid));
+          errors->Append(MakeDuplicateInheritanceError(true, typeinfo.pos, typeinfo.type, extends_tid));
           bad_types->insert(type);
         }
         if (!match_relationship(extends_tid, type, TypeKind::INTERFACE)) {
-          errors->Append(MakeInterfaceExtendsClassError(fs, typeinfo.pos, all_types.at(extends_tid).name));
+          errors->Append(MakeInterfaceExtendsClassError(typeinfo.pos, all_types.at(extends_tid).name));
           bad_types->insert(type);
         }
       }
@@ -730,7 +698,7 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
     if (typeinfo.extends.Size() == 1) {
       TypeId parent_tid = typeinfo.extends.At(0);
       if (!match_relationship(parent_tid, type, TypeKind::CLASS)) {
-        errors->Append(MakeClassExtendsInterfaceError(fs, typeinfo.pos, all_types.at(parent_tid).name));
+        errors->Append(MakeClassExtendsInterfaceError(typeinfo.pos, all_types.at(parent_tid).name));
         bad_types->insert(type);
       }
     }
@@ -745,25 +713,22 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
       }
 
       if (!is_duplicate.second) {
-        errors->Append(MakeDuplicateInheritanceError(fs, false, typeinfo.pos, typeinfo.type, implement_tid));
+        errors->Append(MakeDuplicateInheritanceError(false, typeinfo.pos, typeinfo.type, implement_tid));
         bad_types->insert(type);
       }
       if (!match_relationship(implement_tid, type, TypeKind::INTERFACE)) {
-        errors->Append(MakeClassImplementsClassError(fs, typeinfo.pos, all_types.at(implement_tid).name));
+        errors->Append(MakeClassImplementsClassError(typeinfo.pos, all_types.at(implement_tid).name));
         bad_types->insert(type);
       }
     }
   }
 }
 
-void TypeInfoMapBuilder::IntroduceImplicitGraphEdges(const TypeSet& typeset, const set<TypeId>& bad, map<TypeId, TypeInfo>* types) {
+void TypeInfoMapBuilder::IntroduceImplicitGraphEdges(const set<TypeId>& bad, map<TypeId, TypeInfo>* types) {
   using IdInfoMap = map<TypeId, TypeInfo>;
 
   // Bind a reference to make the code more readable.
   IdInfoMap& all_types = *types;
-
-  TypeId object = typeset.TryGet("java.lang.Object");
-  CHECK(object.IsValid());
 
   for (auto& tid_tinfo_iter : all_types) {
     TypeId tid = tid_tinfo_iter.first;
@@ -775,8 +740,7 @@ void TypeInfoMapBuilder::IntroduceImplicitGraphEdges(const TypeSet& typeset, con
     }
 
     // We don't insert implicit edges for Object.
-    if (tid == object) {
-      // TODO: validate that object has no fields.
+    if (tid == object_tid_) {
       continue;
     }
 
@@ -786,7 +750,7 @@ void TypeInfoMapBuilder::IntroduceImplicitGraphEdges(const TypeSet& typeset, con
       continue;
     }
 
-    tinfo.extends = TypeIdList({object});
+    tinfo.extends = TypeIdList({object_tid_});
   }
 }
 
@@ -941,8 +905,7 @@ MethodId MethodTable::ResolveCall(const TypeInfoMap& type_info_map, TypeId calle
 }
 
 Error* MethodTable::MakePermissionError(PosRange call_pos, PosRange method_pos) const {
-  const FileSet* fs = fs_;
-  return MakeError([=](ostream* out, const OutputOptions& opt) {
+  return MakeError([=](ostream* out, const OutputOptions& opt, const base::FileSet* fs) {
     if (opt.simple) {
       *out << "PermissionError";
       return;
@@ -976,17 +939,17 @@ Error* MethodTable::MakeUndefinedMethodError(MethodSignature sig, PosRange pos) 
     }
   }
   ss << ")'";
-  return MakeSimplePosRangeError(fs_, pos, "UndefinedMethodError", ss.str());
+  return MakeSimplePosRangeError(pos, "UndefinedMethodError", ss.str());
 }
 
 Error* MethodTable::MakeInstanceMethodOnStaticError(PosRange pos) const {
   const static string msg = "Cannot call an instance method as a static method.";
-  return MakeSimplePosRangeError(fs_, pos, "InstanceMethodOnStaticError", msg);
+  return MakeSimplePosRangeError(pos, "InstanceMethodOnStaticError", msg);
 }
 
 Error* MethodTable::MakeStaticMethodOnInstanceError(PosRange pos) const {
   const static string msg = "Cannot call a static method as an instance method.";
-  return MakeSimplePosRangeError(fs_, pos, "StaticMethodOnInstanceError", msg);
+  return MakeSimplePosRangeError(pos, "StaticMethodOnInstanceError", msg);
 }
 
 FieldId FieldTable::ResolveAccess(const TypeInfoMap& type_info_map, TypeId caller_type, CallContext ctx, TypeId callee_type, string field_name, PosRange pos, ErrorList* errors) const {
@@ -1020,8 +983,7 @@ FieldId FieldTable::ResolveAccess(const TypeInfoMap& type_info_map, TypeId calle
 }
 
 Error* FieldTable::MakePermissionError(PosRange access_pos, PosRange field_pos) const {
-  const FileSet* fs = fs_;
-  return MakeError([=](ostream* out, const OutputOptions& opt) {
+  return MakeError([=](ostream* out, const OutputOptions& opt, const base::FileSet* fs) {
     if (opt.simple) {
       *out << "PermissionError";
       return;
@@ -1040,17 +1002,17 @@ Error* FieldTable::MakeUndefinedReferenceError(string name, PosRange pos) const 
   ss << "Undefined reference to '";
   ss << name;
   ss << '\'';
-  return MakeSimplePosRangeError(fs_, pos, "UndefinedReferenceError", ss.str());
+  return MakeSimplePosRangeError(pos, "UndefinedReferenceError", ss.str());
 }
 
 Error* FieldTable::MakeInstanceFieldOnStaticError(PosRange pos) const {
   const static string msg = "Cannot access an instance field without an instance.";
-  return MakeSimplePosRangeError(fs_, pos, "InstanceFieldOnStaticError", msg);
+  return MakeSimplePosRangeError(pos, "InstanceFieldOnStaticError", msg);
 }
 
 Error* FieldTable::MakeStaticFieldOnInstanceError(PosRange pos) const {
   const static string msg = "Cannot access a static field as an instance field.";
-  return MakeSimplePosRangeError(fs_, pos, "StaticFieldOnInstanceError", msg);
+  return MakeSimplePosRangeError(pos, "StaticFieldOnInstanceError", msg);
 }
 
 } // namespace types
