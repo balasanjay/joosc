@@ -273,14 +273,14 @@ TEST_F(TypeCheckerTest, CharLitExpr) {
 // TODO: FieldDerefExpr
 
 TEST_F(TypeCheckerTest, InstanceOfExprWorks) {
-  sptr<const ast::Program> program = ParseProgram({
+  ParseProgram({
       {"F.java", "public class F{public F(){}}"}
   });
   EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, InstanceOfExprUncastable) {
-  sptr<const ast::Program> program = ParseProgram({
+  ParseProgram({
       {"F.java", "public class F{public F(){}}"},
       {"G.java", "public class G{public boolean g(){return new F() instanceof G;}}"}
   });
@@ -300,30 +300,28 @@ TEST_F(TypeCheckerTest, IntLitExpr) {
 // TODO: NewArrayExpr
 
 TEST_F(TypeCheckerTest, NewClassExpr) {
-  sptr<const ast::Program> program = ParseProgram({
+  ParseProgram({
       {"F.java", "public class F{public F(){F f=new F();}}"}
   });
-  EXPECT_NE(nullptr, program);
   EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, NewClassExprArg) {
-  sptr<const ast::Program> program = ParseProgram({
+  ParseProgram({
       {"F.java", "public class F{public F(int i){F f=new F(1);}}"}
   });
-  EXPECT_NE(nullptr, program);
   EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, NewClassExprBadConstructor) {
-  sptr<const ast::Program> program = ParseProgram({
+  ParseProgram({
       {"F.java", "public class F{public F(){F f=new F(1);}}"}
   });
   EXPECT_ERRS("UndefinedMethodError(0:34)\n");
 }
 
 TEST_F(TypeCheckerTest, NewClassExprBadType) {
-  sptr<const ast::Program> program = ParseProgram({
+  ParseProgram({
       {"F.java", "public class F{public F(){F f=new A();}}"}
   });
   EXPECT_ERRS("UnknownTypenameError(0:34)\n");
@@ -353,21 +351,21 @@ TEST_F(TypeCheckerTest, ParenExprErrorInside) {
 }
 
 TEST_F(TypeCheckerTest, StringLitExpr) {
-  sptr<const ast::Program> program = ParseProgram({
+  ParseProgram({
       {"F.java", "public class F{public String f(){return \"Hi.\";}}"}
   });
   EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, StringLitExprAddOtherThings) {
-  sptr<const ast::Program> program = ParseProgram({
+  ParseProgram({
       {"F.java", "public class F{public String f(){return 1 + \"\" + 'a' + null;}}"}
   });
   EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, StringLitExprAddOtherThingsOneError) {
-  sptr<const ast::Program> program = ParseProgram({
+  ParseProgram({
       {"F.java", "public class F{public String f(){return null + 1 + \"\" + 'a' + null;}}"}
   });
   EXPECT_ERRS("TypeMismatchError(0:40-44)\n");
@@ -516,42 +514,42 @@ TEST_F(TypeCheckerTest, IfStmtOk) {
 }
 
 TEST_F(TypeCheckerTest, ReturnStmt) {
-  sptr<const ast::Program> program = ParseProgram({
+  ParseProgram({
       {"F.java", "public class F{public int f(){return 1;}}"}
   });
   EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, ReturnStmtWrongType) {
-  sptr<const ast::Program> program = ParseProgram({
+  ParseProgram({
       {"F.java", "public class F{public int f(){return true;}}"}
   });
   EXPECT_ERRS("InvalidReturnError(0:30-36)\n");
 }
 
 TEST_F(TypeCheckerTest, LocalDeclStmt) {
-  sptr<const ast::Program> program = ParseProgram({
+  ParseProgram({
       {"F.java", "public class F{public void f(){int x = 0; return;}}"}
   });
   EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, LocalDeclStmtBadTypeOneError) {
-  sptr<const ast::Program> program = ParseProgram({
+  ParseProgram({
       {"F.java", "public class F{public int f(){A x = null; return x;}}"}
   });
   EXPECT_ERRS("UnknownTypenameError(0:30)\n");
 }
 
 TEST_F(TypeCheckerTest, LocalDeclStmtBadAssign) {
-  sptr<const ast::Program> program = ParseProgram({
+  ParseProgram({
       {"F.java", "public class F{public void f(){char x = null; return;}}"}
   });
   EXPECT_ERRS("UnassignableError(0:40-44)\n");
 }
 
 TEST_F(TypeCheckerTest, LocalDeclStmtCreatesSymbol) {
-  sptr<const ast::Program> program = ParseProgram({
+  ParseProgram({
       {"F.java", "public class F{public int f(){int x = 0; return x;}}"}
   });
   EXPECT_NO_ERRS();
@@ -631,8 +629,7 @@ TEST_F(TypeCheckerTest, IsCastableReference) {
     {"B.java", "public class B extends A { public B() {} }"},
     {"C.java", "public class C { public void foo() { B b = new B(); A a = (A)b; } }"},
   };
-  sptr<const Program> program = ParseProgram(test_files);
-  EXPECT_NE(nullptr, program);
+  ParseProgram(test_files);
   EXPECT_NO_ERRS();
 }
 
