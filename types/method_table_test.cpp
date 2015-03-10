@@ -23,163 +23,143 @@ protected:
 };
 
 TEST_F(MethodTableTest, BadConstructorError) {
-  vector<pair<string, string>> test_files = {
+  ParseProgram({
     {"A.java", "public final class A { public B() {} }"},
-  };
-  sptr<const Program> program = ParseProgram(test_files);
+  });
   EXPECT_ERRS("ConstructorNameError(0:30)\n");
 }
 
 TEST_F(MethodTableTest, DuplicateError) {
-  vector<pair<string, string>> test_files = {
+  ParseProgram({
     {"A.java", "public class A { public void foo() {} public void foo() {} }"},
-  };
-  sptr<const Program> program = ParseProgram(test_files);
+  });
   EXPECT_ERRS("foo: [0:29-32,0:50-53,]\n");
 }
 
 TEST_F(MethodTableTest, DuplicateDifferentReturnTypeError) {
-  vector<pair<string, string>> test_files = {
+  ParseProgram({
     {"A.java", "public class A { public void foo() {} public int foo() { return 1; } }"},
-  };
-  sptr<const Program> program = ParseProgram(test_files);
+  });
   EXPECT_ERRS("foo: [0:29-32,0:49-52,]\n");
 }
 
 TEST_F(MethodTableTest, FinalAncestorErrorNoExtraErrors) {
-  vector<pair<string, string>> test_files = {
+  ParseProgram({
     {"A.java", "public final class A { public A() {} }"},
     {"B.java", "public class B extends A { public B() {} }"},
     {"C.java", "public class C extends B {}"},
-  };
-  sptr<const Program> program = ParseProgram(test_files);
+  });
   EXPECT_ERRS("ParentFinalError: [1:13,0:19]\n");
 }
 
 TEST_F(MethodTableTest, SimpleInheritNoErrors) {
-  vector<pair<string, string>> test_files = {
+  ParseProgram({
     {"A.java", "public class A { public A() {} public void foo() {} }"},
     {"B.java", "public class B extends A { public B() {} public void bar() {} }"},
-  };
-  sptr<const Program> program = ParseProgram(test_files);
+  });
   EXPECT_NO_ERRS();
 }
 
 TEST_F(MethodTableTest, DiamondInheritNoErrors) {
-  vector<pair<string, string>> test_files = {
+  ParseProgram({
     {"A.java", "public interface A { public void foo(); }"},
     {"B.java", "public interface B extends A {}"},
     {"C.java", "public interface C extends A {}"},
     {"D.java", "public interface D extends B, C {}"},
-  };
-  sptr<const Program> program = ParseProgram(test_files);
+  });
   EXPECT_NO_ERRS();
 }
 
 TEST_F(MethodTableTest, DifferentReturnTypeError) {
-  vector<pair<string, string>> test_files = {
+  ParseProgram({
     {"A.java", "public class A { public A() {} public void foo() {} }"},
     {"B.java", "public class B extends A { public int foo() { return 1; } }"},
-  };
-  sptr<const Program> program = ParseProgram(test_files);
+  });
   EXPECT_ERRS("DifferingReturnTypeError: [1:38-41,0:43-46]\n");
 }
 
 TEST_F(MethodTableTest, OverloadStaticError) {
-  vector<pair<string, string>> test_files = {
+  ParseProgram({
     {"A.java", "public class A { public A() {} public static void foo() {} }"},
     {"B.java", "public class B extends A { public void foo() {} }"},
-  };
-  sptr<const Program> program = ParseProgram(test_files);
+  });
   EXPECT_ERRS("StaticMethodOverrideError: [1:39-42,0:50-53]\n");
 }
 
 TEST_F(MethodTableTest, OverloadUsingStaticError) {
-  vector<pair<string, string>> test_files = {
+  ParseProgram({
     {"A.java", "public class A { public A() {} public void foo() {} }"},
     {"B.java", "public class B extends A { public static void foo() {} }"},
-  };
-  sptr<const Program> program = ParseProgram(test_files);
+  });
   EXPECT_ERRS("StaticMethodOverrideError: [1:46-49,0:43-46]\n");
 }
 
 TEST_F(MethodTableTest, OverloadStaticUsingStaticError) {
-  vector<pair<string, string>> test_files = {
+  ParseProgram({
     {"A.java", "public class A { public A() {} public static void foo() {} }"},
     {"B.java", "public class B extends A { public static void foo() {} }"},
-  };
-  sptr<const Program> program = ParseProgram(test_files);
+  });
   EXPECT_ERRS("StaticMethodOverrideError: [1:46-49,0:50-53]\n");
 }
 
 TEST_F(MethodTableTest, LowerVisibilityError) {
-  vector<pair<string, string>> test_files = {
+  ParseProgram({
     {"A.java", "public class A { public A() {} public void foo() {} }"},
     {"B.java", "public class B extends A { protected void foo() {} }"},
-  };
-  sptr<const Program> program = ParseProgram(test_files);
+  });
   EXPECT_ERRS("LowerVisibilityError: [1:42-45,0:43-46]\n");
 }
 
 TEST_F(MethodTableTest, FinalOverrideError) {
-  vector<pair<string, string>> test_files = {
+  ParseProgram({
     {"A.java", "public class A { public A() {} public final void foo() {} }"},
     {"B.java", "public class B extends A { public void foo() {} }"},
-  };
-  sptr<const Program> program = ParseProgram(test_files);
+  });
   EXPECT_ERRS("OverrideFinalMethodError: [1:39-42,0:49-52]\n");
 }
 
 TEST_F(MethodTableTest, ParentClassNoEmptyConstructorError) {
-  vector<pair<string, string>> test_files = {
+  ParseProgram({
     {"A.java", "public class A { }"},
     {"B.java", "public class B extends A { }"},
-  };
-  sptr<const Program> program = ParseProgram(test_files);
+  });
   EXPECT_ERRS("ParentClassEmptyConstructorError: [0:13,1:13]\n");
 }
 
 TEST_F(MethodTableTest, NotAbstractClassError) {
-  vector<pair<string, string>> test_files = {
+  ParseProgram({
     {"A.java", "public abstract class A { public A() {} public abstract void foo(); }"},
     {"B.java", "public class B extends A { }"},
-  };
-  sptr<const Program> program = ParseProgram(test_files);
+  });
   EXPECT_ERRS("NeedAbstractClassError: [1:13]\n");
 }
 
 TEST_F(MethodTableTest, ResolveCallUndefinedMethodError) {
-  vector<pair<string, string>> test_files = {
+  ParseProgram({
     {"A.java", "public class A { public A() {} public void foo() { bar(); } }"},
-  };
-  sptr<const Program> program = ParseProgram(test_files);
+  });
   EXPECT_ERRS("UndefinedMethodError(0:51-54)\n");
 }
 
 TEST_F(MethodTableTest, ResolveCallInstanceAsStaticError) {
-  vector<pair<string, string>> test_files = {
+  ParseProgram({
     {"A.java", "public class A { public A() {} public static void foo() { A.bar(); } public void bar() {} }"},
-  };
-  sptr<const Program> program = ParseProgram(test_files);
+  });
   EXPECT_ERRS("StaticMethodOnInstanceError(0:60-63)\n");
-  PRINT_ERRS();
 }
 
 TEST_F(MethodTableTest, ResolveCallStaticAsInstanceError) {
-  vector<pair<string, string>> test_files = {
+  ParseProgram({
     {"A.java", "public class A { public A() {} public static void foo() {} public void bar() { foo(); } }"},
-  };
-  sptr<const Program> program = ParseProgram(test_files);
+  });
   EXPECT_ERRS("InstanceMethodOnStaticError(0:79-82)\n");
-  PRINT_ERRS();
 }
 
 TEST_F(MethodTableTest, ResolveCallInaccessibleError) {
-  vector<pair<string, string>> test_files = {
+  ParseProgram({
     {"A.java", "package foo; public class A { public A() {} protected void foo() {} }"},
     {"B.java", "package baz; import foo.A; public class B { public void bar() { A a = new A(); a.foo(); } }"},
-  };
-  sptr<const Program> program = ParseProgram(test_files);
+  });
   EXPECT_ERRS("PermissionError: [1:81-84,0:59-62]\n");
 }
 
