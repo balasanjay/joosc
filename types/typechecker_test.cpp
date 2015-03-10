@@ -274,24 +274,24 @@ TEST_F(TypeCheckerTest, CharLitExpr) {
 
 TEST_F(TypeCheckerTest, InstanceOfWorks) {
   ParseProgram({
-      {"F.java", "public class F{public F(){} public boolean f(){return new F() instanceof F;}}"}
+      {"F.java", "public class F{public F() {} public boolean f() { return new F() instanceof F; } }"}
   });
   EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, InstanceOfPrimitive) {
   ParseProgram({
-      {"F.java", "public class F{public boolean f(){return 1 instanceof int;}}"}
+      {"F.java", "public class F { public boolean f() { return 1 instanceof int; } }"}
   });
-  EXPECT_ERRS("InvalidInstanceOfTypeError(0:43-53)\n");
+  EXPECT_ERRS("InvalidInstanceOfTypeError(0:47-57)\n");
 }
 
 TEST_F(TypeCheckerTest, InstanceOfExprUncastable) {
   ParseProgram({
-      {"F.java", "public class F{public F(){}}"},
-      {"G.java", "public class G{public boolean g(){return new F() instanceof G;}}"}
+      {"F.java", "public class F{ public F() {} }"},
+      {"G.java", "public class G{ public boolean g() { return new F() instanceof G; } }"}
   });
-  EXPECT_ERRS("IncompatibleInstanceOfError(1:41-61)\n");
+  EXPECT_ERRS("IncompatibleInstanceOfError(1:44-64)\n");
 }
 
 TEST_F(TypeCheckerTest, IntLitExpr) {
@@ -308,30 +308,30 @@ TEST_F(TypeCheckerTest, IntLitExpr) {
 
 TEST_F(TypeCheckerTest, NewClassExpr) {
   ParseProgram({
-      {"F.java", "public class F{public F(){F f=new F();}}"}
+      {"F.java", "public class F { public F() { F f=new F(); } }"}
   });
   EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, NewClassExprArg) {
   ParseProgram({
-      {"F.java", "public class F{public F(int i){F f=new F(1);}}"}
+      {"F.java", "public class F { public F(int i) { F f=new F(1); } }"}
   });
   EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, NewClassExprBadConstructor) {
   ParseProgram({
-      {"F.java", "public class F{public F(){F f=new F(1);}}"}
+      {"F.java", "public class F { public F(){ F f=new F(1); } }"}
   });
-  EXPECT_ERRS("UndefinedMethodError(0:34)\n");
+  EXPECT_ERRS("UndefinedMethodError(0:37)\n");
 }
 
 TEST_F(TypeCheckerTest, NewClassExprBadType) {
   ParseProgram({
-      {"F.java", "public class F{public F(){F f=new A();}}"}
+      {"F.java", "public class F { public F() { F f=new A(); } }"}
   });
-  EXPECT_ERRS("UnknownTypenameError(0:34)\n");
+  EXPECT_ERRS("UnknownTypenameError(0:38)\n");
 }
 
 // TODO: Test new class expr with abstract class.
@@ -361,23 +361,23 @@ TEST_F(TypeCheckerTest, ParenExprErrorInside) {
 
 TEST_F(TypeCheckerTest, StringLitExpr) {
   ParseProgram({
-      {"F.java", "public class F{public String f(){return \"Hi.\";}}"}
+      {"F.java", "public class F { public String f() { return \"Hi.\"; } }"}
   });
   EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, StringLitExprAddOtherThings) {
   ParseProgram({
-      {"F.java", "public class F{public String f(){return 1 + \"\" + 'a' + null;}}"}
+      {"F.java", "public class F{ public String f() { return 1 + \"\" + 'a' + null; } }"}
   });
   EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, StringLitExprAddOtherThingsOneError) {
   ParseProgram({
-      {"F.java", "public class F{public String f(){return null + 1 + \"\" + 'a' + null;}}"}
+      {"F.java", "public class F { public String f() { return null + 1 + \"\" + 'a' + null; } }"}
   });
-  EXPECT_ERRS("TypeMismatchError(0:40-44)\n");
+  EXPECT_ERRS("TypeMismatchError(0:44-48)\n");
 }
 
 TEST_F(TypeCheckerTest, ThisLitExpr) {
@@ -524,42 +524,42 @@ TEST_F(TypeCheckerTest, IfStmtOk) {
 
 TEST_F(TypeCheckerTest, ReturnStmt) {
   ParseProgram({
-      {"F.java", "public class F{public int f(){return 1;}}"}
+      {"F.java", "public class F { public int f() { return 1; } }"}
   });
   EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, ReturnStmtWrongType) {
   ParseProgram({
-      {"F.java", "public class F{public int f(){return true;}}"}
+      {"F.java", "public class F { public int f() { return true; } }"}
   });
-  EXPECT_ERRS("InvalidReturnError(0:30-36)\n");
+  EXPECT_ERRS("InvalidReturnError(0:34-40)\n");
 }
 
 TEST_F(TypeCheckerTest, LocalDeclStmt) {
   ParseProgram({
-      {"F.java", "public class F{public void f(){int x = 0; return;}}"}
+      {"F.java", "public class F { public void f() { int x = 0; return; } }"}
   });
   EXPECT_NO_ERRS();
 }
 
 TEST_F(TypeCheckerTest, LocalDeclStmtBadTypeOneError) {
   ParseProgram({
-      {"F.java", "public class F{public int f(){A x = null; return x;}}"}
+      {"F.java", "public class F { public int f(){ A x = null; return x; } }"}
   });
-  EXPECT_ERRS("UnknownTypenameError(0:30)\n");
+  EXPECT_ERRS("UnknownTypenameError(0:33)\n");
 }
 
 TEST_F(TypeCheckerTest, LocalDeclStmtBadAssign) {
   ParseProgram({
-      {"F.java", "public class F{public void f(){char x = null; return;}}"}
+      {"F.java", "public class F { public void f(){ char x = null; return; } }"}
   });
-  EXPECT_ERRS("UnassignableError(0:40-44)\n");
+  EXPECT_ERRS("UnassignableError(0:43-47)\n");
 }
 
 TEST_F(TypeCheckerTest, LocalDeclStmtCreatesSymbol) {
   ParseProgram({
-      {"F.java", "public class F{public int f(){int x = 0; return x;}}"}
+      {"F.java", "public class F { public int f(){ int x = 0; return x; } }"}
   });
   EXPECT_NO_ERRS();
 }
