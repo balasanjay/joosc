@@ -186,7 +186,7 @@ Error* TypeInfoMapBuilder::MakeParentClassEmptyConstructorError(const TypeInfo& 
 Error* TypeInfoMapBuilder::MakeNeedAbstractClassError(const TypeInfo& tinfo, const MethodTable::MethodSignatureMap& method_map) const {
   return MakeError([=](ostream* out, const OutputOptions& opt, const base::FileSet* fs) {
     if (opt.simple) {
-      *out << "NeedAbstractClassError" << ": [" << tinfo.pos << ']';
+      *out << "NeedAbstractClassError: [" << tinfo.pos << ']';
       return;
     }
     const string m_msg = "A class containing abstract methods must be abstract.";

@@ -45,11 +45,11 @@ TEST_F(MethodTableTest, DuplicateDifferentReturnTypeError) {
 
 TEST_F(MethodTableTest, FinalAncestorErrorNoExtraErrors) {
   ParseProgram({
-    {"A.java", "public final class A { public A() {} }"},
-    {"B.java", "public class B extends A { public B() {} }"},
-    {"C.java", "public class C extends B {}"},
+    {"A.java", "package foo; public final class A { public A() {} }"},
+    {"B.java", "package bar; public class B extends foo.A { public B() {} }"},
+    {"C.java", "package baz; public class C extends bar.B {}"},
   });
-  EXPECT_ERRS("ParentFinalError: [1:13,0:19]\n");
+  EXPECT_ERRS("ParentFinalError: [1:26,0:32]\n");
 }
 
 TEST_F(MethodTableTest, SimpleInheritNoErrors) {
@@ -120,18 +120,18 @@ TEST_F(MethodTableTest, FinalOverrideError) {
 
 TEST_F(MethodTableTest, ParentClassNoEmptyConstructorError) {
   ParseProgram({
-    {"A.java", "public class A { }"},
-    {"B.java", "public class B extends A { }"},
+    {"A.java", "package foo; public class A { }"},
+    {"B.java", "public class B extends foo.A { }"},
   });
-  EXPECT_ERRS("ParentClassEmptyConstructorError: [0:13,1:13]\n");
+  EXPECT_ERRS("ParentClassEmptyConstructorError: [0:26,1:13]\n");
 }
 
 TEST_F(MethodTableTest, NotAbstractClassError) {
   ParseProgram({
     {"A.java", "public abstract class A { public A() {} public abstract void foo(); }"},
-    {"B.java", "public class B extends A { }"},
+    {"Bar.java", "public class Bar extends A { }"},
   });
-  EXPECT_ERRS("NeedAbstractClassError: [1:13]\n");
+  EXPECT_ERRS("NeedAbstractClassError: [1:13-16]\n");
 }
 
 TEST_F(MethodTableTest, ResolveCallUndefinedMethodError) {
