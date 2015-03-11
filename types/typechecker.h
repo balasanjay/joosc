@@ -97,7 +97,7 @@ class TypeChecker final : public ast::Visitor {
   REWRITE_DECL(CompUnit, CompUnit, args, argsptr);
 
  private:
-  FRIEND_TEST(TypeCheckerUtilTest, IsCastablePrimitives);
+  FRIEND_TEST(TypeCheckerHierarchyTest, IsCastablePrimitives);
 
   TypeChecker(base::ErrorList* errors,
               const TypeSet& typeset, const TypeInfoMap& typeinfo,
