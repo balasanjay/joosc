@@ -25,6 +25,9 @@ TypeId TypeChecker::JavaLangType(const string& name) const {
 }
 
 bool TypeChecker::IsNumeric(TypeId tid) const {
+  if (tid.ndims != 0) {
+    return false;
+  }
   switch (tid.base) {
     case TypeId::kByteBase:
     case TypeId::kCharBase:

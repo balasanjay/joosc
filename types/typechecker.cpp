@@ -512,8 +512,7 @@ REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
     return nullptr;
   }
 
-  // TODO: are we supposed to allow any numeric here?
-  if (index != nullptr && index->GetTypeId() != TypeId::kInt) {
+  if (index != nullptr && !IsNumeric(index->GetTypeId())) {
     errors_->Append(MakeTypeMismatchError(TypeId::kInt, index->GetTypeId(), ExtentOf(index)));
     return nullptr;
   }
