@@ -56,25 +56,6 @@ TEST_F(TypeSetTest, MultipleWildcards) {
   EXPECT_NO_ERRS();
 }
 
-TEST_F(TypeSetTest, MultipleWildcardsAmbiguity) {
-  vector<pair<string, string>> test_files = {
-    {"a/bar.java", "package a; public class bar {}"},
-    {"b/bar.java", "package b; public class bar {}"},
-    {"c/bar.java", "package c; public class bar {}"},
-    {
-      "d/gee.java",
-
-      "package d;\n"
-      "import a.*;\n"
-      "import b.*;\n"
-      "import c.*;\n"
-      "public class gee extends bar {}"
-    },
-  };
-  ParseProgram(test_files);
-  EXPECT_ERRS("AmbiguousType(3:72-75)\n");
-}
-
 TEST_F(TypeSetTest, WildcardsOverruledByPackage) {
   vector<pair<string, string>> test_files = {
     {"a/bar.java", "package a; public class bar {}"},
@@ -154,9 +135,112 @@ TEST_F(TypeSetTest, ConflictingImportAndType) {
   EXPECT_ERRS("DuplicateCompUnitNames: [1:38-41,1:18-23,]\n");
 }
 
-// TODO: tests for TypeSetImpl::Get.
+TEST_F(TypeSetTest, UnknownQualifiedName) {
+  vector<pair<string, string>> test_files = {
+    {"bar.java", "public class bar { public unknown.pkg.Class foo; }"},
+  };
+  ParseProgram(test_files);
+  EXPECT_ERRS("UnknownTypenameError(0:26-43)\n");
+}
 
-// TODO: Test for wildcard import of package that doesn't exist. Also another
-// one that doesn't have a corresponding type.
+TEST_F(TypeSetTest, QualifiedNameWithTypePrefix) {
+  vector<pair<string, string>> test_files = {
+    {"foo/bar.java", "package foo; public class bar {}"},
+    {"bar/baz.java", "package bar; public class baz {}"},
+    {"test.java", "import foo.bar; public class test { public bar.baz field; }"},
+  };
+  ParseProgram(test_files);
+  EXPECT_ERRS("TypeWithTypePrefixError(0:43-50)\n");
+}
+
+TEST_F(TypeSetTest, ShortNameNoMatch) {
+  vector<pair<string, string>> test_files = {
+    {"test.java", "public class test { public Strng field; }"},
+  };
+  ParseProgram(test_files);
+  EXPECT_ERRS("UnknownTypenameError(0:27-32)\n");
+}
+
+TEST_F(TypeSetTest, ShortNameExactMatch) {
+  vector<pair<string, string>> test_files = {
+    {"test.java", "public class test { public String field; }"},
+  };
+  ParseProgram(test_files);
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeSetTest, ShortNameMultipleIdenticalWildcards) {
+  vector<pair<string, string>> test_files = {
+    {"foo/Foo.java", "package foo; public class Foo {}"},
+    {
+      "test.java",
+
+      "import foo.*;\n"
+      "import foo.*;\n"
+      "import foo.*;\n"
+      "import foo.*;\n"
+      "public class test { public Foo field; }"
+    },
+  };
+  ParseProgram(test_files);
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeSetTest, ShortNameMultipleAmbiguousWildcardsNoUse) {
+  vector<pair<string, string>> test_files = {
+    {"foo/Foo.java", "package foo; public class Foo {}"},
+    {"bar/Foo.java", "package bar; public class Foo {}"},
+    {
+      "test.java",
+
+      "import foo.*;\n"
+      "import bar.*;\n"
+      "public class test {}"
+    },
+  };
+  ParseProgram(test_files);
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeSetTest, ShortNameMultipleAmbiguousWildcards) {
+  vector<pair<string, string>> test_files = {
+    {"foo/Foo.java", "package foo; public class Foo {}"},
+    {"bar/Foo.java", "package bar; public class Foo {}"},
+    {
+      "test.java",
+
+      "import foo.*;\n"
+      "import foo.*;\n"
+      "import bar.*;\n"
+      "import bar.*;\n"
+      "public class test { public Foo field; }"
+    },
+  };
+  ParseProgram(test_files);
+  EXPECT_ERRS("AmbiguousTypeError:[0:35-38,0:21-24,]\n");
+}
+
+TEST_F(TypeSetTest, ShortNameAmbiguousWildcardWithStdlib) {
+  vector<pair<string, string>> test_files = {
+    {"bar/String.java", "package bar; public class String {}"},
+    {
+      "test.java",
+
+      "import bar.*;\n"
+      "public class test { public String field; }"
+    },
+  };
+  ParseProgram(test_files);
+  EXPECT_ERRS("AmbiguousTypeError:[0:7-10,-1:-1--1,]\n");
+}
+
+
+TEST_F(TypeSetTest, WildcardOfNonExistentPackage) {
+  vector<pair<string, string>> test_files = {
+    {"test.java", "import non.existent.pkg.*;"},
+  };
+  ParseProgram(test_files);
+  EXPECT_ERRS("UnknownPackageError(0:7-23)\n");
+}
 
 } // namespace types
