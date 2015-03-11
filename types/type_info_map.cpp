@@ -686,13 +686,19 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
       for (int i = 0; i < typeinfo.extends.Size(); ++i) {
         TypeId extends_tid = typeinfo.extends.At(i);
         auto is_duplicate = already_extended.insert(extends_tid);
-        if (!is_duplicate.second) {
-          errors->Append(MakeDuplicateInheritanceError(true, typeinfo.pos, typeinfo.type, extends_tid));
-          bad_types->insert(type);
+
+        if (all_types.count(extends_tid) == 0) {
+          continue;
         }
+
         if (!match_relationship(extends_tid, type, TypeKind::INTERFACE)) {
           errors->Append(MakeInterfaceExtendsClassError(typeinfo.pos, all_types.at(extends_tid).name));
           bad_types->insert(type);
+        }
+        if (!is_duplicate.second) {
+          errors->Append(MakeDuplicateInheritanceError(true, typeinfo.pos, typeinfo.type, extends_tid));
+          bad_types->insert(type);
+          break;
         }
       }
       continue;
@@ -712,18 +718,18 @@ void TypeInfoMapBuilder::PruneInvalidGraphEdges(const map<TypeId, TypeInfo>& all
       TypeId implement_tid = typeinfo.implements.At(i);
       auto is_duplicate = already_implemented.insert(implement_tid);
 
-      // TODO: don't do this.
-      if (all_types.count(implement_tid) == 0) {
+      if (bad_types->count(implement_tid) != 0 || all_types.count(implement_tid) == 0) {
         continue;
       }
 
-      if (!is_duplicate.second) {
-        errors->Append(MakeDuplicateInheritanceError(false, typeinfo.pos, typeinfo.type, implement_tid));
-        bad_types->insert(type);
-      }
       if (!match_relationship(implement_tid, type, TypeKind::INTERFACE)) {
         errors->Append(MakeClassImplementsClassError(typeinfo.pos, all_types.at(implement_tid).name));
         bad_types->insert(type);
+      }
+      if (!is_duplicate.second) {
+        errors->Append(MakeDuplicateInheritanceError(false, typeinfo.pos, typeinfo.type, implement_tid));
+        bad_types->insert(type);
+        break;
       }
     }
   }
