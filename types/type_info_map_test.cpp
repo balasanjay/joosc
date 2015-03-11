@@ -58,7 +58,6 @@ TEST_F(TypeInfoMapTest, DiamondProblemNotBad) {
   test_files.push_back({"C100.java", "public class C100 implements l99.L99, r99.R99 {}"});
   ParseProgram(test_files);
   EXPECT_NO_ERRS();
-  PRINT_ERRS();
 }
 
 TEST_F(TypeInfoMapTest, InterfaceExtendingRepeatedInterface) {
