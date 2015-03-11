@@ -538,7 +538,18 @@ REWRITE_DEFN(TypeChecker, NullLitExpr, Expr, expr, ) {
 }
 
 REWRITE_DEFN(TypeChecker, ParenExpr, Expr, expr,) {
-  return Rewrite(expr.NestedPtr());
+  sptr<const Expr> nested = Rewrite(expr.NestedPtr());
+
+  if (nested == nullptr) {
+    return nullptr;
+  }
+
+  // If we get back a kType, then we fail because java disallows it.
+  if (nested->GetTypeId() == TypeId::kType) {
+    errors_->Append(MakeTypeInParensError(ExtentOf(nested)));
+    return nullptr;
+  }
+  return nested;
 }
 
 REWRITE_DEFN(TypeChecker, StringLitExpr, Expr, expr,) {

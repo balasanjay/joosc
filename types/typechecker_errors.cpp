@@ -86,4 +86,8 @@ Error* TypeChecker::MakeMemberAccessOnPrimitiveError(TypeId lhs, PosRange pos) {
   return MakeSimplePosRangeError(pos, "MemberAccessOnPrimitiveError", ss.str());
 }
 
+Error* TypeChecker::MakeTypeInParensError(PosRange pos) {
+  return MakeSimplePosRangeError(pos, "TypeInParensError", "Can only put parentheses around a type when casting.");
+}
+
 } // namespace types
