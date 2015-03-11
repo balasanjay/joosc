@@ -124,6 +124,7 @@ private:
   base::Error* MakeInstanceMethodOnStaticError(base::PosRange pos) const;
   base::Error* MakeStaticMethodOnInstanceError(base::PosRange pos) const;
   base::Error* MakePermissionError(base::PosRange call_pos, base::PosRange method_pos) const;
+  base::Error* MakeNewAbstractClassError(base::PosRange pos) const;
 
   static MethodTable kEmptyMethodTable;
   static MethodTable kErrorMethodTable;
