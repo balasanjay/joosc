@@ -59,10 +59,7 @@ REWRITE_DEFN(TypeChecker, ArrayIndexExpr, Expr, expr,) {
   }
 
   if (!IsNumeric(index->GetTypeId())) {
-    errors_->Append(MakeTypeMismatchError(
-          typeinfo_.LookupTypeName(TypeId::kInt),
-          typeinfo_.LookupTypeName(index->GetTypeId()),
-          ExtentOf(index)));
+    errors_->Append(MakeTypeMismatchError(TypeId::kInt, index->GetTypeId(), ExtentOf(index)));
     return nullptr;
   }
   if (base->GetTypeId().ndims < 1) {
@@ -139,10 +136,7 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
 
   if (op == lexer::ASSG) {
     if (!IsAssignable(lhsType, rhsType)) {
-      errors_->Append(MakeUnassignableError(
-            typeinfo_.LookupTypeName(lhsType),
-            typeinfo_.LookupTypeName(rhsType),
-            ExtentOf(rhs)));
+      errors_->Append(MakeUnassignableError(lhsType, rhsType, ExtentOf(rhs)));
       return nullptr;
     }
     return make_shared<BinExpr>(lhs, expr.Op(), rhs, lhsType);
@@ -154,16 +148,10 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
     }
 
     if (lhsType != TypeId::kBool) {
-      errors_->Append(MakeTypeMismatchError(
-            typeinfo_.LookupTypeName(TypeId::kBool),
-            typeinfo_.LookupTypeName(lhsType),
-            ExtentOf(expr.LhsPtr())));
+      errors_->Append(MakeTypeMismatchError(TypeId::kBool, lhsType, ExtentOf(expr.LhsPtr())));
     }
     if (rhsType != TypeId::kBool) {
-      errors_->Append(MakeTypeMismatchError(
-            typeinfo_.LookupTypeName(TypeId::kBool),
-            typeinfo_.LookupTypeName(rhsType),
-            ExtentOf(expr.RhsPtr())));
+      errors_->Append(MakeTypeMismatchError(TypeId::kBool, rhsType, ExtentOf(expr.RhsPtr())));
     }
     return nullptr;
   }
@@ -174,26 +162,17 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
     }
 
     if (!IsNumeric(lhsType)) {
-      errors_->Append(MakeTypeMismatchError(
-            typeinfo_.LookupTypeName(TypeId::kInt),
-            typeinfo_.LookupTypeName(lhsType),
-            ExtentOf(expr.LhsPtr())));
+      errors_->Append(MakeTypeMismatchError(TypeId::kInt, lhsType, ExtentOf(expr.LhsPtr())));
     }
     if (!IsNumeric(rhsType)) {
-      errors_->Append(MakeTypeMismatchError(
-            typeinfo_.LookupTypeName(TypeId::kInt),
-            typeinfo_.LookupTypeName(rhsType),
-            ExtentOf(expr.RhsPtr())));
+      errors_->Append(MakeTypeMismatchError(TypeId::kInt, rhsType, ExtentOf(expr.RhsPtr())));
     }
     return nullptr;
   }
 
   if (IsEqualityOp(op)) {
     if (!IsComparable(lhsType, rhsType)) {
-      errors_->Append(MakeIncomparableTypeError(
-            typeinfo_.LookupTypeName(lhsType),
-            typeinfo_.LookupTypeName(rhsType),
-            expr.Op().pos));
+      errors_->Append(MakeIncomparableTypeError(lhsType, rhsType, expr.Op().pos));
       return nullptr;
     }
     return make_shared<BinExpr>(lhs, expr.Op(), rhs, TypeId::kBool);
@@ -211,16 +190,10 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
   }
 
   if (!IsNumeric(lhsType)) {
-    errors_->Append(MakeTypeMismatchError(
-          typeinfo_.LookupTypeName(TypeId::kInt),
-          typeinfo_.LookupTypeName(lhsType),
-          ExtentOf(expr.LhsPtr())));
+    errors_->Append(MakeTypeMismatchError(TypeId::kInt, lhsType, ExtentOf(expr.LhsPtr())));
   }
   if (!IsNumeric(rhsType)) {
-    errors_->Append(MakeTypeMismatchError(
-          typeinfo_.LookupTypeName(TypeId::kInt),
-          typeinfo_.LookupTypeName(rhsType),
-          ExtentOf(expr.RhsPtr())));
+    errors_->Append(MakeTypeMismatchError(TypeId::kInt, rhsType, ExtentOf(expr.RhsPtr())));
   }
   return nullptr;
 }
@@ -361,10 +334,7 @@ REWRITE_DEFN(TypeChecker, CastExpr, Expr, expr, exprptr) {
   }
 
   if (!IsCastable(castType, exprType)) {
-    errors_->Append(MakeIncompatibleCastError(
-          typeinfo_.LookupTypeName(castType),
-          typeinfo_.LookupTypeName(exprType),
-          ExtentOf(exprptr)));
+    errors_->Append(MakeIncompatibleCastError(castType, exprType, ExtentOf(exprptr)));
     return nullptr;
   }
 
@@ -423,10 +393,7 @@ REWRITE_DEFN(TypeChecker, InstanceOfExpr, Expr, expr, exprptr) {
   }
 
   if (!IsCastable(lhsType, rhsType)) {
-    errors_->Append(MakeIncompatibleInstanceOfError(
-          typeinfo_.LookupTypeName(lhsType),
-          typeinfo_.LookupTypeName(rhsType),
-          ExtentOf(exprptr)));
+    errors_->Append(MakeIncompatibleInstanceOfError(lhsType, rhsType, ExtentOf(exprptr)));
     return nullptr;
   }
 
@@ -547,10 +514,7 @@ REWRITE_DEFN(TypeChecker, NewArrayExpr, Expr, expr,) {
 
   // TODO: are we supposed to allow any numeric here?
   if (index != nullptr && index->GetTypeId() != TypeId::kInt) {
-    errors_->Append(MakeTypeMismatchError(
-          typeinfo_.LookupTypeName(TypeId::kInt),
-          typeinfo_.LookupTypeName(index->GetTypeId()),
-          ExtentOf(index)));
+    errors_->Append(MakeTypeMismatchError(TypeId::kInt, index->GetTypeId(), ExtentOf(index)));
     return nullptr;
   }
 
@@ -600,9 +564,7 @@ REWRITE_DEFN(TypeChecker, UnaryExpr, Expr, expr, exprptr) {
 
   if (op == lexer::SUB) {
     if (!IsNumeric(rhsType)) {
-      errors_->Append(MakeUnaryNonNumericError(
-            typeinfo_.LookupTypeName(rhsType),
-            ExtentOf(exprptr)));
+      errors_->Append(MakeUnaryNonNumericError(rhsType, ExtentOf(exprptr)));
       return nullptr;
     }
     return make_shared<UnaryExpr>(expr.Op(), rhs, TypeId::kInt);
@@ -611,9 +573,7 @@ REWRITE_DEFN(TypeChecker, UnaryExpr, Expr, expr, exprptr) {
   CHECK(op == lexer::NOT);
   TypeId expected = TypeId::kBool;
   if (rhsType != expected) {
-    errors_->Append(MakeUnaryNonBoolError(
-          typeinfo_.LookupTypeName(rhsType),
-          ExtentOf(exprptr)));
+    errors_->Append(MakeUnaryNonBoolError(rhsType, ExtentOf(exprptr)));
     return nullptr;
   }
   return make_shared<UnaryExpr>(expr.Op(), rhs, TypeId::kBool);
@@ -648,10 +608,7 @@ REWRITE_DEFN(TypeChecker, ForStmt, Stmt, stmt,) {
 
   TypeId expected = TypeId::kBool;
   if (cond != nullptr && cond->GetTypeId() != expected) {
-    errors_->Append(MakeTypeMismatchError(
-          typeinfo_.LookupTypeName(expected),
-          typeinfo_.LookupTypeName(cond->GetTypeId()),
-          ExtentOf(stmt.CondPtr())));
+    errors_->Append(MakeTypeMismatchError(expected, cond->GetTypeId(), ExtentOf(stmt.CondPtr())));
     return nullptr;
   }
 
@@ -669,10 +626,7 @@ REWRITE_DEFN(TypeChecker, IfStmt, Stmt, stmt,) {
 
   TypeId expected = TypeId::kBool;
   if (cond->GetTypeId() != expected) {
-    errors_->Append(MakeTypeMismatchError(
-          typeinfo_.LookupTypeName(expected),
-          typeinfo_.LookupTypeName(cond->GetTypeId()),
-          ExtentOf(stmt.CondPtr())));
+    errors_->Append(MakeTypeMismatchError(expected, cond->GetTypeId(), ExtentOf(stmt.CondPtr())));
     return nullptr;
   }
 
@@ -702,10 +656,7 @@ REWRITE_DEFN(TypeChecker, LocalDeclStmt, Stmt, stmt,) {
   }
 
   if (!IsAssignable(type->GetTypeId(), expr->GetTypeId())) {
-    errors_->Append(MakeUnassignableError(
-          typeinfo_.LookupTypeName(type->GetTypeId()),
-          typeinfo_.LookupTypeName(expr->GetTypeId()),
-          ExtentOf(expr)));
+    errors_->Append(MakeUnassignableError(type->GetTypeId(), expr->GetTypeId(), ExtentOf(expr)));
     return nullptr;
   }
 
@@ -731,10 +682,7 @@ REWRITE_DEFN(TypeChecker, ReturnStmt, Stmt, stmt,) {
 
   CHECK(belowMemberDecl_);
   if (!IsAssignable(curMemberType_, exprType)) {
-    errors_->Append(MakeInvalidReturnError(
-          typeinfo_.LookupTypeName(curMemberType_),
-          typeinfo_.LookupTypeName(exprType),
-          stmt.ReturnToken().pos));
+    errors_->Append(MakeInvalidReturnError(curMemberType_, exprType, stmt.ReturnToken().pos));
     return nullptr;
   }
 
@@ -750,10 +698,7 @@ REWRITE_DEFN(TypeChecker, WhileStmt, Stmt, stmt,) {
   }
 
   if (cond->GetTypeId() != TypeId::kBool) {
-    errors_->Append(MakeTypeMismatchError(
-          typeinfo_.LookupTypeName(TypeId::kBool),
-          typeinfo_.LookupTypeName(cond->GetTypeId()),
-          ExtentOf(stmt.CondPtr())));
+    errors_->Append(MakeTypeMismatchError(TypeId::kBool, cond->GetTypeId(), ExtentOf(stmt.CondPtr())));
     return nullptr;
   }
 
@@ -780,10 +725,7 @@ REWRITE_DEFN(TypeChecker, FieldDecl, MemberDecl, decl, declptr) {
 
   if (val != nullptr) {
     if (!IsAssignable(type->GetTypeId(), val->GetTypeId())) {
-      errors_->Append(MakeUnassignableError(
-            typeinfo_.LookupTypeName(type->GetTypeId()),
-            typeinfo_.LookupTypeName(val->GetTypeId()),
-            ExtentOf(decl.ValPtr())));
+      errors_->Append(MakeUnassignableError(type->GetTypeId(), val->GetTypeId(), ExtentOf(decl.ValPtr())));
       return nullptr;
     }
   }

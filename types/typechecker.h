@@ -124,17 +124,17 @@ class TypeChecker final : public ast::Visitor {
   bool IsComparable(ast::TypeId lhs, ast::TypeId rhs) const;
   bool IsCastable(ast::TypeId lhs, ast::TypeId rhs) const;
 
-  base::Error* MakeTypeMismatchError(string expected, string got, base::PosRange pos);
+  base::Error* MakeTypeMismatchError(ast::TypeId expected, ast::TypeId got, base::PosRange pos);
   base::Error* MakeIndexNonArrayError(base::PosRange pos);
-  base::Error* MakeIncompatibleCastError(string lhs, string rhs, base::PosRange pos);
+  base::Error* MakeIncompatibleCastError(ast::TypeId lhs, ast::TypeId rhs, base::PosRange pos);
   base::Error* MakeInstanceOfPrimitiveError(base::PosRange pos);
-  base::Error* MakeIncompatibleInstanceOfError(string lhs, string rhs, base::PosRange pos);
+  base::Error* MakeIncompatibleInstanceOfError(ast::TypeId lhs, ast::TypeId rhs, base::PosRange pos);
   base::Error* MakeNoStringError(base::PosRange pos);
-  base::Error* MakeUnaryNonNumericError(string rhs, base::PosRange pos);
-  base::Error* MakeUnaryNonBoolError(string rhs, base::PosRange pos);
-  base::Error* MakeUnassignableError(string lhs, string rhs, base::PosRange pos);
-  base::Error* MakeInvalidReturnError(string ret, string expr, base::PosRange pos);
-  base::Error* MakeIncomparableTypeError(string lhs, string rhs, base::PosRange pos);
+  base::Error* MakeUnaryNonNumericError(ast::TypeId rhs, base::PosRange pos);
+  base::Error* MakeUnaryNonBoolError(ast::TypeId rhs, base::PosRange pos);
+  base::Error* MakeUnassignableError(ast::TypeId lhs, ast::TypeId rhs, base::PosRange pos);
+  base::Error* MakeInvalidReturnError(ast::TypeId ret, ast::TypeId expr, base::PosRange pos);
+  base::Error* MakeIncomparableTypeError(ast::TypeId lhs, ast::TypeId rhs, base::PosRange pos);
   base::Error* MakeThisInStaticMemberError(base::PosRange this_pos);
 
   base::ErrorList* errors_;
