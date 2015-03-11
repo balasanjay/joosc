@@ -243,6 +243,8 @@ public:
     return info->second;
   }
 
+  string LookupTypeName(ast::TypeId tid) const;
+
   bool IsAncestor(ast::TypeId child, ast::TypeId ancestor) const;
 
 private:

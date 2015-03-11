@@ -130,6 +130,10 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
   TypeId rhsType = rhs->GetTypeId();
   TokenType op = expr.Op().type;
 
+  if (!lhsType.IsValid() || !rhsType.IsValid()) {
+    return nullptr;
+  }
+
   if (op == lexer::ASSG) {
     if (!IsAssignable(lhsType, rhsType)) {
       errors_->Append(MakeUnassignableError(lhsType, rhsType, ExtentOf(rhs)));
@@ -379,6 +383,9 @@ REWRITE_DEFN(TypeChecker, InstanceOfExpr, Expr, expr, exprptr) {
   }
   TypeId lhsType = lhs->GetTypeId();
   TypeId rhsType = rhs->GetTypeId();
+  if (!rhsType.IsValid() || !lhsType.IsValid()) {
+    return nullptr;
+  }
 
   if (IsPrimitive(lhsType) || IsPrimitive(rhsType)) {
     errors_->Append(MakeInstanceOfPrimitiveError(ExtentOf(exprptr)));
@@ -549,6 +556,9 @@ REWRITE_DEFN(TypeChecker, UnaryExpr, Expr, expr, exprptr) {
     return nullptr;
   }
   TypeId rhsType = rhs->GetTypeId();
+  if (!rhsType.IsValid()) {
+    return nullptr;
+  }
 
   TokenType op = expr.Op().type;
 
