@@ -120,6 +120,7 @@ TEST_F(TypeCheckerTest, BinExprBoolOpSuccess) {
   sptr<const Expr> before = ParseExpr("true || false");
   auto after = typeChecker_->Rewrite(before);
 
+  ASSERT_NE(nullptr, after);
   EXPECT_EQ(TypeId::kBool, after->GetTypeId());
   EXPECT_NO_ERRS();
 }
