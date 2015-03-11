@@ -929,14 +929,19 @@ bool MethodTable::IsBlacklisted(CallContext ctx, const string& name) const {
 
 MethodId MethodTable::ResolveCall(const TypeInfoMap& type_info_map, TypeId caller_type, CallContext ctx, TypeId callee_type, const TypeIdList& params, const string& method_name, PosRange pos, ErrorList* errors) const {
   // TODO: More things.
-  // TODO: Test for abstract constructor call.
-  MethodSignature sig = MethodSignature{(ctx == CallContext::CONSTRUCTOR), method_name, params};
+  bool is_constructor = ctx == CallContext::CONSTRUCTOR;
+  MethodSignature sig = MethodSignature{is_constructor, method_name, params};
   auto minfo = method_signatures_.find(sig);
   if (minfo == method_signatures_.end()) {
     // Only emit error if this isn't blacklisted.
     if (!IsBlacklisted(ctx, method_name)) {
       errors->Append(MakeUndefinedMethodError(sig, pos));
     }
+    return kErrorMethodId;
+  }
+
+  if (is_constructor && type_info_map.LookupTypeInfo(callee_type).mods.HasModifier(lexer::Modifier::ABSTRACT)) {
+    errors->Append(MakeNewAbstractClassError(pos));
     return kErrorMethodId;
   }
 
@@ -995,6 +1000,10 @@ Error* MethodTable::MakeUndefinedMethodError(MethodSignature sig, PosRange pos) 
   }
   ss << ")'";
   return MakeSimplePosRangeError(pos, "UndefinedMethodError", ss.str());
+}
+
+Error* MethodTable::MakeNewAbstractClassError(PosRange pos) const {
+  return MakeSimplePosRangeError(pos, "NewAbstractClassError", "Cannot instantiate abstract class.");
 }
 
 Error* MethodTable::MakeInstanceMethodOnStaticError(PosRange pos) const {
