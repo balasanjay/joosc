@@ -76,6 +76,11 @@ class ExtentVisitor final : public Visitor {
     return VisitResult::SKIP;
   }
 
+  VISIT_DECL(StaticRefExpr, expr,) {
+    UpdatePosFromType(expr.GetRefType());
+    return VisitResult::SKIP;
+  }
+
   VISIT_DECL(NewArrayExpr, expr,) {
     UpdatePos(expr.NewToken().pos);
     UpdatePos(expr.Rbrack().pos);

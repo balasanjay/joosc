@@ -137,6 +137,7 @@ class TypeChecker final : public ast::Visitor {
   base::Error* MakeIncomparableTypeError(ast::TypeId lhs, ast::TypeId rhs, base::PosRange pos);
   base::Error* MakeThisInStaticMemberError(base::PosRange this_pos);
   base::Error* MakeMemberAccessOnPrimitiveError(ast::TypeId lhs, base::PosRange pos);
+  base::Error* MakeTypeInParensError(base::PosRange pos);
 
   base::ErrorList* errors_;
 
