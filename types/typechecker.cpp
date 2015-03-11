@@ -253,6 +253,11 @@ REWRITE_DEFN(TypeChecker, CallExpr, Expr, expr,) {
     return nullptr;
   }
 
+  if (IsPrimitive(lhs->GetTypeId())) {
+    errors_->Append(MakeMemberAccessOnPrimitiveError(lhs->GetTypeId(), field_deref->GetToken().pos));
+    return nullptr;
+  }
+
   CallContext cc = CallContext::INSTANCE;
   TypeId lhs_tid = lhs->GetTypeId();
 
@@ -352,6 +357,11 @@ REWRITE_DEFN(TypeChecker, FieldDerefExpr, Expr, expr,) {
   }
   CallContext cc = CallContext::INSTANCE;
   TypeId base_tid = base->GetTypeId();
+
+  if (IsPrimitive(base_tid)) {
+    errors_->Append(MakeMemberAccessOnPrimitiveError(base_tid, expr.GetToken().pos));
+    return nullptr;
+  }
 
   // If base is a type name, then this is a reference to a static field.
   {

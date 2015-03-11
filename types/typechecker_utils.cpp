@@ -25,6 +25,7 @@ TypeId TypeChecker::JavaLangType(const string& name) const {
 }
 
 bool TypeChecker::IsNumeric(TypeId tid) const {
+  // Arrays are not numeric.
   if (tid.ndims != 0) {
     return false;
   }

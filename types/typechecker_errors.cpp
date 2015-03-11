@@ -80,4 +80,10 @@ Error* TypeChecker::MakeThisInStaticMemberError(PosRange this_pos) {
   return MakeSimplePosRangeError(this_pos, "ThisInStaticMemberError", "Cannot use 'this' in static context.");
 }
 
+Error* TypeChecker::MakeMemberAccessOnPrimitiveError(TypeId lhs, PosRange pos) {
+  stringstream ss;
+  ss << "Primitive type " << N(lhs) << " has no members.";
+  return MakeSimplePosRangeError(pos, "MemberAccessOnPrimitiveError", ss.str());
+}
+
 } // namespace types
