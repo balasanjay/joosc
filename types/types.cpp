@@ -33,13 +33,21 @@ Error* MakeMissingPredefError(const string& msg) {
 }
 
 bool VerifyTypeSet(const TypeSet& typeset, ErrorList* out) {
-  const vector<string> lang_classes =
-    {"Boolean", "Byte", "Character", "Integer", "Object", "Short", "String"};
+  const vector<string> stdlib_types = {
+    "java.io.Serializable",
+    "java.lang.Boolean",
+    "java.lang.Byte",
+    "java.lang.Character",
+    "java.lang.Cloneable",
+    "java.lang.Integer",
+    "java.lang.Object",
+    "java.lang.Short",
+    "java.lang.String",
+  };
   bool ok = true;
-  for (const string& name : lang_classes) {
-    const string& full_name = "java.lang." + name;
-    if (typeset.TryGet(full_name) == TypeId::kUnassigned) {
-      out->Append(MakeMissingPredefError("class " + full_name));
+  for (const string& name : stdlib_types) {
+    if (typeset.TryGet(name) == TypeId::kUnassigned) {
+      out->Append(MakeMissingPredefError("class " + name));
       ok = false;
     }
   }
@@ -76,8 +84,14 @@ TypeSet BuildTypeSet(const Program& prog, ErrorList* out) {
 TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, sptr<const Program> prog,
                              sptr<const Program>* new_prog, ErrorList* error_out) {
   TypeId object_tid = typeset.TryGet("java.lang.Object");
+  TypeId serializable_tid = typeset.TryGet("java.io.Serializable");
+  TypeId cloneable_tid = typeset.TryGet("java.lang.Cloneable");
+
   CHECK(object_tid.IsValid());
-  TypeInfoMapBuilder builder(object_tid);
+  CHECK(serializable_tid.IsValid());
+  CHECK(cloneable_tid.IsValid());
+
+  TypeInfoMapBuilder builder(object_tid, serializable_tid, cloneable_tid);
   DeclResolver resolver(&builder, typeset, error_out);
 
   *new_prog = resolver.Rewrite(prog);
