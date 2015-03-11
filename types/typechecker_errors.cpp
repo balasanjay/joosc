@@ -4,16 +4,15 @@
 #include "base/error.h"
 #include "types/types_internal.h"
 
-using ast::TypeId;
 using base::Error;
 using base::PosRange;
 
 namespace types {
 
-Error* TypeChecker::MakeTypeMismatchError(TypeId expected, TypeId got, PosRange pos) {
+Error* TypeChecker::MakeTypeMismatchError(string expected, string got, PosRange pos) {
   // TODO: lookup expected and got in typeinfo_ and get a name.
   stringstream ss;
-  ss << "Type mismatch; expected " << expected.base << ", got " << got.base << ".";
+  ss << "Type mismatch; expected " << expected << ", got " << got << ".";
   return MakeSimplePosRangeError(pos, "TypeMismatchError", ss.str());
 }
 
@@ -21,17 +20,17 @@ Error* TypeChecker::MakeIndexNonArrayError(PosRange pos) {
   return MakeSimplePosRangeError(pos, "IndexNonArrayError", "Cannot index non-array.");
 }
 
-Error* TypeChecker::MakeIncompatibleCastError(TypeId lhs, TypeId rhs, PosRange pos) {
+Error* TypeChecker::MakeIncompatibleCastError(string lhs, string rhs, PosRange pos) {
   // TODO: lookup lhs and rhs in typeinfo_ and get a name.
   stringstream ss;
-  ss << "Incompatible types in cast, " << lhs.base << " and " << rhs.base << ".";
+  ss << "Incompatible types in cast, " << lhs << " and " << rhs << ".";
   return MakeSimplePosRangeError(pos, "IncompatibleCastError", ss.str());
 }
 
-Error* TypeChecker::MakeIncompatibleInstanceOfError(TypeId lhs, TypeId rhs, PosRange pos) {
+Error* TypeChecker::MakeIncompatibleInstanceOfError(string lhs, string rhs, PosRange pos) {
   // TODO: lookup lhs and rhs in typeinfo_ and get a name.
   stringstream ss;
-  ss << "Incompatible types in instanceof, " << lhs.base << " and " << rhs.base << ".";
+  ss << "Incompatible types in instanceof, " << lhs << " and " << rhs << ".";
   return MakeSimplePosRangeError(pos, "IncompatibleInstanceOfError", ss.str());
 }
 
@@ -43,42 +42,42 @@ Error* TypeChecker::MakeNoStringError(PosRange pos) {
   return MakeSimplePosRangeError(pos, "NoStringError", "Unknown type java.lang.String.");
 }
 
-Error* TypeChecker::MakeUnaryNonNumericError(TypeId rhs, PosRange pos) {
+Error* TypeChecker::MakeUnaryNonNumericError(string rhs, PosRange pos) {
   // TODO: lookup rhs in typeinfo_ and get a name.
   stringstream ss;
-  ss << "Incompatible types in unary expr; expected numeric type, got " << rhs.base << ".";
+  ss << "Incompatible types in unary expr; expected numeric type, got " << rhs << ".";
   return MakeSimplePosRangeError(pos, "UnaryNonNumericError", ss.str());
 }
 
-Error* TypeChecker::MakeUnaryNonBoolError(TypeId rhs, PosRange pos) {
+Error* TypeChecker::MakeUnaryNonBoolError(string rhs, PosRange pos) {
   // TODO: lookup rhs in typeinfo_ and get a name.
   stringstream ss;
-  ss << "Incompatible types in unary expr; expected boolean, got " << rhs.base << ".";
+  ss << "Incompatible types in unary expr; expected boolean, got " << rhs << ".";
   return MakeSimplePosRangeError(pos, "UnaryNonBoolError", ss.str());
 }
 
-Error* TypeChecker::MakeUnassignableError(TypeId lhs, TypeId rhs, PosRange pos) {
+Error* TypeChecker::MakeUnassignableError(string lhs, string rhs, PosRange pos) {
   // TODO: lookup lhs and rhs in typeinfo_ and get a name.
   stringstream ss;
-  ss << "Cannot assign " << rhs.base << " to " << lhs.base << ".";
+  ss << "Cannot assign " << rhs << " to " << lhs << ".";
   return MakeSimplePosRangeError(pos, "UnassignableError", ss.str());
 }
 
-Error* TypeChecker::MakeInvalidReturnError(TypeId ret, TypeId expr, PosRange pos) {
-  if (ret.base == TypeId::kVoidBase) {
+Error* TypeChecker::MakeInvalidReturnError(string ret, string expr, PosRange pos) {
+  if (ret == "void") {
     return MakeSimplePosRangeError(pos, "InvalidReturnError", "Cannot return expression in void method or constructor.");
   }
 
   // TODO: lookup ret and expr in typeinfo_ and get a name.
   stringstream ss;
-  ss << "Cannot return " << expr.base << " in method returning " << ret.base << ".";
+  ss << "Cannot return " << expr << " in method returning " << ret << ".";
   return MakeSimplePosRangeError(pos, "InvalidReturnError", ss.str());
 }
 
-Error* TypeChecker::MakeIncomparableTypeError(TypeId lhs, TypeId rhs, PosRange pos) {
+Error* TypeChecker::MakeIncomparableTypeError(string lhs, string rhs, PosRange pos) {
   // TODO: lookup lhs and rhs in typeinfo_ and get a name.
   stringstream ss;
-  ss << "Cannot compare " << lhs.base << " with " << rhs.base << ".";
+  ss << "Cannot compare " << lhs << " with " << rhs << ".";
   return MakeSimplePosRangeError(pos, "IncomparableTypeError", ss.str());
 }
 

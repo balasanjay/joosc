@@ -243,6 +243,28 @@ public:
     return info->second;
   }
 
+  const string LookupTypeName(ast::TypeId tid) const {
+    CHECK(tid != ast::TypeId::kUnassigned);
+    CHECK(tid != ast::TypeId::kError);
+
+    stringstream ss;
+    switch (tid.base) {
+      case ast::TypeId::kNullBase:  ss << "null"; break;
+      case ast::TypeId::kTypeBase:  ss << "type"; break;
+      case ast::TypeId::kVoidBase:  ss << "void"; break;
+      case ast::TypeId::kBoolBase:  ss << "boolean"; break;
+      case ast::TypeId::kByteBase:  ss << "byte"; break;
+      case ast::TypeId::kCharBase:  ss << "char"; break;
+      case ast::TypeId::kShortBase: ss << "short"; break;
+      case ast::TypeId::kIntBase:   ss << "int"; break;
+      default: ss << LookupTypeInfo({tid.base, 0}).name;
+    }
+    for (u64 i = 0; i < tid.ndims; ++i) {
+      ss << "[]";
+    }
+    return ss.str();
+  }
+
   bool IsAncestor(ast::TypeId child, ast::TypeId ancestor) const;
 
 private:

@@ -14,7 +14,6 @@ using std::sort;
 using std::transform;
 
 using ast::ImportDecl;
-using ast::TypeId;
 using base::DiagnosticClass;
 using base::Error;
 using base::ErrorList;
