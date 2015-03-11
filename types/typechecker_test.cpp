@@ -276,7 +276,36 @@ TEST_F(TypeCheckerTest, IntLitExpr) {
 }
 
 // TODO: NameExpr
-// TODO: FieldDerefExpr
+
+TEST_F(TypeCheckerTest, FieldDerefExprOk) {
+  ParseProgram({
+    {"A.java", "public class A { public A() {} public int i; public int foo() { A a = new A(); return a.i; } }"},
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, FieldDerefExprOnPrimitive) {
+  ParseProgram({
+    {"A.java", "public class A { public A() {} public int i; public int foo() { return i.i; } }"},
+  });
+  EXPECT_ERRS("MemberAccessOnPrimitiveError(0:73)\n");
+}
+
+TEST_F(TypeCheckerTest, FieldDerefExprStaticNoType) {
+  ParseProgram({
+    {"A.java", "public class A { public int foo() { return B.i; } }"},
+  });
+  EXPECT_ERRS("UndefinedReferenceError(0:43)\n");
+}
+
+TEST_F(TypeCheckerTest, FieldDerefExprBadResolve) {
+  ParseProgram({
+    {"A.java", "package foo; public class A { public A() {} public int foo() { return B.i; } }"},
+    {"B.java", "public class B { protected static int i; }"},
+  });
+  EXPECT_ERRS("UndefinedReferenceError(0:70)\n");
+}
+
 // TODO: CallExpr
 
 // TODO: NewArrayExpr
