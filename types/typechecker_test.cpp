@@ -276,6 +276,10 @@ TEST_F(TypeCheckerTest, IntLitExpr) {
 }
 
 // TODO: NameExpr
+// TODO: FieldDerefExpr
+// TODO: CallExpr
+
+// TODO: NewArrayExpr
 
 TEST_F(TypeCheckerTest, NewClassExpr) {
   ParseProgram({
@@ -584,6 +588,6 @@ TEST_F(TypeCheckerTest, FieldDeclStaticThis) {
   EXPECT_ERRS("ThisInStaticMemberError(0:15-19)\n");
 }
 
-// Note: InstanceOf, Cast, and BinExpr assign are tested in typechecker_hierarchy_test.cpp.
+// NOTE: InstanceOf, Cast, and BinExpr assign are tested in typechecker_hierarchy_test.cpp.
 
 }  // namespace types
