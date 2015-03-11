@@ -49,7 +49,7 @@ class TypeCheckerTest : public ::testing::Test {
     vector<vector<lexer::Token>> alltokens;
     lexer::LexJoosFiles(fs, &alltokens, &errors_);
 
-    // Remote comments and whitespace.
+    // Remove comments and whitespace.
     lexer::StripSkippableTokens(alltokens, &tokens);
 
     // Make sure it worked.
@@ -99,8 +99,6 @@ class TypeCheckerTest : public ::testing::Test {
 };
 
 // TODO: ArrayIndexExpr
-
-// TODO: BinExpr
 
 TEST_F(TypeCheckerTest, BinExprLhsFail) {
   sptr<const Expr> before = ParseExpr("(-null) + 3");
@@ -229,8 +227,6 @@ TEST_F(TypeCheckerTest, BoolLitExpr) {
   EXPECT_NO_ERRS();
 }
 
-// TODO: CallExpr
-
 TEST_F(TypeCheckerTest, CastExprNullptr) {
   sptr<const Expr> before = ParseExpr("(int)(1 + null)");
   auto after = typeChecker_->Rewrite(before);
@@ -271,30 +267,6 @@ TEST_F(TypeCheckerTest, CharLitExpr) {
   EXPECT_NO_ERRS();
 }
 
-// TODO: FieldDerefExpr
-
-TEST_F(TypeCheckerTest, InstanceOfWorks) {
-  ParseProgram({
-      {"F.java", "public class F{public F() {} public boolean f() { return new F() instanceof F; } }"}
-  });
-  EXPECT_NO_ERRS();
-}
-
-TEST_F(TypeCheckerTest, InstanceOfPrimitive) {
-  ParseProgram({
-      {"F.java", "public class F { public boolean f() { return 1 instanceof int; } }"}
-  });
-  EXPECT_ERRS("InvalidInstanceOfTypeError(0:47-57)\n");
-}
-
-TEST_F(TypeCheckerTest, InstanceOfExprUncastable) {
-  ParseProgram({
-      {"F.java", "public class F{ public F() {} }"},
-      {"G.java", "public class G{ public boolean g() { return new F() instanceof G; } }"}
-  });
-  EXPECT_ERRS("IncompatibleInstanceOfError(1:44-64)\n");
-}
-
 TEST_F(TypeCheckerTest, IntLitExpr) {
   sptr<const Expr> before = ParseExpr("0");
   auto after = typeChecker_->Rewrite(before);
@@ -304,6 +276,8 @@ TEST_F(TypeCheckerTest, IntLitExpr) {
 }
 
 // TODO: NameExpr
+// TODO: FieldDerefExpr
+// TODO: CallExpr
 
 // TODO: NewArrayExpr
 
@@ -614,32 +588,6 @@ TEST_F(TypeCheckerTest, FieldDeclStaticThis) {
   EXPECT_ERRS("ThisInStaticMemberError(0:15-19)\n");
 }
 
-// TODO: FieldDecl
-
-// TODO: MethodDecl
-
-// TODO: TypeDecl
-
-// TODO: CompUnit
-
-TEST(TypeCheckerUtilTest, IsCastablePrimitives) {
-  TypeChecker typeChecker(nullptr);
-  auto numTids = {TypeId::kInt, TypeId::kChar, TypeId::kShort, TypeId::kByte};
-  for (TypeId tidA : numTids) {
-    for (TypeId tidB : numTids) {
-      EXPECT_TRUE(typeChecker.IsCastable(tidA, tidB));
-    }
-  }
-  EXPECT_TRUE(typeChecker.IsCastable(TypeId::kBool, TypeId::kBool));
-}
-
-TEST_F(TypeCheckerTest, IsCastableReference) {
-  ParseProgram({
-    {"A.java", "public class A { public A() {} }"},
-    {"B.java", "public class B extends A { public B() {} }"},
-    {"C.java", "public class C { public void foo() { B b = new B(); A a = (A)b; } }"},
-  });
-  EXPECT_NO_ERRS();
-}
+// NOTE: InstanceOf, Cast, and BinExpr assign are tested in typechecker_hierarchy_test.cpp.
 
 }  // namespace types

@@ -45,7 +45,7 @@ class ParserTest : public ::testing::Test {
     vector<vector<lexer::Token>> alltokens;
     lexer::LexJoosFiles(fs, &alltokens, &errors);
 
-    // Remote comments and whitespace.
+    // Remove comments and whitespace.
     lexer::StripSkippableTokens(alltokens, &tokens);
 
     // Make sure it worked.

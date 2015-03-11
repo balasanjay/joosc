@@ -142,6 +142,11 @@ bool TypeChecker::IsAssignable(TypeId lhs, TypeId rhs) const {
     return true;
   }
 
+  // If both arrays are of same dimension, recurse on their base types.
+  if (lhs.ndims == rhs.ndims && lhs.ndims > 0) {
+    return IsAssignable(TypeId{lhs.base, 0}, TypeId{rhs.base, 0});
+  }
+
   // Widening primitive conversion.
   if (IsPrimitiveWidening(lhs, rhs)) {
     return true;
