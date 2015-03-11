@@ -25,6 +25,9 @@ TypeId TypeChecker::JavaLangType(const string& name) const {
 }
 
 bool TypeChecker::IsNumeric(TypeId tid) const {
+  if (tid.ndims != 0) {
+    return false;
+  }
   switch (tid.base) {
     case TypeId::kByteBase:
     case TypeId::kCharBase:
@@ -37,6 +40,10 @@ bool TypeChecker::IsNumeric(TypeId tid) const {
 }
 
 bool TypeChecker::IsPrimitive(TypeId tid) const {
+  // All arrays are reference types.
+  if (tid.ndims != 0) {
+    return false;
+  }
   switch (tid.base) {
     case TypeId::kBoolBase:
     case TypeId::kByteBase:
