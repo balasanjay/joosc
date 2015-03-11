@@ -131,7 +131,7 @@ Error* MakeResolveMethodTableError(const TypeInfo& mtinfo, const MethodInfo& mmi
 
 } // namespace
 
-TypeInfoMap TypeInfoMap::kEmptyTypeInfoMap = TypeInfoMap{{}};
+TypeInfoMap TypeInfoMap::kEmptyTypeInfoMap = TypeInfoMap{{}, TypeId::kError};
 TypeInfo TypeInfoMap::kErrorTypeInfo = TypeInfo{{}, TypeKind::CLASS, TypeId::kError, "", "", kFakePos, TypeIdList({}), TypeIdList({}), MethodTable::kErrorMethodTable, FieldTable::kErrorFieldTable, 0};
 
 MethodTable MethodTable::kEmptyMethodTable = MethodTable({}, {}, false);
@@ -141,6 +141,27 @@ MethodInfo MethodTable::kErrorMethodInfo = MethodInfo{kErrorMethodId, TypeId::kE
 FieldTable FieldTable::kEmptyFieldTable = FieldTable({}, {});
 FieldTable FieldTable::kErrorFieldTable = FieldTable();
 FieldInfo FieldTable::kErrorFieldInfo = FieldInfo{kErrorFieldId, TypeId::kError, {}, TypeId::kError, kFakePos, ""};
+
+TypeInfoMapBuilder::TypeInfoMapBuilder(TypeId object_tid, TypeId serializable_tid, TypeId cloneable_tid) : object_tid_(object_tid) {
+  // Create array type.
+  array_tid_ = TypeId{object_tid_.base, 1};
+  PutType(
+      array_tid_,
+      MakeModifierList(false, false, false),
+      ast::TypeKind::CLASS,
+      "array", "", kFakePos,
+      {object_tid_},
+      {serializable_tid, cloneable_tid});
+  PutField(
+      array_tid_,
+      FieldInfo{
+        kArrayLengthFieldId,
+        array_tid_,
+        MakeModifierList(false, false, false),
+        TypeId::kInt,
+        kFakePos,
+        "length"});
+}
 
 Error* TypeInfoMapBuilder::MakeConstructorNameError(PosRange pos) const {
   return MakeSimplePosRangeError(pos, "ConstructorNameError", "Constructors must have the same name as its class.");
@@ -600,7 +621,7 @@ TypeInfoMap TypeInfoMapBuilder::Build(base::ErrorList* out) {
     typeinfo.at(type_id) = TypeInfoMap::kErrorTypeInfo;
   }
 
-  return TypeInfoMap(typeinfo);
+  return TypeInfoMap(typeinfo, array_tid_);
 }
 
 void TypeInfoMapBuilder::ValidateExtendsImplementsGraph(map<TypeId, TypeInfo>* types, set<TypeId>* bad, ErrorList* errors) {

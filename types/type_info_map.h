@@ -235,7 +235,7 @@ public:
 
   const TypeInfo& LookupTypeInfo(ast::TypeId tid) const {
     if (tid.ndims > 0) {
-      return kArrayTypeInfo;
+      tid = array_tid_;
     }
 
     const auto info = type_info_.find(tid);
@@ -254,20 +254,7 @@ private:
   // TODO: Make safe for parallel compilation.
   using InheritMap = map<pair<ast::TypeId, ast::TypeId>, bool>;
 
-  TypeInfoMap(const TypeMap& typeinfo) : type_info_(typeinfo),
-    kArrayTypeInfo({
-      MakeModifierList(false, false, false),
-      ast::TypeKind::CLASS,
-      ast::TypeId{ast::TypeId::kErrorBase, 1},
-      "array",
-      "",
-      base::PosRange(-1, -1, -1),
-      TypeIdList({}),
-      TypeIdList({}),
-      MethodTable({}, {}, false),
-      FieldTable({{"length", FieldInfo{kArrayLengthFieldId, ast::TypeId{ast::TypeId::kErrorBase, 1}, MakeModifierList(false, false, false), ast::TypeId::kInt, base::PosRange(-1, -1, -1), "length"}}}, {}),
-      0
-    }) {}
+  TypeInfoMap(const TypeMap& typeinfo, ast::TypeId array_tid) : type_info_(typeinfo), array_tid_(array_tid) {}
 
   bool IsAncestorRec(ast::TypeId child, ast::TypeId ancestor) const;
 
@@ -275,20 +262,20 @@ private:
   static TypeInfo kErrorTypeInfo;
 
   TypeMap type_info_;
+  ast::TypeId array_tid_;
   mutable InheritMap inherit_map_;
-  TypeInfo kArrayTypeInfo;
 };
 
 class TypeInfoMapBuilder {
 public:
-  TypeInfoMapBuilder(ast::TypeId object_tid) : object_tid_(object_tid) {}
+  TypeInfoMapBuilder(ast::TypeId object_tid, ast::TypeId serializable_tid, ast::TypeId cloneable_tid);
 
   void PutType(ast::TypeId tid, const ast::ModifierList& mods, ast::TypeKind kind, const string& name, const string& package, base::PosRange pos, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
-    CHECK(tid.ndims == 0);
     type_entries_.push_back(TypeInfo{mods, kind, tid, name, package, pos, TypeIdList(extends), TypeIdList(implements), MethodTable::kEmptyMethodTable, FieldTable::kEmptyFieldTable, tid.base});
   }
 
   void PutType(ast::TypeId tid, const ast::TypeDecl& type, const string& package, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
+    CHECK(tid.ndims == 0);
     PutType(tid, type.Mods(), type.Kind(), type.Name(), package, type.NameToken().pos, extends, implements);
   }
 
@@ -339,6 +326,7 @@ private:
   base::Error* MakeExtendsCycleError(const vector<TypeInfo>& cycle) const;
 
   ast::TypeId object_tid_;
+  ast::TypeId array_tid_;
   vector<TypeInfo> type_entries_;
   multimap<ast::TypeId, MethodInfo> method_entries_;
   multimap<ast::TypeId, FieldInfo> field_entries_;
