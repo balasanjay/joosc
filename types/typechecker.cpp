@@ -264,6 +264,11 @@ REWRITE_DEFN(TypeChecker, CallExpr, Expr, expr,) {
 
   TypeId lhs_tid = lhs->GetTypeId();
 
+  if (lhs_tid == TypeId::kVoid) {
+    errors_->Append(MakeVoidInExprError(ExtentOf(lhs)));
+    return nullptr;
+  }
+
   if (IsPrimitive(lhs_tid)) {
     errors_->Append(MakeMemberAccessOnPrimitiveError(lhs_tid, field_deref->GetToken().pos));
     return nullptr;
@@ -383,6 +388,10 @@ REWRITE_DEFN(TypeChecker, FieldDerefExpr, Expr, expr,) {
   }
 
   if (!base_tid.IsValid()) {
+    return nullptr;
+  }
+  if (base_tid == TypeId::kVoid) {
+    errors_->Append(MakeVoidInExprError(ExtentOf(base)));
     return nullptr;
   }
 
