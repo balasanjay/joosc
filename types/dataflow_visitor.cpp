@@ -1,9 +1,13 @@
 #include "types/dataflow_visitor.h"
 
 #include "base/error.h"
+#include "ast/extent.h"
 
+using ast::Expr;
 using ast::FieldDerefExpr;
 using ast::FieldId;
+using ast::EmptyStmt;
+using ast::Stmt;
 using ast::ThisExpr;
 using ast::TypeId;
 using ast::VisitResult;
@@ -18,6 +22,16 @@ using base::PosRange;
 namespace types {
 
 namespace {
+
+bool IsConstantBool(sptr<const Expr> expr, bool want) {
+  // TODO: Constant folding.
+  const ast::BoolLitExpr* bool_expr = dynamic_cast<const ast::BoolLitExpr*>(expr.get());
+  if (bool_expr == nullptr) {
+    return false;
+  }
+  bool is_true = (bool_expr->GetToken().type == lexer::K_TRUE);
+  return is_true == want;
+}
 
 Error* MakeFieldOrderError(PosRange usage, PosRange decl) {
   return MakeError([=](std::ostream* out, const OutputOptions& opt, const FileSet* fs) {
@@ -96,6 +110,128 @@ class FieldOrderVisitor final : public ast::Visitor {
   FieldId curfield_;
 };
 
+class ReachabilityVisitor final : public ast::Visitor {
+ public:
+  ReachabilityVisitor(ErrorList* errors) : errors_(errors) {}
+
+  VISIT_DECL(BlockStmt, stmt,) {
+    for (const auto& substmt : stmt.Stmts().Vec()) {
+      CheckReachable(substmt);
+      Visit(substmt);
+    }
+    may_emit_ = true;
+
+    return VisitResult::SKIP;
+  }
+
+  VISIT_DECL(ReturnStmt,,) {
+    reachable_ = false;
+    return VisitResult::SKIP;
+  }
+
+  VISIT_DECL(IfStmt, stmt,) {
+    ReachabilityVisitor true_visitor = Nested();
+    true_visitor.Visit(stmt.TrueBodyPtr());
+
+    ReachabilityVisitor false_visitor = Nested();
+    false_visitor.Visit(stmt.FalseBodyPtr());
+
+    // Code after this if is unreachable if both branches return.
+    reachable_ = (true_visitor.reachable_ || false_visitor.reachable_);
+
+    return VisitResult::SKIP;
+  }
+
+  VISIT_DECL(ForStmt, stmt,) {
+    return VisitLoop(stmt.CondPtr(), stmt.BodyPtr());
+  }
+
+  VISIT_DECL(WhileStmt, stmt,) {
+    return VisitLoop(stmt.CondPtr(), stmt.BodyPtr());
+  }
+
+  VISIT_DECL(MethodDecl, member,) {
+    sptr<const Stmt> body = member.BodyPtr();
+    if (dynamic_cast<const EmptyStmt*>(body.get()) != nullptr) {
+      return VisitResult::SKIP;
+    }
+
+    Visit(body);
+
+    bool is_void = (member.TypePtr() == nullptr || (member.TypePtr()->GetTypeId() == TypeId::kVoid));
+    if (reachable_ && !is_void) {
+      errors_->Append(MakeSimplePosRangeError(member.NameToken().pos, "MethodNeedsReturnError", "Can reach end of method without returning a value."));
+    }
+
+    return VisitResult::SKIP;
+  }
+
+ private:
+  ReachabilityVisitor Nested() {
+    return Nested(reachable_, may_emit_);
+  }
+
+  ReachabilityVisitor Nested(bool reachable, bool may_emit) {
+    ReachabilityVisitor v(errors_);
+    v.reachable_ = reachable;
+    v.may_emit_ = may_emit;
+    return v;
+  }
+
+  template <typename T>
+  void CheckReachable(T t) {
+    if (!reachable_ && may_emit_) {
+      may_emit_ = false;
+      errors_->Append(MakeSimplePosRangeError(ExtentOf(t), "UnreachableCodeError", "Unreachable code."));
+    }
+  }
+
+  VisitResult VisitLoop(sptr<const Expr> cond, sptr<const Stmt> body) {
+    bool is_const = true;
+    bool const_val = true;
+
+    if (cond != nullptr) {
+      if (IsConstantBool(cond, true)) {
+        const_val = true;
+      } else if (IsConstantBool(cond, false)) {
+        const_val = false;
+      } else {
+        is_const = false;
+      }
+    }
+
+    // Can't enter loop.
+    if (is_const && !const_val) {
+      ReachabilityVisitor nested = Nested(false, may_emit_);
+      nested.CheckReachable(body);
+      reachable_ = true;
+      return VisitResult::SKIP;
+    }
+
+    // Infinite loop but might return inside.
+    if (is_const && const_val) {
+      ReachabilityVisitor nested = Nested();
+      nested.Visit(body);
+      reachable_ = false;
+      return VisitResult::SKIP;
+    }
+
+    // Might run, might not; might exit, might not.
+    CHECK(!is_const);
+    ReachabilityVisitor nested = Nested();
+    nested.Visit(body);
+
+    // We might exit from the loop or skip it if it has a return, so propagate same reachability.
+
+    return VisitResult::SKIP;
+  }
+
+  ErrorList* errors_;
+  bool reachable_ = true;
+  bool may_emit_ = true;
+};
+
+
 } // namespace
 
 
@@ -117,8 +253,9 @@ VISIT_DEFN(DataflowVisitor, FieldDecl, decl, declptr) {
   return VisitResult::SKIP;
 }
 
-VISIT_DEFN(DataflowVisitor, MethodDecl, ,) {
-  // TODO: Check statement reachability with another visitor.
+VISIT_DEFN(DataflowVisitor, MethodDecl, , declptr) {
+  ReachabilityVisitor nested(errors_);
+  nested.Visit(declptr);
   return VisitResult::SKIP;
 }
 
