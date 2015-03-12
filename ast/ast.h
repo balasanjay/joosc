@@ -293,6 +293,14 @@ class ThisExpr : public Expr {
  public:
   ThisExpr(lexer::Token thisTok, TypeId tid = TypeId::kUnassigned) : Expr(tid), thisTok_(thisTok) {}
 
+  static sptr<const ThisExpr> ImplicitThis(base::PosRange pos, TypeId tid) {
+    return make_shared<ThisExpr>(lexer::Token(lexer::K_THIS, base::PosRange(pos.fileid, pos.begin, pos.begin)), tid);
+  }
+
+  bool IsImplicit() const {
+    return (thisTok_.pos.end - thisTok_.pos.begin) == 0;
+  }
+
   ACCEPT_VISITOR(ThisExpr, Expr);
 
   VAL_GETTER(lexer::Token, ThisToken, thisTok_);

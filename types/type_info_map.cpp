@@ -476,11 +476,17 @@ void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeIn
 
 // Builds valid FieldTables for a TypeInfo. Emits errors if fields for the type are invalid.
 void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInfo* tinfo, FieldId* cur_fid, const map<TypeId, TypeInfo>& sofar, ErrorList* out) {
+  // Assign field ids in source-code order.
+  for (auto cur = begin; cur != end; ++cur) {
+    cur->fid = *cur_fid;
+    ++(*cur_fid);
+  }
+
   // Sort all FieldInfo to cluster them by name.
   auto lt_cmp = [](const FieldInfo& lhs, const FieldInfo& rhs) {
     return lhs.name < rhs.name;
   };
-  // TODO: Assign field ids in source code order, not lexicographical order.
+
   stable_sort(begin, end, lt_cmp);
 
   FieldTable::FieldNameMap good_fields;
@@ -495,10 +501,7 @@ void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInf
     auto cb = [&](FInfoCIter lbegin, FInfoCIter lend, i64 ndups) {
       // Add non-duplicate FieldInfo to the FieldTable.
       if (ndups == 1) {
-        FieldInfo new_info = *lbegin;
-        new_info.fid = *cur_fid;
-        good_fields.insert({new_info.name, new_info});
-        ++(*cur_fid);
+        good_fields.insert({lbegin->name, *lbegin});
         return;
       }
 
