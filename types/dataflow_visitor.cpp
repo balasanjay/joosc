@@ -118,7 +118,7 @@ VISIT_DEFN(DataflowVisitor, FieldDecl, decl, declptr) {
 }
 
 VISIT_DEFN(DataflowVisitor, MethodDecl, ,) {
-  // TODO: Check statment reachability with another visitor.
+  // TODO: Check statement reachability with another visitor.
   return VisitResult::SKIP;
 }
 
