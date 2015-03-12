@@ -913,6 +913,7 @@ Parser Parser::ParseBlock(Result<Stmt>* out) const {
     return Fail(MakeUnexpectedTokenError(GetNext()), out);
   }
 
+  Token lbrace = GetNext();
   Parser cur = Advance();
   while (!cur.IsNext(RBRACE)) {
     {
@@ -941,7 +942,8 @@ Parser Parser::ParseBlock(Result<Stmt>* out) const {
     }
   }
 
-  return cur.Advance().Success(new BlockStmt(stmts), out);
+  Token rbrace = cur.GetNext();
+  return cur.Advance().Success(new BlockStmt(lbrace, stmts, rbrace), out);
 }
 
 Parser Parser::ParseIfStmt(Result<Stmt>* out) const {

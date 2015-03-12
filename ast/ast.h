@@ -521,16 +521,21 @@ class ExprStmt : public Stmt {
 
 class BlockStmt : public Stmt {
  public:
-  BlockStmt(const base::SharedPtrVector<const Stmt>& stmts)
-      : stmts_(stmts) {}
+  BlockStmt(lexer::Token lbrace, const base::SharedPtrVector<const Stmt>& stmts, lexer::Token rbrace)
+      : lbrace_(lbrace), stmts_(stmts), rbrace_(rbrace) {}
 
   ACCEPT_VISITOR(BlockStmt, Stmt);
 
+  VAL_GETTER(lexer::Token, Lbrace, lbrace_);
   REF_GETTER(base::SharedPtrVector<const Stmt>, Stmts, stmts_);
+  VAL_GETTER(lexer::Token, Rbrace, rbrace_);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BlockStmt);
+
+  lexer::Token lbrace_;
   base::SharedPtrVector<const Stmt> stmts_;
+  lexer::Token rbrace_;
 };
 
 class IfStmt : public Stmt {

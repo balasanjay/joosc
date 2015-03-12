@@ -233,7 +233,7 @@ REWRITE_DEFN(Visitor, BlockStmt, Stmt, stmt, stmtptr) {
     return stmtptr;
   }
 
-  return make_shared<BlockStmt>(newStmts);
+  return make_shared<BlockStmt>(stmt.Lbrace(), newStmts, stmt.Rbrace());
 }
 
 REWRITE_DEFN(Visitor, EmptyStmt, Stmt, stmt, stmtptr) {

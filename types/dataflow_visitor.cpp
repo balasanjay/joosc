@@ -6,6 +6,7 @@
 using ast::Expr;
 using ast::FieldDerefExpr;
 using ast::FieldId;
+using ast::EmptyStmt;
 using ast::Stmt;
 using ast::ThisExpr;
 using ast::TypeId;
@@ -23,6 +24,7 @@ namespace types {
 namespace {
 
 bool IsConstantBool(sptr<const Expr> expr, bool want) {
+  // TODO: Constant folding.
   const ast::BoolLitExpr* bool_expr = dynamic_cast<const ast::BoolLitExpr*>(expr.get());
   if (bool_expr == nullptr) {
     return false;
@@ -146,6 +148,22 @@ class ReachabilityVisitor final : public ast::Visitor {
 
   VISIT_DECL(WhileStmt, stmt,) {
     return VisitLoop(stmt.CondPtr(), stmt.BodyPtr());
+  }
+
+  VISIT_DECL(MethodDecl, member,) {
+    sptr<const Stmt> body = member.BodyPtr();
+    if (dynamic_cast<const EmptyStmt*>(body.get()) != nullptr) {
+      return VisitResult::SKIP;
+    }
+
+    Visit(body);
+
+    bool is_void = member.TypePtr() == nullptr || member.TypePtr()->GetTypeId() == TypeId::kVoid;
+    if (reachable_ && !is_void) {
+      errors_->Append(MakeSimplePosRangeError(member.NameToken().pos, "MethodNeedsReturnError", "Can reach end of method without returning a value."));
+    }
+
+    return VisitResult::SKIP;
   }
 
  private:
