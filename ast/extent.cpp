@@ -110,6 +110,22 @@ class ExtentVisitor final : public Visitor {
     return VisitResult::SKIP;
   }
 
+  VISIT_DECL(BlockStmt, stmt,) {
+    UpdatePos(stmt.Lbrace().pos);
+    UpdatePos(stmt.Rbrace().pos);
+    return VisitResult::SKIP;
+  }
+
+  VISIT_DECL(ReturnStmt, stmt,) {
+    UpdatePos(stmt.ReturnToken().pos);
+    return VisitResult::RECURSE;
+  }
+
+  VISIT_DECL(EmptyStmt, stmt,) {
+    UpdatePos(stmt.Semi().pos);
+    return VisitResult::SKIP;
+  }
+
  private:
   void UpdatePosFromType(const Type& type) {
     if (IS_CONST_REF(ArrayType, type)) {
@@ -160,6 +176,7 @@ PosRange ExtentOf(sptr<const Expr> expr) {
 PosRange ExtentOf(sptr<const Stmt> stmt) {
   ExtentVisitor visitor;
   visitor.Visit(stmt);
+  CHECK(visitor.Extent().fileid != -1);
   return visitor.Extent();
 }
 
