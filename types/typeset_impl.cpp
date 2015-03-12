@@ -8,6 +8,7 @@
 
 using std::back_inserter;
 using std::count;
+using std::ostream;
 using std::sort;
 using std::transform;
 
@@ -16,7 +17,6 @@ using ast::TypeId;
 using base::DiagnosticClass;
 using base::Error;
 using base::ErrorList;
-using base::FileSet;
 using base::MakeError;
 using base::OutputOptions;
 using base::Pos;
@@ -26,24 +26,52 @@ namespace types {
 
 namespace {
 
-Error* MakeUnknownImportError(const FileSet* fs, PosRange pos) {
-  return MakeSimplePosRangeError(fs, pos, "UnknownImportError",
+Error* MakeUnknownImportError(PosRange pos) {
+  return MakeSimplePosRangeError(pos, "UnknownImportError",
                                  "Cannot find imported class.");
 }
 
-Error* MakeAmbiguousTypeError(const FileSet* fs, PosRange pos, const string& msg) {
-  return MakeSimplePosRangeError(fs, pos, "AmbiguousType", msg);
+Error* MakeAmbiguousTypeError(PosRange pos, const string& name, const vector<PosRange>& imports) {
+  return MakeError([=](ostream* out, const OutputOptions& opt, const base::FileSet* fs) {
+    if (opt.simple) {
+      *out << "AmbiguousTypeError:[";
+      for (auto pos : imports) {
+        *out << pos << ",";
+      }
+      *out << "]";
+      return;
+    }
+
+    string msg = "'" + name + "' is ambiguous.";
+    PrintDiagnosticHeader(out, opt, fs, pos, DiagnosticClass::ERROR, msg);
+    PrintRangePtr(out, opt, fs, pos);
+
+    for (auto import : imports) {
+      *out << '\n';
+
+      // If fileid == -1, then we conflicted with the implicit import of
+      // java.lang.*. Special-case this situation, and point the error back to
+      // the standard usage.
+      if (import.fileid == -1) {
+        string msg = "Implicitly imported from java.lang.";
+        PrintDiagnosticHeader(out, opt, fs, pos, DiagnosticClass::INFO, msg);
+        continue;
+      }
+
+      string msg = "Imported here.";
+      PrintDiagnosticHeader(out, opt, fs, import, DiagnosticClass::INFO, msg);
+      PrintRangePtr(out, opt, fs, import);
+    }
+  });
 }
 
-Error* MakeUnknownPackageError(const FileSet* fs, PosRange pos) {
-  return MakeSimplePosRangeError(fs, pos, "UnknownPackageError",
+Error* MakeUnknownPackageError(PosRange pos) {
+  return MakeSimplePosRangeError(pos, "UnknownPackageError",
                                  "Cannot find imported package.");
 }
 
-Error* MakePackageTypeAmbiguityError(const FileSet* fs, PosRange first, PosRange second) {
-  // TODO: use MakeError.
-  return MakeSimplePosRangeError(fs, first, "PackageTypeAmbiguityError",
-                                 "PackageTypeAmbiguity");
+Error* MakeTypeWithTypePrefixError(PosRange pos, const string& msg) {
+  return MakeSimplePosRangeError(pos, "TypeWithTypePrefixError", msg);
 }
 
 } // namespace
@@ -52,11 +80,13 @@ const int TypeSetImpl::kPkgPrefixLen = 3;
 const string TypeSetImpl::kUnnamedPkgPrefix = "<0>";
 const string TypeSetImpl::kNamedPkgPrefix = "<1>";
 
-TypeSetImpl::TypeSetImpl(const FileSet* fs, const set<string>& types, const set<string>& pkgs, const set<string>& bad_types) : fs_(fs), pkgs_(pkgs) {
+TypeSetImpl::TypeSetImpl(const map<string, PosRange>& types, const map<string, PosRange>& pkgs, const set<string>& bad_types) : pkgs_(pkgs) {
   // Insert all predefined types.
-#define INS(name, Name) \
-  types_[#name] = TypeId::k##Name##Base; \
-  visible_types2_.insert(TypeInfo{#name, TypeId::k##Name##Base, ImportScope::COMP_UNIT, #name})
+#define INS(name, Name) { \
+  TypeBase _base = TypeId::k##Name##Base; \
+  types_.insert({#name, make_pair(_base, kFakePos)}); \
+  visible_types_.insert(TypeInfo{#name, TypeId::k##Name##Base, ImportScope::COMP_UNIT, #name, kFakePos}); \
+}
 
   INS(void, Void);
   INS(boolean, Bool);
@@ -69,26 +99,27 @@ TypeSetImpl::TypeSetImpl(const FileSet* fs, const set<string>& types, const set<
 
   u64 i = TypeId::kFirstRefTypeBase;
   for (const auto& type : types) {
+    string type_name = type.first;
+    PosRange type_pos = type.second;
+
     TypeBase next = i;
     i++;
 
-    auto result = types_.insert(make_pair(type, next));
+    auto result = types_.insert({type_name, {next, type_pos}});
     // Verify that we didn't overwrite a key.
     CHECK(result.second);
   }
 
   for (const auto& bad_type : bad_types) {
-    TypeBase next = TypeId::kErrorBase;
-
-    auto result = types_.insert(make_pair(bad_type, next));
+    TypeBase error = TypeId::kErrorBase;
+    const string& type_name = bad_type;
+    auto result = types_.insert({type_name, {error, kFakePos}});
     // Verify that we didn't overwrite a key.
     CHECK(result.second);
   }
 }
 
-sptr<TypeSetImpl> TypeSetImpl::WithPackage(const string& package, base::ErrorList* errors) const {
-  static const PosRange fakepos(-1, -1, -1);
-
+sptr<TypeSetImpl> TypeSetImpl::WithPackage(const string& package, PosRange pos, base::ErrorList* errors) const {
   CHECK(pkg_prefix_ == "");
 
   string pkg = "";
@@ -102,7 +133,7 @@ sptr<TypeSetImpl> TypeSetImpl::WithPackage(const string& package, base::ErrorLis
 
   TypeSetImpl view(*this);
   view.pkg_prefix_ = pkg + ".";
-  view.InsertWildCard(ImportScope::PACKAGE, pkg, fakepos, errors);
+  view.InsertWildCard(ImportScope::PACKAGE, pkg, pos, errors);
   return sptr<TypeSetImpl>(new TypeSetImpl(view));
 }
 
@@ -118,8 +149,7 @@ sptr<TypeSetImpl> TypeSetImpl::WithImports(const vector<ast::ImportDecl>& import
   TypeSetImpl view(*this);
 
   if (pkgs_.count(kJavaLangPrefix) == 1) {
-    PosRange fake(-1, -1, -1);
-    view.InsertWildCard(ImportScope::WILDCARD, kJavaLangPrefix, fake, errors);
+    view.InsertWildCard(ImportScope::WILDCARD, kJavaLangPrefix, kFakePos, errors);
   }
 
   for (const auto& import : imports) {
@@ -138,15 +168,15 @@ sptr<TypeSetImpl> TypeSetImpl::WithImports(const vector<ast::ImportDecl>& import
 }
 
 auto TypeSetImpl::FindByShortName(const string& shortname) const -> pair<VisibleSet::const_iterator, VisibleSet::const_iterator> {
-  TypeInfo query = {shortname, 0, ImportScope::COMP_UNIT, ""};
-  auto iter = visible_types2_.lower_bound(query);
-  if (iter == visible_types2_.end()) {
+  TypeInfo query = {shortname, 0, ImportScope::COMP_UNIT, "", kFakePos};
+  auto iter = visible_types_.lower_bound(query);
+  if (iter == visible_types_.end()) {
     return make_pair(iter, iter);
   }
 
   auto start = iter;
   auto end = iter;
-  for (; end != visible_types2_.end(); ++end) {
+  for (; end != visible_types_.end(); ++end) {
     if (end->shortname != shortname) {
       break;
     }
@@ -164,21 +194,20 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
   // First, lookup this type.
   auto iter = types_.find(longname);
   if (iter == types_.end()) {
-    errors->Append(MakeUnknownImportError(fs_, pos));
+    errors->Append(MakeUnknownImportError(pos));
 
     // Erase both versions of the name.
     auto long_iter = FindByShortName(longname);
     auto short_iter = FindByShortName(shortname);
-    visible_types2_.erase(long_iter.first, long_iter.second);
-    visible_types2_.erase(short_iter.first, short_iter.second);
+    visible_types_.erase(long_iter.first, long_iter.second);
+    visible_types_.erase(short_iter.first, short_iter.second);
 
-    // Blacklist both versions of the name.
-    visible_types2_.insert(TypeInfo{longname, TypeId::kErrorBase, ImportScope::COMP_UNIT, longname});
-    visible_types2_.insert(TypeInfo{shortname, TypeId::kErrorBase, ImportScope::COMP_UNIT, longname});
+    // Blacklist the short name.
+    visible_types_.insert(TypeInfo{shortname, TypeId::kErrorBase, ImportScope::COMP_UNIT, longname, kFakePos});
     return;
   }
 
-  TypeBase base = iter->second;
+  TypeBase base = iter->second.first;
 
   // Lookup the shortname in the current visible set.
   VisibleSet::iterator begin;
@@ -186,31 +215,19 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
   std::tie(begin, end) = FindByShortName(shortname);
   size_t num_entries = std::distance(begin, end);
 
-  TypeInfo info = TypeInfo{shortname, base, scope, longname};
+  TypeInfo info = TypeInfo{shortname, base, scope, longname, pos};
 
-  // If this type is being blacklisted, then overwrite any entries with a
-  // blacklist entry.
+  // If this type has already been blacklisted, then overwrite any entries with
+  // a blacklist entry.
   if (base == TypeId::kErrorBase) {
-    visible_types2_.erase(begin, end);
-    visible_types2_.insert(info);
-  }
-
-  // If we import a type a.b.c, and there is another package c.d, then this
-  // would introduce an ambiguity when we see "c.d". The only exception to this
-  // rule is a wildcard import. In this case, we allow the import, but fail
-  // when the import is used.
-  auto types_iter = types_.find(kNamedPkgPrefix + "." + shortname);
-  if (scope != ImportScope::WILDCARD && types_iter != types_.end()) {
-    PosRange pkg_pos = PosRange(0, 0, 0);
-    errors->Append(MakePackageTypeAmbiguityError(fs_, pkg_pos, pkg_pos));
-
-    // TODO: consider blacklisting shortname.
+    visible_types_.erase(begin, end);
+    visible_types_.insert(info);
     return;
   }
 
   // If there are no entries, then just go ahead and insert it.
   if (num_entries == 0) {
-    visible_types2_.insert(info);
+    visible_types_.insert(info);
     return;
   }
 
@@ -220,10 +237,10 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
     // If we are adding a non-wildcard import to a bunch of wildcard imports,
     // then the non-wildcard takes precedence, so erase all the other imports first.
     if (scope != ImportScope::WILDCARD) {
-      visible_types2_.erase(begin, end);
+      visible_types_.erase(begin, end);
     }
 
-    visible_types2_.insert(info);
+    visible_types_.insert(info);
     return;
   }
 
@@ -240,8 +257,8 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
   // highest scope of the two.
   if (info.base == prev.base) {
     info.scope = std::min(info.scope, prev.scope);
-    visible_types2_.erase(begin);
-    visible_types2_.insert(info);
+    visible_types_.erase(begin);
+    visible_types_.insert(info);
     return;
   }
 
@@ -249,8 +266,8 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
   // scope is weaker than the other, the stronger one wins.
   if (info.scope != prev.scope) {
     if (info.scope < prev.scope) {
-      visible_types2_.erase(begin);
-      visible_types2_.insert(info);
+      visible_types_.erase(begin);
+      visible_types_.insert(info);
       return;
     } else {
       // Leave the old value.
@@ -262,7 +279,7 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
   // they are both wildcard imports.  If this is the case, we record the
   // conflict in our map, so that any reads of this entry will catch the error.
   if (info.scope == ImportScope::WILDCARD && prev.scope == ImportScope::WILDCARD) {
-    visible_types2_.insert(info);
+    visible_types_.insert(info);
     return;
   }
 
@@ -273,10 +290,21 @@ void TypeSetImpl::InsertAtScope(ImportScope scope, const string& longname, PosRa
   CHECK(info.scope == ImportScope::COMP_UNIT);
   CHECK(prev.scope == ImportScope::COMP_UNIT);
 
-  // TODO: emit an error.
-  errors->Append(MakeUnknownTypenameError(fs_, pos));
+  vector<PosRange> dupes;
+  dupes.push_back(info.pos);
+  dupes.push_back(prev.pos);
 
-  // TODO: blacklist.
+  stringstream ss;
+  ss << "Name '" << info.shortname << "' declared multiple times.";
+
+  errors->Append(MakeDuplicateDefinitionError(dupes, ss.str(), "DuplicateCompUnitNames"));
+
+  // TODO(sjy): this causes some tests to fail. Look into why.
+
+  // Blacklist.
+  // info.base = TypeId::kErrorBase;
+  // visible_types_.erase(begin);
+  // visible_types_.insert(info);
 }
 
 TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList* errors) const {
@@ -285,41 +313,39 @@ TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList*
     string qualified = kNamedPkgPrefix + '.' + name;
     auto t = types_.find(qualified);
     if (t == types_.end()) {
-      errors->Append(MakeUnknownTypenameError(fs_, pos));
+      errors->Append(MakeUnknownTypenameError(pos));
       return TypeId::kUnassigned;
     }
 
-    size_t search_begin = 0;
-    while (true) {
-      size_t next_dot = name.find('.', search_begin);
-      if (next_dot == string::npos) {
-        break;
-      }
+    // If this type has been blacklisted, then we can just return it
+    // immediately.
+    if (t->second.first == TypeId::kErrorBase) {
+      return TypeId::kError;
+    }
+
+    // Check that the first element of the qualified name does not also resolve
+    // to a type in the current environment.
+    //
+    // Technically, every other prefix of the qualified name also should not
+    // resolve to a type. However, these other prefixes cannot resolve to a
+    // type. They are a package in this context, and our earlier check that we
+    // don't have a package and a class named the same thing would have caught
+    // this case.
+    {
+      size_t next_dot = name.find('.');
+      CHECK(next_dot != string::npos);
 
       string candidate = name.substr(0, next_dot);
-      search_begin = next_dot + 1;
-
-      // Look up candidate as a fully-qualified globally unique name.
-      if (types_.count(kNamedPkgPrefix + "." + candidate)) {
-        // TODO: errors.
-        PosRange pos(0, 0, 0);
-        errors->Append(MakeUnknownTypenameError(fs_, pos));
-        break;
-      }
-
-      // Look up candidate in the current environment.
-      if (candidate.find('.') == string::npos) {
-        auto iter_pair = FindByShortName(candidate);
-        if (iter_pair.first != iter_pair.second) {
-          // TODO: errors.
-          PosRange pos(0, 0, 0);
-          errors->Append(MakeUnknownTypenameError(fs_, pos));
-          break;
-        }
+      auto iter_pair = FindByShortName(candidate);
+      if (iter_pair.first != iter_pair.second) {
+        stringstream ss;
+        ss << "'" << candidate << "' resolves as both a type and a package in this context.";
+        errors->Append(MakeTypeWithTypePrefixError(pos, ss.str()));
+        return TypeId::kError;
       }
     }
 
-    return TypeId{t->second, 0};
+    return TypeId{t->second.first, 0};
   }
 
   VisibleSet::const_iterator begin;
@@ -328,7 +354,7 @@ TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList*
   size_t num_entries = std::distance(begin, end);
 
   if (num_entries == 0) {
-    errors->Append(MakeUnknownTypenameError(fs_, pos));
+    errors->Append(MakeUnknownTypenameError(pos));
     return TypeId::kUnassigned;
   }
 
@@ -342,23 +368,18 @@ TypeId TypeSetImpl::Get(const string& name, base::PosRange pos, base::ErrorList*
   // conflicting wildcard entries.
   CHECK(num_entries > 1);
 
-  stringstream ss;
-  ss << "'" << name << "' is ambiguous; it could refer to ";
+  vector<PosRange> imports;
   for (auto cur = begin; cur != end; ++cur) {
-    if (cur != begin) {
-      ss << ", or ";
-    }
-    ss << cur->longname.substr(kPkgPrefixLen + 1);
+    imports.push_back(cur->pos);
   }
-  ss << '.';
-  errors->Append(MakeAmbiguousTypeError(fs_, pos, ss.str()));
+  errors->Append(MakeAmbiguousTypeError(pos, name, imports));
 
   return TypeId::kError;
 }
 
 void TypeSetImpl::InsertWildCard(ImportScope scope, const string& basename, base::PosRange pos, base::ErrorList* errors) {
   if (pkgs_.count(basename) == 0) {
-    errors->Append(MakeUnknownPackageError(fs_, pos));
+    errors->Append(MakeUnknownPackageError(pos));
     return;
   }
 

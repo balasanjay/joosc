@@ -14,11 +14,9 @@ using std::sort;
 using std::transform;
 
 using ast::ImportDecl;
-using ast::TypeId;
 using base::DiagnosticClass;
 using base::Error;
 using base::ErrorList;
-using base::FileSet;
 using base::FindEqualRanges;
 using base::MakeError;
 using base::OutputOptions;
@@ -27,7 +25,7 @@ using base::PosRange;
 
 namespace types {
 
-TypeSet TypeSet::kEmptyTypeSet(sptr<TypeSetImpl>(new TypeSetImpl(&FileSet::Empty(), {}, {}, {})));
+TypeSet TypeSet::kEmptyTypeSet(sptr<TypeSetImpl>(new TypeSetImpl({}, {}, {})));
 
 string TypeSetBuilder::FullyQualifiedTypeName(const Entry& entry) const {
   stringstream ss;
@@ -43,7 +41,7 @@ string TypeSetBuilder::FullyQualifiedTypeName(const Entry& entry) const {
   return ss.str();
 }
 
-TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
+TypeSet TypeSetBuilder::Build(base::ErrorList* out) const {
   using NamePos = pair<string, base::PosRange>;
   using NamePosMap = map<string, base::PosRange>;
   using NamePosMultiMap = multimap<string, base::PosRange>;
@@ -90,7 +88,7 @@ TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
       string without_prefix = start->first.substr(TypeSetImpl::kPkgPrefixLen+1);
       stringstream msgstream;
       msgstream << "Type '" << without_prefix << "' was declared multiple times.";
-      out->Append(MakeDuplicateDefinitionError(fs, defs, msgstream.str(), without_prefix));
+      out->Append(MakeDuplicateDefinitionError(defs, msgstream.str(), "TypeDuplicateDefinitionError"));
       bad_names.insert(start->first);
     };
 
@@ -98,26 +96,18 @@ TypeSet TypeSetBuilder::Build(const FileSet* fs, base::ErrorList* out) const {
   }
 
   // Build final set of types and packages by filtering out blacklisted names.
-  set<string> types;
-  set<string> pkgs;
-
-  // Helper that inserts a string into a set, if its not blacklisted.
-  auto insert_if_not_bad = [](const string& name, const set<string>& bad, set<string>* out) {
-    if (bad.count(name) == 1) {
-      return;
-    }
-    auto iterok = out->insert(name);
-    CHECK(iterok.second);
-  };
+  NamePosMap types;
 
   for (const auto& type : declared_types) {
-    insert_if_not_bad(type.name, bad_names, &types);
-  }
-  for (const auto& pkg : declared_pkgs) {
-    pkgs.insert(pkg.first);
+    if (bad_names.count(type.name) == 1) {
+      continue;
+    }
+
+    auto iterok = types.insert({type.name, type.pos});
+    CHECK(iterok.second);
   }
 
-  return TypeSet(make_shared<TypeSetImpl>(fs, types, pkgs, bad_names));
+  return TypeSet(make_shared<TypeSetImpl>(types, declared_pkgs, bad_names));
 }
 
 } // namespace types

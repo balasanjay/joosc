@@ -4,8 +4,6 @@
 #include <map>
 
 #include "base/errorlist.h"
-#include "base/file.h"
-#include "base/fileset.h"
 #include "ast/ast.h"
 #include "ast/ids.h"
 
@@ -29,16 +27,16 @@ public:
     WILDCARD = 2,
   };
 
-  TypeSetImpl(const base::FileSet* fs, const set<string>& types, const set<string>& pkgs, const set<string>& bad_types);
+  TypeSetImpl(const map<string, base::PosRange>& types, const map<string, base::PosRange>& pkgs, const set<string>& bad_types);
 
   // See TypeSet for docs.
-  sptr<TypeSetImpl> WithPackage(const string&, base::ErrorList*) const;
+  sptr<TypeSetImpl> WithPackage(const string&, base::PosRange, base::ErrorList*) const;
   sptr<TypeSetImpl> WithImports(const vector<ast::ImportDecl>&, base::ErrorList*) const;
   sptr<TypeSetImpl> WithType(const string& name, base::PosRange pos, base::ErrorList*) const;
   ast::TypeId Get(const string&, base::PosRange, base::ErrorList*) const;
 
   void PrintTo(std::ostream* out) const {
-    for (const auto& name : visible_types2_) {
+    for (const auto& name : visible_types_) {
       *out << name.shortname << "->" << name.base << "(" <<
         (int)name.scope << ")" << '\n';
     }
@@ -56,11 +54,14 @@ public:
   using TypeBase = ast::TypeId::Base;
 
   struct TypeInfo {
+    // These may be considered for sorting.
     string shortname;
     TypeBase base;
     ImportScope scope;
 
+    // These are auxilary attributes that are not consulted for sorting.
     string longname;
+    base::PosRange pos;
 
     struct ByName {
       bool operator()(const TypeInfo& lhs, const TypeInfo& rhs) const {
@@ -73,16 +74,13 @@ public:
 
   pair<VisibleSet::const_iterator, VisibleSet::const_iterator> FindByShortName(const string& shortname) const;
 
-  const base::FileSet* fs_;
-
-  // VisibleMap visible_types_;
-  VisibleSet visible_types2_;
+  VisibleSet visible_types_;
 
   // All declared types. Kept immutable after recieving from Builder.
-  map<string, TypeBase> types_;
+  map<string, pair<TypeBase, base::PosRange>> types_;
 
   // All declared packages. Kept immutable after recieving from Builder.
-  set<string> pkgs_;
+  map<string, base::PosRange> pkgs_;
 
   string pkg_prefix_ = "";
 };

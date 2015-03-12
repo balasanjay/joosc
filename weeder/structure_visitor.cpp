@@ -12,16 +12,15 @@ using ast::Program;
 using ast::VisitResult;
 using base::Error;
 using base::File;
-using base::FileSet;
 using lexer::ASSG;
 using lexer::Token;
 
 namespace weeder {
 namespace {
 
-Error* MakeMultipleTypesPerCompUnitError(const FileSet* fs, Token token) {
+Error* MakeMultipleTypesPerCompUnitError(Token token) {
   return MakeSimplePosRangeError(
-      fs, token.pos, "MultipleTypesPerCompUnitError",
+      token.pos, "MultipleTypesPerCompUnitError",
       "Joos does not support multiple types per file.");
 }
 
@@ -38,7 +37,7 @@ VISIT_DEFN(StructureVisitor, Program, prog,) {
     if (unit->Types().Size() > 1) {
       for (int j = 0; j < unit->Types().Size(); ++j) {
         errors_->Append(MakeMultipleTypesPerCompUnitError(
-            fs_, unit->Types().At(j)->NameToken()));
+            unit->Types().At(j)->NameToken()));
       }
       continue;
     } else if (unit->Types().Size() == 0) {
@@ -54,7 +53,7 @@ VISIT_DEFN(StructureVisitor, Program, prog,) {
     }
 
     errors_->Append(MakeSimplePosRangeError(
-        fs_, unit->Types().At(0)->NameToken().pos, "IncorrectFileNameError",
+        unit->Types().At(0)->NameToken().pos, "IncorrectFileNameError",
         "Must be in file named " + expectedFilename + "."));
   }
 

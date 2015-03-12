@@ -6,8 +6,6 @@
 #include "ast/ast.h"
 #include "ast/ids.h"
 #include "base/errorlist.h"
-#include "base/file.h"
-#include "base/fileset.h"
 #include "types/typeset_impl.h"
 
 namespace types {
@@ -24,10 +22,13 @@ public:
   // package.
   TypeSet WithPackage(sptr<const ast::QualifiedName> package, base::ErrorList* errors) const {
     string pkg = "";
+    base::PosRange pos(-1, -1, -1);
     if (package != nullptr) {
       pkg = package->Name();
+      pos = package->Tokens().front().pos;
+      pos.end = package->Tokens().back().pos.end;
     }
-    return TypeSet(impl_->WithPackage(pkg, errors));
+    return TypeSet(impl_->WithPackage(pkg, pos, errors));
   }
 
   // Provides a `view' into the TypeSet assuming the provided imports are in
@@ -99,7 +100,7 @@ class TypeSetBuilder {
   // Returns a TypeSet with all types inserted with Add*. If a type was defined
   // multiple times, an Error will be appended to the ErrorList for each
   // duplicate location.
-  TypeSet Build(const base::FileSet* fs, base::ErrorList* out) const;
+  TypeSet Build(base::ErrorList* out) const;
 
  private:
   struct Entry {

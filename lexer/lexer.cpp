@@ -121,7 +121,7 @@ const TokenTypeInfo& Token::TypeInfo() const {
 namespace internal {
 
 struct LexState {
-  LexState(FileSet* fs, File* file, int fileid, vector<Token>* tokens,
+  LexState(const FileSet* fs, const File* file, int fileid, vector<Token>* tokens,
            base::ErrorList* errors)
       : fs(fs), file(file), fileid(fileid), tokens(tokens), errors(errors) {}
 
@@ -185,8 +185,8 @@ struct LexState {
     }
   }
 
-  FileSet* fs;
-  File* file;
+  const FileSet* fs;
+  const File* file;
   int fileid;
 
   // This is the range of the lexeme currently being constructed.
@@ -314,7 +314,7 @@ void Start(LexState* state) {
   }
 
   state->EmitFatal(
-      new UnexpectedCharError(state->fs, Pos(state->fileid, state->begin)));
+      new UnexpectedCharError(Pos(state->fileid, state->begin)));
 }
 
 void Integer(LexState* state) {
@@ -323,7 +323,7 @@ void Integer(LexState* state) {
     if (state->begin + 1 == state->end &&
         state->file->At(state->begin) == '0') {
       state->EmitFatal(new LeadingZeroInIntLitError(
-          state->fs, Pos(state->fileid, state->begin)));
+          Pos(state->fileid, state->begin)));
       return;
     }
     state->Advance();
@@ -367,7 +367,7 @@ void BlockComment(LexState* state) {
   while (true) {
     if (state->IsAtEnd()) {
       state->EmitFatal(new UnclosedBlockCommentError(
-          state->fs, PosRange(state->fileid, state->begin, state->begin + 2)));
+          PosRange(state->fileid, state->begin, state->begin + 2)));
       return;
     }
 
@@ -439,7 +439,7 @@ void Char(LexState* state) {
 
   if (state->IsAtEnd()) {
     state->EmitFatal(new InvalidCharacterLitError(
-        state->fs, PosRange(state->fileid, state->begin, state->end)));
+        PosRange(state->fileid, state->begin, state->end)));
     return;
   }
 
@@ -448,12 +448,12 @@ void Char(LexState* state) {
   if (next == '\\') {
     if (!AdvanceEscapedChar(state)) {
       state->EmitFatal(new InvalidCharacterEscapeError(
-          state->fs, PosRange(state->fileid, state->begin, state->end)));
+          PosRange(state->fileid, state->begin, state->end)));
       return;
     }
   } else if (next == '\'' || next == '\n') {
     state->EmitFatal(new InvalidCharacterLitError(
-        state->fs, PosRange(state->fileid, state->begin, state->end)));
+        PosRange(state->fileid, state->begin, state->end)));
     return;
   } else {
     state->Advance();
@@ -462,11 +462,11 @@ void Char(LexState* state) {
   // Require another apostrophe.
   if (state->IsAtEnd()) {
     state->EmitFatal(new InvalidCharacterLitError(
-        state->fs, PosRange(state->fileid, state->begin, state->end)));
+        PosRange(state->fileid, state->begin, state->end)));
     return;
   } else if (state->Peek() != '\'') {
     state->EmitFatal(new InvalidCharacterLitError(
-        state->fs, PosRange(state->fileid, state->begin, state->end)));
+        PosRange(state->fileid, state->begin, state->end)));
     return;
   }
   state->Advance();
@@ -480,14 +480,14 @@ void String(LexState* state) {
   while (true) {
     if (state->IsAtEnd()) {
       state->EmitFatal(new UnclosedStringLitError(
-          state->fs, Pos(state->fileid, state->begin)));
+          Pos(state->fileid, state->begin)));
       return;
     }
 
     u8 next = state->Peek();
     if (next == '\n') {
       state->EmitFatal(new UnclosedStringLitError(
-          state->fs, Pos(state->fileid, state->begin)));
+          Pos(state->fileid, state->begin)));
       return;
     } else if (next == '"') {
       state->Advance();
@@ -496,7 +496,7 @@ void String(LexState* state) {
       int startEscapePos = state->end;
       if (!AdvanceEscapedChar(state)) {
         state->EmitFatal(new InvalidCharacterEscapeError(
-            state->fs, PosRange(state->fileid, startEscapePos, state->end)));
+            PosRange(state->fileid, startEscapePos, state->end)));
         return;
       }
     } else {
@@ -511,13 +511,13 @@ void String(LexState* state) {
 
 }  // namespace internal
 
-void LexJoosFile(base::FileSet* fs, base::File* file, int fileid,
+void LexJoosFile(const base::FileSet* fs, const base::File* file, int fileid,
                  vector<Token>* tokens_out, base::ErrorList* errors_out) {
   // Remove anything with non-ANSI characters.
   for (int i = 0; i < file->Size(); i++) {
     u8 c = file->At(i);
     if (c > 127) {
-      errors_out->Append(new NonAnsiCharError(fs, Pos(fileid, i)));
+      errors_out->Append(new NonAnsiCharError(Pos(fileid, i)));
       return;
     }
   }
@@ -527,7 +527,7 @@ void LexJoosFile(base::FileSet* fs, base::File* file, int fileid,
   state.Run();
 }
 
-void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
+void LexJoosFiles(const base::FileSet* fs, vector<vector<Token>>* tokens_out,
                   base::ErrorList* errors_out) {
   tokens_out->clear();
   tokens_out->resize(fs->Size());
@@ -555,19 +555,17 @@ void StripSkippableTokens(const vector<vector<Token>>& tokens,
   }
 }
 
-void FindUnsupportedTokens(const base::FileSet* fs, const vector<Token>& tokens,
-                           base::ErrorList* errors) {
+void FindUnsupportedTokens(const vector<Token>& tokens, base::ErrorList* errors) {
   for (const auto& tok : tokens) {
     if (!tok.TypeInfo().IsSupported()) {
-      errors->Append(new UnsupportedTokenError(fs, tok.pos));
+      errors->Append(new UnsupportedTokenError(tok.pos));
     }
   }
 }
-void FindUnsupportedTokens(const base::FileSet* fs,
-                           const vector<vector<Token>>& tokens,
+void FindUnsupportedTokens(const vector<vector<Token>>& tokens,
                            base::ErrorList* errors) {
   for (const auto& file_tokens : tokens) {
-    FindUnsupportedTokens(fs, file_tokens, errors);
+    FindUnsupportedTokens(file_tokens, errors);
   }
 }
 

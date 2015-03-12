@@ -1,10 +1,11 @@
 #include "types/typechecker.h"
 
-#include "base/file.h"
 #include "ast/ids.h"
+#include "base/file.h"
 #include "lexer/lexer.h"
 #include "parser/parser_internal.h"
 #include "third_party/gtest/gtest.h"
+#include "types/types_test.h"
 
 using namespace ast;
 
@@ -48,7 +49,7 @@ class TypeCheckerTest : public ::testing::Test {
     vector<vector<lexer::Token>> alltokens;
     lexer::LexJoosFiles(fs, &alltokens, &errors_);
 
-    // Remote comments and whitespace.
+    // Remove comments and whitespace.
     lexer::StripSkippableTokens(alltokens, &tokens);
 
     // Make sure it worked.
@@ -58,7 +59,7 @@ class TypeCheckerTest : public ::testing::Test {
 
     parser_.reset(new parser::Parser(fs, fs->Get(0), &tokens[0]));
 
-    typeChecker_.reset(new TypeChecker(fs_.get(), &errors_));
+    typeChecker_.reset(new TypeChecker(&errors_));
   }
 
   sptr<const Expr> ParseExpr(string s) {
@@ -82,6 +83,14 @@ class TypeCheckerTest : public ::testing::Test {
     return memberResult.Get();
   }
 
+  // Pairs of file name, file contents.
+  sptr<const Program> ParseProgram(const vector<pair<string, string>>& file_contents) {
+    base::FileSet* fs;
+    sptr<const Program> program = ParseProgramWithStdlib(&fs, file_contents, &errors_);
+    fs_.reset(fs);
+    return program;
+  }
+
   base::ErrorList errors_;
   uptr<base::FileSet> fs_;
   vector<vector<lexer::Token>> tokens;
@@ -90,8 +99,6 @@ class TypeCheckerTest : public ::testing::Test {
 };
 
 // TODO: ArrayIndexExpr
-
-// TODO: BinExpr
 
 TEST_F(TypeCheckerTest, BinExprLhsFail) {
   sptr<const Expr> before = ParseExpr("(-null) + 3");
@@ -113,6 +120,7 @@ TEST_F(TypeCheckerTest, BinExprBoolOpSuccess) {
   sptr<const Expr> before = ParseExpr("true || false");
   auto after = typeChecker_->Rewrite(before);
 
+  ASSERT_NE(nullptr, after);
   EXPECT_EQ(TypeId::kBool, after->GetTypeId());
   EXPECT_NO_ERRS();
 }
@@ -219,8 +227,6 @@ TEST_F(TypeCheckerTest, BoolLitExpr) {
   EXPECT_NO_ERRS();
 }
 
-// TODO: CallExpr
-
 TEST_F(TypeCheckerTest, CastExprNullptr) {
   sptr<const Expr> before = ParseExpr("(int)(1 + null)");
   auto after = typeChecker_->Rewrite(before);
@@ -253,8 +259,6 @@ TEST_F(TypeCheckerTest, CastExprCastable) {
   EXPECT_NO_ERRS();
 }
 
-// TODO: Cast expr tests with Reference type as LHS.
-
 TEST_F(TypeCheckerTest, CharLitExpr) {
   sptr<const Expr> before = ParseExpr("'0'");
   auto after = typeChecker_->Rewrite(before);
@@ -262,10 +266,6 @@ TEST_F(TypeCheckerTest, CharLitExpr) {
   EXPECT_EQ(TypeId::kChar, after->GetTypeId());
   EXPECT_NO_ERRS();
 }
-
-// TODO: FieldDerefExpr
-
-// TODO: InstanceOfExpr
 
 TEST_F(TypeCheckerTest, IntLitExpr) {
   sptr<const Expr> before = ParseExpr("0");
@@ -275,11 +275,146 @@ TEST_F(TypeCheckerTest, IntLitExpr) {
   EXPECT_NO_ERRS();
 }
 
-// TODO: NameExpr
+TEST_F(TypeCheckerTest, NameExprOkLocalVar) {
+  ParseProgram({
+    {"A.java", "public class A { public A() { int i = 1; int a = i; } }"},
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, NameExprLocalVarError) {
+  ParseProgram({
+    {"A.java", "public class A { public A() { boolean i = true; int a = i; } }"},
+  });
+  EXPECT_ERRS("UnassignableError(0:56)\n");
+}
+
+TEST_F(TypeCheckerTest, NameExprLocalVarErrorAssignSuppressed) {
+  ParseProgram({
+    {"A.java", "public class A { public A() { asdf i = true; int a = i; } }"},
+  });
+  EXPECT_ERRS("UnknownTypenameError(0:30-34)\n");
+}
+
+TEST_F(TypeCheckerTest, NameExprOkStaticField) {
+  ParseProgram({
+    {"A.java", "public class A { public A() { int i = foo.bar.B.i; } }"},
+    {"B.java", "package foo.bar; public class B { public static int i; }"},
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, NameExprStaticFieldError) {
+  ParseProgram({
+    {"A.java", "public class A { public A() { int i = foo.bar.B.i; } }"},
+    {"B.java", "package foo.bar; public class B { protected static int i; }"},
+  });
+  EXPECT_ERRS("PermissionError(1:55)\n");
+}
+
+TEST_F(TypeCheckerTest, FieldDerefExprOk) {
+  ParseProgram({
+    {"A.java", "public class A { public A() {} public int i; public int foo() { A a = new A(); return a.i; } }"},
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, FieldDerefExprOnPrimitive) {
+  ParseProgram({
+    {"A.java", "public class A { public A() {} public int i; public int foo() { return i.i; } }"},
+  });
+  EXPECT_ERRS("MemberAccessOnPrimitiveError(0:73)\n");
+}
+
+TEST_F(TypeCheckerTest, FieldDerefExprStaticNoType) {
+  ParseProgram({
+    {"A.java", "public class A { public int foo() { return B.i; } }"},
+  });
+  EXPECT_ERRS("UndefinedReferenceError(0:43)\n");
+}
+
+TEST_F(TypeCheckerTest, FieldDerefExprBadResolve) {
+  ParseProgram({
+    {"A.java", "package foo; public class A { public A() {} public int foo() { return B.i; } }"},
+    {"B.java", "public class B { protected static int i; }"},
+  });
+  EXPECT_ERRS("UndefinedReferenceError(0:70)\n");
+}
+
+TEST_F(TypeCheckerTest, FieldDerefExprOnVoid) {
+  ParseProgram({
+    {"A.java", "public class A { public void foo() { int x = foo().bar; } }"},
+  });
+  EXPECT_ERRS("VoidInExprError(0:45-50)\n");
+}
+
+TEST_F(TypeCheckerTest, CallExprRecurseNameExprOk) {
+  ParseProgram({
+    {"A.java", "public class A { public A() { B.foo(); } }"},
+    {"B.java", "public class B { public static void foo() {} }"},
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, CallExprRecurseNameExprError) {
+  ParseProgram({
+    {"A.java", "public class A { public A() { a.foo(); } }"},
+  });
+  EXPECT_ERRS("UndefinedReferenceError(0:30)\n");
+}
+
+TEST_F(TypeCheckerTest, CallExprFieldDerefExprOk) {
+  ParseProgram({
+    {"A.java", "public class A { public void foo() {} public A() { foo(); } }"},
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, CallExprFieldDerefExprParamError) {
+  ParseProgram({
+    {"A.java", "public class A { public void foo(int i) {} public A() { foo(1, 2); } }"},
+  });
+  EXPECT_ERRS("UndefinedMethodError(0:56-59)\n");
+}
+
+TEST_F(TypeCheckerTest, CallExprOnVoid) {
+  ParseProgram({
+    {"A.java", "public class A { public void foo() { int x = foo().bar(); } }"},
+  });
+  EXPECT_ERRS("VoidInExprError(0:45-50)\n");
+}
 
 // TODO: NewArrayExpr
 
-// TODO: NewClassExpr
+TEST_F(TypeCheckerTest, NewClassExpr) {
+  ParseProgram({
+      {"F.java", "public class F { public F() { F f=new F(); } }"}
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, NewClassExprArg) {
+  ParseProgram({
+      {"F.java", "public class F { public F(int i) { F f=new F(1); } }"}
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, NewClassExprBadConstructor) {
+  ParseProgram({
+      {"F.java", "public class F { public F(){ F f=new F(1); } }"}
+  });
+  EXPECT_ERRS("UndefinedMethodError(0:37)\n");
+}
+
+TEST_F(TypeCheckerTest, NewClassExprBadType) {
+  ParseProgram({
+      {"F.java", "public class F { public F() { F f=new A(); } }"}
+  });
+  EXPECT_ERRS("UnknownTypenameError(0:38)\n");
+}
+
+// TODO: Test new class expr with abstract class.
 
 TEST_F(TypeCheckerTest, NullLitExpr) {
   sptr<const Expr> before = ParseExpr("null");
@@ -304,7 +439,26 @@ TEST_F(TypeCheckerTest, ParenExprErrorInside) {
   EXPECT_ERRS("TypeMismatchError(0:1-5)\n");
 }
 
-// TODO: StringLitExpr
+TEST_F(TypeCheckerTest, StringLitExpr) {
+  ParseProgram({
+      {"F.java", "public class F { public String f() { return \"Hi.\"; } }"}
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, StringLitExprAddOtherThings) {
+  ParseProgram({
+      {"F.java", "public class F{ public String f() { return 1 + \"\" + 'a' + null; } }"}
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, StringLitExprAddOtherThingsOneError) {
+  ParseProgram({
+      {"F.java", "public class F { public String f() { return null + 1 + \"\" + 'a' + null; } }"}
+  });
+  EXPECT_ERRS("TypeMismatchError(0:44-48)\n");
+}
 
 TEST_F(TypeCheckerTest, ThisLitExpr) {
   const auto insideType = TypeId{100, 0};
@@ -374,6 +528,13 @@ TEST_F(TypeCheckerTest, UnaryExprNotIsBool) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kBool, after->GetTypeId());
+}
+
+TEST_F(TypeCheckerTest, UnaryExprOnVoid) {
+  ParseProgram({
+    {"A.java", "public class A { public void foo() { int x = -foo(); } }"},
+  });
+  EXPECT_ERRS("UnaryNonNumericError(0:45-51)\n");
 }
 
 // TODO: BlockStmt
@@ -448,9 +609,47 @@ TEST_F(TypeCheckerTest, IfStmtOk) {
   EXPECT_NO_ERRS();
 }
 
-// TODO: LocalDeclStmt
+TEST_F(TypeCheckerTest, ReturnStmt) {
+  ParseProgram({
+      {"F.java", "public class F { public int f() { return 1; } }"}
+  });
+  EXPECT_NO_ERRS();
+}
 
-// TODO: ReturnStmt
+TEST_F(TypeCheckerTest, ReturnStmtWrongType) {
+  ParseProgram({
+      {"F.java", "public class F { public int f() { return true; } }"}
+  });
+  EXPECT_ERRS("InvalidReturnError(0:34-40)\n");
+}
+
+TEST_F(TypeCheckerTest, LocalDeclStmt) {
+  ParseProgram({
+      {"F.java", "public class F { public void f() { int x = 0; return; } }"}
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, LocalDeclStmtBadTypeOneError) {
+  ParseProgram({
+      {"F.java", "public class F { public int f(){ A x = null; return x; } }"}
+  });
+  EXPECT_ERRS("UnknownTypenameError(0:33)\n");
+}
+
+TEST_F(TypeCheckerTest, LocalDeclStmtBadAssign) {
+  ParseProgram({
+      {"F.java", "public class F { public void f(){ char x = null; return; } }"}
+  });
+  EXPECT_ERRS("UnassignableError(0:43-47)\n");
+}
+
+TEST_F(TypeCheckerTest, LocalDeclStmtCreatesSymbol) {
+  ParseProgram({
+      {"F.java", "public class F { public int f(){ int x = 0; return x; } }"}
+  });
+  EXPECT_NO_ERRS();
+}
 
 TEST_F(TypeCheckerTest, WhileStmtCondError) {
   sptr<const Stmt> before = ParseStmt("while(true + 1);");
@@ -501,28 +700,6 @@ TEST_F(TypeCheckerTest, FieldDeclStaticThis) {
   EXPECT_ERRS("ThisInStaticMemberError(0:15-19)\n");
 }
 
-// TODO: FieldDecl
-
-// TODO: MethodDecl
-
-
-// TODO: TypeDecl
-
-
-// TODO: CompUnit
-
-
-TEST(TypeCheckerUtilTest, IsCastablePrimitives) {
-  TypeChecker typeChecker(nullptr, nullptr);
-  auto numTids = {TypeId::kInt, TypeId::kChar, TypeId::kShort, TypeId::kByte};
-  for (TypeId tidA : numTids) {
-    for (TypeId tidB : numTids) {
-      EXPECT_TRUE(typeChecker.IsCastable(tidA, tidB));
-    }
-  }
-  EXPECT_TRUE(typeChecker.IsCastable(TypeId::kBool, TypeId::kBool));
-}
-
-// TODO: TEST(TypeCheckerUtilTest, IsCastableReference) - with inheritance.
+// NOTE: InstanceOf, Cast, and BinExpr assign are tested in typechecker_hierarchy_test.cpp.
 
 }  // namespace types

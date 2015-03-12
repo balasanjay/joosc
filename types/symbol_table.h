@@ -2,7 +2,6 @@
 #define TYPES_SYMBOL_TABLE_H
 
 #include "ast/ast.h"
-#include "base/fileset.h"
 #include "types/type_info_map.h"
 #include <map>
 
@@ -25,11 +24,12 @@ public:
 
 class SymbolTable {
 public:
-  SymbolTable(const base::FileSet* fs, const vector<VariableInfo>& params, base::ErrorList* errors);
+  SymbolTable(const vector<VariableInfo>& params, base::ErrorList* errors);
+  virtual ~SymbolTable();
 
   static SymbolTable Empty() {
     base::ErrorList throwaway;
-    return SymbolTable(&base::FileSet::Empty(), {}, &throwaway);
+    return SymbolTable({}, &throwaway);
   }
 
   void EnterScope();
@@ -40,15 +40,10 @@ public:
   pair<ast::TypeId, ast::LocalVarId> ResolveLocal(const string& name, base::PosRange name_pos, base::ErrorList* errors) const;
 
 private:
-  const VariableInfo* LookupVar(string name) const;
-
-  base::Error* MakeUndefinedReferenceError(string var_name, base::PosRange name_pos) const;
   base::Error* MakeDuplicateVarDeclError(string varName, base::PosRange varPos, base::PosRange original_pos) const;
   base::Error* MakeVariableInitializerSelfReferenceError(base::PosRange pos) const;
 
-  const base::FileSet* fs_;
-  std::map<string, VariableInfo> params_;
-  std::map<string, VariableInfo> cur_symbols_; // Doesn't include params.
+  std::map<string, VariableInfo> cur_symbols_;
   u32 cur_scope_len_;
   vector<string> scopes_;
   vector<u32> scope_lengths_;

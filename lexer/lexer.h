@@ -255,17 +255,16 @@ struct Token {
   base::PosRange pos;
 };
 
-void LexJoosFiles(base::FileSet* fs, vector<vector<Token>>* tokens_out,
+void LexJoosFiles(const base::FileSet* fs, vector<vector<Token>>* tokens_out,
                   base::ErrorList* errors_out);
 
 void StripSkippableTokens(const vector<Token>& tokens, vector<Token>* out);
 void StripSkippableTokens(const vector<vector<Token>>& tokens,
                           vector<vector<Token>>* out);
 
-void FindUnsupportedTokens(const base::FileSet* fs, const vector<Token>& tokens,
+void FindUnsupportedTokens(const vector<Token>& tokens,
                            base::ErrorList* errors);
-void FindUnsupportedTokens(const base::FileSet* fs,
-                           const vector<vector<Token>>& tokens,
+void FindUnsupportedTokens(const vector<vector<Token>>& tokens,
                            base::ErrorList* errors);
 
 }  // namespace lexer

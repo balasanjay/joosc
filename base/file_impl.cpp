@@ -20,7 +20,7 @@ class DiskFileError : public base::Error {
       : errval_(errval), path_(path) {}
 
   void PrintTo(std::ostream* out,
-               const base::OutputOptions& opt) const override {
+               const base::OutputOptions& opt, const base::FileSet*) const override {
     if (opt.simple) {
       *out << "DiskFileError{" << FIELD_PRINT(errval_) << FIELD_PRINT(path_)
            << "}";

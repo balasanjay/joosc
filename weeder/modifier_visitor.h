@@ -3,7 +3,6 @@
 
 #include "ast/visitor.h"
 #include "base/errorlist.h"
-#include "base/fileset.h"
 
 namespace weeder {
 
@@ -13,13 +12,11 @@ namespace weeder {
 // declaration using that visitor.
 class ModifierVisitor : public ast::Visitor {
  public:
-  ModifierVisitor(const base::FileSet* fs, base::ErrorList* errors)
-      : fs_(fs), errors_(errors) {}
+  ModifierVisitor(base::ErrorList* errors) : errors_(errors) {}
 
   REWRITE_DECL(TypeDecl, TypeDecl, decl, declptr);
 
  private:
-  const base::FileSet* fs_;
   base::ErrorList* errors_;
 };
 
@@ -37,14 +34,12 @@ class ModifierVisitor : public ast::Visitor {
 //   11) A member must be public or protected.
 class ClassModifierVisitor : public ast::Visitor {
  public:
-  ClassModifierVisitor(const base::FileSet* fs, base::ErrorList* errors)
-      : fs_(fs), errors_(errors) {}
+  ClassModifierVisitor(base::ErrorList* errors) : errors_(errors) {}
 
   VISIT_DECL(FieldDecl, decl,);
   VISIT_DECL(MethodDecl, decl,);
 
  private:
-  const base::FileSet* fs_;
   base::ErrorList* errors_;
 };
 
@@ -57,14 +52,12 @@ class ClassModifierVisitor : public ast::Visitor {
 //   6) An interface method must be public.
 class InterfaceModifierVisitor : public ast::Visitor {
  public:
-  InterfaceModifierVisitor(const base::FileSet* fs, base::ErrorList* errors)
-      : fs_(fs), errors_(errors) {}
+  InterfaceModifierVisitor(base::ErrorList* errors) : errors_(errors) {}
 
   VISIT_DECL(FieldDecl, decl,);
   VISIT_DECL(MethodDecl, decl,);
 
  private:
-  const base::FileSet* fs_;
   base::ErrorList* errors_;
 };
 

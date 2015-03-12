@@ -23,7 +23,6 @@ using ast::TypeDecl;
 using ast::TypeId;
 using ast::TypeKind;
 using base::Error;
-using base::FileSet;
 using base::PosRange;
 using base::SharedPtrVector;
 using base::UniquePtrVector;
@@ -35,13 +34,11 @@ sptr<const Type> DeclResolver::MustResolveType(sptr<const Type> type) {
 }
 
 REWRITE_DEFN(DeclResolver, CompUnit, CompUnit, unit,) {
-  // TODO: if the typeset.WithImports finds an error in the imports, we should
-  // trim the imports, so that subsequent passes do not emit the same error.
   TypeSet scoped_typeset  = typeset_
       .WithPackage(unit.PackagePtr(), errors_)
-      .WithImports(unit.Imports(), errors_);;
+      .WithImports(unit.Imports(), errors_);
 
-  DeclResolver scoped_resolver(builder_, scoped_typeset, fs_, errors_, unit.PackagePtr());
+  DeclResolver scoped_resolver(builder_, scoped_typeset, errors_, unit.PackagePtr());
 
   base::SharedPtrVector<const TypeDecl> decls;
   for (int i = 0; i < unit.Types().Size(); ++i) {
@@ -94,7 +91,7 @@ REWRITE_DEFN(DeclResolver, TypeDecl, TypeDecl, type, ) {
   }
   builder_->PutType(curtid, type, package_name, extends, implements);
 
-  DeclResolver memberResolver(builder_, typeset_, fs_, errors_, package_, curtid);
+  DeclResolver memberResolver(builder_, typeset_, errors_, package_, curtid);
   SharedPtrVector<const MemberDecl> members;
   for (int i = 0; i < type.Members().Size(); ++i) {
     sptr<const MemberDecl> oldMem = type.Members().At(i);

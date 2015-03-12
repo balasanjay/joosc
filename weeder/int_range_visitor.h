@@ -11,14 +11,12 @@ namespace weeder {
 // Joos ints are signed 32-bit integers.
 class IntRangeVisitor : public ast::Visitor {
  public:
-  IntRangeVisitor(const base::FileSet* fs, base::ErrorList* errors)
-      : fs_(fs), errors_(errors) {}
+  IntRangeVisitor(base::ErrorList* errors) : errors_(errors) {}
 
   VISIT_DECL(IntLitExpr, expr,);
   VISIT_DECL(UnaryExpr, expr,);
 
  private:
-  const base::FileSet* fs_;
   base::ErrorList* errors_;
 };
 

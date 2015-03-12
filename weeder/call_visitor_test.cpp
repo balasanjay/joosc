@@ -15,7 +15,7 @@ TEST_F(CallVisitorTest, Name) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  CallVisitor visitor(fs_.get(), &errors);
+  CallVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -27,7 +27,7 @@ TEST_F(CallVisitorTest, FieldDeref) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  CallVisitor visitor(fs_.get(), &errors);
+  CallVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_FALSE(errors.IsFatal());
@@ -39,7 +39,7 @@ TEST_F(CallVisitorTest, ThisFail) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  CallVisitor visitor(fs_.get(), &errors);
+  CallVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());
@@ -52,7 +52,7 @@ TEST_F(CallVisitorTest, Fail) {
   ASSERT_FALSE(parser_->ParseStmt(&stmt).Failed());
 
   ErrorList errors;
-  CallVisitor visitor(fs_.get(), &errors);
+  CallVisitor visitor(&errors);
   auto _ = visitor.Rewrite(stmt.Get());
 
   EXPECT_TRUE(errors.IsFatal());

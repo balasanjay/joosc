@@ -32,7 +32,7 @@ class SymbolTableTest : public ::testing::Test {
     ASSERT_TRUE(base::FileSet::Builder().AddStringFile("Foo.java", "").Build(
         &fs, &errors_));
     fs_.reset(fs);
-    symbs_.reset(new SymbolTable(fs_.get(), paramInfos, &errors_));
+    symbs_.reset(new SymbolTable(paramInfos, &errors_));
   }
 
   base::ErrorList errors_;
@@ -81,7 +81,7 @@ TEST_F(SymbolTableTest, LocalVarWorks) {
 TEST_F(SymbolTableTest, UndefinedError) {
   MakeSymbolTable({});
   auto result = symbs_->ResolveLocal("foo", PosRange(0, 5, 9), &errors_);
-  EXPECT_ERRS("UndefinedReferenceError(0:5-9)\n");
+  EXPECT_NO_ERRS();
   EXPECT_EQ(TypeId::kUnassigned, result.first);
   EXPECT_EQ(kVarUnassigned, result.second);
 }
@@ -91,20 +91,22 @@ TEST_F(SymbolTableTest, SimpleScope) {
   MakeSymbolTable({});
 
   string name = "foo";
-  symbs_->ResolveLocal(name, PosRange(0, 0, 1), &errors_);
-  EXPECT_ERRS("UndefinedReferenceError(0:0)\n");
-  errors_.Clear();
-
-  symbs_->EnterScope();
-  VarDeclGuard(symbs_.get(), tid, name, PosRange(0, 1, 2), &errors_);
   auto result = symbs_->ResolveLocal(name, PosRange(0, 0, 1), &errors_);
   EXPECT_NO_ERRS();
-  EXPECT_EQ(tid, result.first);
-  EXPECT_NE(kVarUnassigned, result.second);
+  EXPECT_EQ(TypeId::kUnassigned, result.first);
 
-  symbs_->LeaveScope();
+  {
+    ScopeGuard s(symbs_.get());
+    VarDeclGuard(symbs_.get(), tid, name, PosRange(0, 1, 2), &errors_);
+    auto result = symbs_->ResolveLocal(name, PosRange(0, 0, 1), &errors_);
+    EXPECT_NO_ERRS();
+    EXPECT_EQ(tid, result.first);
+    EXPECT_NE(kVarUnassigned, result.second);
+  }
+
   symbs_->ResolveLocal(name, PosRange(0, 2, 3), &errors_);
-  EXPECT_ERRS("UndefinedReferenceError(0:2)\n");
+  EXPECT_NO_ERRS();
+  EXPECT_EQ(TypeId::kUnassigned, result.first);
 }
 
 TEST_F(SymbolTableTest, LocalVarShadowsParam) {
@@ -112,7 +114,6 @@ TEST_F(SymbolTableTest, LocalVarShadowsParam) {
   TypeId localTid{101, 2};
   MakeSymbolTable({{paramTid, "foo", PosRange(0, 0, 5)}});
 
-  symbs_->EnterScope();
   VarDeclGuard(symbs_.get(), localTid, "foo", PosRange(0, 5, 10), &errors_);
   EXPECT_ERRS("foo: [0:5-10,0:0-5,]\n");
 
@@ -131,8 +132,10 @@ TEST_F(SymbolTableTest, LocalVarDuplicateDef) {
   VarDeclGuard(symbs_.get(), tid, "foo", PosRange(0, 1, 2), &errors_);
   EXPECT_NO_ERRS();
 
-  symbs_->EnterScope();
-  VarDeclGuard(symbs_.get(), tid, "foo", PosRange(0, 2, 3), &errors_);
+  {
+    ScopeGuard s(symbs_.get());
+    VarDeclGuard(symbs_.get(), tid, "foo", PosRange(0, 2, 3), &errors_);
+  }
   EXPECT_ERRS("foo: [0:2,0:1,]\n");
 }
 
@@ -140,15 +143,17 @@ TEST_F(SymbolTableTest, LocalVarNonOverlappingScopes) {
   TypeId tid{100, 0};
   MakeSymbolTable({});
 
-  symbs_->EnterScope();
-  VarDeclGuard(symbs_.get(), tid, "foo", PosRange(0, 1, 2), &errors_);
-  EXPECT_NO_ERRS();
-  symbs_->LeaveScope();
+  {
+    ScopeGuard s(symbs_.get());
+    VarDeclGuard(symbs_.get(), tid, "foo", PosRange(0, 1, 2), &errors_);
+    EXPECT_NO_ERRS();
+  }
 
-  symbs_->EnterScope();
-  VarDeclGuard(symbs_.get(), tid, "foo", PosRange(0, 2, 3), &errors_);
-  EXPECT_NO_ERRS();
-  symbs_->LeaveScope();
+  {
+    ScopeGuard s(symbs_.get());
+    VarDeclGuard(symbs_.get(), tid, "foo", PosRange(0, 2, 3), &errors_);
+    EXPECT_NO_ERRS();
+  }
 }
 
 TEST_F(SymbolTableTest, InitializerReferencingOtherVar) {

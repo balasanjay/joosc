@@ -7,14 +7,12 @@
 #include "ast/ast.h"
 #include "ast/ids.h"
 #include "base/errorlist.h"
-#include "base/fileset.h"
 #include "types/typeset.h"
 
 namespace types {
 
 using ast::FieldId;
 using ast::MethodId;
-using ast::kArrayLengthFieldId;
 using ast::kErrorFieldId;
 using ast::kErrorMethodId;
 using ast::kFirstFieldId;
@@ -110,7 +108,7 @@ private:
   using MethodSignatureMap = std::map<MethodSignature, MethodInfo>;
   using MethodInfoMap = std::map<MethodId, MethodInfo>;
 
-  MethodTable(const base::FileSet* fs, const MethodSignatureMap& entries, const set<string>& bad_methods, bool has_bad_constructor) : fs_(fs), method_signatures_(entries), has_bad_constructor_(has_bad_constructor), bad_methods_(bad_methods) {
+  MethodTable(const MethodSignatureMap& entries, const set<string>& bad_methods, bool has_bad_constructor) : method_signatures_(entries), has_bad_constructor_(has_bad_constructor), bad_methods_(bad_methods) {
     for (const auto& entry : entries) {
       method_info_.insert({entry.second.mid, entry.second});
     }
@@ -120,17 +118,17 @@ private:
 
   bool IsBlacklisted(CallContext ctx, const string& name) const;
 
-  base::Error* MakeUndefinedMethodError(MethodSignature sig, base::PosRange pos) const;
+  base::Error* MakeUndefinedMethodError(const TypeInfoMap& tinfo_map, MethodSignature sig, base::PosRange pos) const;
 
   base::Error* MakeInstanceMethodOnStaticError(base::PosRange pos) const;
   base::Error* MakeStaticMethodOnInstanceError(base::PosRange pos) const;
   base::Error* MakePermissionError(base::PosRange call_pos, base::PosRange method_pos) const;
+  base::Error* MakeNewAbstractClassError(base::PosRange pos) const;
 
   static MethodTable kEmptyMethodTable;
   static MethodTable kErrorMethodTable;
   static MethodInfo kErrorMethodInfo;
 
-  const base::FileSet* fs_;
   MethodSignatureMap method_signatures_;
   MethodInfoMap method_info_;
 
@@ -184,7 +182,7 @@ private:
   using FieldNameMap = std::map<string, FieldInfo>;
   using FieldInfoMap = std::map<FieldId, FieldInfo>;
 
-  FieldTable(const base::FileSet* fs, const FieldNameMap& entries, const set<string>& bad_fields) : fs_(fs), field_names_(entries), bad_fields_(bad_fields) {
+  FieldTable(const FieldNameMap& entries, const set<string>& bad_fields) : field_names_(entries), bad_fields_(bad_fields) {
     for (const auto& entry : entries) {
       field_info_.insert({entry.second.fid, entry.second});
     }
@@ -201,7 +199,6 @@ private:
   static FieldTable kErrorFieldTable;
   static FieldInfo kErrorFieldInfo;
 
-  const base::FileSet* fs_ = nullptr;
   FieldNameMap field_names_;
   FieldInfoMap field_info_;
 
@@ -232,19 +229,21 @@ struct TypeInfo {
 
 class TypeInfoMap {
 public:
-  static const TypeInfoMap Empty(const base::FileSet* fs) {
-    return TypeInfoMap(fs, {});
+  static const TypeInfoMap& Empty() {
+    return kEmptyTypeInfoMap;
   }
 
   const TypeInfo& LookupTypeInfo(ast::TypeId tid) const {
     if (tid.ndims > 0) {
-      return kArrayTypeInfo;
+      tid = array_tid_;
     }
 
     const auto info = type_info_.find(tid);
     CHECK(info != type_info_.cend());
     return info->second;
   }
+
+  string LookupTypeName(ast::TypeId tid) const;
 
   bool IsAncestor(ast::TypeId child, ast::TypeId ancestor) const;
 
@@ -255,49 +254,48 @@ private:
   // TODO: Make safe for parallel compilation.
   using InheritMap = map<pair<ast::TypeId, ast::TypeId>, bool>;
 
-  TypeInfoMap(const base::FileSet* fs, const TypeMap& typeinfo) : fs_(fs), type_info_(typeinfo),
-    kArrayTypeInfo({
-      MakeModifierList(false, false, false),
-      ast::TypeKind::CLASS,
-      ast::TypeId{ast::TypeId::kErrorBase, 1},
-      "array",
-      "",
-      base::PosRange(-1, -1, -1),
-      TypeIdList({}),
-      TypeIdList({}),
-      MethodTable(fs, {}, {}, false),
-      FieldTable(fs, {{"length", FieldInfo{kArrayLengthFieldId, ast::TypeId{ast::TypeId::kErrorBase, 1}, MakeModifierList(false, false, false), ast::TypeId::kInt, base::PosRange(-1, -1, -1), "length"}}}, {}),
-      0
-    }) {}
+  TypeInfoMap(const TypeMap& typeinfo, ast::TypeId array_tid) : type_info_(typeinfo), array_tid_(array_tid) {}
 
   bool IsAncestorRec(ast::TypeId child, ast::TypeId ancestor) const;
 
+  static TypeInfoMap kEmptyTypeInfoMap;
   static TypeInfo kErrorTypeInfo;
 
-  const base::FileSet* fs_;
   TypeMap type_info_;
+  ast::TypeId array_tid_;
   mutable InheritMap inherit_map_;
-  TypeInfo kArrayTypeInfo;
 };
 
 class TypeInfoMapBuilder {
 public:
-  TypeInfoMapBuilder(const base::FileSet* fs) : fs_(fs) {}
+  TypeInfoMapBuilder(ast::TypeId object_tid, ast::TypeId serializable_tid, ast::TypeId cloneable_tid);
 
-  void PutType(ast::TypeId tid, const ast::TypeDecl& type, string package, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
+  void PutType(ast::TypeId tid, const ast::ModifierList& mods, ast::TypeKind kind, const string& name, const string& package, base::PosRange pos, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
+    type_entries_.push_back(TypeInfo{mods, kind, tid, name, package, pos, TypeIdList(extends), TypeIdList(implements), MethodTable::kEmptyMethodTable, FieldTable::kEmptyFieldTable, tid.base});
+  }
+
+  void PutType(ast::TypeId tid, const ast::TypeDecl& type, const string& package, const vector<ast::TypeId>& extends, const vector<ast::TypeId>& implements) {
     CHECK(tid.ndims == 0);
-    type_entries_.push_back(TypeInfo{type.Mods(), type.Kind(), tid, type.Name(), package, type.NameToken().pos, TypeIdList(extends), TypeIdList(implements), MethodTable::kEmptyMethodTable, FieldTable::kEmptyFieldTable, tid.base});
+    PutType(tid, type.Mods(), type.Kind(), type.Name(), package, type.NameToken().pos, extends, implements);
+  }
+
+  void PutMethod(ast::TypeId curtid, const MethodInfo& minfo) {
+    method_entries_.insert({curtid, minfo});
   }
 
   void PutMethod(ast::TypeId curtid, ast::TypeId rettid, const vector<ast::TypeId>& paramtids, const ast::MemberDecl& meth, bool is_constructor) {
-    method_entries_.insert({curtid, MethodInfo{kErrorMethodId, curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{is_constructor, meth.Name(), TypeIdList(paramtids)}}});
+    PutMethod(curtid, MethodInfo{kErrorMethodId, curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{is_constructor, meth.Name(), TypeIdList(paramtids)}});
+  }
+
+  void PutField(ast::TypeId curtid, const FieldInfo& finfo) {
+    field_entries_.insert({curtid, finfo});
   }
 
   void PutField(ast::TypeId curtid, ast::TypeId tid, const ast::MemberDecl& field) {
-    field_entries_.insert({curtid, FieldInfo{kErrorFieldId, curtid, field.Mods(), tid, field.NameToken().pos, field.Name()}});
+    PutField(curtid, FieldInfo{kErrorFieldId, curtid, field.Mods(), tid, field.NameToken().pos, field.Name()});
   }
 
-  TypeInfoMap Build(const TypeSet& typeset, base::ErrorList* out);
+  TypeInfoMap Build(base::ErrorList* out);
 
 private:
   using MInfoIter = vector<MethodInfo>::iterator;
@@ -311,23 +309,24 @@ private:
 
   void BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInfo* tinfo, FieldId* cur_fid, const map<ast::TypeId, TypeInfo>& sofar, base::ErrorList* out);
 
-  void ValidateExtendsImplementsGraph(const TypeSet& typeset, map<ast::TypeId, TypeInfo>* m, set<ast::TypeId>* bad, base::ErrorList* errors);
+  void ValidateExtendsImplementsGraph(map<ast::TypeId, TypeInfo>* m, set<ast::TypeId>* bad, base::ErrorList* errors);
   void PruneInvalidGraphEdges(const map<ast::TypeId, TypeInfo>&, set<ast::TypeId>*, base::ErrorList*);
-  void IntroduceImplicitGraphEdges(const TypeSet& typeset, const set<ast::TypeId>& bad, map<ast::TypeId, TypeInfo>* types);
+  void IntroduceImplicitGraphEdges(const set<ast::TypeId>& bad, map<ast::TypeId, TypeInfo>* types);
   vector<ast::TypeId> VerifyAcyclicGraph(const multimap<ast::TypeId, ast::TypeId>&, set<ast::TypeId>*, std::function<void(const vector<ast::TypeId>&)>);
 
   base::Error* MakeConstructorNameError(base::PosRange pos) const;
   base::Error* MakeParentFinalError(const TypeInfo& minfo, const TypeInfo& pinfo) const;
   base::Error* MakeDifferingReturnTypeError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const;
-  base::Error* MakeStaticMethodOverrideError(const MethodInfo& minfo, const MethodInfo& pinfo) const;
-  base::Error* MakeLowerVisibilityError(const MethodInfo& minfo, const MethodInfo& pinfo) const;
+  base::Error* MakeStaticMethodOverrideError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const;
+  base::Error* MakeLowerVisibilityError(const TypeInfo& mtinfo, const MethodInfo& mminfo, const MethodInfo& pminfo) const;
   base::Error* MakeOverrideFinalMethodError(const MethodInfo& minfo, const MethodInfo& pinfo) const;
   base::Error* MakeParentClassEmptyConstructorError(const TypeInfo& minfo, const TypeInfo& pinfo) const;
   base::Error* MakeNeedAbstractClassError(const TypeInfo& tinfo, const MethodTable::MethodSignatureMap& method_map) const;
 
   base::Error* MakeExtendsCycleError(const vector<TypeInfo>& cycle) const;
 
-  const base::FileSet* fs_;
+  ast::TypeId object_tid_;
+  ast::TypeId array_tid_;
   vector<TypeInfo> type_entries_;
   multimap<ast::TypeId, MethodInfo> method_entries_;
   multimap<ast::TypeId, FieldInfo> field_entries_;

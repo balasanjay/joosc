@@ -11,8 +11,8 @@ namespace lexer {
 
 class NonAnsiCharError : public base::PosRangeError {
  public:
-  NonAnsiCharError(base::FileSet* fs, base::PosRange pos)
-      : base::PosRangeError(fs, base::PosRange(pos)) {}
+  NonAnsiCharError(base::PosRange pos)
+      : base::PosRangeError(base::PosRange(pos)) {}
 
  protected:
   string SimpleError() const override { return "NonAnsiCharError"; }
@@ -21,8 +21,8 @@ class NonAnsiCharError : public base::PosRangeError {
 
 class LeadingZeroInIntLitError : public base::PosRangeError {
  public:
-  LeadingZeroInIntLitError(base::FileSet* fs, base::PosRange pos)
-      : base::PosRangeError(fs, base::PosRange(pos)) {}
+  LeadingZeroInIntLitError(base::PosRange pos)
+      : base::PosRangeError(base::PosRange(pos)) {}
 
  protected:
   string SimpleError() const override { return "LeadingZeroInIntLitError"; }
@@ -33,8 +33,8 @@ class LeadingZeroInIntLitError : public base::PosRangeError {
 
 class UnclosedBlockCommentError : public base::PosRangeError {
  public:
-  UnclosedBlockCommentError(base::FileSet* fs, base::PosRange posrange)
-      : base::PosRangeError(fs, posrange) {}
+  UnclosedBlockCommentError(base::PosRange posrange)
+      : base::PosRangeError(posrange) {}
 
  protected:
   string SimpleError() const override { return "UnclosedBlockCommentError"; }
@@ -43,8 +43,8 @@ class UnclosedBlockCommentError : public base::PosRangeError {
 
 class UnclosedStringLitError : public base::PosRangeError {
  public:
-  UnclosedStringLitError(base::FileSet* fs, base::PosRange pos)
-      : base::PosRangeError(fs, pos) {}
+  UnclosedStringLitError(base::PosRange pos)
+      : base::PosRangeError(pos) {}
 
  protected:
   string SimpleError() const override { return "UnclosedStringLitError"; }
@@ -53,8 +53,8 @@ class UnclosedStringLitError : public base::PosRangeError {
 
 class UnexpectedCharError : public base::PosRangeError {
  public:
-  UnexpectedCharError(base::FileSet* fs, base::PosRange pos)
-      : base::PosRangeError(fs, pos) {}
+  UnexpectedCharError(base::PosRange pos)
+      : base::PosRangeError(pos) {}
 
  protected:
   string SimpleError() const override { return "UnexpectedCharError"; }
@@ -63,8 +63,8 @@ class UnexpectedCharError : public base::PosRangeError {
 
 class InvalidCharacterEscapeError : public base::PosRangeError {
  public:
-  InvalidCharacterEscapeError(base::FileSet* fs, base::PosRange posrange)
-      : base::PosRangeError(fs, posrange) {}
+  InvalidCharacterEscapeError(base::PosRange posrange)
+      : base::PosRangeError(posrange) {}
 
  protected:
   string SimpleError() const override { return "InvalidCharacterEscapeError"; }
@@ -73,8 +73,8 @@ class InvalidCharacterEscapeError : public base::PosRangeError {
 
 class InvalidCharacterLitError : public base::PosRangeError {
  public:
-  InvalidCharacterLitError(base::FileSet* fs, base::PosRange posrange)
-      : base::PosRangeError(fs, posrange) {}
+  InvalidCharacterLitError(base::PosRange posrange)
+      : base::PosRangeError(posrange) {}
 
  protected:
   string SimpleError() const override { return "InvalidCharacterLitError"; }
@@ -83,8 +83,8 @@ class InvalidCharacterLitError : public base::PosRangeError {
 
 class UnsupportedTokenError : public base::PosRangeError {
  public:
-  UnsupportedTokenError(const base::FileSet* fs, base::PosRange posrange)
-      : base::PosRangeError(fs, posrange) {}
+  UnsupportedTokenError(base::PosRange posrange)
+      : base::PosRangeError(posrange) {}
 
  protected:
   string SimpleError() const override { return "UnsupportedTokenError"; }
