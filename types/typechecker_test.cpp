@@ -275,9 +275,101 @@ TEST_F(TypeCheckerTest, IntLitExpr) {
   EXPECT_NO_ERRS();
 }
 
-// TODO: NameExpr
-// TODO: FieldDerefExpr
-// TODO: CallExpr
+TEST_F(TypeCheckerTest, NameExprOkLocalVar) {
+  ParseProgram({
+    {"A.java", "public class A { public A() { int i = 1; int a = i; } }"},
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, NameExprLocalVarError) {
+  ParseProgram({
+    {"A.java", "public class A { public A() { boolean i = true; int a = i; } }"},
+  });
+  EXPECT_ERRS("UnassignableError(0:56)\n");
+}
+
+TEST_F(TypeCheckerTest, NameExprLocalVarErrorAssignSuppressed) {
+  ParseProgram({
+    {"A.java", "public class A { public A() { asdf i = true; int a = i; } }"},
+  });
+  EXPECT_ERRS("UnknownTypenameError(0:30-34)\n");
+}
+
+TEST_F(TypeCheckerTest, NameExprOkStaticField) {
+  ParseProgram({
+    {"A.java", "public class A { public A() { int i = foo.bar.B.i; } }"},
+    {"B.java", "package foo.bar; public class B { public static int i; }"},
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, NameExprStaticFieldError) {
+  ParseProgram({
+    {"A.java", "public class A { public A() { int i = foo.bar.B.i; } }"},
+    {"B.java", "package foo.bar; public class B { protected static int i; }"},
+  });
+  EXPECT_ERRS("PermissionError(1:55)\n");
+}
+
+TEST_F(TypeCheckerTest, FieldDerefExprOk) {
+  ParseProgram({
+    {"A.java", "public class A { public A() {} public int i; public int foo() { A a = new A(); return a.i; } }"},
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, FieldDerefExprOnPrimitive) {
+  ParseProgram({
+    {"A.java", "public class A { public A() {} public int i; public int foo() { return i.i; } }"},
+  });
+  EXPECT_ERRS("MemberAccessOnPrimitiveError(0:73)\n");
+}
+
+TEST_F(TypeCheckerTest, FieldDerefExprStaticNoType) {
+  ParseProgram({
+    {"A.java", "public class A { public int foo() { return B.i; } }"},
+  });
+  EXPECT_ERRS("UndefinedReferenceError(0:43)\n");
+}
+
+TEST_F(TypeCheckerTest, FieldDerefExprBadResolve) {
+  ParseProgram({
+    {"A.java", "package foo; public class A { public A() {} public int foo() { return B.i; } }"},
+    {"B.java", "public class B { protected static int i; }"},
+  });
+  EXPECT_ERRS("UndefinedReferenceError(0:70)\n");
+}
+
+TEST_F(TypeCheckerTest, CallExprRecurseNameExprOk) {
+  ParseProgram({
+    {"A.java", "public class A { public A() { B.foo(); } }"},
+    {"B.java", "public class B { public static void foo() {} }"},
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, CallExprRecurseNameExprError) {
+  ParseProgram({
+    {"A.java", "public class A { public A() { a.foo(); } }"},
+  });
+  EXPECT_ERRS("UndefinedReferenceError(0:30)\n");
+}
+
+TEST_F(TypeCheckerTest, CallExprFieldDerefExprOk) {
+  ParseProgram({
+    {"A.java", "public class A { public void foo() {} public A() { foo(); } }"},
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, CallExprFieldDerefExprParamError) {
+  ParseProgram({
+    {"A.java", "public class A { public void foo(int i) {} public A() { foo(1, 2); } }"},
+  });
+  EXPECT_ERRS("UndefinedMethodError(0:56-59)\n");
+  PRINT_ERRS();
+}
 
 // TODO: NewArrayExpr
 

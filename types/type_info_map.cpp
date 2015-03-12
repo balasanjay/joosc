@@ -945,7 +945,7 @@ MethodId MethodTable::ResolveCall(const TypeInfoMap& type_info_map, TypeId calle
   if (minfo == method_signatures_.end()) {
     // Only emit error if this isn't blacklisted.
     if (!IsBlacklisted(ctx, method_name)) {
-      errors->Append(MakeUndefinedMethodError(sig, pos));
+      errors->Append(MakeUndefinedMethodError(type_info_map, sig, pos));
     }
     return kErrorMethodId;
   }
@@ -989,9 +989,7 @@ Error* MethodTable::MakePermissionError(PosRange call_pos, PosRange method_pos) 
   });
 }
 
-Error* MethodTable::MakeUndefinedMethodError(MethodSignature sig, PosRange pos) const {
-  // TODO: make this error better.
-
+Error* MethodTable::MakeUndefinedMethodError(const TypeInfoMap& tinfo_map, MethodSignature sig, PosRange pos) const {
   stringstream ss;
   ss << "Couldn't find ";
   if (sig.is_constructor) {
@@ -1005,7 +1003,7 @@ Error* MethodTable::MakeUndefinedMethodError(MethodSignature sig, PosRange pos) 
       if (i > 0) {
         ss << ", ";
       }
-      ss << sig.param_types.At(i).base;
+      ss << tinfo_map.LookupTypeName(sig.param_types.At(i));
     }
   }
   ss << ")'";

@@ -118,7 +118,7 @@ private:
 
   bool IsBlacklisted(CallContext ctx, const string& name) const;
 
-  base::Error* MakeUndefinedMethodError(MethodSignature sig, base::PosRange pos) const;
+  base::Error* MakeUndefinedMethodError(const TypeInfoMap& tinfo_map, MethodSignature sig, base::PosRange pos) const;
 
   base::Error* MakeInstanceMethodOnStaticError(base::PosRange pos) const;
   base::Error* MakeStaticMethodOnInstanceError(base::PosRange pos) const;
