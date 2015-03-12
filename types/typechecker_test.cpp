@@ -368,7 +368,6 @@ TEST_F(TypeCheckerTest, CallExprFieldDerefExprParamError) {
     {"A.java", "public class A { public void foo(int i) {} public A() { foo(1, 2); } }"},
   });
   EXPECT_ERRS("UndefinedMethodError(0:56-59)\n");
-  PRINT_ERRS();
 }
 
 // TODO: NewArrayExpr
