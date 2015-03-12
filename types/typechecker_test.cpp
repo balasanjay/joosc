@@ -289,6 +289,13 @@ TEST_F(TypeCheckerTest, NameExprLocalVarError) {
   EXPECT_ERRS("UnassignableError(0:56)\n");
 }
 
+TEST_F(TypeCheckerTest, NameExprLocalVarErrorAssignSelfError) {
+  ParseProgram({
+    {"A.java", "public class A { public A() { int a = a; } }"},
+  });
+  EXPECT_ERRS("VariableInitializerSelfReferenceError(0:38)\n");
+}
+
 TEST_F(TypeCheckerTest, NameExprLocalVarErrorAssignSuppressed) {
   ParseProgram({
     {"A.java", "public class A { public A() { asdf i = true; int a = i; } }"},
