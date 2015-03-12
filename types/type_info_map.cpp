@@ -155,7 +155,7 @@ TypeInfoMapBuilder::TypeInfoMapBuilder(TypeId object_tid, TypeId serializable_ti
   PutField(
       array_tid_,
       FieldInfo{
-        kArrayLengthFieldId,
+        kErrorFieldId,
         array_tid_,
         MakeModifierList(false, false, false),
         TypeId::kInt,

@@ -13,7 +13,6 @@ namespace types {
 
 using ast::FieldId;
 using ast::MethodId;
-using ast::kArrayLengthFieldId;
 using ast::kErrorFieldId;
 using ast::kErrorMethodId;
 using ast::kFirstFieldId;

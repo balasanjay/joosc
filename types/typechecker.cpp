@@ -131,6 +131,10 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
   }
 
   if (op == lexer::ASSG) {
+    if (IsFinal(lhs)) {
+      errors_->Append(MakeAssignFinalError(ExtentOf(lhs)));
+      return nullptr;
+    }
     if (!IsAssignable(lhsType, rhsType)) {
       errors_->Append(MakeUnassignableError(lhsType, rhsType, ExtentOf(rhs)));
       return nullptr;
