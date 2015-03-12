@@ -51,10 +51,60 @@ REWRITE_DEFN(ConstantFoldingVisitor, BinExpr, Expr, expr, exprptr) {
       default: break;
     }
 
-    auto new_bool_expr = make_shared<ast::BoolLitExpr>(lexer::Token(result ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)));
+    auto new_bool_expr = make_shared<ast::BoolLitExpr>(
+        lexer::Token(result ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)));
     return make_shared<FoldedConstantExpr>(new_bool_expr, exprptr);
 
   } else if (IsNumericOp(expr.Op().type)) {
+    i64 lhs_value =
+      dynamic_cast<const ast::IntLitExpr*>(
+        lhs_const->ConstantPtr().get()
+        )->Value();
+    i64 rhs_value =
+      dynamic_cast<const ast::IntLitExpr*>(
+        rhs_const->ConstantPtr().get()
+        )->Value();
+    i64 result = 0;
+    switch (expr.Op().type) {
+      case lexer::ADD: result = lhs_value + rhs_value; break;
+      case lexer::SUB: result = lhs_value - rhs_value; break;
+      case lexer::MUL: result = lhs_value * rhs_value; break;
+      case lexer::DIV: result = lhs_value / rhs_value; break; // TODO: Divide by 0?
+      case lexer::MOD: result = lhs_value % rhs_value; break;
+      default: break;
+    }
+
+    auto new_int_expr = make_shared<ast::IntLitExpr>(
+        lexer::Token(lexer::INTEGER, ExtentOf(exprptr)), result, expr.GetTypeId());
+    return make_shared<FoldedConstantExpr>(new_int_expr, exprptr);
+
+  } else if (IsRelationalOp(expr.Op().type) || IsEqualityOp(expr.Op().type)) {
+    // TODO: Relational and equality checks for other types.
+    auto lhs =
+      dynamic_cast<const ast::IntLitExpr*>(lhs_const->ConstantPtr().get());
+    auto rhs =
+      dynamic_cast<const ast::IntLitExpr*>(rhs_const->ConstantPtr().get());
+
+    if (lhs != nullptr && rhs != nullptr) {
+      i64 lhs_value = lhs->Value();
+      i64 rhs_value = rhs->Value();
+      bool result = 0;
+      switch (expr.Op().type) {
+        case lexer::LE: result = lhs_value <= rhs_value; break;
+        case lexer::GE: result = lhs_value >= rhs_value; break;
+        case lexer::LT: result = lhs_value < rhs_value; break;
+        case lexer::GT: result = lhs_value > rhs_value; break;
+
+        case lexer::EQ: result = lhs_value == rhs_value; break;
+        case lexer::NEQ: result = lhs_value != rhs_value; break;
+
+        default: break;
+      }
+
+      auto new_bool_expr = make_shared<ast::BoolLitExpr>(
+          lexer::Token(result ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)));
+      return make_shared<FoldedConstantExpr>(new_bool_expr, exprptr);
+    }
   }
 
   return exprptr;
