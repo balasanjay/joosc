@@ -108,12 +108,26 @@ TEST_F(TypeCheckerTest, BinExprLhsFail) {
   EXPECT_ERRS("UnaryNonNumericError(0:1-6)\n");
 }
 
+TEST_F(TypeCheckerTest, BinExprLhsVoid) {
+  ParseProgram({
+    {"A.java", "public class A { public void foo() {} public A() { int i = foo() + 1; } }"},
+  });
+  EXPECT_ERRS("VoidInExprError(0:59-64)\n");
+}
+
 TEST_F(TypeCheckerTest, BinExprRhsFail) {
   sptr<const Expr> before = ParseExpr("3 + (-null)");
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(nullptr, after);
   EXPECT_ERRS("UnaryNonNumericError(0:5-10)\n");
+}
+
+TEST_F(TypeCheckerTest, BinExprRhsVoid) {
+  ParseProgram({
+    {"A.java", "public class A { public void foo() {} public A() { int i = 1 + foo(); } }"},
+  });
+  EXPECT_ERRS("VoidInExprError(0:63-68)\n");
 }
 
 TEST_F(TypeCheckerTest, BinExprBoolOpSuccess) {
@@ -642,6 +656,20 @@ TEST_F(TypeCheckerTest, ReturnStmtWrongType) {
       {"F.java", "public class F { public int f() { return true; } }"}
   });
   EXPECT_ERRS("InvalidReturnError(0:34-40)\n");
+}
+
+TEST_F(TypeCheckerTest, ReturnStmtVoidMethodNonVoidReturn) {
+  ParseProgram({
+      {"F.java", "public class F { public void f() { return 1; } }"}
+  });
+  EXPECT_ERRS("ReturnInVoidMethodError(0:35-41)\n");
+}
+
+TEST_F(TypeCheckerTest, ReturnStmtNonVoidMethodVoidReturn) {
+  ParseProgram({
+      {"F.java", "public class F { public int f() { return; } }"}
+  });
+  EXPECT_ERRS("EmptyReturnInNonVoidMethodError(0:34-40)\n");
 }
 
 TEST_F(TypeCheckerTest, LocalDeclStmt) {
