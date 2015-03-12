@@ -130,6 +130,15 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
     return nullptr;
   }
 
+  if (lhsType == TypeId::kVoid) {
+    errors_->Append(MakeVoidInExprError(ExtentOf(lhs)));
+    return nullptr;
+  }
+  if (rhsType == TypeId::kVoid) {
+    errors_->Append(MakeVoidInExprError(ExtentOf(rhs)));
+    return nullptr;
+  }
+
   if (op == lexer::ASSG) {
     if (!IsAssignable(lhsType, rhsType)) {
       errors_->Append(MakeUnassignableError(lhsType, rhsType, ExtentOf(rhs)));
@@ -679,19 +688,27 @@ REWRITE_DEFN(TypeChecker, LocalDeclStmt, Stmt, stmt,) {
   return make_shared<LocalDeclStmt>(type, stmt.Name(), stmt.NameToken(), expr, vid);
 }
 
-REWRITE_DEFN(TypeChecker, ReturnStmt, Stmt, stmt,) {
-  sptr<const Expr> expr = nullptr;
-  if (stmt.GetExprPtr() != nullptr) {
-    expr = Rewrite(stmt.GetExprPtr());
-    if (expr == nullptr) {
+REWRITE_DEFN(TypeChecker, ReturnStmt, Stmt, stmt, stmtptr) {
+  // Void methods and constructors can't have return value.
+  if (curMemberType_ == TypeId::kVoid) {
+    if (stmt.GetExprPtr() != nullptr) {
+      errors_->Append(MakeReturnInVoidMethodError(stmt.ReturnToken().pos));
       return nullptr;
     }
+    return stmtptr;
   }
 
-  TypeId exprType = TypeId::kVoid;
-  if (expr != nullptr) {
-    exprType = expr->GetTypeId();
+  if (stmt.GetExprPtr() == nullptr) {
+    errors_->Append(MakeEmptyReturnInNonVoidMethodError(stmt.ReturnToken().pos));
+    return nullptr;
   }
+
+  sptr<const Expr> expr = Rewrite(stmt.GetExprPtr());
+  if (expr == nullptr) {
+    return nullptr;
+  }
+
+  TypeId exprType = expr->GetTypeId();
   if (!exprType.IsValid()) {
     return nullptr;
   }

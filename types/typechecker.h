@@ -138,6 +138,9 @@ class TypeChecker final : public ast::Visitor {
   base::Error* MakeThisInStaticMemberError(base::PosRange this_pos);
   base::Error* MakeMemberAccessOnPrimitiveError(ast::TypeId lhs, base::PosRange pos);
   base::Error* MakeTypeInParensError(base::PosRange pos);
+  base::Error* MakeVoidInExprError(base::PosRange pos);
+  base::Error* MakeReturnInVoidMethodError(base::PosRange pos);
+  base::Error* MakeEmptyReturnInNonVoidMethodError(base::PosRange pos);
 
   base::ErrorList* errors_;
 
