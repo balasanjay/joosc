@@ -341,6 +341,13 @@ TEST_F(TypeCheckerTest, FieldDerefExprBadResolve) {
   EXPECT_ERRS("UndefinedReferenceError(0:70)\n");
 }
 
+TEST_F(TypeCheckerTest, FieldDerefExprOnVoid) {
+  ParseProgram({
+    {"A.java", "public class A { public void foo() { int x = foo().bar; } }"},
+  });
+  EXPECT_ERRS("VoidInExprError(0:45-50)\n");
+}
+
 TEST_F(TypeCheckerTest, CallExprRecurseNameExprOk) {
   ParseProgram({
     {"A.java", "public class A { public A() { B.foo(); } }"},
@@ -368,7 +375,13 @@ TEST_F(TypeCheckerTest, CallExprFieldDerefExprParamError) {
     {"A.java", "public class A { public void foo(int i) {} public A() { foo(1, 2); } }"},
   });
   EXPECT_ERRS("UndefinedMethodError(0:56-59)\n");
-  PRINT_ERRS();
+}
+
+TEST_F(TypeCheckerTest, CallExprOnVoid) {
+  ParseProgram({
+    {"A.java", "public class A { public void foo() { int x = foo().bar(); } }"},
+  });
+  EXPECT_ERRS("VoidInExprError(0:45-50)\n");
 }
 
 // TODO: NewArrayExpr
@@ -515,6 +528,13 @@ TEST_F(TypeCheckerTest, UnaryExprNotIsBool) {
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(TypeId::kBool, after->GetTypeId());
+}
+
+TEST_F(TypeCheckerTest, UnaryExprOnVoid) {
+  ParseProgram({
+    {"A.java", "public class A { public void foo() { int x = -foo(); } }"},
+  });
+  EXPECT_ERRS("UnaryNonNumericError(0:45-51)\n");
 }
 
 // TODO: BlockStmt
