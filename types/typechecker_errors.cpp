@@ -60,11 +60,15 @@ Error* TypeChecker::MakeUnassignableError(TypeId lhs, TypeId rhs, PosRange pos) 
   return MakeSimplePosRangeError(pos, "UnassignableError", ss.str());
 }
 
-Error* TypeChecker::MakeInvalidReturnError(TypeId ret, TypeId expr, PosRange pos) {
-  if (ret.base == TypeId::kVoidBase) {
-    return MakeSimplePosRangeError(pos, "InvalidReturnError", "Cannot return expression in void method or constructor.");
-  }
+Error* TypeChecker::MakeReturnInVoidMethodError(PosRange pos) {
+  return MakeSimplePosRangeError(pos, "ReturnInVoidMethodError", "Cannot return expression in void method or constructor.");
+}
 
+Error* TypeChecker::MakeEmptyReturnInNonVoidMethodError(PosRange pos) {
+  return MakeSimplePosRangeError(pos, "EmptyReturnInNonVoidMethodError", "Must return expression in non-void method.");
+}
+
+Error* TypeChecker::MakeInvalidReturnError(TypeId ret, TypeId expr, PosRange pos) {
   stringstream ss;
   ss << "Cannot return " << N(expr) << " in method returning " << N(ret) << ".";
   return MakeSimplePosRangeError(pos, "InvalidReturnError", ss.str());
@@ -92,6 +96,10 @@ Error* TypeChecker::MakeTypeInParensError(PosRange pos) {
 
 Error* TypeChecker::MakeAssignFinalError(base::PosRange pos) {
   return MakeSimplePosRangeError(pos, "AssignFinalError", "Cannot assign to a final field or variable.");
+}
+
+Error* TypeChecker::MakeVoidInExprError(PosRange pos) {
+  return MakeSimplePosRangeError(pos, "VoidInExprError", "Expressions returning void cannot be used in this context.");
 }
 
 } // namespace types
