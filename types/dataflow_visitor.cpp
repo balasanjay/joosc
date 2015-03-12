@@ -116,7 +116,7 @@ class ReachabilityVisitor final : public ast::Visitor {
 
   VISIT_DECL(BlockStmt, stmt,) {
     for (const auto& substmt : stmt.Stmts().Vec()) {
-      CheckReachable(ExtentOf(substmt));
+      CheckReachable(substmt);
       Visit(substmt);
     }
     may_emit_ = true;
@@ -178,10 +178,11 @@ class ReachabilityVisitor final : public ast::Visitor {
     return v;
   }
 
-  void CheckReachable(PosRange pos) {
+  template <typename T>
+  void CheckReachable(T t) {
     if (!reachable_ && may_emit_) {
       may_emit_ = false;
-      errors_->Append(MakeSimplePosRangeError(pos, "UnreachableCodeError", "Unreachable code."));
+      errors_->Append(MakeSimplePosRangeError(ExtentOf(t), "UnreachableCodeError", "Unreachable code."));
     }
   }
 
@@ -202,7 +203,7 @@ class ReachabilityVisitor final : public ast::Visitor {
     // Can't enter loop.
     if (is_const && !const_val) {
       ReachabilityVisitor nested = Nested(false, may_emit_);
-      nested.CheckReachable(ExtentOf(body));
+      nested.CheckReachable(body);
       reachable_ = true;
       return VisitResult::SKIP;
     }
