@@ -341,7 +341,35 @@ TEST_F(TypeCheckerTest, FieldDerefExprBadResolve) {
   EXPECT_ERRS("UndefinedReferenceError(0:70)\n");
 }
 
-// TODO: CallExpr
+TEST_F(TypeCheckerTest, CallExprRecurseNameExprOk) {
+  ParseProgram({
+    {"A.java", "public class A { public A() { B.foo(); } }"},
+    {"B.java", "public class B { public static void foo() {} }"},
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, CallExprRecurseNameExprError) {
+  ParseProgram({
+    {"A.java", "public class A { public A() { a.foo(); } }"},
+  });
+  EXPECT_ERRS("UndefinedReferenceError(0:30)\n");
+}
+
+TEST_F(TypeCheckerTest, CallExprFieldDerefExprOk) {
+  ParseProgram({
+    {"A.java", "public class A { public void foo() {} public A() { foo(); } }"},
+  });
+  EXPECT_NO_ERRS();
+}
+
+TEST_F(TypeCheckerTest, CallExprFieldDerefExprParamError) {
+  ParseProgram({
+    {"A.java", "public class A { public void foo(int i) {} public A() { foo(1, 2); } }"},
+  });
+  EXPECT_ERRS("UndefinedMethodError(0:56-59)\n");
+  PRINT_ERRS();
+}
 
 // TODO: NewArrayExpr
 
