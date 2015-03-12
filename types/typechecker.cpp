@@ -253,13 +253,14 @@ REWRITE_DEFN(TypeChecker, CallExpr, Expr, expr,) {
     return nullptr;
   }
 
-  if (IsPrimitive(lhs->GetTypeId())) {
-    errors_->Append(MakeMemberAccessOnPrimitiveError(lhs->GetTypeId(), field_deref->GetToken().pos));
+  TypeId lhs_tid = lhs->GetTypeId();
+
+  if (IsPrimitive(lhs_tid)) {
+    errors_->Append(MakeMemberAccessOnPrimitiveError(lhs_tid, field_deref->GetToken().pos));
     return nullptr;
   }
 
   CallContext cc = CallContext::INSTANCE;
-  TypeId lhs_tid = lhs->GetTypeId();
 
   // If lhs is a type name, then this is a call of a static method.
   {
@@ -671,7 +672,7 @@ REWRITE_DEFN(TypeChecker, LocalDeclStmt, Stmt, stmt,) {
     vid = g.GetVarId();
   }
 
-  if (type == nullptr || expr == nullptr) {
+  if (type == nullptr || expr == nullptr || !expr->GetTypeId().IsValid()) {
     return nullptr;
   }
 
