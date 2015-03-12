@@ -45,10 +45,6 @@ QualifiedName SliceFirstN(const QualifiedName& name, int n) {
   return QualifiedName(toks, parts, fullname.str());
 }
 
-sptr<const Expr> MakeImplicitThis(PosRange pos, TypeId tid) {
-  return make_shared<ThisExpr>(Token(K_THIS, Pos(pos.fileid, pos.begin)), tid);
-}
-
 } // namespace
 
 REWRITE_DEFN(TypeChecker, ArrayIndexExpr, Expr, expr,) {
@@ -134,7 +130,20 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
     return nullptr;
   }
 
+  if (lhsType == TypeId::kVoid) {
+    errors_->Append(MakeVoidInExprError(ExtentOf(lhs)));
+    return nullptr;
+  }
+  if (rhsType == TypeId::kVoid) {
+    errors_->Append(MakeVoidInExprError(ExtentOf(rhs)));
+    return nullptr;
+  }
+
   if (op == lexer::ASSG) {
+    if (IsFinal(lhs)) {
+      errors_->Append(MakeAssignFinalError(ExtentOf(lhs)));
+      return nullptr;
+    }
     if (!IsAssignable(lhsType, rhsType)) {
       errors_->Append(MakeUnassignableError(lhsType, rhsType, ExtentOf(rhs)));
       return nullptr;
@@ -225,7 +234,7 @@ REWRITE_DEFN(TypeChecker, CallExpr, Expr, expr,) {
     CHECK(name_expr->Name().Parts().size() == 1);
     PosRange pos = name_expr->Name().Tokens().front().pos;
     sptr<const FieldDerefExpr> field_deref = make_shared<FieldDerefExpr>(
-          MakeImplicitThis(pos, curtype_), name_expr->Name().Parts().front(), name_expr->Name().Tokens().front());
+          ThisExpr::ImplicitThis(pos, curtype_), name_expr->Name().Parts().front(), name_expr->Name().Tokens().front());
     sptr<const CallExpr> call = make_shared<CallExpr>(field_deref, expr.Lparen(), expr.Args(), expr.Rparen());
     return Rewrite(call);
   }
@@ -454,11 +463,9 @@ REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr, exprptr) {
 
   // First, try resolving it as a local variable or a param.
   {
-    // We don't bother using the local var decl error, because the field error
-    // will be strictly superior.
-    ErrorList throwaway;
+    int error_size = errors_->Size();
     pair<TypeId, ast::LocalVarId> var_data = symbol_table_.ResolveLocal(
-        parts.at(0), toks.at(0).pos, &throwaway);
+        parts.at(0), toks.at(0).pos, errors_);
     bool ok = (var_data.first != TypeId::kUnassigned && var_data.second != kVarUnassigned);
 
     // If the local resolved successfully, we split the current NameExpr into a
@@ -466,6 +473,11 @@ REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr, exprptr) {
     if (ok) {
       sptr<const Expr> name_expr = make_shared<NameExpr>(SliceFirstN(expr.Name(), 1), var_data.second, var_data.first);
       return Rewrite(SplitQualifiedToFieldDerefs(name_expr, expr.Name(), 1));
+    }
+
+    // Symbol table generated an error; propagate it.
+    if (error_size != errors_->Size()) {
+      return nullptr;
     }
   }
 
@@ -477,7 +489,7 @@ REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr, exprptr) {
     FieldId fid = tinfo.fields.ResolveAccess(typeinfo_, curtype_, CallContext::INSTANCE, curtype_, parts.at(0), toks.at(0).pos, &field_errors);
     bool ok = fid != kErrorFieldId;
     if (ok) {
-      sptr<const Expr> implicit_this = MakeImplicitThis(toks.at(0).pos, curtype_);
+      sptr<const Expr> implicit_this = ThisExpr::ImplicitThis(toks.at(0).pos, curtype_);
       sptr<const Expr> field_deref = make_shared<FieldDerefExpr>(implicit_this, parts.at(0), toks.at(0));
       return Rewrite(SplitQualifiedToFieldDerefs(field_deref, expr.Name(), 1));
     }
@@ -684,19 +696,27 @@ REWRITE_DEFN(TypeChecker, LocalDeclStmt, Stmt, stmt,) {
   return make_shared<LocalDeclStmt>(type, stmt.Name(), stmt.NameToken(), expr, vid);
 }
 
-REWRITE_DEFN(TypeChecker, ReturnStmt, Stmt, stmt,) {
-  sptr<const Expr> expr = nullptr;
-  if (stmt.GetExprPtr() != nullptr) {
-    expr = Rewrite(stmt.GetExprPtr());
-    if (expr == nullptr) {
+REWRITE_DEFN(TypeChecker, ReturnStmt, Stmt, stmt, stmtptr) {
+  // Void methods and constructors can't have return value.
+  if (curMemberType_ == TypeId::kVoid) {
+    if (stmt.GetExprPtr() != nullptr) {
+      errors_->Append(MakeReturnInVoidMethodError(stmt.ReturnToken().pos));
       return nullptr;
     }
+    return stmtptr;
   }
 
-  TypeId exprType = TypeId::kVoid;
-  if (expr != nullptr) {
-    exprType = expr->GetTypeId();
+  if (stmt.GetExprPtr() == nullptr) {
+    errors_->Append(MakeEmptyReturnInNonVoidMethodError(stmt.ReturnToken().pos));
+    return nullptr;
   }
+
+  sptr<const Expr> expr = Rewrite(stmt.GetExprPtr());
+  if (expr == nullptr) {
+    return nullptr;
+  }
+
+  TypeId exprType = expr->GetTypeId();
   if (!exprType.IsValid()) {
     return nullptr;
   }
