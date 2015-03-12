@@ -449,11 +449,9 @@ REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr, exprptr) {
 
   // First, try resolving it as a local variable or a param.
   {
-    // We don't bother using the local var decl error, because the field error
-    // will be strictly superior.
-    ErrorList throwaway;
+    int error_size = errors_->Size();
     pair<TypeId, ast::LocalVarId> var_data = symbol_table_.ResolveLocal(
-        parts.at(0), toks.at(0).pos, &throwaway);
+        parts.at(0), toks.at(0).pos, errors_);
     bool ok = (var_data.first != TypeId::kUnassigned && var_data.second != kVarUnassigned);
 
     // If the local resolved successfully, we split the current NameExpr into a
@@ -461,6 +459,11 @@ REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr, exprptr) {
     if (ok) {
       sptr<const Expr> name_expr = make_shared<NameExpr>(SliceFirstN(expr.Name(), 1), var_data.second, var_data.first);
       return Rewrite(SplitQualifiedToFieldDerefs(name_expr, expr.Name(), 1));
+    }
+
+    // Symbol table generated an error; propagate it.
+    if (error_size != errors_->Size()) {
+      return nullptr;
     }
   }
 
