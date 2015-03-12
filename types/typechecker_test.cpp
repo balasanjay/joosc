@@ -384,6 +384,13 @@ TEST_F(TypeCheckerTest, CallExprOnVoid) {
   EXPECT_ERRS("VoidInExprError(0:45-50)\n");
 }
 
+TEST_F(TypeCheckerTest, CallExprOnPrimitive) {
+  ParseProgram({
+    {"A.java", "public class A { public void foo() { 1.foo(); } }"},
+  });
+  EXPECT_ERRS("MemberAccessOnPrimitiveError(0:39-42)\n");
+}
+
 // TODO: NewArrayExpr
 
 TEST_F(TypeCheckerTest, NewClassExpr) {
