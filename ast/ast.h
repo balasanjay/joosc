@@ -257,15 +257,15 @@ class BoolLitExpr : public LitExpr {
 
 class IntLitExpr : public LitExpr {
  public:
-  IntLitExpr(lexer::Token token, const string& value, TypeId tid = TypeId::kUnassigned)
+  IntLitExpr(lexer::Token token, i64 value = 0, TypeId tid = TypeId::kUnassigned)
       : LitExpr(token, tid), value_(value) {}
 
   ACCEPT_VISITOR(IntLitExpr, Expr);
 
-  REF_GETTER(string, Value, value_);
+  VAL_GETTER(i64, Value, value_);
 
  private:
-  string value_;
+  i64 value_;
 };
 
 class StringLitExpr : public LitExpr {
