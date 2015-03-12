@@ -209,6 +209,18 @@ REWRITE_DEFN(Visitor, UnaryExpr, Expr, expr, exprptr) {
   return make_shared<UnaryExpr>(expr.Op(), rhs);
 }
 
+REWRITE_DEFN(Visitor, FoldedConstantExpr, Expr, expr, exprptr) {
+  SHORT_CIRCUIT(FoldedConstantExpr, expr, exprptr);
+  sptr<const Expr> constant = Rewrite(expr.ConstantPtr());
+  sptr<const Expr> original = Rewrite(expr.OriginalPtr());
+  if (SHOULD_PRUNE_AFTER || constant == nullptr || original == nullptr) {
+    return nullptr;
+  } else if (constant == expr.ConstantPtr() && original == expr.OriginalPtr()) {
+    return exprptr;
+  }
+  return make_shared<FoldedConstantExpr>(constant, original);
+}
+
 REWRITE_DEFN(Visitor, InstanceOfExpr, Expr, expr, exprptr) {
   SHORT_CIRCUIT(InstanceOfExpr, expr, exprptr);
   sptr<const Expr> lhs = Rewrite(expr.LhsPtr());

@@ -1,5 +1,6 @@
 #include "types/dataflow_visitor.h"
 
+#include "lexer/lexer.h"
 #include "base/error.h"
 #include "ast/extent.h"
 
@@ -24,8 +25,16 @@ namespace types {
 namespace {
 
 bool IsConstantBool(sptr<const Expr> expr, bool want) {
-  // TODO: Constant folding.
-  const ast::BoolLitExpr* bool_expr = dynamic_cast<const ast::BoolLitExpr*>(expr.get());
+  auto maybe_boolean = expr;
+
+  // Check if folded constant.
+  auto constant = dynamic_cast<const ast::FoldedConstantExpr*>(expr.get());
+  if (constant != nullptr) {
+    maybe_boolean = constant->ConstantPtr();
+  }
+
+  // Check if constant was boolean or original was boolean.
+  auto bool_expr = dynamic_cast<const ast::BoolLitExpr*>(maybe_boolean.get());
   if (bool_expr == nullptr) {
     return false;
   }

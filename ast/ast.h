@@ -450,6 +450,22 @@ class NewArrayExpr : public Expr {
   lexer::Token rbrack_;
 };
 
+class FoldedConstantExpr : public Expr {
+ public:
+  FoldedConstantExpr(sptr<const Expr> constant, sptr<const Expr> original) : Expr(constant->GetTypeId()), constant_(constant), original_(original) {}
+
+  ACCEPT_VISITOR(FoldedConstantExpr, Expr);
+
+  SPTR_GETTER(Expr, Constant, constant_);
+  SPTR_GETTER(Expr, Original, original_);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(FoldedConstantExpr);
+
+  sptr<const Expr> constant_;
+  sptr<const Expr> original_;
+};
+
 class Stmt {
  public:
   virtual ~Stmt() = default;

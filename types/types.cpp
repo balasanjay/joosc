@@ -4,6 +4,7 @@
 #include "types/decl_resolver.h"
 #include "types/type_info_map.h"
 #include "types/typechecker.h"
+#include "types/constant_folding_visitor.h"
 #include "types/dataflow_visitor.h"
 #include "types/typeset.h"
 
@@ -121,16 +122,16 @@ sptr<const Program> TypecheckProgram(sptr<const Program> prog, ErrorList* errors
     prog = typechecker.Rewrite(prog);
   }
 
-  // Don't progress with Dataflow if we have errors so far because pruned
-  // return statements will cause false positives.
+  // Don't progress with constant folding and dataflow if we have errors so far
+  // because pruned return statements will cause false positives.
   if (errors->IsFatal()) {
     return prog;
   }
 
   // Phase 4: Dataflow Analysis.
   {
-    DataflowVisitor dataflow(typeInfo, errors);
-    dataflow.Visit(prog);
+    prog = ConstantFoldingVisitor().Rewrite(prog);
+    DataflowVisitor(typeInfo, errors).Visit(prog);
   }
 
   return prog;
