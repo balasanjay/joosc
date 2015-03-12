@@ -145,4 +145,20 @@ TEST_F(MethodTableTest, ResolveCallInaccessibleError) {
   EXPECT_ERRS("PermissionError: [1:81-84,0:59-62]\n");
 }
 
+TEST_F(MethodTableTest, ResolveCallNewAbstractClassError) {
+  ParseProgram({
+    {"A.java", "public abstract class A { public A() {} }"},
+    {"B.java", "public class B { public B() { A a = new A(); } }"},
+  });
+  EXPECT_ERRS("NewAbstractClassError(1:40)\n");
+}
+
+TEST_F(MethodTableTest, ResolveCallNewInterfaceError) {
+  ParseProgram({
+    {"A.java", "public interface A { }"},
+    {"B.java", "public class B { public B() { A a = new A(); } }"},
+  });
+  EXPECT_ERRS("UndefinedMethodError(1:40)\n");
+}
+
 } // namespace types
