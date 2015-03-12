@@ -358,13 +358,20 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
       CHECK(!pminfo.mods.HasModifier(NATIVE));
       CHECK(!mminfo.mods.HasModifier(NATIVE));
 
-      // We can't lower visibility of inherited methods.
-      if (pminfo.mods.HasModifier(PUBLIC) && mminfo.mods.HasModifier(PROTECTED)) {
+      bool inherited_both_abstract = (mminfo.class_type != tinfo->type && pminfo.mods.HasModifier(ABSTRACT) && mminfo.mods.HasModifier(ABSTRACT));
+      // We can't lower visibility of inherited methods if we have an implementation.
+      if (pminfo.mods.HasModifier(PUBLIC) && mminfo.mods.HasModifier(PROTECTED) && !inherited_both_abstract) {
         out->Append(MakeLowerVisibilityError(*tinfo, mminfo, pminfo));
         new_bad_methods.insert(mminfo.signature.name);
         continue;
       }
       bool is_protected = mminfo.mods.HasModifier(PROTECTED);
+
+      // Promote to public accessibility if we inherited a protected abstract
+      // method and inherit a public abstract method from an interface.
+      if (inherited_both_abstract && pminfo.mods.HasModifier(PUBLIC)) {
+        is_protected = false;
+      }
 
       // We can't override final methods.
       if (pminfo.mods.HasModifier(FINAL)) {
