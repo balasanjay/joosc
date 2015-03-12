@@ -81,7 +81,7 @@ TEST_F(SymbolTableTest, LocalVarWorks) {
 TEST_F(SymbolTableTest, UndefinedError) {
   MakeSymbolTable({});
   auto result = symbs_->ResolveLocal("foo", PosRange(0, 5, 9), &errors_);
-  EXPECT_ERRS("UndefinedReferenceError(0:5-9)\n");
+  EXPECT_NO_ERRS();
   EXPECT_EQ(TypeId::kUnassigned, result.first);
   EXPECT_EQ(kVarUnassigned, result.second);
 }
@@ -91,9 +91,9 @@ TEST_F(SymbolTableTest, SimpleScope) {
   MakeSymbolTable({});
 
   string name = "foo";
-  symbs_->ResolveLocal(name, PosRange(0, 0, 1), &errors_);
-  EXPECT_ERRS("UndefinedReferenceError(0:0)\n");
-  errors_.Clear();
+  auto result = symbs_->ResolveLocal(name, PosRange(0, 0, 1), &errors_);
+  EXPECT_NO_ERRS();
+  EXPECT_EQ(TypeId::kUnassigned, result.first);
 
   {
     ScopeGuard s(symbs_.get());
@@ -105,7 +105,8 @@ TEST_F(SymbolTableTest, SimpleScope) {
   }
 
   symbs_->ResolveLocal(name, PosRange(0, 2, 3), &errors_);
-  EXPECT_ERRS("UndefinedReferenceError(0:2)\n");
+  EXPECT_NO_ERRS();
+  EXPECT_EQ(TypeId::kUnassigned, result.first);
 }
 
 TEST_F(SymbolTableTest, LocalVarShadowsParam) {
