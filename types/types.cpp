@@ -121,6 +121,12 @@ sptr<const Program> TypecheckProgram(sptr<const Program> prog, ErrorList* errors
     prog = typechecker.Rewrite(prog);
   }
 
+  // Don't progress with Dataflow if we have errors so far because pruned
+  // return statements will cause false positives.
+  if (errors->IsFatal()) {
+    return prog;
+  }
+
   // Phase 4: Dataflow Analysis.
   {
     DataflowVisitor dataflow(typeInfo, errors);
