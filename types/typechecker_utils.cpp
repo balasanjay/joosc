@@ -144,6 +144,16 @@ bool TypeChecker::IsReferenceWidening(TypeId lhs, TypeId rhs) const {
   return typeinfo_.IsAncestor(rhs, lhs);
 }
 
+bool TypeChecker::IsFinal(sptr<const ast::Expr> exprptr) const {
+  const ast::FieldDerefExpr* field_deref = dynamic_cast<const ast::FieldDerefExpr*>(exprptr.get());
+  if (field_deref == nullptr) {
+    return false;
+  }
+
+  // All fields on an array are final (only has the 'length' field).
+  return field_deref->Base().GetTypeId().ndims > 0;
+}
+
 bool TypeChecker::IsAssignable(TypeId lhs, TypeId rhs) const {
   // Identity conversion.
   if (lhs == rhs) {

@@ -123,6 +123,7 @@ class TypeChecker final : public ast::Visitor {
   bool IsAssignable(ast::TypeId lhs, ast::TypeId rhs) const;
   bool IsComparable(ast::TypeId lhs, ast::TypeId rhs) const;
   bool IsCastable(ast::TypeId lhs, ast::TypeId rhs) const;
+  bool IsFinal(sptr<const ast::Expr> expr) const;
 
   base::Error* MakeTypeMismatchError(ast::TypeId expected, ast::TypeId got, base::PosRange pos);
   base::Error* MakeIndexNonArrayError(base::PosRange pos);
@@ -138,6 +139,7 @@ class TypeChecker final : public ast::Visitor {
   base::Error* MakeThisInStaticMemberError(base::PosRange this_pos);
   base::Error* MakeMemberAccessOnPrimitiveError(ast::TypeId lhs, base::PosRange pos);
   base::Error* MakeTypeInParensError(base::PosRange pos);
+  base::Error* MakeAssignFinalError(base::PosRange pos);
   base::Error* MakeVoidInExprError(base::PosRange pos);
   base::Error* MakeReturnInVoidMethodError(base::PosRange pos);
   base::Error* MakeEmptyReturnInNonVoidMethodError(base::PosRange pos);

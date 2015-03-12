@@ -94,6 +94,10 @@ Error* TypeChecker::MakeTypeInParensError(PosRange pos) {
   return MakeSimplePosRangeError(pos, "TypeInParensError", "Can only put parentheses around a type when casting.");
 }
 
+Error* TypeChecker::MakeAssignFinalError(base::PosRange pos) {
+  return MakeSimplePosRangeError(pos, "AssignFinalError", "Cannot assign to a final field or variable.");
+}
+
 Error* TypeChecker::MakeVoidInExprError(PosRange pos) {
   return MakeSimplePosRangeError(pos, "VoidInExprError", "Expressions returning void cannot be used in this context.");
 }
