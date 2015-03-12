@@ -442,7 +442,13 @@ TEST_F(TypeCheckerTest, NewClassExprBadType) {
   EXPECT_ERRS("UnknownTypenameError(0:38)\n");
 }
 
-// TODO: Test new class expr with abstract class.
+TEST_F(TypeCheckerTest, NewClassExprNewAbstractClass) {
+  ParseProgram({
+    {"A.java", "public abstract class A { public A() {} }"},
+    {"B.java", "public class B { public B() { A a = new A(); } }"}
+  });
+  EXPECT_ERRS("NewAbstractClassError(1:40)\n");
+}
 
 TEST_F(TypeCheckerTest, NullLitExpr) {
   sptr<const Expr> before = ParseExpr("null");
