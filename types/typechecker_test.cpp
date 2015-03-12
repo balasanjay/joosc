@@ -296,6 +296,13 @@ TEST_F(TypeCheckerTest, NameExprOkLocalVar) {
   EXPECT_NO_ERRS();
 }
 
+TEST_F(TypeCheckerTest, NameExprOkLocalVarField) {
+  ParseProgram({
+    {"A.java", "public class A { public int a = 1; public A() { int a = this.a; } }"},
+  });
+  EXPECT_NO_ERRS();
+}
+
 TEST_F(TypeCheckerTest, NameExprLocalVarError) {
   ParseProgram({
     {"A.java", "public class A { public A() { boolean i = true; int a = i; } }"},
@@ -303,7 +310,7 @@ TEST_F(TypeCheckerTest, NameExprLocalVarError) {
   EXPECT_ERRS("UnassignableError(0:56)\n");
 }
 
-TEST_F(TypeCheckerTest, NameExprLocalVarErrorAssignSelfError) {
+TEST_F(TypeCheckerTest, NameExprLocalVarErrorAssignSelf) {
   ParseProgram({
     {"A.java", "public class A { public int a = 1; public A() { int a = a; } }"},
   });
