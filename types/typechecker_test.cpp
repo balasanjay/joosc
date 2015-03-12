@@ -108,12 +108,26 @@ TEST_F(TypeCheckerTest, BinExprLhsFail) {
   EXPECT_ERRS("UnaryNonNumericError(0:1-6)\n");
 }
 
+TEST_F(TypeCheckerTest, BinExprLhsVoid) {
+  ParseProgram({
+    {"A.java", "public class A { public void foo() {} public A() { int i = foo() + 1; } }"},
+  });
+  EXPECT_ERRS("VoidInExprError(0:59-64)\n");
+}
+
 TEST_F(TypeCheckerTest, BinExprRhsFail) {
   sptr<const Expr> before = ParseExpr("3 + (-null)");
   auto after = typeChecker_->Rewrite(before);
 
   EXPECT_EQ(nullptr, after);
   EXPECT_ERRS("UnaryNonNumericError(0:5-10)\n");
+}
+
+TEST_F(TypeCheckerTest, BinExprRhsVoid) {
+  ParseProgram({
+    {"A.java", "public class A { public void foo() {} public A() { int i = 1 + foo(); } }"},
+  });
+  EXPECT_ERRS("VoidInExprError(0:63-68)\n");
 }
 
 TEST_F(TypeCheckerTest, BinExprBoolOpSuccess) {
@@ -282,11 +296,25 @@ TEST_F(TypeCheckerTest, NameExprOkLocalVar) {
   EXPECT_NO_ERRS();
 }
 
+TEST_F(TypeCheckerTest, NameExprOkLocalVarField) {
+  ParseProgram({
+    {"A.java", "public class A { public int a = 1; public A() { int a = this.a; } }"},
+  });
+  EXPECT_NO_ERRS();
+}
+
 TEST_F(TypeCheckerTest, NameExprLocalVarError) {
   ParseProgram({
     {"A.java", "public class A { public A() { boolean i = true; int a = i; } }"},
   });
   EXPECT_ERRS("UnassignableError(0:56)\n");
+}
+
+TEST_F(TypeCheckerTest, NameExprLocalVarErrorAssignSelf) {
+  ParseProgram({
+    {"A.java", "public class A { public int a = 1; public A() { int a = a; } }"},
+  });
+  EXPECT_ERRS("VariableInitializerSelfReferenceError(0:56)\n");
 }
 
 TEST_F(TypeCheckerTest, NameExprLocalVarErrorAssignSuppressed) {
@@ -384,6 +412,13 @@ TEST_F(TypeCheckerTest, CallExprOnVoid) {
   EXPECT_ERRS("VoidInExprError(0:45-50)\n");
 }
 
+TEST_F(TypeCheckerTest, CallExprOnPrimitive) {
+  ParseProgram({
+    {"A.java", "public class A { public void foo() { 1.foo(); } }"},
+  });
+  EXPECT_ERRS("MemberAccessOnPrimitiveError(0:39-42)\n");
+}
+
 // TODO: NewArrayExpr
 
 TEST_F(TypeCheckerTest, NewClassExpr) {
@@ -414,7 +449,13 @@ TEST_F(TypeCheckerTest, NewClassExprBadType) {
   EXPECT_ERRS("UnknownTypenameError(0:38)\n");
 }
 
-// TODO: Test new class expr with abstract class.
+TEST_F(TypeCheckerTest, NewClassExprNewAbstractClass) {
+  ParseProgram({
+    {"A.java", "public abstract class A { public A() {} }"},
+    {"B.java", "public class B { public B() { A a = new A(); } }"}
+  });
+  EXPECT_ERRS("NewAbstractClassError(1:40)\n");
+}
 
 TEST_F(TypeCheckerTest, NullLitExpr) {
   sptr<const Expr> before = ParseExpr("null");
@@ -437,6 +478,13 @@ TEST_F(TypeCheckerTest, ParenExprErrorInside) {
 
   EXPECT_EQ(nullptr, after);
   EXPECT_ERRS("TypeMismatchError(0:1-5)\n");
+}
+
+TEST_F(TypeCheckerTest, ParenExprErrorTypeInside) {
+  ParseProgram({
+      {"A.java", "public class A { public A() { (Integer).intValue(); } }"}
+  });
+  EXPECT_ERRS("TypeInParensError(0:31-38)\n");
 }
 
 TEST_F(TypeCheckerTest, StringLitExpr) {
@@ -621,6 +669,20 @@ TEST_F(TypeCheckerTest, ReturnStmtWrongType) {
       {"F.java", "public class F { public int f() { return true; } }"}
   });
   EXPECT_ERRS("InvalidReturnError(0:34-40)\n");
+}
+
+TEST_F(TypeCheckerTest, ReturnStmtVoidMethodNonVoidReturn) {
+  ParseProgram({
+      {"F.java", "public class F { public void f() { return 1; } }"}
+  });
+  EXPECT_ERRS("ReturnInVoidMethodError(0:35-41)\n");
+}
+
+TEST_F(TypeCheckerTest, ReturnStmtNonVoidMethodVoidReturn) {
+  ParseProgram({
+      {"F.java", "public class F { public int f() { return; } }"}
+  });
+  EXPECT_ERRS("EmptyReturnInNonVoidMethodError(0:34-40)\n");
 }
 
 TEST_F(TypeCheckerTest, LocalDeclStmt) {
