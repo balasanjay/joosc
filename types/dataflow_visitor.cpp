@@ -29,7 +29,7 @@ bool IsConstantBool(sptr<const Expr> expr, bool want) {
   if (bool_expr == nullptr) {
     return false;
   }
-  bool is_true = bool_expr->GetToken().type == lexer::K_TRUE;
+  bool is_true = (bool_expr->GetToken().type == lexer::K_TRUE);
   return is_true == want;
 }
 
@@ -137,7 +137,7 @@ class ReachabilityVisitor final : public ast::Visitor {
     false_visitor.Visit(stmt.FalseBodyPtr());
 
     // Code after this if is unreachable if both branches return.
-    reachable_ = true_visitor.reachable_ || false_visitor.reachable_;
+    reachable_ = (true_visitor.reachable_ || false_visitor.reachable_);
 
     return VisitResult::SKIP;
   }
@@ -158,7 +158,7 @@ class ReachabilityVisitor final : public ast::Visitor {
 
     Visit(body);
 
-    bool is_void = member.TypePtr() == nullptr || member.TypePtr()->GetTypeId() == TypeId::kVoid;
+    bool is_void = (member.TypePtr() == nullptr || (member.TypePtr()->GetTypeId() == TypeId::kVoid));
     if (reachable_ && !is_void) {
       errors_->Append(MakeSimplePosRangeError(member.NameToken().pos, "MethodNeedsReturnError", "Can reach end of method without returning a value."));
     }
