@@ -160,6 +160,7 @@ PosRange ExtentOf(sptr<const Expr> expr) {
 PosRange ExtentOf(sptr<const Stmt> stmt) {
   ExtentVisitor visitor;
   visitor.Visit(stmt);
+  CHECK(visitor.Extent().fileid != -1);
   return visitor.Extent();
 }
 
