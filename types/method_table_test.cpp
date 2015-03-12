@@ -52,6 +52,16 @@ TEST_F(MethodTableTest, DiamondInheritNoErrors) {
   EXPECT_NO_ERRS();
 }
 
+TEST_F(MethodTableTest, DoubleAbstractInheritNoErrors) {
+  ParseProgram({
+    {"A.java", "public interface A { public void foo(); }"},
+    {"B.java", "public abstract class B { public B() {} protected abstract void foo(); }"},
+    {"C.java", "public abstract class C extends B implements A { public C() {} }"},
+    {"D.java", "public class D extends C { public void foo() {} }"},
+  });
+  EXPECT_NO_ERRS();
+}
+
 TEST_F(MethodTableTest, DifferentReturnTypeError) {
   ParseProgram({
     {"A.java", "public class A { public A() {} public void foo() {} }"},
