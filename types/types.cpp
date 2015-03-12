@@ -4,6 +4,7 @@
 #include "types/decl_resolver.h"
 #include "types/type_info_map.h"
 #include "types/typechecker.h"
+#include "types/dataflow_visitor.h"
 #include "types/typeset.h"
 
 using ast::Program;
@@ -101,23 +102,29 @@ TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, sptr<const Program> prog,
 
 }  // namespace
 
-sptr<const Program> TypecheckProgram(sptr<const Program> prog, ErrorList* out) {
-  // Phase 1: build a typeset.
-  TypeSet typeSet = BuildTypeSet(*prog, out);
-  if (!VerifyTypeSet(typeSet, out)) {
+sptr<const Program> TypecheckProgram(sptr<const Program> prog, ErrorList* errors) {
+  // Phase 1: Build a typeset.
+  TypeSet typeSet = BuildTypeSet(*prog, errors);
+  if (!VerifyTypeSet(typeSet, errors)) {
     return prog;
   }
 
-  // Phase 2: build a type info map.
-  TypeInfoMap typeInfo = BuildTypeInfoMap(typeSet, prog, &prog, out);
+  // Phase 2: Build a type info map.
+  TypeInfoMap typeInfo = BuildTypeInfoMap(typeSet, prog, &prog, errors);
 
-  // Phase 3: typecheck.
+  // Phase 3: Typecheck.
   {
-    TypeChecker typechecker = TypeChecker(out)
+    TypeChecker typechecker = TypeChecker(errors)
         .WithTypeSet(typeSet)
         .WithTypeInfoMap(typeInfo);
 
     prog = typechecker.Rewrite(prog);
+  }
+
+  // Phase 4: Dataflow Analysis.
+  {
+    DataflowVisitor dataflow(typeInfo, errors);
+    dataflow.Visit(prog);
   }
 
   return prog;

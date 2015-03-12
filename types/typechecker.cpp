@@ -45,10 +45,6 @@ QualifiedName SliceFirstN(const QualifiedName& name, int n) {
   return QualifiedName(toks, parts, fullname.str());
 }
 
-sptr<const Expr> MakeImplicitThis(PosRange pos, TypeId tid) {
-  return make_shared<ThisExpr>(Token(K_THIS, Pos(pos.fileid, pos.begin)), tid);
-}
-
 } // namespace
 
 REWRITE_DEFN(TypeChecker, ArrayIndexExpr, Expr, expr,) {
@@ -225,7 +221,7 @@ REWRITE_DEFN(TypeChecker, CallExpr, Expr, expr,) {
     CHECK(name_expr->Name().Parts().size() == 1);
     PosRange pos = name_expr->Name().Tokens().front().pos;
     sptr<const FieldDerefExpr> field_deref = make_shared<FieldDerefExpr>(
-          MakeImplicitThis(pos, curtype_), name_expr->Name().Parts().front(), name_expr->Name().Tokens().front());
+          ThisExpr::ImplicitThis(pos, curtype_), name_expr->Name().Parts().front(), name_expr->Name().Tokens().front());
     sptr<const CallExpr> call = make_shared<CallExpr>(field_deref, expr.Lparen(), expr.Args(), expr.Rparen());
     return Rewrite(call);
   }
@@ -476,7 +472,7 @@ REWRITE_DEFN(TypeChecker, NameExpr, Expr, expr, exprptr) {
     FieldId fid = tinfo.fields.ResolveAccess(typeinfo_, curtype_, CallContext::INSTANCE, curtype_, parts.at(0), toks.at(0).pos, &field_errors);
     bool ok = fid != kErrorFieldId;
     if (ok) {
-      sptr<const Expr> implicit_this = MakeImplicitThis(toks.at(0).pos, curtype_);
+      sptr<const Expr> implicit_this = ThisExpr::ImplicitThis(toks.at(0).pos, curtype_);
       sptr<const Expr> field_deref = make_shared<FieldDerefExpr>(implicit_this, parts.at(0), toks.at(0));
       return Rewrite(SplitQualifiedToFieldDerefs(field_deref, expr.Name(), 1));
     }
