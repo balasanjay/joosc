@@ -305,9 +305,9 @@ TEST_F(TypeCheckerTest, NameExprLocalVarError) {
 
 TEST_F(TypeCheckerTest, NameExprLocalVarErrorAssignSelfError) {
   ParseProgram({
-    {"A.java", "public class A { public A() { int a = a; } }"},
+    {"A.java", "public class A { public int a = 1; public A() { int a = a; } }"},
   });
-  EXPECT_ERRS("VariableInitializerSelfReferenceError(0:38)\n");
+  EXPECT_ERRS("VariableInitializerSelfReferenceError(0:56)\n");
 }
 
 TEST_F(TypeCheckerTest, NameExprLocalVarErrorAssignSuppressed) {
