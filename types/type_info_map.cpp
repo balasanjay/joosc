@@ -1003,12 +1003,7 @@ Error* MethodTable::MakeUndefinedMethodError(const TypeInfoMap& tinfo_map, Metho
       if (i > 0) {
         ss << ", ";
       }
-      TypeId tid = sig.param_types.At(i);
-      if (tid.IsValid()) {
-        ss << tinfo_map.LookupTypeName(tid);
-      } else {
-        ss << "unknown";
-      }
+      ss << tinfo_map.LookupTypeName(sig.param_types.At(i));
     }
   }
   ss << ")'";
