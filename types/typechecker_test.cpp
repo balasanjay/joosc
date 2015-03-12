@@ -446,6 +446,13 @@ TEST_F(TypeCheckerTest, ParenExprErrorInside) {
   EXPECT_ERRS("TypeMismatchError(0:1-5)\n");
 }
 
+TEST_F(TypeCheckerTest, ParenExprErrorTypeInside) {
+  ParseProgram({
+      {"A.java", "public class A { public A() { (Integer).intValue(); } }"}
+  });
+  EXPECT_ERRS("TypeInParensError(0:31-38)\n");
+}
+
 TEST_F(TypeCheckerTest, StringLitExpr) {
   ParseProgram({
       {"F.java", "public class F { public String f() { return \"Hi.\"; } }"}
