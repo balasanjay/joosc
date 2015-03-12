@@ -75,7 +75,6 @@ void SymbolTable::DeclareLocalEnd() {
 pair<TypeId, LocalVarId> SymbolTable::ResolveLocal(const string& name, PosRange name_pos, ErrorList* errors) const {
   auto findVar = cur_symbols_.find(name);
   if (findVar == cur_symbols_.end()) {
-    errors->Append(MakeUndefinedReferenceError(name, name_pos));
     return make_pair(TypeId::kUnassigned, kVarUnassigned);
   }
 
@@ -107,14 +106,6 @@ void SymbolTable::LeaveScope() {
   }
   cur_scope_len_ = scope_lengths_.back();
   scope_lengths_.pop_back();
-}
-
-Error* SymbolTable::MakeUndefinedReferenceError(string name, PosRange pos) const {
-  stringstream ss;
-  ss << "Undefined reference to '";
-  ss << name;
-  ss << '\'';
-  return MakeSimplePosRangeError(pos, "UndefinedReferenceError", ss.str());
 }
 
 Error* SymbolTable::MakeDuplicateVarDeclError(string name, PosRange pos, PosRange old_pos) const {
