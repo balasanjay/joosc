@@ -812,7 +812,7 @@ Parser Parser::ParseStmt(Result<Stmt>* out) const {
   SHORT_CIRCUIT;
 
   if (IsNext(SEMI)) {
-    return Advance().Success(new EmptyStmt(), out);
+    return Advance().Success(new EmptyStmt(GetNext()), out);
   }
 
   if (IsNext(LBRACE)) {
@@ -971,7 +971,7 @@ Parser Parser::ParseIfStmt(Result<Stmt>* out) const {
 
   if (!after.IsNext(K_ELSE)) {
     return after.Success(
-        new IfStmt(expr.Get(), stmt.Get(), make_shared<EmptyStmt>()), out);
+        new IfStmt(expr.Get(), stmt.Get(), make_shared<EmptyStmt>(lexer::Token(lexer::SEMI, base::PosRange(-1, -1, -1)))), out);
   }
 
   Result<Stmt> elseStmt;
@@ -1030,7 +1030,7 @@ Parser Parser::ParseForStmt(Result<Stmt>* out) const {
   // Parse optional for initializer.
   sptr<const Stmt> forInit;
   if (next.IsNext(SEMI)) {
-    forInit.reset(new EmptyStmt());
+    forInit.reset(new EmptyStmt(next.GetNext()));
     next = next.Advance();
   } else {
     Result<Stmt> stmt;
@@ -1198,7 +1198,7 @@ Parser Parser::ParseMemberDecl(Result<MemberDecl>* out) const {
     sptr<const Stmt> bodyPtr(nullptr);
     Parser afterBody = afterParams;
     if (afterParams.IsNext(SEMI)) {
-      bodyPtr.reset(new EmptyStmt());
+      bodyPtr.reset(new EmptyStmt(afterParams.GetNext()));
       afterBody = afterParams.Advance();
     } else {
       Result<Stmt> body;

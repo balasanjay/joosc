@@ -121,6 +121,11 @@ class ExtentVisitor final : public Visitor {
     return VisitResult::RECURSE;
   }
 
+  VISIT_DECL(EmptyStmt, stmt,) {
+    UpdatePos(stmt.Semi().pos);
+    return VisitResult::SKIP;
+  }
+
  private:
   void UpdatePosFromType(const Type& type) {
     if (IS_CONST_REF(ArrayType, type)) {

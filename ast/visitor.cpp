@@ -298,12 +298,9 @@ REWRITE_DEFN(Visitor, IfStmt, Stmt, stmt, stmtptr) {
   sptr<const Stmt> trueBody = Rewrite(stmt.TrueBodyPtr());
   sptr<const Stmt> falseBody = Rewrite(stmt.FalseBodyPtr());
 
-  // If a subtree was pruned, then make it an empty statement.
-  if (trueBody == nullptr) {
-    trueBody = make_shared<EmptyStmt>();
-  }
-  if (falseBody == nullptr) {
-    falseBody = make_shared<EmptyStmt>();
+  // If a subtree was pruned, then prune this subtree as well.
+  if (trueBody == nullptr || falseBody == nullptr) {
+    return nullptr;
   }
 
   if (SHOULD_PRUNE_AFTER) {
@@ -333,7 +330,7 @@ REWRITE_DEFN(Visitor, ForStmt, Stmt, stmt, stmtptr) {
 
   sptr<const Stmt> body = Rewrite(stmt.BodyPtr());
   if (body == nullptr) {
-    body = make_shared<EmptyStmt>();
+    return nullptr;
   }
 
   if (SHOULD_PRUNE_AFTER || init == nullptr) {
@@ -351,11 +348,8 @@ REWRITE_DEFN(Visitor, WhileStmt, Stmt, stmt, stmtptr) {
   sptr<const Expr> cond = Rewrite(stmt.CondPtr());
   sptr<const Stmt> body = Rewrite(stmt.BodyPtr());
 
-  if (SHOULD_PRUNE_AFTER || cond == nullptr) {
+  if (SHOULD_PRUNE_AFTER || cond == nullptr || body == nullptr) {
     return nullptr;
-  }
-  if (body == nullptr) {
-    body = make_shared<EmptyStmt>();
   }
 
   if (cond == stmt.CondPtr() && body == stmt.BodyPtr()) {

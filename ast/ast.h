@@ -465,9 +465,14 @@ class Stmt {
 
 class EmptyStmt : public Stmt {
  public:
-  EmptyStmt() = default;
+  EmptyStmt(lexer::Token semi): semi_(semi) {}
 
   ACCEPT_VISITOR(EmptyStmt, Stmt);
+
+  VAL_GETTER(lexer::Token, Semi, semi_);
+
+ private:
+  lexer::Token semi_;
 };
 
 class LocalDeclStmt : public Stmt {
