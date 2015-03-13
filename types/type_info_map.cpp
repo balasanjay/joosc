@@ -128,17 +128,15 @@ Error* MakeResolveMethodTableError(const TypeInfo& mtinfo, const MethodInfo& mmi
   });
 }
 
-string PrintMethodSignature(const TypeInfoMap& tinfo_map, const MethodSignature& m_sig) {
-  stringstream ss;
-  ss << m_sig.name << '(';
+void PrintMethodSignatureTo(ostream* out, const TypeInfoMap& tinfo_map, const MethodSignature& m_sig) {
+  *out << '\'' <<  m_sig.name << '(';
   for (int i = 0; i < m_sig.param_types.Size(); ++i) {
     if (i > 0) {
-      ss << ", ";
+      *out << ", ";
     }
-    ss << tinfo_map.LookupTypeName(m_sig.param_types.At(i));
+    *out << tinfo_map.LookupTypeName(m_sig.param_types.At(i));
   }
-  ss << ')';
-  return ss.str();
+  *out << ")'";
 }
 
 } // namespace
@@ -1014,11 +1012,12 @@ Error* MethodTable::MakeUndefinedMethodError(const TypeInfoMap& tinfo_map, const
       stringstream ss;
       ss << "Couldn't find ";
       if (sig.is_constructor) {
-        ss << "constructor";
+        ss << "constructor ";
       } else {
-        ss << "method";
+        ss << "method ";
       }
-      ss << " '" << PrintMethodSignature(tinfo_map, sig) << "'.";
+      PrintMethodSignatureTo(&ss, tinfo_map, sig);
+      ss << '.';
       PrintDiagnosticHeader(out, opt, fs, pos, DiagnosticClass::ERROR, ss.str());
       PrintRangePtr(out, opt, fs, pos);
     }
@@ -1033,7 +1032,8 @@ Error* MethodTable::MakeUndefinedMethodError(const TypeInfoMap& tinfo_map, const
       }
 
       stringstream ss;
-      ss << '\'' << PrintMethodSignature(tinfo_map, found_sig) << "' not viable: ";
+      PrintMethodSignatureTo(&ss, tinfo_map, found_sig);
+      ss << " not viable: ";
       int found_num_params = found_sig.param_types.Size();
       if (num_params != found_num_params) {
         ss << "different number of arguments provided, got " << num_params;
