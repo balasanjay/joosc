@@ -41,7 +41,7 @@ class WeederTest : public ::testing::Test {
     ASSERT_EQ(1u, tokens.size());
     ASSERT_FALSE(errors.IsFatal());
 
-    parser_.reset(new parser::Parser(fs, fs->Get(0), &tokens[0]));
+    parser_.reset(new parser::Parser(fs, fs->Get(0), 0, &tokens[0]));
   }
 
   uptr<base::FileSet> fs_;

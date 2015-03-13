@@ -48,7 +48,7 @@ REWRITE_DEFN(DeclResolver, CompUnit, CompUnit, unit,) {
       decls.Append(newtype);
     }
   }
-  return make_shared<CompUnit>(unit.PackagePtr(), unit.Imports(), decls);
+  return make_shared<CompUnit>(unit.FileId(), unit.PackagePtr(), unit.Imports(), decls);
 }
 
 REWRITE_DEFN(DeclResolver, TypeDecl, TypeDecl, type, ) {

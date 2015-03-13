@@ -1501,7 +1501,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
   SharedPtrVector<const TypeDecl> types;
 
   if (IsAtEnd()) {
-    return Success(new CompUnit(nullptr, imports, types), out);
+    return Success(new CompUnit(fid_, nullptr, imports, types), out);
   }
 
   sptr<const QualifiedName> packageName(nullptr);
@@ -1554,7 +1554,7 @@ Parser Parser::ParseCompUnit(internal::Result<CompUnit>* out) const {
   }
 
   return afterTypes.Success(
-      new CompUnit(packageName, imports, types), out);
+      new CompUnit(fid_, packageName, imports, types), out);
 }
 
 sptr<const Program> Parse(const base::FileSet* fs,
@@ -1570,7 +1570,7 @@ sptr<const Program> Parse(const base::FileSet* fs,
     const vector<Token>& filetoks = tokens[i];
     Result<CompUnit> unit;
 
-    Parser parser(fs, file, &filetoks, 0);
+    Parser parser(fs, file, i, &filetoks, 0);
     parser.ParseCompUnit(&unit);
 
     if (unit) {

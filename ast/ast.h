@@ -810,19 +810,22 @@ class ImportDecl final {
 
 class CompUnit final {
  public:
-  CompUnit(sptr<const QualifiedName> package, const vector<ImportDecl>& imports,
+  CompUnit(int fid, sptr<const QualifiedName> package, const vector<ImportDecl>& imports,
            const base::SharedPtrVector<const TypeDecl>& types)
-      : package_(package),
+      : fid_(fid),
+        package_(package),
         imports_(imports),
         types_(types) {}
 
   ACCEPT_VISITOR(CompUnit, CompUnit);
 
+  VAL_GETTER(int, FileId, fid_);
   VAL_GETTER(sptr<const QualifiedName>, PackagePtr, package_);
   REF_GETTER(vector<ImportDecl>, Imports, imports_);
   REF_GETTER(base::SharedPtrVector<const TypeDecl>, Types, types_);
 
  private:
+  int fid_;
   sptr<const QualifiedName> package_;  // Might be nullptr.
   vector<ImportDecl> imports_;
   base::SharedPtrVector<const TypeDecl> types_;

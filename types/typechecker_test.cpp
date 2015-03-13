@@ -57,7 +57,7 @@ class TypeCheckerTest : public ::testing::Test {
     ASSERT_FALSE(errors_.IsFatal());
     ASSERT_EQ(0, errors_.Size());
 
-    parser_.reset(new parser::Parser(fs, fs->Get(0), &tokens[0]));
+    parser_.reset(new parser::Parser(fs, fs->Get(0), 0, &tokens[0]));
 
     typeChecker_.reset(new TypeChecker(&errors_));
   }
