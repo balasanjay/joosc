@@ -4,7 +4,7 @@
 #include "ast/extent.h"
 
 using ast::Expr;
-using ast::FoldedConstantExpr;
+using ast::ConstExpr;
 
 namespace types {
 
@@ -14,7 +14,7 @@ namespace {
 
 } // namespace
 
-REWRITE_DEFN(ConstantFoldingVisitor, FoldedConstantExpr, Expr, , exprptr) {
+REWRITE_DEFN(ConstantFoldingVisitor, ConstExpr, Expr, , exprptr) {
   // Simply return the folded constant expr so that this pass is idempotent.
   return exprptr;
 }
@@ -24,18 +24,18 @@ REWRITE_DEFN(ConstantFoldingVisitor, FoldedConstantExpr, Expr, , exprptr) {
 // TODO: Casting between primitive types.
 
 REWRITE_DEFN(ConstantFoldingVisitor, IntLitExpr, Expr, , exprptr) {
-  return make_shared<FoldedConstantExpr>(exprptr, exprptr);
+  return make_shared<ConstExpr>(exprptr, exprptr);
 }
 
 REWRITE_DEFN(ConstantFoldingVisitor, BoolLitExpr, Expr, , exprptr) {
-  return make_shared<FoldedConstantExpr>(exprptr, exprptr);
+  return make_shared<ConstExpr>(exprptr, exprptr);
 }
 
 REWRITE_DEFN(ConstantFoldingVisitor, BinExpr, Expr, expr, exprptr) {
   sptr<const Expr> lhs = Rewrite(expr.LhsPtr());
   sptr<const Expr> rhs = Rewrite(expr.RhsPtr());
-  auto lhs_const = dynamic_cast<const FoldedConstantExpr*>(lhs.get());
-  auto rhs_const = dynamic_cast<const FoldedConstantExpr*>(rhs.get());
+  auto lhs_const = dynamic_cast<const ConstExpr*>(lhs.get());
+  auto rhs_const = dynamic_cast<const ConstExpr*>(rhs.get());
   if (lhs_const == nullptr || rhs_const == nullptr) {
     return exprptr;
   }
@@ -62,7 +62,7 @@ REWRITE_DEFN(ConstantFoldingVisitor, BinExpr, Expr, expr, exprptr) {
 
     auto new_bool_expr = make_shared<ast::BoolLitExpr>(
         lexer::Token(result ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)), ast::TypeId::kBool);
-    return make_shared<FoldedConstantExpr>(new_bool_expr, original_stripped);
+    return make_shared<ConstExpr>(new_bool_expr, original_stripped);
   }
 
   if (IsNumericOp(expr.Op().type)) {
@@ -102,7 +102,7 @@ REWRITE_DEFN(ConstantFoldingVisitor, BinExpr, Expr, expr, exprptr) {
 
     auto new_int_expr = make_shared<ast::IntLitExpr>(
         lexer::Token(lexer::INTEGER, ExtentOf(exprptr)), result, ast::TypeId::kInt);
-    return make_shared<FoldedConstantExpr>(new_int_expr, original_stripped);
+    return make_shared<ConstExpr>(new_int_expr, original_stripped);
 
   }
 
@@ -131,7 +131,7 @@ REWRITE_DEFN(ConstantFoldingVisitor, BinExpr, Expr, expr, exprptr) {
 
       auto new_bool_expr = make_shared<ast::BoolLitExpr>(
           lexer::Token(result ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)), ast::TypeId::kBool);
-      return make_shared<FoldedConstantExpr>(new_bool_expr, original_stripped);
+      return make_shared<ConstExpr>(new_bool_expr, original_stripped);
     }
   }
 
@@ -140,7 +140,7 @@ REWRITE_DEFN(ConstantFoldingVisitor, BinExpr, Expr, expr, exprptr) {
 
 REWRITE_DEFN(ConstantFoldingVisitor, UnaryExpr, Expr, expr, exprptr) {
   auto rhs = Rewrite(expr.RhsPtr());
-  auto rhs_const = dynamic_cast<const FoldedConstantExpr*>(rhs.get());
+  auto rhs_const = dynamic_cast<const ConstExpr*>(rhs.get());
   if (rhs_const == nullptr) {
     return exprptr;
   }
@@ -152,7 +152,7 @@ REWRITE_DEFN(ConstantFoldingVisitor, UnaryExpr, Expr, expr, exprptr) {
     i64 new_int_value = -int_lit->Value();
     auto new_int_lit = make_shared<ast::IntLitExpr>(
         lexer::Token(lexer::INTEGER, ExtentOf(exprptr)), new_int_value, ast::TypeId::kInt);
-    return make_shared<FoldedConstantExpr>(new_int_lit, exprptr);
+    return make_shared<ConstExpr>(new_int_lit, exprptr);
   }
 
   if (expr.Op().type == lexer::NOT) {
@@ -162,7 +162,7 @@ REWRITE_DEFN(ConstantFoldingVisitor, UnaryExpr, Expr, expr, exprptr) {
     bool new_bool_value = !(bool_lit->GetToken().type == lexer::K_TRUE);
     auto new_bool_lit = make_shared<ast::BoolLitExpr>(
         lexer::Token(new_bool_value ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)), ast::TypeId::kBool);
-    return make_shared<FoldedConstantExpr>(new_bool_lit, exprptr);
+    return make_shared<ConstExpr>(new_bool_lit, exprptr);
   }
 
   return exprptr;

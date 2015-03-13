@@ -10,7 +10,7 @@ class ConstantFoldingVisitor final : public ast::Visitor {
  public:
   ConstantFoldingVisitor() {}
 
-  REWRITE_DECL(FoldedConstantExpr, Expr,,);
+  REWRITE_DECL(ConstExpr, Expr,,);
   REWRITE_DECL(IntLitExpr, Expr,,);
   REWRITE_DECL(BoolLitExpr, Expr,,);
   REWRITE_DECL(BinExpr, Expr,,);

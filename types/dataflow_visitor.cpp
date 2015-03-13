@@ -26,7 +26,7 @@ namespace {
 
 bool IsConstantBool(sptr<const Expr> expr, bool want) {
   // Check if folded constant.
-  auto constant = dynamic_cast<const ast::FoldedConstantExpr*>(expr.get());
+  auto constant = dynamic_cast<const ast::ConstExpr*>(expr.get());
   if (constant == nullptr) {
     return false;
   }

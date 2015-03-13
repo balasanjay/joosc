@@ -150,7 +150,7 @@ class PrintVisitor final : public Visitor {
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(FoldedConstantExpr, expr,) {
+  VISIT_DECL(ConstExpr, expr,) {
     Visit(expr.OriginalPtr());
     return VisitResult::SKIP;
   }

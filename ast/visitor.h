@@ -26,7 +26,7 @@ namespace ast {
   code(StringLitExpr, Expr, expr) \
   code(ThisExpr, Expr, expr) \
   code(UnaryExpr, Expr, expr) \
-  code(FoldedConstantExpr, Expr, expr) \
+  code(ConstExpr, Expr, expr) \
   code(BlockStmt, Stmt, stmt) \
   code(EmptyStmt, Stmt, stmt) \
   code(ExprStmt, Stmt, stmt) \
