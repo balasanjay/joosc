@@ -25,19 +25,18 @@ namespace types {
 namespace {
 
 bool IsConstantBool(sptr<const Expr> expr, bool want) {
-  auto maybe_boolean = expr;
-
   // Check if folded constant.
   auto constant = dynamic_cast<const ast::FoldedConstantExpr*>(expr.get());
-  if (constant != nullptr) {
-    maybe_boolean = constant->ConstantPtr();
+  if (constant == nullptr) {
+    return false;
   }
 
-  // Check if constant was boolean or original was boolean.
-  auto bool_expr = dynamic_cast<const ast::BoolLitExpr*>(maybe_boolean.get());
+  // Check if constant is boolean.
+  auto bool_expr = dynamic_cast<const ast::BoolLitExpr*>(constant->ConstantPtr().get());
   if (bool_expr == nullptr) {
     return false;
   }
+
   bool is_true = (bool_expr->GetToken().type == lexer::K_TRUE);
   return is_true == want;
 }

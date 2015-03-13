@@ -452,7 +452,9 @@ class NewArrayExpr : public Expr {
 
 class FoldedConstantExpr : public Expr {
  public:
-  FoldedConstantExpr(sptr<const Expr> constant, sptr<const Expr> original) : Expr(constant->GetTypeId()), constant_(constant), original_(original) {}
+  FoldedConstantExpr(sptr<const Expr> constant, sptr<const Expr> original) : Expr(constant->GetTypeId()), constant_(constant), original_(original) {
+    CHECK(constant->GetTypeId() == original->GetTypeId());
+  }
 
   ACCEPT_VISITOR(FoldedConstantExpr, Expr);
 
