@@ -8,12 +8,6 @@ using ast::ConstExpr;
 
 namespace types {
 
-namespace {
-
-
-
-} // namespace
-
 REWRITE_DEFN(ConstantFoldingVisitor, ConstExpr, Expr, , exprptr) {
   // Simply return the folded constant expr so that this pass is idempotent.
   return exprptr;
