@@ -67,7 +67,6 @@ bool IsAccessible(const TypeInfoMap& types, const ModifierList& mods, CallContex
   return callee == caller || types.IsAncestor(callee, caller);
 }
 
-
 Error* MakeInterfaceExtendsClassError(PosRange pos, const string& parent_class) {
   string msg = "An interface may not extend '" + parent_class + "', a class.";
   return MakeSimplePosRangeError(pos, "InterfaceExtendsClassError", msg);
@@ -127,6 +126,19 @@ Error* MakeResolveMethodTableError(const TypeInfo& mtinfo, const MethodInfo& mmi
       PrintRangePtr(out, opt, fs, pminfo.pos);
     }
   });
+}
+
+string PrintMethodSignature(const TypeInfoMap& tinfo_map, const MethodSignature& m_sig) {
+  stringstream ss;
+  ss << m_sig.name << '(';
+  for (int i = 0; i < m_sig.param_types.Size(); ++i) {
+    if (i > 0) {
+      ss << ", ";
+    }
+    ss << tinfo_map.LookupTypeName(m_sig.param_types.At(i));
+  }
+  ss << ')';
+  return ss.str();
 }
 
 } // namespace
@@ -989,25 +1001,62 @@ Error* MethodTable::MakePermissionError(PosRange call_pos, PosRange method_pos) 
   });
 }
 
-Error* MethodTable::MakeUndefinedMethodError(const TypeInfoMap& tinfo_map, MethodSignature sig, PosRange pos) const {
-  stringstream ss;
-  ss << "Couldn't find ";
-  if (sig.is_constructor) {
-    ss << "constructor";
-  } else {
-    ss << "method";
-  }
-  ss << " '" << sig.name << '(';
-  if (sig.param_types.Size() > 0) {
-    for (int i = 0; i < sig.param_types.Size(); ++i) {
-      if (i > 0) {
-        ss << ", ";
-      }
-      ss << tinfo_map.LookupTypeName(sig.param_types.At(i));
+Error* MethodTable::MakeUndefinedMethodError(const TypeInfoMap& tinfo_map, const MethodSignature& sig, PosRange pos) const {
+  MethodSignatureMap method_signatures(method_signatures_);
+  return MakeError([=](ostream* out, const OutputOptions& opt, const base::FileSet* fs) {
+    if (opt.simple) {
+      *out << "UndefinedMethodError(" << pos << ')';
+      return;
     }
-  }
-  ss << ")'";
-  return MakeSimplePosRangeError(pos, "UndefinedMethodError", ss.str());
+
+    int num_params = sig.param_types.Size();
+    {
+      stringstream ss;
+      ss << "Couldn't find ";
+      if (sig.is_constructor) {
+        ss << "constructor";
+      } else {
+        ss << "method";
+      }
+      ss << " '" << PrintMethodSignature(tinfo_map, sig) << "'.";
+      PrintDiagnosticHeader(out, opt, fs, pos, DiagnosticClass::ERROR, ss.str());
+      PrintRangePtr(out, opt, fs, pos);
+    }
+
+    // Print available methods of the same name if available.
+    const MethodSignature find_sig = {sig.is_constructor, sig.name, TypeIdList({})};
+    auto cur = method_signatures.lower_bound(find_sig);
+    for (; cur != method_signatures.end(); ++cur) {
+      const MethodSignature& found_sig = cur->first;
+      if (sig.is_constructor != found_sig.is_constructor || sig.name != found_sig.name) {
+        break;
+      }
+
+      stringstream ss;
+      ss << '\'' << PrintMethodSignature(tinfo_map, found_sig) << "' not viable: ";
+      int found_num_params = found_sig.param_types.Size();
+      if (num_params != found_num_params) {
+        ss << "different number of arguments provided, got " << num_params;
+        ss << ", need " << found_num_params << '.';
+      } else {
+        const TypeIdList& m_params = sig.param_types;
+        const TypeIdList& found_params = found_sig.param_types;
+        int i = 0;
+        for (; i < num_params; ++i) {
+          if (m_params.At(i) != found_params.At(i)) {
+            break;
+          }
+        }
+        CHECK(i != num_params);
+        ss << "for argument " << i + 1 << ", got " << tinfo_map.LookupTypeName(m_params.At(i));
+        ss << ", need " << tinfo_map.LookupTypeName(found_params.At(i)) << '.';
+      }
+
+      *out << '\n';
+      PrintDiagnosticHeader(out, opt, fs, cur->second.pos, DiagnosticClass::INFO, ss.str());
+      PrintRangePtr(out, opt, fs, cur->second.pos);
+    }
+  });
 }
 
 Error* MethodTable::MakeNewAbstractClassError(PosRange pos) const {
@@ -1069,7 +1118,7 @@ Error* FieldTable::MakePermissionError(PosRange access_pos, PosRange field_pos) 
   });
 }
 
-Error* FieldTable::MakeUndefinedReferenceError(string name, PosRange pos) const {
+Error* FieldTable::MakeUndefinedReferenceError(const string& name, PosRange pos) const {
   stringstream ss;
   ss << "Undefined reference to '";
   ss << name;
