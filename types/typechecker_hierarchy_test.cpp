@@ -201,11 +201,25 @@ TEST_F(TypeCheckerHierarchyTest, AssignArrayToAncestorArray) {
   EXPECT_NO_ERRS();
 }
 
+TEST_F(TypeCheckerHierarchyTest, AssignPrimitiveArrayToDifferentPrimitiveArray) {
+  TestSimpleHierarchy({
+    {"Main.java", "public class Main { public void foo() { int[] i = new byte[1]; return; } }"},
+  });
+  EXPECT_ERRS("UnassignableError(5:50-61)\n");
+}
+
 TEST_F(TypeCheckerHierarchyTest, AssignArrayToDescendantArray) {
   TestSimpleHierarchy({
     {"Main.java", "public class Main { public void foo() { D[] a = new A[1]; return; } }"},
   });
   EXPECT_ERRS("UnassignableError(5:48-56)\n");
+}
+
+TEST_F(TypeCheckerHierarchyTest, AssignToArrayLength) {
+  TestSimpleHierarchy({
+    {"Main.java", "public class Main { public void foo() { A[] a = new A[1]; a.length = 1; return; } }"},
+  });
+  EXPECT_ERRS("AssignFinalError(5:58-66)\n");
 }
 
 TEST_F(TypeCheckerHierarchyTest, AssignClassToInterface) {

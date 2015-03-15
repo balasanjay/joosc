@@ -52,6 +52,16 @@ TEST_F(MethodTableTest, DiamondInheritNoErrors) {
   EXPECT_NO_ERRS();
 }
 
+TEST_F(MethodTableTest, DoubleAbstractInheritNoErrors) {
+  ParseProgram({
+    {"A.java", "public interface A { public void foo(); }"},
+    {"B.java", "public abstract class B { public B() {} protected abstract void foo(); }"},
+    {"C.java", "public abstract class C extends B implements A { public C() {} }"},
+    {"D.java", "public class D extends C { public void foo() {} }"},
+  });
+  EXPECT_NO_ERRS();
+}
+
 TEST_F(MethodTableTest, DifferentReturnTypeError) {
   ParseProgram({
     {"A.java", "public class A { public A() {} public void foo() {} }"},
@@ -143,6 +153,22 @@ TEST_F(MethodTableTest, ResolveCallInaccessibleError) {
     {"B.java", "package baz; import foo.A; public class B { public void bar() { A a = new A(); a.foo(); } }"},
   });
   EXPECT_ERRS("PermissionError: [1:81-84,0:59-62]\n");
+}
+
+TEST_F(MethodTableTest, ResolveCallNewAbstractClassError) {
+  ParseProgram({
+    {"A.java", "public abstract class A { public A() {} }"},
+    {"B.java", "public class B { public B() { A a = new A(); } }"},
+  });
+  EXPECT_ERRS("NewAbstractClassError(1:40)\n");
+}
+
+TEST_F(MethodTableTest, ResolveCallNewInterfaceError) {
+  ParseProgram({
+    {"A.java", "public interface A { }"},
+    {"B.java", "public class B { public B() { A a = new A(); } }"},
+  });
+  EXPECT_ERRS("UndefinedMethodError(1:40)\n");
 }
 
 } // namespace types
