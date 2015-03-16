@@ -157,6 +157,11 @@ class PrintVisitor final : public Visitor {
     return VisitResult::SKIP;
   }
 
+  VISIT_DECL(ConstExpr, expr,) {
+    Visit(expr.OriginalPtr());
+    return VisitResult::SKIP;
+  }
+
   VISIT_DECL(BlockStmt, stmt,) {
     *os_ << "{" << RepStr(NumDelimiters(), newline_);
     PrintVisitor nested = Indent();

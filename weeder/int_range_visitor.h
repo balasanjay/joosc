@@ -4,6 +4,7 @@
 #include "ast/visitor.h"
 #include "base/errorlist.h"
 #include "base/fileset.h"
+#include "lexer/lexer.h"
 
 namespace weeder {
 
@@ -11,12 +12,13 @@ namespace weeder {
 // Joos ints are signed 32-bit integers.
 class IntRangeVisitor : public ast::Visitor {
  public:
-  IntRangeVisitor(base::ErrorList* errors) : errors_(errors) {}
+  IntRangeVisitor(const base::FileSet* fs, base::ErrorList* errors) : fs_(fs), errors_(errors) {}
 
-  VISIT_DECL(IntLitExpr, expr,);
-  VISIT_DECL(UnaryExpr, expr,);
+  REWRITE_DECL(IntLitExpr, Expr, expr,);
+  REWRITE_DECL(UnaryExpr, Expr, expr,);
 
  private:
+  const base::FileSet* fs_;
   base::ErrorList* errors_;
 };
 

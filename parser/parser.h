@@ -12,6 +12,8 @@ sptr<const ast::Program> Parse(const base::FileSet* fs,
                           const vector<vector<lexer::Token>>& tokens,
                           base::ErrorList* out);
 
+string TokenString(const base::File* file, lexer::Token token);
+
 } // namespace parser
 
 #endif

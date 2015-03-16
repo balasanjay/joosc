@@ -257,15 +257,15 @@ class BoolLitExpr : public LitExpr {
 
 class IntLitExpr : public LitExpr {
  public:
-  IntLitExpr(lexer::Token token, const string& value, TypeId tid = TypeId::kUnassigned)
+  IntLitExpr(lexer::Token token, i64 value = 0, TypeId tid = TypeId::kUnassigned)
       : LitExpr(token, tid), value_(value) {}
 
   ACCEPT_VISITOR(IntLitExpr, Expr);
 
-  REF_GETTER(string, Value, value_);
+  VAL_GETTER(i64, Value, value_);
 
  private:
-  string value_;
+  i64 value_;
 };
 
 class StringLitExpr : public LitExpr {
@@ -448,6 +448,24 @@ class NewArrayExpr : public Expr {
   lexer::Token lbrack_;
   sptr<const Expr> expr_; // Can be nullptr.
   lexer::Token rbrack_;
+};
+
+class ConstExpr : public Expr {
+ public:
+  ConstExpr(sptr<const Expr> constant, sptr<const Expr> original) : Expr(constant->GetTypeId()), constant_(constant), original_(original) {
+    CHECK(constant->GetTypeId() == original->GetTypeId());
+  }
+
+  ACCEPT_VISITOR(ConstExpr, Expr);
+
+  SPTR_GETTER(Expr, Constant, constant_);
+  SPTR_GETTER(Expr, Original, original_);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ConstExpr);
+
+  sptr<const Expr> constant_;
+  sptr<const Expr> original_;
 };
 
 class Stmt {

@@ -27,6 +27,7 @@ class StaticRefExpr;
 class StringLitExpr;
 class ThisExpr;
 class UnaryExpr;
+class ConstExpr;
 
 class Stmt;
 class BlockStmt;
