@@ -202,12 +202,11 @@ INSTANTIATE_TEST_CASE_P(MarmosetA3, CompilerFailureTest,
     testing::ValuesIn(GetBadInputs(
         kStdlib3, kTest3, CompilerStage::TYPE_CHECK)));
 
-// TODO: enable.
-// INSTANTIATE_TEST_CASE_P(MarmosetA4, CompilerSuccessTest,
-//     testing::ValuesIn(GetGoodInputs(
-//         kStdlib4, kTest4, CompilerStage::TYPE_CHECK)));
-// INSTANTIATE_TEST_CASE_P(MarmosetA4, CompilerFailureTest,
-//     testing::ValuesIn(GetBadInputs(
-//         kStdlib4, kTest4, CompilerStage::TYPE_CHECK)));
+INSTANTIATE_TEST_CASE_P(MarmosetA4, CompilerSuccessTest,
+    testing::ValuesIn(GetGoodInputs(
+        kStdlib4, kTest4, CompilerStage::TYPE_CHECK)));
+INSTANTIATE_TEST_CASE_P(MarmosetA4, CompilerFailureTest,
+    testing::ValuesIn(GetBadInputs(
+        kStdlib4, kTest4, CompilerStage::TYPE_CHECK)));
 
 }  // namespace

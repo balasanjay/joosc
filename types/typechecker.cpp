@@ -67,54 +67,6 @@ REWRITE_DEFN(TypeChecker, ArrayIndexExpr, Expr, expr,) {
   return make_shared<ArrayIndexExpr>(base, expr.Lbrack(), index, expr.Rbrack(), tid);
 }
 
-bool IsBoolOp(TokenType op) {
-  switch (op) {
-    case lexer::BAND:
-    case lexer::BOR:
-    case lexer::AND:
-    case lexer::OR:
-    case lexer::XOR:
-      return true;
-    default:
-      return false;
-  }
-}
-
-bool IsRelationalOp(TokenType op) {
-  switch (op) {
-    case lexer::LE:
-    case lexer::GE:
-    case lexer::LT:
-    case lexer::GT:
-      return true;
-    default:
-      return false;
-  }
-}
-
-bool IsEqualityOp(TokenType op) {
-  switch (op) {
-    case lexer::EQ:
-    case lexer::NEQ:
-      return true;
-    default:
-      return false;
-  }
-}
-
-bool IsNumericOp(TokenType op) {
-  switch (op) {
-    case lexer::ADD:
-    case lexer::SUB:
-    case lexer::MUL:
-    case lexer::DIV:
-    case lexer::MOD:
-      return true;
-    default:
-      return false;
-  }
-}
-
 REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
   sptr<const Expr> lhs = Rewrite(expr.LhsPtr());
   sptr<const Expr> rhs = Rewrite(expr.RhsPtr());
@@ -151,7 +103,7 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
     return make_shared<BinExpr>(lhs, expr.Op(), rhs, lhsType);
   }
 
-  if (IsBoolOp(op)) {
+  if (lexer::IsBoolOp(op)) {
     if (lhsType == TypeId::kBool && rhsType == TypeId::kBool) {
       return make_shared<BinExpr>(lhs, expr.Op(), rhs, TypeId::kBool);
     }
@@ -165,7 +117,7 @@ REWRITE_DEFN(TypeChecker, BinExpr, Expr, expr, ) {
     return nullptr;
   }
 
-  if (IsRelationalOp(op)) {
+  if (lexer::IsRelationalOp(op)) {
     if (IsNumeric(lhsType) && IsNumeric(rhsType)) {
       return make_shared<BinExpr>(lhs, expr.Op(), rhs, TypeId::kBool);
     }
