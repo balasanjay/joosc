@@ -1,0 +1,40 @@
+\documentclass[12pt, titlepage]{article}
+%Packages
+\usepackage{
+  fancyhdr,
+  indentfirst,
+  lastpage,
+  listings,
+}
+\usepackage[top=1in, bottom=1in, left=1in, right=1in]{geometry}
+
+% declare some useful macros
+\newcommand{\assignmentNumber}{Assignment 4}
+\newcommand{\courseName}{CS 444}
+
+\lstset{basicstyle=\ttfamily}
+
+\begin{document}
+\pagestyle{fancyplain}
+\thispagestyle{plain}
+
+%Headers
+\fancyhead{}
+\fancyfoot{}
+\rhead{\fancyplain{}{Page \thepage\ of \pageref{LastPage}}}
+\chead{\fancyplain{}{\assignmentNumber}}
+\lhead{\fancyplain{}{\courseName}}
+
+\title{CS444 - \assignmentNumber\\Name Resolution, Type Checking, and Static Analysis}
+\date{\today}
+\author{Alex Klen\\20372654\and Sanjay Menakuru\\20374915\and Jonathan Wei\\20376489}
+
+\maketitle
+
+\section{Architecture}
+
+Hello.
+
+
+\end{document}
+
