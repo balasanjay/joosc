@@ -252,7 +252,69 @@ phases above.
 
 \section{Challenges}
 
+\subsection{Blacklisting}
+
+When emitting errors, we put significant effort into ensuring that we would not
+emit cascading errors. That is to say, if we were to find a method on a type
+that breaks one of the member access modifier rules, then we attempt to
+suppress any errors related to its usage. This made our code much more
+complicated as we had to have reasonable behaviour for slightly malformed
+programs. Specifically, passes could \emph{not} assume that all previous passes
+had well-formed data. We ran into situations where the state from previous
+passes was contradictory and inconsistent. These situations were hard to debug,
+and led to us making extensive use of an \z{assert}-like macro that failed much
+more gracefully. In the end, this helped us improve our overall code quality.
+
+If were to repeat this exercise, we would avoid the ad-hoc blacklisting
+approach, and instead design a structured mechanism for suppressing related
+errors. Indeed, we did design such a mechanism; we wanted to associate a set of
+tags with each error, and deduplicate errors by tag before printing them.
+However, we didn't want to retrofit this mechanism into our current compiler as
+we were worried about strange interactions between this mechanism and our
+current blacklisting approach.
+
+\subsection{Specification complexity}
+
+The \ac{jls} was an invaluable source of determining how our compiler should
+behave in various interesting situations. However, mapping from a strange test
+case to all relevant sections of the \ac{jls} was not trivial, to put it
+mildly.
+
+Since the \ac{jls} does not always provide algorithmic steps for determining
+output, we had to reverse-engineer algorithms from prose. This often led to
+incomplete algorithms when we sometimes did not consider all consequences of
+the specification's lawyer-like phrasing. This was somewhat exacerbated by the
+sometimes unclear mapping from Joos restrictions to \ac{jls} restrictions.
+
 \section{Testing}
+
+We tried to continue with our practice of writing unit tests for our various
+components. In some cases, this proved effective; for instance, much of the
+type checker has extensive unit tests.
+
+However, we found that some of our tests intrinsically depend on multiple
+modules. For instance, type checking variable declarations or method calls
+require building a number of other data structures, \z{SymbolTable} and
+\z{MethodTable} respectively. These structures themselves depend on other data
+structures, like \z{TypeSet} and \z{TypeInfoMap}.
+
+We considered importing a mocking framework, such as \z{gmock}. However, we
+were not convinced that this would be a good use of our time. We would need to
+write a large number of mocking helpers to make the setup portion of our tests
+short.
+
+We compromised, and wrote integration tests that covered each special case in
+the type checker and other associated classes. Similar to the Marmoset tests,
+the integration tests would automatically include the standard library and the
+test source code.
+
+We also included all the Marmoset tests in our repository, and run them to
+ensure we don't introduce any regressions. One downside of these regression
+tests is that they are an order of magnitude slower than unit tests. This is
+explained by the fact that they need to lex, parse, weed, and type check the
+standard library for every single test. We plan to investigate caching the
+compilation of the standard library to decrease this high cost. Even so, the
+speed of our compiler allows us to run over 1300 tests in less than 1 minute.
 
 \end{document}
 
