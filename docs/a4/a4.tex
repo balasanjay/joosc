@@ -44,8 +44,7 @@
 We decided to tackle assignments 2, 3, and 4 together, as we realized that all
 of the necessary computation for these three assignments could be carried out
 in the same set of AST traversals. Our resulting code is structured in five
-phases, described at a high level in the \nameref{sec:arch} section, with more
-detail in the \hyperref[sec:assg]{subsequent} section.
+phases, described in some detail in the \nameref{sec:arch} section.
 
 \section{Architecture}\label{sec:arch}
 
@@ -117,11 +116,9 @@ is done in the \z{TypeSetBuilder::Build} method which is located in
 
 First, this phase walks through the body of every type and records information
 about all fields and methods. This information is stored in a class named
-\z{TypeInfoMap}, which can be found in \z{types/type\_info\_map.\{h,cpp\}}.
-
-For fields, we record its name, modifiers, containing class, and type.
-
-For methods, we record its name, modifiers, parameter types, containing class,
+\z{TypeInfoMap}, which can be found in \z{types/type\_info\_map.\{h,cpp\}}. \\
+We record each field's name, modifiers, containing class, and type. \\
+We record each method's name, modifiers, parameter types, containing class,
 return type, and a flag \z{is\_constructor}.\\
 
 Next, this phase verifies that the implements-extends graph is acyclic and
@@ -133,8 +130,7 @@ itself.\\
 
 Finally, this phase `pushes down' all method and fields from parents to
 children. We associate with each type a \z{FieldTable} and a \z{MethodTable}. These
-contain the types' members, and all inherited members.
-
+contain the types' members, and all inherited members.\\
 When pushing down members, we validate several rules of Joos; here is a
 non-exhaustive list of these rules:
 \begin{enumerate}
@@ -147,8 +143,7 @@ non-exhaustive list of these rules:
 
   \item A class may not have multiple fields with the same name.
 
-  \item A class may not have multiple methods with the same signature (where
-  the signature includes the name and the argument types).
+  \item A class may not have multiple methods with the same signature, where a method's signature is composed of its name and argument types.
 \end{enumerate}
 
 \subsubsection{Type Checking}\label{subsubsec:type-checking}
@@ -162,8 +157,8 @@ associated with all expressions and declarations.\\
 This phase also introduces the \z{SymbolTable} class, which is located in
 \z{types/symbol\_table.\{h,cpp\}}. This class manages a simple mapping from a string
 to a type. It supports entering and leaving scopes, and enforces Joos's
-restriction on variables with overlapping scopes. Specifically, it disallows
-variables with identical names overlapping in scope. It also disallows
+restriction on variables with overlapping scopes. Specifically, it emits an error if
+variables with identical names have an overlapping scope. It also disallows
 variables from being referenced in their own initializers. The type checker
 implements `alpha-renaming'; that is to say, it gives every variable a unique
 identifier to distinguish two variables with the same name in different scopes.\\
@@ -173,6 +168,7 @@ its children fail to type check or are pruned, then the node will assume that
 an error was emitted below, and will prune itself from the AST without emitting
 further errors; this pruning will avoid the cascade of errors commonly found in
 many compilers.\\
+If the node's children successfully type check, we check whether their types conform to the rules provided in the \ac{jls} for the appropriate expression or statement. If the rules are not met we emit an error and begin pruning this subtree. If the rules are met, we rewrite the node with its computed type information. \\
 
 All ambiguous qualified names are handled using the algorithm provided in the
 \ac{jls}. Specifically, we first try to resolve the first segment of a
@@ -235,7 +231,7 @@ fields declared later in the source file.
 
 \section{Files}
 
-Here is a mapping from various files in the \z{types} directory to the various
+Here is a mapping from various files in the \z{types} directory to the 
 phases above.
 
 \begin{itemize}
@@ -252,18 +248,19 @@ phases above.
 
 \section{Challenges}
 
-\subsection{Blacklisting}
+\subsection{Suppressing cascading errors}
 
 When emitting errors, we put significant effort into ensuring that we would not
-emit cascading errors. That is to say, if we were to find a method on a type
+emit cascading errors. For instance, if we were to find a method on a type
 that breaks one of the member access modifier rules, then we attempt to
-suppress any errors related to its usage. This made our code much more
-complicated as we had to have reasonable behaviour for slightly malformed
-programs. Specifically, passes could \emph{not} assume that all previous passes
-had well-formed data. We ran into situations where the state from previous
-passes was contradictory and inconsistent. These situations were hard to debug,
-and led to us making extensive use of an \z{assert}-like macro that failed much
-more gracefully. In the end, this helped us improve our overall code quality.
+suppress any errors related to its usage by blacklisting that method name. This
+made our code much more complicated as we had to have reasonable behaviour for
+slightly malformed programs. Specifically, passes could \emph{not} assume that
+all previous passes had well-formed data. We ran into situations where the
+state from previous passes was contradictory and inconsistent. These situations
+were hard to debug, and led to us making extensive use of an \z{assert}-like
+macro that failed much more gracefully. In the end, this helped us improve our
+overall code quality.
 
 If were to repeat this exercise, we would avoid the ad-hoc blacklisting
 approach, and instead design a structured mechanism for suppressing related
@@ -308,8 +305,8 @@ the type checker and other associated classes. Similar to the Marmoset tests,
 the integration tests would automatically include the standard library and the
 test source code.
 
-We also included all the Marmoset tests in our repository, and run them to
-ensure we don't introduce any regressions. One downside of these regression
+We also included all the Marmoset tests in our repository, and ran them to
+ensure we didn't introduce any regressions. One downside of these regression
 tests is that they are an order of magnitude slower than unit tests. This is
 explained by the fact that they need to lex, parse, weed, and type check the
 standard library for every single test. We plan to investigate caching the
