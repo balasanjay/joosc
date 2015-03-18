@@ -44,7 +44,7 @@
 We decided to tackle assignments 2, 3, and 4 together, as we realized that all
 of the necessary computation for these three assignments could be carried out
 in the same set of AST traversals. Our resulting code is structured in five
-phases, described in some detail in the \nameref{sec:arch} section.
+phases, described in the \nameref{sec:arch} section.
 
 \section{Architecture}\label{sec:arch}
 
@@ -143,7 +143,8 @@ non-exhaustive list of these rules:
 
   \item A class may not have multiple fields with the same name.
 
-  \item A class may not have multiple methods with the same signature, where a method's signature is composed of its name and argument types.
+  \item A class may not have multiple methods with the same signature, where a
+    method's signature is composed of its name and its argument types.
 \end{enumerate}
 
 \subsubsection{Type Checking}\label{subsubsec:type-checking}
@@ -168,7 +169,11 @@ its children fail to type check or are pruned, then the node will assume that
 an error was emitted below, and will prune itself from the AST without emitting
 further errors; this pruning will avoid the cascade of errors commonly found in
 many compilers.\\
-If the node's children successfully type check, we check whether their types conform to the rules provided in the \ac{jls} for the appropriate expression or statement. If the rules are not met we emit an error and begin pruning this subtree. If the rules are met, we rewrite the node with its computed type information. \\
+If the node's children successfully type check, we check whether their types
+conform to the rules provided in the \ac{jls} for the appropriate expression or
+statement. If the rules are not met, we emit an error and begin pruning this
+subtree. Otherwise, we rewrite the node with its computed type
+information. \\
 
 All ambiguous qualified names are handled using the algorithm provided in the
 \ac{jls}. Specifically, we first try to resolve the first segment of a
@@ -231,8 +236,8 @@ fields declared later in the source file.
 
 \section{Files}
 
-Here is a mapping from various files in the \z{types} directory to the 
-phases above.
+Here is a mapping from various files in the \z{types} directory to the phases
+above.
 
 \begin{itemize}
   \item \z{types/constant\_folding\_visitor.\{h,cpp\}}: See \hyperref[subsubsec:const-prop]{Phase 4}
