@@ -2,15 +2,19 @@
 %Packages
 \usepackage{
   fancyhdr,
+  hyperref,
   indentfirst,
   lastpage,
   listings,
+  shortvrb,
 }
 \usepackage[top=1in, bottom=1in, left=1in, right=1in]{geometry}
 
 % declare some useful macros
 \newcommand{\assignmentNumber}{Assignment 4}
 \newcommand{\courseName}{CS 444}
+
+\MakeShortVerb{@}
 
 \lstset{basicstyle=\ttfamily}
 
@@ -21,7 +25,7 @@
 %Headers
 \fancyhead{}
 \fancyfoot{}
-\rhead{\fancyplain{}{Page \thepage\ of \pageref{LastPage}}}
+\rhead{\fancyplain{}{Page \thepage\ of \pageref*{LastPage}}}
 \chead{\fancyplain{}{\assignmentNumber}}
 \lhead{\fancyplain{}{\courseName}}
 
@@ -31,10 +35,115 @@
 
 \maketitle
 
-\section{Architecture}
+\section{Introduction}
 
-Hello.
+We decided to tackle assignments 2, 3, and 4 together, as we realized that all
+of the necessary computation for these three assignments could be carried out
+in the same set of AST traversals. Our resulting code is structured in five
+phases, described at a high level in the \nameref{sec:arch} section, with more
+detail in the \hyperref[sec:assg]{subsequent} section.
 
+\section{Architecture}\label{sec:arch}
+
+\subsection{Phases of the compiler}
+
+We will consider only phases of the compiler that were added for assignments 2
+through 4. These phases are the following:
+\begin{enumerate}
+  \item \nameref{subsubsec:col-types}
+  \item \nameref{subsubsec:fields}
+  \item \nameref{subsubsec:type-checking}
+  \item \nameref{subsubsec:const-prop}
+  \item \nameref{subsubsec:data-flow}
+\end{enumerate}
+
+\subsubsection{Collecting Types}\label{subsubsec:col-types}
+
+This phase walks over all compilation units and collects all type names. This
+is done in @types/types.cpp@. It adds all packages and types in a particular
+compilation unit and adds them to a @TypeSet@.
+
+A @TypeSet@ is a data structure that maps a qualified name to a type. The
+public API is in @types/typeset.{h,cpp}@, and the implementation is in
+@types/typeset_impl.{h,cpp}@. A @TypeSet@ supports scoped-lookup; for instance,
+it has a method called @WithImports@ that provides a `view' into the @TypeSet@
+assuming the provided imports are in scope. Other such methods include
+@WithPackage@ and @WithType@. As future phases recurse through the AST, they
+call the appropriate methods on @TypeSet@ to obtain the correct scoped view of
+visible types.
+
+When building a @TypeSet@, we verify that each qualified name refers to a
+unique class, or a package, but not both. We emit an error for each violation
+of this constraint, and suppress any future errors referencing this type. This
+is done in the @TypeSetBuilder::Build@ method which is located in
+@types/typeset.cpp@.
+
+\subsubsection{Collecting Fields and Methods}\label{subsubsec:fields}
+
+First, this phase walks through the body of every type and records information
+about all fields and methods. This information is stored in a class named
+@TypeInfoMap@, which can be found in @types/type_info_map.{h,cpp}@.
+
+For fields, we record its name, modifiers, containing class, and type.
+
+For methods, we record its name, modifiers, parameter types, containing class,
+return type, and a flag @is_constructor@.\\
+
+Next, this phase verifies that the implements-extends graph is acyclic and
+well-formed. By well-formed, we mean that it verifies that no interface extends
+a class, no class implements another class, and no class extends an interface.
+The cycle-checker also produces a topological ordering of the types that
+guarantees that for all types $T$, $T$'s parents are visited before $T$
+itself.\\
+
+Finally, this phase `pushes down' all method and fields from parents to
+children. We associate with each type a @FieldTable@ and a @MethodTable@. These
+contain the types' members, and all inherited members.
+
+When pushing down members, we validate several rules of Joos; here is a
+non-exhaustive list of these rules:
+\begin{enumerate}
+  \item An inherited method cannot lower the visibility of a method in a parent
+  class.
+
+  \item A parent class must contain a zero-argument constructor.
+
+  \item A class with abstract methods must be declared abstract.
+
+  \item A class may not have multiple fields with the same name.
+
+  \item A class may not have multiple methods with the same signature (where
+  the signature includes the name and the argument types).
+\end{enumerate}
+
+\subsubsection{Type Checking}\label{subsubsec:type-checking}
+
+\subsubsection{Constant Propagation}\label{subsubsec:const-prop}
+
+\subsubsection{Data-flow Analysis}\label{subsubsec:data-flow}
+
+\section{Assignment Breakdown}\label{sec:assg}
+
+\subsection{Assignment 2}
+
+\subsubsection{Environment Building}
+
+\subsubsection{Type Linking}
+
+\subsubsection{Hierarchy Checking}
+
+\subsection{Assignment 3}
+\subsubsection{Name Disambiguation}
+
+\subsubsection{Type Checking}
+
+\subsection{Assignment 4}
+
+\subsubsection{Reachability Checking}
+
+\section{Challenges}
+
+\section{Testing}
 
 \end{document}
 
