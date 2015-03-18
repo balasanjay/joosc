@@ -1,0 +1,322 @@
+\documentclass[12pt, titlepage]{article}
+%Packages
+\usepackage{
+  acronym,
+  enumerate,
+  fancyhdr,
+  hyperref,
+  indentfirst,
+  lastpage,
+  listings,
+  microtype,
+}
+\usepackage[top=1in, bottom=1in, left=1in, right=1in]{geometry}
+\usepackage[htt]{hyphenat}
+
+% declare some useful macros
+\newcommand{\assignmentNumber}{Assignment 4}
+\newcommand{\courseName}{CS 444}
+\newcommand{\z}[1]{\texttt{#1}}
+
+\acrodef{jls}[JLS]{Java Language Specification}
+
+\lstset{basicstyle=\ttfamily}
+
+\begin{document}
+\pagestyle{fancyplain}
+\thispagestyle{plain}
+
+%Headers
+\fancyhead{}
+\fancyfoot{}
+\rhead{\fancyplain{}{Page \thepage\ of \pageref*{LastPage}}}
+\chead{\fancyplain{}{\assignmentNumber}}
+\lhead{\fancyplain{}{\courseName}}
+
+\title{CS444 - \assignmentNumber\\Name Resolution, Type Checking, and Static Analysis}
+\date{\today}
+\author{Alex Klen\\20372654\and Sanjay Menakuru\\20374915\and Jonathan Wei\\20376489}
+
+\maketitle
+
+\section{Introduction}
+
+We decided to tackle assignments 2, 3, and 4 together, as we realized that all
+of the necessary computation for these three assignments could be carried out
+in the same set of AST traversals. Our resulting code is structured in five
+phases, described in the \nameref{sec:arch} section.
+
+\section{Architecture}\label{sec:arch}
+
+\subsection{Phases of the compiler}
+
+We will consider only phases of the compiler that were added for assignment 2
+through assignment 4. These phases are the following:
+\begin{enumerate}
+  \item \nameref{subsubsec:col-types}
+  \item \nameref{subsubsec:fields}
+  \item \nameref{subsubsec:type-checking}
+  \item \nameref{subsubsec:const-prop}
+  \item \nameref{subsubsec:data-flow}
+\end{enumerate}
+
+Here is a mapping between the various sections of the assignments and the 5
+phases above:
+\begin{enumerate}[\bf{A}1\ \ ]
+  \setcounter{enumi}{1}
+
+  \item
+  \begin{description}
+    \item[Environment Building]
+      \hyperref[subsubsec:col-types]{Phase 1}, \hyperref[subsubsec:fields]{phase 2},
+      and \hyperref[subsubsec:type-checking]{phase 3}
+    \item[Type Linking]
+      \hyperref[subsubsec:col-types]{Phase 1} and \hyperref[subsubsec:fields]{phase 2}
+    \item[Hierarchy Checking]
+      \hyperref[subsubsec:fields]{Phase 2}
+  \end{description}
+
+  \item
+  \begin{description}
+    \item[Name Disambiguation]
+      \hyperref[subsubsec:type-checking]{Phase 3} and \hyperref[subsubsec:data-flow]{phase 5}
+    \item[Type Checking]
+      \hyperref[subsubsec:type-checking]{Phase 3}
+  \end{description}
+
+  \item
+  \begin{description}
+    \item[Reachability Checking]
+      \hyperref[subsubsec:const-prop]{Phase 4} and \hyperref[subsubsec:data-flow]{phase 5}
+  \end{description}
+\end{enumerate}
+
+\subsubsection{Collecting Types}\label{subsubsec:col-types}
+
+This phase walks over all compilation units and collects all type names. This
+is done in \z{types/types.cpp}. It adds all packages and types in a particular
+compilation unit and adds them to a \z{TypeSet}.
+
+A \z{TypeSet} is a data structure that maps a qualified name to a type. The
+public API is in \z{types/typeset.\{h,cpp\}}, and the implementation is in
+\z{types/typeset\_impl.\{h,cpp\}}. A \z{TypeSet} supports scoped-lookup; for instance,
+it has a method called \z{WithImports} that provides a `view' into the \z{TypeSet}
+assuming the provided imports are in scope. Other such methods include
+\z{WithPackage} and \z{WithType}. As future phases recurse through the AST, they
+call the appropriate methods on \z{TypeSet} to obtain the correct scoped view of
+visible types.
+
+When building a \z{TypeSet}, we verify that each qualified name refers to a
+unique class, or a package, but not both. We emit an error for each violation
+of this constraint, and suppress any future errors referencing this type. This
+is done in the \z{TypeSetBuilder::Build} method which is located in
+\z{types/typeset.cpp}.
+
+\subsubsection{Collecting Fields and Methods}\label{subsubsec:fields}
+
+First, this phase walks through the body of every type and records information
+about all fields and methods. This information is stored in a class named
+\z{TypeInfoMap}, which can be found in \z{types/type\_info\_map.\{h,cpp\}}. \\
+We record each field's name, modifiers, containing class, and type. \\
+We record each method's name, modifiers, parameter types, containing class,
+return type, and a flag \z{is\_constructor}.\\
+
+Next, this phase verifies that the implements-extends graph is acyclic and
+well-formed. By well-formed, we mean that it verifies that no interface extends
+a class, no class implements another class, and no class extends an interface.
+The cycle-checker also produces a topological ordering of the types that
+guarantees that for all types $T$, $T$'s parents are visited before $T$
+itself.\\
+
+Finally, this phase `pushes down' all method and fields from parents to
+children. We associate with each type a \z{FieldTable} and a \z{MethodTable}. These
+contain the types' members, and all inherited members.\\
+When pushing down members, we validate several rules of Joos; here is a
+non-exhaustive list of these rules:
+\begin{enumerate}
+  \item An inherited method cannot lower the visibility of a method in a parent
+  class.
+
+  \item A parent class must contain a zero-argument constructor.
+
+  \item A class with abstract methods must be declared abstract.
+
+  \item A class may not have multiple fields with the same name.
+
+  \item A class may not have multiple methods with the same signature, where a
+    method's signature is composed of its name and its argument types.
+\end{enumerate}
+
+\subsubsection{Type Checking}\label{subsubsec:type-checking}
+
+This phase validates that the program obeys the Joos typing rules. It uses the
+\z{TypeSet} and the \z{TypeInfoMap} from the previous two phases. The source code
+for this phase can be found in \z{types/typechecker.\{h,cpp\}}. It is defined as a
+Visitor implementation that rewrites the AST to have type information
+associated with all expressions and declarations.\\
+
+This phase also introduces the \z{SymbolTable} class, which is located in
+\z{types/symbol\_table.\{h,cpp\}}. This class manages a simple mapping from a string
+to a type. It supports entering and leaving scopes, and enforces Joos's
+restriction on variables with overlapping scopes. Specifically, it emits an error if
+variables with identical names have an overlapping scope. It also disallows
+variables from being referenced in their own initializers. The type checker
+implements `alpha-renaming'; that is to say, it gives every variable a unique
+identifier to distinguish two variables with the same name in different scopes.\\
+
+Each node in the AST first type checks its children by visiting them. If any of
+its children fail to type check or are pruned, then the node will assume that
+an error was emitted below, and will prune itself from the AST without emitting
+further errors; this pruning will avoid the cascade of errors commonly found in
+many compilers.\\
+If the node's children successfully type check, we check whether their types
+conform to the rules provided in the \ac{jls} for the appropriate expression or
+statement. If the rules are not met, we emit an error and begin pruning this
+subtree. Otherwise, we rewrite the node with its computed type
+information. \\
+
+All ambiguous qualified names are handled using the algorithm provided in the
+\ac{jls}. Specifically, we first try to resolve the first segment of a
+qualified name in the \z{SymbolTable}. Next, we try and parse the first segment
+as a field reference in the containing class's \z{FieldTable}. Finally, we try to
+match a prefix of the qualified name in the \z{TypeSet}. If we find a match, we
+split the qualified name into different AST types that are more specific to the
+usage. For instance, we rewrite a local field reference to a \z{FieldDerefExpr}.
+
+The same rules are also applied to all \z{CallExpr}s, with a slight modification.
+We simply slice off the last part of the qualified name, and recurse on the
+remaining parts. Once the remaining parts have been resolved, we then look for
+a method in the \z{MethodTable} of the type returned from the recursion.
+
+For both field references and method calls, we also include an implicit \z{this}
+if the qualified name was in an instance context and an explicit \z{this} was
+omitted.
+
+We have several important utility methods such as \z{IsCastable},
+\z{IsAssignable}, \z{IsReferenceWidening}, and so forth. These methods can be
+found in \z{types/typechecker\_utils.cpp}.
+
+\subsubsection{Constant Propagation}\label{subsubsec:const-prop}
+
+In this phase, we rewrite the AST to contain a new type of \z{Expr}, named
+\z{ConstExpr}. \z{ConstExpr} is used to mark expressions that can be resolved
+at compile time. For instance, the expression `$1 + 1$' would initially be
+rewritten with both of the `1's as \z{ConstExpr}s. We then have a further rule
+that the addition of two \z{ConstExpr}s is a \z{ConstExpr}. In this way, we
+resolve constant subtrees upwards, until we reach an unresolvable node, like a
+reference to a local variable.
+
+The code for this can be found in
+\z{types/constant\_folding\_visitor.\{h,cpp\}}.  Note that this implementation
+is incomplete, and only implements a subset of the behaviour specified in the
+\ac{jls}. We plan to complete this implementation before starting work on code
+generation, but we found that the subset implemented was sufficient to satisfy
+the Assignment 4 Marmoset tests.
+
+\subsubsection{Data-flow Analysis}\label{subsubsec:data-flow}
+
+This phase performs another walk over the AST to check that all non-void
+methods return a value, and that all code is reachable. These checks are
+implemented as yet another Visitor, which can be found in
+\z{types/dataflow\_visitor.\{h,cpp\}}.
+
+The visitor recurses through all methods, maintaining a single flag named
+\z{reachable}. This flag is set to \z{false} on a return statement, and an error is
+emitted if a statement is visited when this flag is \z{false}. An error is also
+emitted if the flag is still \z{true} after visiting the body of a method with
+a non-void return type.
+
+The visitor implements special rules for loop statements with constant
+conditional expressions. Specifically, it looks for the \z{ConstExpr} nodes
+emitted by the previous pass. See the \ac{jls} for these specific reachability
+rules.
+
+In addition, this phase verifies that field initializers do not reference
+fields declared later in the source file.
+
+\section{Files}
+
+Here is a mapping from various files in the \z{types} directory to the phases
+above.
+
+\begin{itemize}
+  \item \z{types/constant\_folding\_visitor.\{h,cpp\}}: See \hyperref[subsubsec:const-prop]{Phase 4}
+  \item \z{types/dataflow\_visitor.\{h,cpp\}}: See \hyperref[subsubsec:data-flow]{Phase 5}
+  \item \z{types/decl\_resolver.\{h,cpp\}}: See \hyperref[subsubsec:fields]{Phase 2}
+  \item \z{types/symbol\_table.\{h,cpp\}}: See \hyperref[subsubsec:type-checking]{Phase 3}
+  \item \z{types/type\_info\_map.\{h,cpp\}}: See \hyperref[subsubsec:fields]{Phase 2}
+  \item \z{types/typechecker.\{h,cpp\}}: See \hyperref[subsubsec:type-checking]{Phase 3}
+  \item \z{types/typechecker\_errors.cpp}: See \hyperref[subsubsec:type-checking]{Phase 3}
+  \item \z{types/typechecker\_utils.cpp}: See \hyperref[subsubsec:type-checking]{Phase 3}
+  \item \z{types/typeset.\{h,cpp\}}: See \hyperref[subsubsec:col-types]{Phase 1}
+\end{itemize}
+
+\section{Challenges}
+
+\subsection{Suppressing cascading errors}
+
+When emitting errors, we put significant effort into ensuring that we would not
+emit cascading errors. For instance, if we were to find a method on a type
+that breaks one of the member access modifier rules, then we attempt to
+suppress any errors related to its usage by blacklisting that method name. This
+made our code much more complicated as we had to have reasonable behaviour for
+slightly malformed programs. Specifically, passes could \emph{not} assume that
+all previous passes had well-formed data. We ran into situations where the
+state from previous passes was contradictory and inconsistent. These situations
+were hard to debug, and led to us making extensive use of an \z{assert}-like
+macro that failed much more gracefully. In the end, this helped us improve our
+overall code quality.
+
+If were to repeat this exercise, we would avoid the ad-hoc blacklisting
+approach, and instead design a structured mechanism for suppressing related
+errors. Indeed, we did design such a mechanism; we wanted to associate a set of
+tags with each error, and deduplicate errors by tag before printing them.
+However, we didn't want to retrofit this mechanism into our current compiler as
+we were worried about strange interactions between this mechanism and our
+current blacklisting approach.
+
+\subsection{Specification complexity}
+
+The \ac{jls} was an invaluable source of determining how our compiler should
+behave in various interesting situations. However, mapping from a strange test
+case to all relevant sections of the \ac{jls} was not trivial, to put it
+mildly.
+
+Since the \ac{jls} does not always provide algorithmic steps for determining
+output, we had to reverse-engineer algorithms from prose. This often led to
+incomplete algorithms when we sometimes did not consider all consequences of
+the specification's lawyer-like phrasing. This was somewhat exacerbated by the
+sometimes unclear mapping from Joos restrictions to \ac{jls} restrictions.
+
+\section{Testing}
+
+We tried to continue with our practice of writing unit tests for our various
+components. In some cases, this proved effective; for instance, much of the
+type checker has extensive unit tests.
+
+However, we found that some of our tests intrinsically depend on multiple
+modules. For instance, type checking variable declarations or method calls
+require building a number of other data structures, \z{SymbolTable} and
+\z{MethodTable} respectively. These structures themselves depend on other data
+structures, like \z{TypeSet} and \z{TypeInfoMap}.
+
+We considered importing a mocking framework, such as \z{gmock}. However, we
+were not convinced that this would be a good use of our time. We would need to
+write a large number of mocking helpers to make the setup portion of our tests
+short.
+
+We compromised, and wrote integration tests that covered each special case in
+the type checker and other associated classes. Similar to the Marmoset tests,
+the integration tests would automatically include the standard library and the
+test source code.
+
+We also included all the Marmoset tests in our repository, and ran them to
+ensure we didn't introduce any regressions. One downside of these regression
+tests is that they are an order of magnitude slower than unit tests. This is
+explained by the fact that they need to lex, parse, weed, and type check the
+standard library for every single test. We plan to investigate caching the
+compilation of the standard library to decrease this high cost. Even so, the
+speed of our compiler allows us to run over 1300 tests in less than 1 minute.
+
+\end{document}
+
