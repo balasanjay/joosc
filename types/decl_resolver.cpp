@@ -34,7 +34,7 @@ sptr<const Type> DeclResolver::MustResolveType(sptr<const Type> type) {
 }
 
 REWRITE_DEFN(DeclResolver, CompUnit, CompUnit, unit,) {
-  TypeSet2 scoped_typeset  = typeset_
+  TypeSet scoped_typeset  = typeset_
     .WithCompUnit(unit.FileId());
 
   DeclResolver scoped_resolver(builder_, scoped_typeset, errors_, unit.PackagePtr());

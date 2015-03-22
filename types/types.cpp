@@ -33,7 +33,7 @@ Error* MakeMissingPredefError(const string& msg) {
   });
 }
 
-bool VerifyTypeSet(const TypeSet2& typeset, ErrorList* out) {
+bool VerifyTypeSet(const TypeSet& typeset, ErrorList* out) {
   const vector<string> stdlib_types = {
     "java.io.Serializable",
     "java.lang.Boolean",
@@ -55,7 +55,7 @@ bool VerifyTypeSet(const TypeSet2& typeset, ErrorList* out) {
   return ok;
 }
 
-TypeSet2 BuildTypeSet(const Program& prog, ErrorList* out) {
+TypeSet BuildTypeSet(const Program& prog, ErrorList* out) {
   types::TypeSetBuilder2 builder;
   for (int i = 0; i < prog.CompUnits().Size(); ++i) {
     builder.AddCompUnit(prog.CompUnits().At(i));
@@ -63,7 +63,7 @@ TypeSet2 BuildTypeSet(const Program& prog, ErrorList* out) {
   return builder.Build(out);
 }
 
-TypeInfoMap BuildTypeInfoMap(const TypeSet2& typeset, sptr<const Program> prog,
+TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, sptr<const Program> prog,
                              sptr<const Program>* new_prog, ErrorList* error_out) {
   TypeId object_tid = typeset.TryGet("java.lang.Object");
   TypeId serializable_tid = typeset.TryGet("java.io.Serializable");
@@ -85,7 +85,7 @@ TypeInfoMap BuildTypeInfoMap(const TypeSet2& typeset, sptr<const Program> prog,
 
 sptr<const Program> TypecheckProgram(sptr<const Program> prog, ErrorList* errors) {
   // Phase 1: Build a typeset.
-  TypeSet2 typeSet = BuildTypeSet(*prog, errors);
+  TypeSet typeSet = BuildTypeSet(*prog, errors);
   if (!VerifyTypeSet(typeSet, errors)) {
     return prog;
   }

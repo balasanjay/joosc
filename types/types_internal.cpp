@@ -72,7 +72,7 @@ Error* MakeDuplicateInheritanceError(bool is_extends, PosRange pos, TypeId base_
   return MakeSimplePosRangeError(pos, "DuplicateInheritanceError", ss.str());
 }
 
-sptr<const Type> ResolveType(sptr<const Type> type, const TypeSet2& typeset, ErrorList* errors) {
+sptr<const Type> ResolveType(sptr<const Type> type, const TypeSet& typeset, ErrorList* errors) {
   const Type* cur = type.get();
 
   // References.

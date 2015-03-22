@@ -10,7 +10,7 @@ namespace types {
 
 class DeclResolver : public ast::Visitor {
  public:
-  DeclResolver(TypeInfoMapBuilder* builder, const TypeSet2& typeset,
+  DeclResolver(TypeInfoMapBuilder* builder, const TypeSet& typeset,
                base::ErrorList* errors, sptr<const ast::QualifiedName> package = nullptr, ast::TypeId curtype = ast::TypeId::kUnassigned)
       : builder_(builder), typeset_(typeset), errors_(errors), package_(package), curtype_(curtype) {}
 
@@ -23,7 +23,7 @@ class DeclResolver : public ast::Visitor {
   sptr<const ast::Type> MustResolveType(sptr<const ast::Type> type);
 
   TypeInfoMapBuilder* builder_;
-  const TypeSet2& typeset_;
+  const TypeSet& typeset_;
   base::ErrorList* errors_;
   sptr<const ast::QualifiedName> package_; // Only populated if below CompUnit and the CompUnit has a package statement.
   ast::TypeId curtype_; // Only populated if below TypeDecl.

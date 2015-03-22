@@ -396,7 +396,7 @@ auto TypeSetBuilder2::ResolvePkgScope(const vector<Type>& all_types) const -> ve
   return types;
 }
 
-TypeSet2 TypeSetBuilder2::Build(ErrorList* errors) const {
+TypeSet TypeSetBuilder2::Build(ErrorList* errors) const {
   vector<Type> all_types;
   map<string, PosRange> all_pkgs;
   map<int, string> file_pkg_index;
@@ -429,10 +429,10 @@ TypeSet2 TypeSetBuilder2::Build(ErrorList* errors) const {
     file_pkg_index,
   };
 
-  return TypeSet2(sptr<Data>(data));
+  return TypeSet(sptr<Data>(data));
 }
 
-auto TypeSet2::LookupInPkgScope(const string& pkg, const string& name) const -> const Type* {
+auto TypeSet::LookupInPkgScope(const string& pkg, const string& name) const -> const Type* {
   auto cmp = [](const Type& lhs, const pair<string, string>& rhs) {
     return tie(lhs.pkg, lhs.simple_name) < tie(rhs.first, rhs.second);
   };
@@ -451,7 +451,7 @@ auto TypeSet2::LookupInPkgScope(const string& pkg, const string& name) const -> 
   return nullptr;
 }
 
-TypeId TypeSet2::Get(const string& name, PosRange pos, ErrorList* errors) const {
+TypeId TypeSet::Get(const string& name, PosRange pos, ErrorList* errors) const {
   // First, handle any of the built-ins.
   {
     #define BUILTIN_RETURN(Type, type) { \

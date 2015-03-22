@@ -9,12 +9,12 @@
 
 namespace types {
 
-class TypeSet2 {
+class TypeSet {
 public:
-  TypeSet2(const TypeSet2&) = default;
-  ~TypeSet2() = default;
+  TypeSet(const TypeSet&) = default;
+  ~TypeSet() = default;
 
-  static TypeSet2 Empty() {
+  static TypeSet Empty() {
     Data* data = new Data{
       {},
       {},
@@ -23,14 +23,14 @@ public:
       {},
       {},
     };
-    return TypeSet2(sptr<Data>(data));
+    return TypeSet(sptr<Data>(data));
   }
 
   // Provides a `view' into this TypeSet assuming that lookups occur inside the
   // provided file.
-  TypeSet2 WithCompUnit(int fileid) const {
+  TypeSet WithCompUnit(int fileid) const {
     CHECK(fid_ == -1);
-    return TypeSet2(data_, fileid, data_->file_pkg_index_.at(fileid));
+    return TypeSet(data_, fileid, data_->file_pkg_index_.at(fileid));
   }
 
   // Resolve a type name in the current environment.
@@ -131,11 +131,11 @@ private:
     map<int, string> file_pkg_index_;
   };
 
-  TypeSet2(sptr<const Data> data, int fid, const string& pkg) : data_(data), fid_(fid), pkg_(pkg) {
+  TypeSet(sptr<const Data> data, int fid, const string& pkg) : data_(data), fid_(fid), pkg_(pkg) {
     CHECK(data_ != nullptr);
   }
 
-  TypeSet2(sptr<const Data> data) : TypeSet2(data, -1, "") {}
+  TypeSet(sptr<const Data> data) : TypeSet(data, -1, "") {}
 
   const Type* LookupInPkgScope(const string& pkg, const string& name) const;
 
@@ -152,13 +152,13 @@ public:
     units_.push_back(unit);
   }
 
-  TypeSet2 Build(base::ErrorList* out) const;
+  TypeSet Build(base::ErrorList* out) const;
 
 private:
-  using Type = TypeSet2::Type;
-  using WildCardImport = TypeSet2::WildCardImport;
-  using TypeBase = TypeSet2::TypeBase;
-  using Data = TypeSet2::Data;
+  using Type = TypeSet::Type;
+  using WildCardImport = TypeSet::WildCardImport;
+  using TypeBase = TypeSet::TypeBase;
+  using Data = TypeSet::Data;
 
   void ExtractTypesAndPackages(
       vector<Type>*,

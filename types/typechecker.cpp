@@ -871,7 +871,7 @@ REWRITE_DEFN(TypeChecker, CompUnit, CompUnit, unit, unitptr) {
 
   // Otherwise create a sub-visitor that has the import info, and let it
   // rewrite this node.
-  TypeSet2 scoped_typeset = typeset_
+  TypeSet scoped_typeset = typeset_
     .WithCompUnit(unit.FileId());
 
   TypeChecker below = (*this)
