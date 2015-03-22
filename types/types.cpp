@@ -33,7 +33,7 @@ Error* MakeMissingPredefError(const string& msg) {
   });
 }
 
-bool VerifyTypeSet(const TypeSet& typeset, ErrorList* out) {
+bool VerifyTypeSet(const TypeSet2& typeset, ErrorList* out) {
   const vector<string> stdlib_types = {
     "java.io.Serializable",
     "java.lang.Boolean",
@@ -66,23 +66,15 @@ vector<TypeSetBuilder::Elem> ExtractElems(const QualifiedName& name) {
   return v;
 }
 
-TypeSet BuildTypeSet(const Program& prog, ErrorList* out) {
-  types::TypeSetBuilder typeSetBuilder;
-  for (const auto& unit : prog.CompUnits()) {
-    vector<TypeSetBuilder::Elem> pkg;
-    if (unit.PackagePtr() != nullptr) {
-      pkg = ExtractElems(*unit.PackagePtr());
-    }
-    typeSetBuilder.AddPackage(pkg);
-
-    for (const auto& decl : unit.Types()) {
-      typeSetBuilder.AddType(pkg, {decl.Name(), decl.NameToken().pos});
-    }
+TypeSet2 BuildTypeSet(const Program& prog, ErrorList* out) {
+  types::TypeSetBuilder2 builder;
+  for (int i = 0; i < prog.CompUnits().Size(); ++i) {
+    builder.AddCompUnit(prog.CompUnits().At(i));
   }
-  return typeSetBuilder.Build(out);
+  return builder.Build(out);
 }
 
-TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, sptr<const Program> prog,
+TypeInfoMap BuildTypeInfoMap(const TypeSet2& typeset, sptr<const Program> prog,
                              sptr<const Program>* new_prog, ErrorList* error_out) {
   TypeId object_tid = typeset.TryGet("java.lang.Object");
   TypeId serializable_tid = typeset.TryGet("java.io.Serializable");
@@ -104,7 +96,7 @@ TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, sptr<const Program> prog,
 
 sptr<const Program> TypecheckProgram(sptr<const Program> prog, ErrorList* errors) {
   // Phase 1: Build a typeset.
-  TypeSet typeSet = BuildTypeSet(*prog, errors);
+  TypeSet2 typeSet = BuildTypeSet(*prog, errors);
   if (!VerifyTypeSet(typeSet, errors)) {
     return prog;
   }

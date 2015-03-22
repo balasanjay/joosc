@@ -17,7 +17,7 @@ TEST_F(TypeSetTest, ClassAndPackageWithSameQualifiedName) {
     {"a/Foo.java", "package foo.bar; public class Foo {}"},
     {"b/bar.java", "package foo; public class bar {}"},
   });
-  EXPECT_ERRS("TypeDuplicateDefinitionError: [1:26-29,0:12-15,]\n");
+  EXPECT_ERRS("TypeDuplicateDefinitionError: [1:26-29,0:8-15,]\n");
 }
 
 TEST_F(TypeSetTest, UnknownImport) {
@@ -115,7 +115,7 @@ TEST_F(TypeSetTest, ConflictingImports) {
       "public class gee {}"
     },
   });
-  EXPECT_ERRS("DuplicateCompUnitNames: [2:32-37,2:18-23,]\n");
+  EXPECT_ERRS("TypeDuplicateDefinitionError: [2:18-23,2:32-37,]\n");
 }
 
 TEST_F(TypeSetTest, ConflictingImportAndType) {
@@ -123,7 +123,7 @@ TEST_F(TypeSetTest, ConflictingImportAndType) {
     {"a/bar.java", "package a; public class bar {}"},
     {"b/bar.java", "package b; import a.bar; public class bar {}"},
   });
-  EXPECT_ERRS("DuplicateCompUnitNames: [1:38-41,1:18-23,]\n");
+  EXPECT_ERRS("TypeDuplicateDefinitionError: [1:18-23,1:38-41,]\n");
 }
 
 TEST_F(TypeSetTest, UnknownQualifiedName) {
@@ -201,7 +201,7 @@ TEST_F(TypeSetTest, ShortNameMultipleAmbiguousWildcards) {
       "public class test { public Foo field; }"
     },
   });
-  EXPECT_ERRS("AmbiguousTypeError:[0:35-38,0:21-24,]\n");
+  EXPECT_ERRS("AmbiguousTypeError:[0:35-38,0:7-10,]\n");
 }
 
 TEST_F(TypeSetTest, ShortNameAmbiguousWildcardWithStdlib) {

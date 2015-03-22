@@ -850,17 +850,12 @@ REWRITE_DEFN(TypeChecker, TypeDecl, TypeDecl, type, typeptr) {
     return Visitor::RewriteTypeDecl(type, typeptr);
   }
 
-  // Don't emit import errors again - they are already emitted in decl_resolver.
-  ErrorList throwaway;
-
   // Otherwise create a sub-visitor that has the type info, and let it rewrite
   // this node.
-  TypeSet scoped_typeset = typeset_
-    .WithType(type.Name(), type.NameToken().pos, &throwaway);
-  TypeId curtid = scoped_typeset.TryGet(type.Name());
+  TypeId curtid = typeset_.TryGet(type.Name());
   CHECK(!curtid.IsError()); // Pruned in DeclResolver.
 
-  TypeChecker below = InsideTypeDecl(curtid, scoped_typeset);
+  TypeChecker below = InsideTypeDecl(curtid);
   return below.Rewrite(typeptr);
 }
 
@@ -876,9 +871,8 @@ REWRITE_DEFN(TypeChecker, CompUnit, CompUnit, unit, unitptr) {
 
   // Otherwise create a sub-visitor that has the import info, and let it
   // rewrite this node.
-  TypeSet scoped_typeset = typeset_
-      .WithPackage(unit.PackagePtr(), &throwaway)
-      .WithImports(unit.Imports(), &throwaway);
+  TypeSet2 scoped_typeset = typeset_
+    .WithCompUnit(unit.FileId());
 
   TypeChecker below = (*this)
       .WithTypeSet(scoped_typeset)

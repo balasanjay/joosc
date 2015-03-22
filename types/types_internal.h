@@ -19,7 +19,7 @@ base::Error* MakeUnknownTypenameError(base::PosRange pos);
 base::Error* MakeDuplicateDefinitionError(const vector<base::PosRange> dupes, const string& main_message, const string& name);
 base::Error* MakeDuplicateInheritanceError(bool is_extends, base::PosRange pos, ast::TypeId base_tid, ast::TypeId inheriting_tid);
 
-sptr<const ast::Type> ResolveType(sptr<const ast::Type>, const TypeSet&, base::ErrorList*);
+sptr<const ast::Type> ResolveType(sptr<const ast::Type>, const TypeSet2&, base::ErrorList*);
 
 ast::ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract);
 

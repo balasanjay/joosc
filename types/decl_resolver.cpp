@@ -34,9 +34,8 @@ sptr<const Type> DeclResolver::MustResolveType(sptr<const Type> type) {
 }
 
 REWRITE_DEFN(DeclResolver, CompUnit, CompUnit, unit,) {
-  TypeSet scoped_typeset  = typeset_
-      .WithPackage(unit.PackagePtr(), errors_)
-      .WithImports(unit.Imports(), errors_);
+  TypeSet2 scoped_typeset  = typeset_
+    .WithCompUnit(unit.FileId());
 
   DeclResolver scoped_resolver(builder_, scoped_typeset, errors_, unit.PackagePtr());
 
@@ -52,10 +51,7 @@ REWRITE_DEFN(DeclResolver, CompUnit, CompUnit, unit,) {
 }
 
 REWRITE_DEFN(DeclResolver, TypeDecl, TypeDecl, type, ) {
-  // First, fetch a nested TypeSet for this type.
-  TypeSet scoped_resolver = typeset_.WithType(type.Name(), type.NameToken().pos, errors_);
-
-  // Then, try and resolve TypeId of this class. If this fails, that means that
+  // Try and resolve TypeId of this class. If this fails, that means that
   // this class has some serious previously discovered error (cycles in the
   // import graph, for example). We immediately prune the subtree.
   TypeId curtid = typeset_.TryGet(type.Name());

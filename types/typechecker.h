@@ -12,9 +12,9 @@ namespace types {
 
 class TypeChecker final : public ast::Visitor {
  public:
-   TypeChecker(base::ErrorList* errors) : TypeChecker(errors, TypeSet::Empty(), TypeInfoMap::Empty()) {}
+   TypeChecker(base::ErrorList* errors) : TypeChecker(errors, TypeSet2::Empty(), TypeInfoMap::Empty()) {}
 
-  TypeChecker WithTypeSet(const TypeSet& typeset) const {
+  TypeChecker WithTypeSet(const TypeSet2& typeset) const {
     CHECK(!belowCompUnit_);
     return TypeChecker(errors_, typeset, typeinfo_);
   }
@@ -29,10 +29,10 @@ class TypeChecker final : public ast::Visitor {
     return TypeChecker(errors_, typeset_, typeinfo_, true, package);
   }
 
-  TypeChecker InsideTypeDecl(ast::TypeId curtype, const TypeSet& typeset) const {
+  TypeChecker InsideTypeDecl(ast::TypeId curtype) const {
     CHECK(belowCompUnit_);
     CHECK(!belowTypeDecl_);
-    return TypeChecker(errors_, typeset, typeinfo_, true, package_, true, curtype);
+    return TypeChecker(errors_, typeset_, typeinfo_, true, package_, true, curtype);
   }
 
   TypeChecker InsideMemberDecl(bool is_static, ast::TypeId cur_member_type, const ast::ParamList& params) const {
@@ -100,7 +100,7 @@ class TypeChecker final : public ast::Visitor {
   FRIEND_TEST(TypeCheckerHierarchyTest, IsCastablePrimitives);
 
   TypeChecker(base::ErrorList* errors,
-              const TypeSet& typeset, const TypeInfoMap& typeinfo,
+              const TypeSet2& typeset, const TypeInfoMap& typeinfo,
               bool belowCompUnit = false, sptr<const ast::QualifiedName> package = nullptr,
               bool belowTypeDecl = false, ast::TypeId curtype = ast::TypeId::kUnassigned,
               bool belowMemberDecl = false, bool belowStaticMember = false, ast::TypeId curMethRet = ast::TypeId::kUnassigned,
@@ -146,7 +146,7 @@ class TypeChecker final : public ast::Visitor {
 
   base::ErrorList* errors_;
 
-  const TypeSet& typeset_;
+  TypeSet2 typeset_;
   const TypeInfoMap& typeinfo_;
 
   const bool belowCompUnit_ = false;
