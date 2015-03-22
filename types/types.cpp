@@ -56,7 +56,7 @@ bool VerifyTypeSet(const TypeSet& typeset, ErrorList* out) {
 }
 
 TypeSet BuildTypeSet(const Program& prog, ErrorList* out) {
-  types::TypeSetBuilder2 builder;
+  types::TypeSetBuilder builder;
   for (int i = 0; i < prog.CompUnits().Size(); ++i) {
     builder.AddCompUnit(prog.CompUnits().At(i));
   }

@@ -43,7 +43,7 @@ public:
   }
 
 private:
-  friend class TypeSetBuilder2;
+  friend class TypeSetBuilder;
 
   using TypeBase = ast::TypeId::Base;
 
@@ -144,9 +144,9 @@ private:
   string pkg_ = "";
 };
 
-class TypeSetBuilder2 {
+class TypeSetBuilder {
 public:
-  TypeSetBuilder2() = default;
+  TypeSetBuilder() = default;
 
   void AddCompUnit(sptr<const ast::CompUnit> unit) {
     units_.push_back(unit);

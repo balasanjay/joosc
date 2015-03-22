@@ -88,7 +88,7 @@ Error* MakeAmbiguousTypeError(PosRange pos, const string& name, const vector<Pos
 
 } // namespace
 
-void TypeSetBuilder2::ExtractTypesAndPackages(
+void TypeSetBuilder::ExtractTypesAndPackages(
     vector<Type>* types,
     map<string, PosRange>* pkgs,
     map<int, string>* file_to_pkg) const {
@@ -155,7 +155,7 @@ void TypeSetBuilder2::ExtractTypesAndPackages(
   }
 }
 
-void TypeSetBuilder2::CheckTypePackageCollision(
+void TypeSetBuilder::CheckTypePackageCollision(
     const map<string, PosRange>& all_pkgs, vector<Type>* types, ErrorList* errors) const {
   // Bind references for readability.
   vector<Type>& all_types = *types;
@@ -171,7 +171,7 @@ void TypeSetBuilder2::CheckTypePackageCollision(
   }
 }
 
-void TypeSetBuilder2::BuildQualifiedNameIndex(
+void TypeSetBuilder::BuildQualifiedNameIndex(
     vector<Type>* all_types_ptr,
     vector<Type>* qual_name_index,
     ErrorList* errors) const {
@@ -241,7 +241,7 @@ void TypeSetBuilder2::BuildQualifiedNameIndex(
   all_types.erase(unique(all_types.begin(), all_types.end(), cmp), all_types.end());
 }
 
-void TypeSetBuilder2::ResolveImports(
+void TypeSetBuilder::ResolveImports(
     const map<string, PosRange>& all_pkgs,
     const vector<Type>& qual_name_index,
     vector<Type>* comp_unit_scope,
@@ -384,7 +384,7 @@ void TypeSetBuilder2::ResolveImports(
   wildcards->insert(wildcards->end(), wcs.begin(), wcs.end());
 }
 
-auto TypeSetBuilder2::ResolvePkgScope(const vector<Type>& all_types) const -> vector<Type> {
+auto TypeSetBuilder::ResolvePkgScope(const vector<Type>& all_types) const -> vector<Type> {
   vector<Type> types(all_types);
 
   auto lt_cmp = [](const Type& lhs, const Type& rhs) {
@@ -396,7 +396,7 @@ auto TypeSetBuilder2::ResolvePkgScope(const vector<Type>& all_types) const -> ve
   return types;
 }
 
-TypeSet TypeSetBuilder2::Build(ErrorList* errors) const {
+TypeSet TypeSetBuilder::Build(ErrorList* errors) const {
   vector<Type> all_types;
   map<string, PosRange> all_pkgs;
   map<int, string> file_pkg_index;
