@@ -55,17 +55,6 @@ bool VerifyTypeSet(const TypeSet2& typeset, ErrorList* out) {
   return ok;
 }
 
-vector<TypeSetBuilder::Elem> ExtractElems(const QualifiedName& name) {
-  vector<TypeSetBuilder::Elem> v;
-  v.reserve(name.Parts().size());
-
-  for (size_t i = 0; i < name.Parts().size(); ++i) {
-    v.push_back({name.Parts().at(i), name.Tokens().at(i*2).pos});
-  }
-
-  return v;
-}
-
 TypeSet2 BuildTypeSet(const Program& prog, ErrorList* out) {
   types::TypeSetBuilder2 builder;
   for (int i = 0; i < prog.CompUnits().Size(); ++i) {

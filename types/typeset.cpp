@@ -6,7 +6,6 @@
 
 #include "base/algorithm.h"
 #include "types/types_internal.h"
-#include "types/typeset_impl.h"
 
 using std::back_inserter;
 using std::count;
@@ -29,91 +28,6 @@ using base::PosRange;
 
 namespace types {
 
-TypeSet TypeSet::kEmptyTypeSet(sptr<TypeSetImpl>(new TypeSetImpl({}, {}, {})));
-
-string TypeSetBuilder::FullyQualifiedTypeName(const Entry& entry) const {
-  stringstream ss;
-  if (entry.pkg.size() == 0) {
-    ss << TypeSetImpl::kUnnamedPkgPrefix;
-  } else {
-    ss << TypeSetImpl::kNamedPkgPrefix;
-  }
-  for (const auto& part : entry.pkg) {
-    ss << '.' << part.name;
-  }
-  ss << '.' << entry.type.name;
-  return ss.str();
-}
-
-TypeSet TypeSetBuilder::Build(base::ErrorList* out) const {
-  using NamePos = pair<string, base::PosRange>;
-  using NamePosMap = map<string, base::PosRange>;
-  using NamePosMultiMap = multimap<string, base::PosRange>;
-
-  NamePosMap declared_pkgs(pkgs_);
-
-  // Get fully qualified name of all types.
-  vector<Elem> declared_types;
-  for (const auto& entry : types_) {
-    declared_types.push_back(Elem{FullyQualifiedTypeName(entry), entry.type.pos});
-  }
-
-  // First, we identify and strip out any duplicates.
-  set<string> bad_names;
-  {
-    using Iter = NamePosMultiMap::const_iterator;
-
-    // Put both types and packages in a single multimap.
-    NamePosMultiMap byname;
-    for (const auto& type : declared_types) {
-      byname.insert({type.name, type.pos});
-    }
-    for (const auto& pkg : declared_pkgs) {
-      byname.insert({pkg.first, pkg.second});
-    }
-
-    auto cmp = [](const NamePos& lhs, const NamePos& rhs) {
-      return lhs.first == rhs.first;
-    };
-
-    auto cb = [&](Iter start, Iter end, i64 ndups) {
-      if (ndups == 1) {
-        return;
-      }
-      CHECK(ndups > 1);
-
-      vector<PosRange> defs;
-      for (auto cur = start; cur != end; ++cur) {
-        defs.push_back(cur->second);
-      }
-
-      CHECK(defs.size() == (size_t)ndups);
-
-      string without_prefix = start->first.substr(TypeSetImpl::kPkgPrefixLen+1);
-      stringstream msgstream;
-      msgstream << "Type '" << without_prefix << "' was declared multiple times.";
-      out->Append(MakeDuplicateDefinitionError(defs, msgstream.str(), "TypeDuplicateDefinitionError"));
-      bad_names.insert(start->first);
-    };
-
-    FindEqualRanges(byname.cbegin(), byname.cend(), cmp, cb);
-  }
-
-  // Build final set of types and packages by filtering out blacklisted names.
-  NamePosMap types;
-
-  for (const auto& type : declared_types) {
-    if (bad_names.count(type.name) == 1) {
-      continue;
-    }
-
-    auto iterok = types.insert({type.name, type.pos});
-    CHECK(iterok.second);
-  }
-
-  return TypeSet(make_shared<TypeSetImpl>(types, declared_pkgs, bad_names));
-}
-
 namespace {
 
 Error* MakeDuplicateTypeDefinitionError(const string& name, const vector<PosRange>& defs) {
@@ -128,6 +42,49 @@ Error* MakeTypeWithTypePrefixError(PosRange pos, const string& name) {
   return MakeSimplePosRangeError(pos, "TypeWithTypePrefixError", ss.str());
 }
 
+Error* MakeUnknownImportError(PosRange pos) {
+  return MakeSimplePosRangeError(pos, "UnknownImportError",
+                                 "Cannot find imported class.");
+}
+
+Error* MakeUnknownPackageError(PosRange pos) {
+  return MakeSimplePosRangeError(pos, "UnknownPackageError",
+                                 "Cannot find imported package.");
+}
+
+Error* MakeAmbiguousTypeError(PosRange pos, const string& name, const vector<PosRange>& imports) {
+  return MakeError([=](ostream* out, const OutputOptions& opt, const base::FileSet* fs) {
+    if (opt.simple) {
+      *out << "AmbiguousTypeError:[";
+      for (auto pos : imports) {
+        *out << pos << ",";
+      }
+      *out << "]";
+      return;
+    }
+
+    string msg = "'" + name + "' is ambiguous.";
+    PrintDiagnosticHeader(out, opt, fs, pos, DiagnosticClass::ERROR, msg);
+    PrintRangePtr(out, opt, fs, pos);
+
+    for (auto import : imports) {
+      *out << '\n';
+
+      // If fileid == -1, then we conflicted with the implicit import of
+      // java.lang.*. Special-case this situation, and point the error back to
+      // the standard usage.
+      if (import.fileid == -1) {
+        string msg = "Implicitly imported from java.lang.";
+        PrintDiagnosticHeader(out, opt, fs, pos, DiagnosticClass::INFO, msg);
+        continue;
+      }
+
+      string msg = "Imported here.";
+      PrintDiagnosticHeader(out, opt, fs, import, DiagnosticClass::INFO, msg);
+      PrintRangePtr(out, opt, fs, import);
+    }
+  });
+}
 
 } // namespace
 
@@ -284,51 +241,6 @@ void TypeSetBuilder2::BuildQualifiedNameIndex(
   all_types.erase(unique(all_types.begin(), all_types.end(), cmp), all_types.end());
 }
 
-Error* MakeUnknownImportError(PosRange pos) {
-  return MakeSimplePosRangeError(pos, "UnknownImportError",
-                                 "Cannot find imported class.");
-}
-
-Error* MakeUnknownPackageError(PosRange pos) {
-  return MakeSimplePosRangeError(pos, "UnknownPackageError",
-                                 "Cannot find imported package.");
-}
-
-Error* MakeAmbiguousTypeError(PosRange pos, const string& name, const vector<PosRange>& imports) {
-  return MakeError([=](ostream* out, const OutputOptions& opt, const base::FileSet* fs) {
-    if (opt.simple) {
-      *out << "AmbiguousTypeError:[";
-      for (auto pos : imports) {
-        *out << pos << ",";
-      }
-      *out << "]";
-      return;
-    }
-
-    string msg = "'" + name + "' is ambiguous.";
-    PrintDiagnosticHeader(out, opt, fs, pos, DiagnosticClass::ERROR, msg);
-    PrintRangePtr(out, opt, fs, pos);
-
-    for (auto import : imports) {
-      *out << '\n';
-
-      // If fileid == -1, then we conflicted with the implicit import of
-      // java.lang.*. Special-case this situation, and point the error back to
-      // the standard usage.
-      if (import.fileid == -1) {
-        string msg = "Implicitly imported from java.lang.";
-        PrintDiagnosticHeader(out, opt, fs, pos, DiagnosticClass::INFO, msg);
-        continue;
-      }
-
-      string msg = "Imported here.";
-      PrintDiagnosticHeader(out, opt, fs, import, DiagnosticClass::INFO, msg);
-      PrintRangePtr(out, opt, fs, import);
-    }
-  });
-}
-
-
 void TypeSetBuilder2::ResolveImports(
     const map<string, PosRange>& all_pkgs,
     const vector<Type>& qual_name_index,
@@ -478,34 +390,8 @@ auto TypeSetBuilder2::ResolvePkgScope(const vector<Type>& all_types) const -> ve
   auto lt_cmp = [](const Type& lhs, const Type& rhs) {
     return tie(lhs.pkg, lhs.simple_name) < tie(rhs.pkg, rhs.simple_name);
   };
-  auto eq_cmp = [](const Type& lhs, const Type&rhs) {
-    return tie(lhs.pkg, lhs.simple_name) == tie(rhs.pkg, rhs.simple_name);
-  };
 
   sort(types.begin(), types.end(), lt_cmp);
-
-  // Verify that we don't have any duplicates.
-  // auto iter = adjacent_find(types.begin(), types.end(), eq_cmp);
-  // CHECK(iter == types.end());
-
-  return types;
-}
-
-auto TypeSetBuilder2::MakeSimpleNameIndex(const vector<Type>& all_types) const -> vector<Type> {
-  vector<Type> types(all_types);
-
-  auto lt_cmp = [](const Type& lhs, const Type& rhs) {
-    return tie(lhs.simple_name, lhs.pkg) < tie(rhs.simple_name, rhs.pkg);
-  };
-  auto eq_cmp = [](const Type& lhs, const Type&rhs) {
-    return tie(lhs.simple_name, lhs.pkg) == tie(rhs.simple_name, rhs.pkg);
-  };
-
-  sort(types.begin(), types.end(), lt_cmp);
-
-  // Verify that we don't have any duplicates.
-  auto iter = adjacent_find(types.begin(), types.end(), eq_cmp);
-  CHECK(iter == types.end());
 
   return types;
 }
@@ -579,7 +465,6 @@ TypeId TypeSet2::Get(const string& name, PosRange pos, ErrorList* errors) const 
     BUILTIN_RETURN(Int, int);
     #undef BUILTIN_RETURN
   }
-
 
   // Second, we handle fully qualified names.
   {
