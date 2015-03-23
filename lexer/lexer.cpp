@@ -569,4 +569,52 @@ void FindUnsupportedTokens(const vector<vector<Token>>& tokens,
   }
 }
 
+bool IsBoolOp(TokenType op) {
+  switch (op) {
+    case BAND:
+    case BOR:
+    case AND:
+    case OR:
+    case XOR:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool IsRelationalOp(TokenType op) {
+  switch (op) {
+    case LE:
+    case GE:
+    case LT:
+    case GT:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool IsEqualityOp(TokenType op) {
+  switch (op) {
+    case EQ:
+    case NEQ:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool IsNumericOp(TokenType op) {
+  switch (op) {
+    case ADD:
+    case SUB:
+    case MUL:
+    case DIV:
+    case MOD:
+      return true;
+    default:
+      return false;
+  }
+}
+
 }  // namespace lexer

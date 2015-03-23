@@ -32,6 +32,11 @@ class ExtentVisitor final : public Visitor {
     return VisitResult::SKIP;
   }
 
+  VISIT_DECL(ConstExpr, expr,) {
+    Visit(expr.ConstantPtr());
+    return VisitResult::SKIP;
+  }
+
   VISIT_DECL(InstanceOfExpr, expr,) {
     Visit(expr.LhsPtr());
     UpdatePosFromType(expr.GetType());
