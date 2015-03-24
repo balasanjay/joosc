@@ -1646,11 +1646,11 @@ static const char kUniversalFilter[] = "*";
 static const char kDefaultOutputFile[] = "test_detail.xml";
 
 // The environment variable name for the test shard index.
-static const char kTestShardIndex[] = "GTEST_SHARD_INDEX";
+static const char kTestShardIndex[] = "TEST_SHARD_INDEX";
 // The environment variable name for the total number of test shards.
-static const char kTestTotalShards[] = "GTEST_TOTAL_SHARDS";
+static const char kTestTotalShards[] = "TEST_TOTAL_SHARDS";
 // The environment variable name for the test shard status file.
-static const char kTestShardStatusFile[] = "GTEST_SHARD_STATUS_FILE";
+static const char kTestShardStatusFile[] = "TEST_SHARD_STATUS_FILE";
 
 namespace internal {
 

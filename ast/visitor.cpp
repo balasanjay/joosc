@@ -455,7 +455,7 @@ REWRITE_DEFN(Visitor, CompUnit, CompUnit, unit, unitptr) {
   if (!typesChanged) {
     return unitptr;
   }
-  return make_shared<CompUnit>(unit.PackagePtr(), unit.Imports(), newTypes);
+  return make_shared<CompUnit>(unit.FileId(), unit.PackagePtr(), unit.Imports(), newTypes);
 }
 
 REWRITE_DEFN(Visitor, Program, Program, prog, progptr) {
