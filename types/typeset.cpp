@@ -269,7 +269,7 @@ void TypeSetBuilder::ResolveImports(
   auto wildcard_cmp = [](const WC& lhs, const WC& rhs) {
     return tie(lhs.fid, lhs.pkg) < tie(rhs.fid, rhs.pkg);
   };
-  set<WildCardImport, decltype(wildcard_cmp)> wcs(wildcard_cmp);
+  set<WC, decltype(wildcard_cmp)> wcs(wildcard_cmp);
 
   for (const auto& spunit : units_) {
     const CompUnit& unit = *spunit.get();

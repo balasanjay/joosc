@@ -92,7 +92,7 @@ private:
     //
     // Sorted first by file id, then by name. It is guaranteed that for a given
     // (file id, name) pair, there is exactly 0 or 1 corresponding type in this
-    // vector. Duplicates are pruned early, and are replaced with blaclist
+    // vector. Duplicates are pruned early, and are replaced with blacklist
     // entries.
     vector<Type> comp_unit_scope_;
 
