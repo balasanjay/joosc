@@ -16,4 +16,7 @@ cc_library(
     deps = [
         ":gtest",
     ],
+    data = [
+        "//tools:test_sharding_compliant"
+    ],
 )
