@@ -29,10 +29,10 @@ class TypeChecker final : public ast::Visitor {
     return TypeChecker(errors_, typeset_, typeinfo_, true, package);
   }
 
-  TypeChecker InsideTypeDecl(ast::TypeId curtype, const TypeSet& typeset) const {
+  TypeChecker InsideTypeDecl(ast::TypeId curtype) const {
     CHECK(belowCompUnit_);
     CHECK(!belowTypeDecl_);
-    return TypeChecker(errors_, typeset, typeinfo_, true, package_, true, curtype);
+    return TypeChecker(errors_, typeset_, typeinfo_, true, package_, true, curtype);
   }
 
   TypeChecker InsideMemberDecl(bool is_static, ast::TypeId cur_member_type, const ast::ParamList& params) const {
@@ -146,7 +146,7 @@ class TypeChecker final : public ast::Visitor {
 
   base::ErrorList* errors_;
 
-  const TypeSet& typeset_;
+  TypeSet typeset_;
   const TypeInfoMap& typeinfo_;
 
   const bool belowCompUnit_ = false;

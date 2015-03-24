@@ -105,9 +105,9 @@ Result<U> ConvertError(Result<T>&& r) {
 }  // namespace internal
 
 struct Parser {
-  Parser(const base::FileSet* fs, const base::File* file,
+  Parser(const base::FileSet* fs, const base::File* file, int fid,
          const vector<lexer::Token>* tokens, int index = 0, bool failed = false)
-      : fs_(fs), file_(file), tokens_(tokens), index_(index), failed_(failed) {}
+      : fs_(fs), file_(file), fid_(fid), tokens_(tokens), index_(index), failed_(failed) {}
 
   explicit operator bool() const { return !failed_; }
 
@@ -182,7 +182,7 @@ struct Parser {
   }
 
   Parser Advance(int i = 1) const {
-    return Parser(fs_, file_, tokens_, index_ + i, failed_);
+    return Parser(fs_, file_, fid_, tokens_, index_ + i, failed_);
   }
 
   template <typename T>
@@ -198,7 +198,7 @@ struct Parser {
   }
 
   Parser Fail() const {
-    return Parser(fs_, file_, tokens_, index_, /* failed */ true);
+    return Parser(fs_, file_, fid_, tokens_, index_, /* failed */ true);
   }
 
   template <typename T, typename U>
@@ -218,6 +218,7 @@ struct Parser {
 
   const base::FileSet* fs_ = nullptr;
   const base::File* file_ = nullptr;
+  int fid_ = -1;
   const vector<lexer::Token>* tokens_ = nullptr;
   int index_ = -1;
   bool failed_ = false;

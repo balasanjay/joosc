@@ -56,31 +56,12 @@ bool VerifyTypeSet(const TypeSet& typeset, ErrorList* out) {
   return ok;
 }
 
-vector<TypeSetBuilder::Elem> ExtractElems(const QualifiedName& name) {
-  vector<TypeSetBuilder::Elem> v;
-  v.reserve(name.Parts().size());
-
-  for (size_t i = 0; i < name.Parts().size(); ++i) {
-    v.push_back({name.Parts().at(i), name.Tokens().at(i*2).pos});
-  }
-
-  return v;
-}
-
 TypeSet BuildTypeSet(const Program& prog, ErrorList* out) {
-  types::TypeSetBuilder typeSetBuilder;
-  for (const auto& unit : prog.CompUnits()) {
-    vector<TypeSetBuilder::Elem> pkg;
-    if (unit.PackagePtr() != nullptr) {
-      pkg = ExtractElems(*unit.PackagePtr());
-    }
-    typeSetBuilder.AddPackage(pkg);
-
-    for (const auto& decl : unit.Types()) {
-      typeSetBuilder.AddType(pkg, {decl.Name(), decl.NameToken().pos});
-    }
+  types::TypeSetBuilder builder;
+  for (int i = 0; i < prog.CompUnits().Size(); ++i) {
+    builder.AddCompUnit(prog.CompUnits().At(i));
   }
-  return typeSetBuilder.Build(out);
+  return builder.Build(out);
 }
 
 TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, sptr<const Program> prog,
