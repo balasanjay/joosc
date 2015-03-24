@@ -6,6 +6,7 @@ cc_library(
     name = "gtest",
     srcs = ["gtest-all_test.cpp"],
     hdrs = ["gtest.h"],
+    copts = ["-Wno-unused-const-variable"],
 )
 
 cc_library(
