@@ -66,7 +66,6 @@ using FieldId = u64;
 const FieldId kErrorFieldId = 0;
 const FieldId kFirstFieldId = 10;
 
-
 } // namespace ast
 
 #endif

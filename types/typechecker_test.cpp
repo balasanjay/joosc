@@ -57,7 +57,7 @@ class TypeCheckerTest : public ::testing::Test {
     ASSERT_FALSE(errors_.IsFatal());
     ASSERT_EQ(0, errors_.Size());
 
-    parser_.reset(new parser::Parser(fs, fs->Get(0), &tokens[0]));
+    parser_.reset(new parser::Parser(fs, fs->Get(0), 0, &tokens[0]));
 
     typeChecker_.reset(new TypeChecker(&errors_));
   }
@@ -211,7 +211,7 @@ TEST_F(TypeCheckerTest, BinExprAssignment) {
   const auto insideType = TypeId{100, 0};
   auto typeChecker = (*typeChecker_.get())
     .InsideCompUnit(nullptr)
-    .InsideTypeDecl(insideType, TypeSet::Empty())
+    .InsideTypeDecl(insideType)
     .InsideMemberDecl(false, TypeId::kVoid, {{TypeId::kInt, "a", PosRange(0, 0, 1)}});
 
   auto after = typeChecker.Rewrite(before);
@@ -225,7 +225,7 @@ TEST_F(TypeCheckerTest, BinExprAssignmentFails) {
   const auto insideType = TypeId{100, 0};
   auto typeChecker = (*typeChecker_.get())
     .InsideCompUnit(nullptr)
-    .InsideTypeDecl(insideType, TypeSet::Empty())
+    .InsideTypeDecl(insideType)
     .InsideMemberDecl(false, TypeId::kVoid, {{TypeId::kInt, "a", PosRange(0, 0, 1)}});
 
   auto after = typeChecker.Rewrite(before);
@@ -515,7 +515,7 @@ TEST_F(TypeCheckerTest, ThisLitExpr) {
 
   auto typeChecker = (*typeChecker_.get())
     .InsideCompUnit(nullptr)
-    .InsideTypeDecl(insideType, TypeSet::Empty())
+    .InsideTypeDecl(insideType)
     .InsideMemberDecl(false, TypeId::kVoid);
 
   auto after = typeChecker.Rewrite(before);
@@ -531,7 +531,7 @@ TEST_F(TypeCheckerTest, ThisLitExprInStaticMethod) {
 
   auto typeChecker = (*typeChecker_.get())
     .InsideCompUnit(nullptr)
-    .InsideTypeDecl(insideType, TypeSet::Empty())
+    .InsideTypeDecl(insideType)
     .InsideMemberDecl(true, TypeId::kVoid);
 
   auto after = typeChecker.Rewrite(before);
@@ -744,7 +744,7 @@ TEST_F(TypeCheckerTest, DISABLED_FieldDeclThis) {
   sptr<const MemberDecl> before = ParseMemberDecl("int x = this;");
   auto typeChecker = (*typeChecker_.get())
     .InsideCompUnit(nullptr)
-    .InsideTypeDecl(TypeId::kInt, TypeSet::Empty());
+    .InsideTypeDecl(TypeId::kInt);
   auto after = typeChecker.Rewrite(before);
 
   EXPECT_NE(nullptr, after);
@@ -755,7 +755,7 @@ TEST_F(TypeCheckerTest, FieldDeclStaticThis) {
   sptr<const MemberDecl> before = ParseMemberDecl("static int x = this;");
   auto typeChecker = (*typeChecker_.get())
     .InsideCompUnit(nullptr)
-    .InsideTypeDecl(TypeId::kInt, TypeSet::Empty());
+    .InsideTypeDecl(TypeId::kInt);
   auto after = typeChecker.Rewrite(before);
 
   EXPECT_EQ(nullptr, after);
