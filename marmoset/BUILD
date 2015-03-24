@@ -45,7 +45,7 @@ cc_test(
         "//third_party/cs444/assignment_testcases:2",
     ],
     size = "small",
-    shard_count = 8,
+    shard_count = 4,
 )
 
 cc_test(
@@ -62,7 +62,7 @@ cc_test(
         "//third_party/cs444/assignment_testcases:3",
     ],
     size = "small",
-    shard_count = 8,
+    shard_count = 4,
 )
 
 cc_test(
@@ -79,5 +79,5 @@ cc_test(
         "//third_party/cs444/assignment_testcases:4",
     ],
     size = "small",
-    shard_count = 8,
+    shard_count = 4,
 )
