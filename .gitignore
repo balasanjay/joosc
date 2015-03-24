@@ -10,3 +10,10 @@
 
 # Submission archive.
 /submit.zip
+
+# Bazel dirs.
+/bazel-bin
+/bazel-genfiles
+/bazel-joosc
+/bazel-out
+/bazel-testlogs

@@ -1,0 +1,8 @@
+# ASAN.
+build:asan --copt='-fsanitize=address' --linkopt='-fsanitize=address'
+
+# MSAN.
+build:msan --copt='-fsanitize=memory' --linkopt='-fsanitize=memory'
+
+# UBSAN.
+build:ubsan --copt='-fsanitize=undefined' --linkopt='-fsanitize=undefined'
