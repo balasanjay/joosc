@@ -14,7 +14,6 @@ cc_library(
         "types.cpp",
         "types_internal.cpp",
         "typeset.cpp",
-        "typeset_impl.cpp",
     ],
     hdrs = [
         "constant_folding_visitor.h",
@@ -26,7 +25,6 @@ cc_library(
         "types.h",
         "types_internal.h",
         "typeset.h",
-        "typeset_impl.h",
     ],
     deps = [
         "//ast",
