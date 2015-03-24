@@ -12,28 +12,28 @@ struct MemImpl;
 class StreamBuilder {
  public:
   Mem AllocTemp(SizeClass) {
-    CHECK(false);
+    UNIMPLEMENTED();
   }
 
   Mem AllocLocal(SizeClass) {
-    CHECK(false);
+    UNIMPLEMENTED();
   }
 
   // *dst = src.
   void Mov(Mem, Mem) {
-    CHECK(false);
+    UNIMPLEMENTED();
   }
 
   // *dst = *lhs + *rhs.
   void Add(Mem, Mem, Mem) {
-    CHECK(false);
+    UNIMPLEMENTED();
   }
 
  private:
   friend struct MemImpl;
 
   void DeallocMem(MemId) {
-    CHECK(false);
+    UNIMPLEMENTED();
   }
 };
 
