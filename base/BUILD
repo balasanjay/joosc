@@ -26,3 +26,28 @@ cc_library(
         "//third_party/gtest"
     ],
 )
+
+filegroup(
+    name = "testdata",
+    srcs = [
+        "testdata/a.txt",
+        "testdata/testfile.txt",
+    ],
+)
+
+cc_test(
+    name = "base_test",
+    srcs = [
+        "file_impl_test.cpp",
+        "file_test.cpp",
+        "fileset_test.cpp",
+    ],
+    deps = [
+        "//third_party/gtest:main",
+        ":base",
+    ],
+    data = [
+        ":testdata",
+    ],
+    size = "small",
+)

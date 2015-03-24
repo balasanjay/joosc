@@ -7,3 +7,13 @@ cc_library(
     srcs = ["gtest-all_test.cpp"],
     hdrs = ["gtest.h"],
 )
+
+cc_library(
+    name = "main",
+    srcs = [
+        "gtest_main.cpp",
+    ],
+    deps = [
+        ":gtest",
+    ],
+)

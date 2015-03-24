@@ -34,3 +34,28 @@ cc_library(
         "//lexer",
     ],
 )
+
+cc_test(
+    name = "types_test",
+    srcs = [
+        "field_table_test.cpp",
+        "method_table_test.cpp",
+        "symbol_table_test.cpp",
+        "type_info_map_test.cpp",
+        "typechecker_hierarchy_test.cpp",
+        "typechecker_test.cpp",
+        "types_test.cpp",
+        "types_test.h",
+        "typeset_test.cpp",
+    ],
+    deps = [
+        "//:joosc_lib",
+        "//parser",
+        "//third_party/gtest:main",
+        ":types",
+    ],
+    data = [
+        "//third_party/cs444/stdlib:3",
+    ],
+    size = "small",
+)

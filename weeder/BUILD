@@ -27,3 +27,21 @@ cc_library(
         "//parser",
     ],
 )
+
+cc_test(
+    name = "weeder_test",
+    srcs = [
+        "assignment_visitor_test.cpp",
+        "call_visitor_test.cpp",
+        "int_range_visitor_test.cpp",
+        "modifier_visitor_test.cpp",
+        "structure_visitor_test.cpp",
+        "type_visitor_test.cpp",
+        "weeder_test.h",
+    ],
+    deps = [
+        "//third_party/gtest:main",
+        ":weeder",
+    ],
+    size = "small",
+)

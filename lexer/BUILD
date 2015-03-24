@@ -13,3 +13,15 @@ cc_library(
         "//base",
     ],
 )
+
+cc_test(
+    name = "lexer_test",
+    srcs = [
+        "lexer_test.cpp",
+    ],
+    deps = [
+        "//third_party/gtest:main",
+        ":lexer",
+    ],
+    size = "small",
+)
