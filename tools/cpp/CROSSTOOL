@@ -49,6 +49,7 @@ toolchain {
   cxx_builtin_include_directory: "/usr/local/include"
   cxx_builtin_include_directory: "/usr/include"
   cxx_builtin_include_directory: "/usr/lib/clang/3.4/"
+  cxx_builtin_include_directory: "/usr/lib/llvm-3.4/lib/clang/3.4/include/"
   tool_path { name: "gcov" path: "/usr/bin/gcov" }
   tool_path { name: "ld" path: "/usr/bin/gold" }
   tool_path { name: "nm" path: "/usr/bin/nm" }
