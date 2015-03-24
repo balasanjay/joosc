@@ -118,7 +118,7 @@ private:
 
   bool IsBlacklisted(CallContext ctx, const string& name) const;
 
-  base::Error* MakeUndefinedMethodError(const TypeInfoMap& tinfo_map, MethodSignature sig, base::PosRange pos) const;
+  base::Error* MakeUndefinedMethodError(const TypeInfoMap& tinfo_map, const MethodSignature& sig, base::PosRange pos) const;
 
   base::Error* MakeInstanceMethodOnStaticError(base::PosRange pos) const;
   base::Error* MakeStaticMethodOnInstanceError(base::PosRange pos) const;
@@ -190,7 +190,7 @@ private:
 
   FieldTable() : all_blacklisted_(true) {}
 
-  base::Error* MakeUndefinedReferenceError(string name, base::PosRange name_pos) const;
+  base::Error* MakeUndefinedReferenceError(const string& name, base::PosRange name_pos) const;
   base::Error* MakeInstanceFieldOnStaticError(base::PosRange pos) const;
   base::Error* MakeStaticFieldOnInstanceError(base::PosRange pos) const;
   base::Error* MakePermissionError(base::PosRange access_pos, base::PosRange field_pos) const;

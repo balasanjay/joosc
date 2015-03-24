@@ -79,6 +79,14 @@ using parser::internal::Result;
 
 namespace parser {
 
+string TokenString(const File* file, Token token) {
+  stringstream s;
+  for (int i = token.pos.begin; i < token.pos.end; ++i) {
+    s << file->At(i);
+  }
+  return s.str();
+}
+
 namespace {
 
 // Predicates for ParseTokenIf.
@@ -153,14 +161,6 @@ sptr<const Expr> FixPrecedence(const SharedPtrVector<const Expr>& owned_exprs,
   CHECK(outstack.size() == 1);
   CHECK(opstack.size() == 0);
   return outstack.at(0);
-}
-
-string TokenString(const File* file, Token token) {
-  stringstream s;
-  for (int i = token.pos.begin; i < token.pos.end; ++i) {
-    s << file->At(i);
-  }
-  return s.str();
 }
 
 QualifiedName MakeQualifiedName(const File* file,
@@ -621,8 +621,7 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
     Parser after = (*this).Advance();
     switch (lit.type) {
       case INTEGER:
-        return after.Success(new IntLitExpr(lit, TokenString(GetFile(), lit)),
-                             out);
+        return after.Success(new IntLitExpr(lit), out);
       case CHAR:
         return after.Success(new CharLitExpr(lit), out);
       case K_TRUE:

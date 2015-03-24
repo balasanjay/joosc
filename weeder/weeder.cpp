@@ -26,7 +26,7 @@ sptr<const Program> WeedProgram(const FileSet* fs, sptr<const Program> prog, Err
   ModifierVisitor modifierChecker(out);
   prog = modifierChecker.Rewrite(prog);
 
-  IntRangeVisitor intRangeChecker(out);
+  IntRangeVisitor intRangeChecker(fs, out);
   prog = intRangeChecker.Rewrite(prog);
 
   StructureVisitor structureChecker(fs, out);

@@ -97,15 +97,18 @@ void TypeSetBuilder::ExtractTypesAndPackages(
   // Sort by FileId() in case CompUnits were added out of order.
   {
     using Unit = const sptr<const CompUnit>&;
-    auto cmp = [](Unit lhs, Unit rhs) {
+    auto lt_cmp = [](Unit lhs, Unit rhs) {
+      return lhs->FileId() < rhs->FileId();
+    };
+    auto eq_cmp = [](Unit lhs, Unit rhs) {
       return lhs->FileId() == rhs->FileId();
     };
 
-    sort(units.begin(), units.end(), cmp);
+    sort(units.begin(), units.end(), lt_cmp);
 
     // Quickly verify that we don't have two compilation units with the same
     // FileId.
-    auto iter = adjacent_find(units.begin(), units.end(), cmp);
+    auto iter = adjacent_find(units.begin(), units.end(), eq_cmp);
     CHECK(iter == units.end());
   }
 
@@ -332,14 +335,10 @@ void TypeSetBuilder::ResolveImports(
     // Third, drop any duplicate imports.
     {
       auto lt_cmp = [](const Type& lhs, const Type& rhs) {
-        if (lhs.simple_name != rhs.simple_name) {
-          return lhs.simple_name < rhs.simple_name;
-        }
-
-        return lhs.tid < rhs.tid;
+        return tie(lhs.simple_name, lhs.tid) < tie(rhs.simple_name, rhs.tid);
       };
       auto eq_cmp = [&](const Type& lhs, const Type& rhs) {
-        return !lt_cmp(lhs, rhs) && !lt_cmp(rhs, lhs);
+        return tie(lhs.simple_name, lhs.tid) == tie(rhs.simple_name, rhs.tid);
       };
       stable_sort(file_types.begin(), file_types.end(), lt_cmp);
 
@@ -483,7 +482,7 @@ TypeId TypeSet::Get(const string& name, PosRange pos, ErrorList* errors) const {
       // and return.
       if (iter == data_->qual_name_index_.end() || iter->longname != name) {
         errors->Append(MakeUnknownTypenameError(pos));
-        return TypeId::kUnassigned;
+        return TypeId::kError;
       }
 
       // If this type has been blacklisted, then just return it immediately.
@@ -514,7 +513,7 @@ TypeId TypeSet::Get(const string& name, PosRange pos, ErrorList* errors) const {
   // early if we aren't in one.
   if (fid_ == -1) {
     errors->Append(MakeUnknownTypenameError(pos));
-    return TypeId::kUnassigned;
+    return TypeId::kError;
   }
 
   // Third, try finding this type in comp-unit scope.

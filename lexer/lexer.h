@@ -267,6 +267,11 @@ void FindUnsupportedTokens(const vector<Token>& tokens,
 void FindUnsupportedTokens(const vector<vector<Token>>& tokens,
                            base::ErrorList* errors);
 
+bool IsBoolOp(TokenType op);
+bool IsRelationalOp(TokenType op);
+bool IsEqualityOp(TokenType op);
+bool IsNumericOp(TokenType op);
+
 }  // namespace lexer
 
 #endif
