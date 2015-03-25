@@ -8,4 +8,8 @@ MemId Mem::Id() const {
   return impl_->id;
 }
 
+SizeClass Mem::Size() const {
+  return impl_->size;
+}
+
 } // namespace ir

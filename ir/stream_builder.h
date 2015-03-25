@@ -11,30 +11,69 @@ struct MemImpl;
 
 class StreamBuilder {
  public:
-  Mem AllocTemp(SizeClass) {
-    UNIMPLEMENTED();
-  }
+  Mem AllocTemp(SizeClass);
 
-  Mem AllocLocal(SizeClass) {
-    UNIMPLEMENTED();
-  }
+  Mem AllocLocal(SizeClass);
 
-  // *dst = src.
-  void Mov(Mem, Mem) {
-    UNIMPLEMENTED();
-  }
+  // Allocate a label id; the Builder guarantees that the returned id will be
+  // unique for this stream.
+  LabelId AllocLabel();
 
-  // *dst = *lhs + *rhs.
-  void Add(Mem, Mem, Mem) {
-    UNIMPLEMENTED();
-  }
+  // Emit a label as the next instruction.
+  void EmitLabel(LabelId);
+
+  // Get a reference to a constant i32 value.
+  Mem ConstInt32(i32);
+
+  // Get a reference to a constant bool value.
+  Mem ConstBool(bool);
+
+  // Emit *dst = *src.
+  void Mov(Mem, Mem);
+
+  // Emit *dst = src.
+  void MovAddr(Mem, Mem);
+
+  // Emit *dst = *lhs + *rhs.
+  void Add(Mem, Mem, Mem);
+
+  // Emit an unconditional jump to the label lid.
+  // Building the Stream will validate that the referenced label exists.
+  void Jmp(LabelId);
+
+  // Emit a conditional jump. The SizeClass of the provided Mem must be a BOOL.
+  void JmpIf(LabelId, Mem);
+
+  // Emit *dst = *lhs < *rhs. dst must have SizeClass BOOL.
+  void Lt(Mem, Mem, Mem);
+
+  // Emit *dst = *lhs <= *rhs. dst must have SizeClass BOOL.
+  void Leq(Mem, Mem, Mem);
+
+  // Emit *dst = *lhs > *rhs. dst must have SizeClass BOOL.
+  void Gt(Mem dst, Mem lhs, Mem rhs);
+
+  // Emit *dst = *lhs >= *rhs. dst must have SizeClass BOOL.
+  void Geq(Mem dst, Mem lhs, Mem rhs);
+
+  // Emit *dst = *lhs == *rhs. dst must have SizeClass BOOL.
+  void Eq(Mem, Mem, Mem);
+
+  // Emit *dst = *lhs != *rhs. dst must have SizeClass BOOL.
+  void Neq(Mem, Mem, Mem);
+
+  // Emit *dst = !*src. dst and src must have SizeClass BOOL.
+  void Not(Mem, Mem);
+
+  Stream Build() const;
 
  private:
   friend struct MemImpl;
 
-  void DeallocMem(MemId) {
-    UNIMPLEMENTED();
-  }
+  void DeallocMem(MemId);
+
+  vector<u64> args_;
+  vector<Op> ops_;
 };
 
 } // namespace ir
