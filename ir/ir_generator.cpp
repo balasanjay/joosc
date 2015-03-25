@@ -33,13 +33,15 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(BinExpr, expr,) {
-    if (expr.Op().type != lexer::ADD) {
-      // TODO.
-      return VisitResult::SKIP;
+    SizeClass size = SizeClass::INT;
+    if (lexer::IsNumericOp(expr.Op().type)) {
+      size = SizeClass::INT;
+    } else if (lexer::IsBoolOp(expr.Op().type)) {
+      size = SizeClass::BOOL;
     }
 
-    Mem lhs = builder_.AllocTemp(SizeClass::INT);
-    Mem rhs = builder_.AllocTemp(SizeClass::INT);
+    Mem lhs = builder_.AllocTemp(size);
+    Mem rhs = builder_.AllocTemp(size);
     {
       MethodIRGenerator gen(lhs, builder_, locals_, locals_map_);
       gen.Visit(expr.LhsPtr());
@@ -48,7 +50,19 @@ class MethodIRGenerator final : public ast::Visitor {
       MethodIRGenerator gen(rhs, builder_, locals_, locals_map_);
       gen.Visit(expr.RhsPtr());
     }
-    builder_.Add(res_, lhs, rhs);
+
+#define C(fn) builder_.fn(res_, lhs, rhs); break;
+    switch (expr.Op().type) {
+      case lexer::ADD: C(Add);
+      case lexer::EQ:  C(Eq);
+      case lexer::NEQ: C(Neq);
+      case lexer::LT:  C(Lt);
+      case lexer::LE:  C(Leq);
+      case lexer::GT:  C(Gt);
+      case lexer::GE:  C(Geq);
+      default: break;
+    }
+#undef C
 
     return VisitResult::SKIP;
   }
@@ -56,6 +70,12 @@ class MethodIRGenerator final : public ast::Visitor {
   VISIT_DECL(IntLitExpr, expr,) {
     // TODO: Ensure no overflow.
     Mem m = builder_.ConstInt32((i32)expr.Value());
+    builder_.Mov(res_, m);
+    return VisitResult::SKIP;
+  }
+
+  VISIT_DECL(BoolLitExpr, expr,) {
+    Mem m = builder_.ConstBool(expr.GetToken().type == lexer::K_TRUE);
     builder_.Mov(res_, m);
     return VisitResult::SKIP;
   }
