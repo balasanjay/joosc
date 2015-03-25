@@ -30,6 +30,7 @@ void StreamBuilder::AssertAssigned(const std::initializer_list<Mem>& mems) const
 }
 void StreamBuilder::SetAssigned(const std::initializer_list<Mem>& mems) {
   for (const auto& mem : mems) {
+    CHECK(mem.IsValid());
     size_t n = unassigned_.erase(mem.Id());
     bool already_written = (n == 0);
     CHECK(!(mem.Immutable() && already_written));
@@ -50,6 +51,9 @@ Mem StreamBuilder::AllocMem(SizeClass size, bool immutable) {
 }
 
 void StreamBuilder::DeallocMem(MemId mid) {
+  if (mid == kInvalidMemId) {
+    return;
+  }
   auto iter = unassigned_.find(mid);
   CHECK(iter == unassigned_.end());
 
@@ -58,6 +62,11 @@ void StreamBuilder::DeallocMem(MemId mid) {
 
 Mem StreamBuilder::AllocTemp(SizeClass size) {
   return AllocMem(size, BoolArg(true));
+}
+
+Mem StreamBuilder::AllocDummy() {
+  auto impl = sptr<MemImpl>(new MemImpl{kInvalidMemId, SizeClass::BOOL, this, true});
+  return Mem(impl);
 }
 
 Mem StreamBuilder::AllocLocal(SizeClass size) {
