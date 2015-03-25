@@ -25,6 +25,14 @@ class MethodIRGenerator final : public ast::Visitor {
  public:
   MethodIRGenerator(Mem res, bool lvalue, StreamBuilder& builder, vector<ast::LocalVarId>& locals, map<ast::LocalVarId, Mem>& locals_map): res_(res), lvalue_(lvalue), builder_(builder), locals_(locals), locals_map_(locals_map)  {}
 
+  MethodIRGenerator WithResultIn(Mem res, bool lvalue=false) {
+    return MethodIRGenerator(res, lvalue, builder_, locals_, locals_map_);
+  }
+
+  MethodIRGenerator WithLocals(vector<ast::LocalVarId>& locals) {
+    return MethodIRGenerator(res_, lvalue_, builder_, locals, locals_map_);
+  }
+
   VISIT_DECL(MethodDecl, decl,) {
     // TODO: Calling semantics.
     Visit(decl.BodyPtr());
@@ -33,7 +41,7 @@ class MethodIRGenerator final : public ast::Visitor {
 
   VISIT_DECL(BlockStmt, stmt,) {
     vector<ast::LocalVarId> block_locals;
-    MethodIRGenerator gen(res_, false, builder_, block_locals, locals_map_);
+    MethodIRGenerator gen = WithLocals(block_locals);
     for (int i = 0; i < stmt.Stmts().Size(); ++i) {
       auto st = stmt.Stmts().At(i);
       gen.Visit(st);
@@ -57,15 +65,10 @@ class MethodIRGenerator final : public ast::Visitor {
     }
 
     Mem lhs = builder_.AllocTemp(size);
+    WithResultIn(lhs).Visit(expr.LhsPtr());
+
     Mem rhs = builder_.AllocTemp(size);
-    {
-      MethodIRGenerator gen(lhs, is_assg, builder_, locals_, locals_map_);
-      gen.Visit(expr.LhsPtr());
-    }
-    {
-      MethodIRGenerator gen(rhs, false, builder_, locals_, locals_map_);
-      gen.Visit(expr.RhsPtr());
-    }
+    WithResultIn(rhs).Visit(expr.RhsPtr());
 
     if (is_assg) {
       // TODO: Double deref or alias lvalue Mem.
@@ -121,8 +124,7 @@ class MethodIRGenerator final : public ast::Visitor {
 
   VISIT_DECL(ReturnStmt, stmt,) {
     Mem ret = builder_.AllocTemp(sizeOfTypeId(stmt.GetExprPtr()->GetTypeId()));
-    MethodIRGenerator gen(ret, false, builder_, locals_, locals_map_);
-    gen.Visit(stmt.GetExprPtr());
+    WithResultIn(ret).Visit(stmt.GetExprPtr());
 
     // TODO: Return.
     return VisitResult::SKIP;
@@ -134,18 +136,14 @@ class MethodIRGenerator final : public ast::Visitor {
     locals_.push_back(stmt.GetVarId());
     locals_map_.insert({stmt.GetVarId(), local});
 
-    MethodIRGenerator gen(local, false, builder_, locals_, locals_map_);
-    gen.Visit(stmt.GetExprPtr());
+    WithResultIn(local).Visit(stmt.GetExprPtr());
 
     return VisitResult::SKIP;
   }
 
   VISIT_DECL(IfStmt, stmt,) {
     Mem cond = builder_.AllocTemp(SizeClass::BOOL);
-    {
-      MethodIRGenerator gen(cond, false, builder_, locals_, locals_map_);
-      gen.Visit(stmt.CondPtr());
-    }
+    WithResultIn(cond).Visit(stmt.CondPtr());
 
     bool has_else = (dynamic_cast<const ast::EmptyStmt*>(stmt.FalseBodyPtr().get()) != nullptr);
 
@@ -188,10 +186,7 @@ class MethodIRGenerator final : public ast::Visitor {
 
     // Condition code.
     Mem cond = builder_.AllocTemp(SizeClass::BOOL);
-    {
-      MethodIRGenerator gen(cond, false, builder_, locals_, locals_map_);
-      gen.Visit(stmt.CondPtr());
-    }
+    WithResultIn(cond).Visit(stmt.CondPtr());
 
     // Leave loop if condition is false.
     LabelId loop_end = builder_.AllocLabel();
@@ -216,7 +211,7 @@ class MethodIRGenerator final : public ast::Visitor {
     vector<ast::LocalVarId> loop_locals;
     {
       // Do initialization.
-      MethodIRGenerator gen(res_, false, builder_, loop_locals, locals_map_);
+      MethodIRGenerator gen = WithLocals(loop_locals);
       gen.Visit(stmt.InitPtr());
 
       LabelId loop = builder_.AllocLabel();
@@ -224,10 +219,7 @@ class MethodIRGenerator final : public ast::Visitor {
 
       // Condition code.
       Mem cond = builder_.AllocTemp(SizeClass::BOOL);
-      {
-        MethodIRGenerator gen(cond, false, builder_, locals_, locals_map_);
-        gen.Visit(stmt.CondPtr());
-      }
+      gen.WithResultIn(cond).Visit(stmt.CondPtr());
 
       // Leave loop if condition is false.
       LabelId loop_end = builder_.AllocLabel();
