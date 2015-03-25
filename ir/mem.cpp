@@ -12,4 +12,8 @@ SizeClass Mem::Size() const {
   return impl_->size;
 }
 
+bool Mem::Immutable() const {
+  return impl_->immutable;
+}
+
 } // namespace ir

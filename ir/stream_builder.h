@@ -65,15 +65,29 @@ class StreamBuilder {
   // Emit *dst = !*src. dst and src must have SizeClass BOOL.
   void Not(Mem, Mem);
 
+  // Builds a stream of IR.
   Stream Build() const;
 
  private:
   friend struct MemImpl;
 
+  void AppendOp(OpType type, const std::initializer_list<u64>& args);
+
+  Mem AllocMem(SizeClass, bool);
   void DeallocMem(MemId);
+
+  Mem Const(SizeClass, u64);
+
+  void AssertAssigned(const std::initializer_list<Mem>& mems) const;
+  void SetAssigned(const std::initializer_list<Mem>& mems);
+
+  set<u64> unassigned_;
 
   vector<u64> args_;
   vector<Op> ops_;
+
+  MemId next_mem_ = 0;
+  LabelId next_label_ = 0;
 };
 
 } // namespace ir

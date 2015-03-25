@@ -12,10 +12,17 @@ using MemId = u64;
 
 class Mem {
  public:
+  Mem(const Mem&) = default;
+
   MemId Id() const;
   SizeClass Size() const;
+  bool Immutable() const;
 
  private:
+  friend class StreamBuilder;
+
+  Mem(sptr<MemImpl> impl) : impl_(impl) {}
+
   sptr<MemImpl> impl_;
 };
 

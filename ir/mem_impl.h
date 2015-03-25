@@ -13,6 +13,7 @@ struct MemImpl {
   u64 id;
   SizeClass size;
   StreamBuilder* builder;
+  bool immutable;
 };
 
 } // namespace ir

@@ -3,7 +3,7 @@
 
 namespace ir {
 
-enum class SizeClass {
+enum class SizeClass : u64 {
   BOOL,
   BYTE,
   SHORT,
@@ -16,7 +16,7 @@ enum class SizeClass {
 using LabelId = u64;
 
 enum class OpType {
-  // (SizeClass, bool is_immutable).
+  // (Mem, SizeClass, bool is_immutable).
   ALLOC_MEM,
 
   // (Mem).
@@ -76,7 +76,7 @@ struct Op {
   size_t end;
 };
 
-class Stream {
+struct Stream {
   vector<u64> args;
   vector<Op> ops;
 };
