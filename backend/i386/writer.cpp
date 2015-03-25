@@ -215,6 +215,35 @@ struct FuncWriter final {
     Col1("jnz .L%v", lid);
   }
 
+  void Cmp(ArgIter begin, ArgIter end, const string& relation, const string& instruction) {
+    EXPECT_NARGS(3);
+
+    MemId dst = begin[0];
+    MemId lhs = begin[1];
+    MemId rhs = begin[2];
+
+    const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& lhs_e = stack_map.at(lhs);
+    const StackEntry& rhs_e = stack_map.at(rhs);
+
+    CHECK(dst_e.size == SizeClass::BOOL);
+    CHECK(lhs_e.size == SizeClass::INT);
+    CHECK(rhs_e.size == SizeClass::INT);
+
+    Col1("; t%v = (t%v %v t%v).", dst_e.id, lhs_e.id, relation, rhs_e.id);
+    Col1("mov eax, [ebp-%v]", lhs_e.offset);
+    Col1("cmp eax, [ebp-%v]", rhs_e.offset);
+    Col1("%v [ebp-%v]", instruction, dst_e.offset);
+  }
+
+  void Lt(ArgIter begin, ArgIter end) {
+    Cmp(begin, end, "<", "setl");
+  }
+
+  void Leq(ArgIter begin, ArgIter end) {
+    Cmp(begin, end, "<=", "setle");
+  }
+
   void Not(ArgIter begin, ArgIter end) {
     EXPECT_NARGS(2);
 
@@ -305,6 +334,12 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::JMP_IF:
         writer.JmpIf(begin, end);
         break;
+      case OpType::LT:
+        writer.Lt(begin, end);
+        break;
+      case OpType::LEQ:
+        writer.Leq(begin, end);
+        break;
       case OpType::NOT:
         writer.Not(begin, end);
         break;
@@ -313,8 +348,6 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         break;
 
       UNIMPLEMENTED_OP(MOV_ADDR);
-      UNIMPLEMENTED_OP(LT);
-      UNIMPLEMENTED_OP(LEQ);
       UNIMPLEMENTED_OP(EQ);
       UNIMPLEMENTED_OP(NEQ);
       UNIMPLEMENTED_OP(SIGN_EXTEND);
