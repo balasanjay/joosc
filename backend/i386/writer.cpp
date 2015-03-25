@@ -211,8 +211,26 @@ struct FuncWriter final {
 
     Col1("; Jumping if t%v.", cond);
     Col1("mov al, [ebp-%v]", cond_e.offset);
-    Col1("tst al, al");
+    Col1("test al, al");
     Col1("jnz .L%v", lid);
+  }
+
+  void Not(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(2);
+
+    MemId dst = begin[0];
+    MemId src = begin[1];
+
+    const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& src_e = stack_map.at(src);
+
+    CHECK(dst_e.size == SizeClass::BOOL);
+    CHECK(src_e.size == SizeClass::BOOL);
+
+    Col1("; t%v = !t%v", dst_e.id, src_e.id);
+    Col1("mov al, [ebp-%v]", src_e.offset);
+    Col1("xor al, 1");
+    Col1("mov [ebp-%v], al", dst_e.offset);
   }
 
   void Ret(ArgIter begin, ArgIter end) {
@@ -287,6 +305,9 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::JMP_IF:
         writer.JmpIf(begin, end);
         break;
+      case OpType::NOT:
+        writer.Not(begin, end);
+        break;
       case OpType::RET:
         writer.Ret(begin, end);
         break;
@@ -296,7 +317,6 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       UNIMPLEMENTED_OP(LEQ);
       UNIMPLEMENTED_OP(EQ);
       UNIMPLEMENTED_OP(NEQ);
-      UNIMPLEMENTED_OP(NOT);
       UNIMPLEMENTED_OP(SIGN_EXTEND);
       UNIMPLEMENTED_OP(ZERO_EXTEND);
       UNIMPLEMENTED_OP(TRUNCATE);
