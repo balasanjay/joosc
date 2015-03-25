@@ -157,6 +157,30 @@ struct FuncWriter final {
     *out << "mov [ebp-" << dst_e.offset << "], eax\n";
   }
 
+  void Jmp(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(1);
+
+    LabelId lid = begin[0];
+
+    *out << "jmp .L" << lid << '\n';
+  }
+
+  void JmpIf(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(2);
+
+    LabelId lid = begin[0];
+    MemId cond = begin[1];
+
+    const StackEntry& cond_e = stack_map.at(cond);
+
+    CHECK(cond_e.size == SizeClass::BOOL);
+
+    *out << "; Jumping if t" << cond << ".\n";
+    *out << "mov al, [ebp-" << cond_e.offset << "]\n";
+    *out << "tst al, al\n";
+    *out << "jnz .L" << lid << '\n';
+  }
+
  private:
   struct StackEntry {
     SizeClass size;
@@ -205,10 +229,14 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::ADD:
         writer.Add(begin, end);
         break;
+      case OpType::JMP:
+        writer.Jmp(begin, end);
+        break;
+      case OpType::JMP_IF:
+        writer.JmpIf(begin, end);
+        break;
 
       UNIMPLEMENTED_OP(MOV_ADDR);
-      UNIMPLEMENTED_OP(JMP);
-      UNIMPLEMENTED_OP(JMP_IF);
       UNIMPLEMENTED_OP(LT);
       UNIMPLEMENTED_OP(LEQ);
       UNIMPLEMENTED_OP(EQ);
