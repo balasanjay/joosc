@@ -59,4 +59,10 @@ using sptr = std::shared_ptr<T>;
   throw std::logic_error(ss.str()); \
 }
 
+#define UNREACHABLE() { \
+  stringstream ss; \
+  ss << __FILE__ << ':' << __LINE__ << " Should be unreachable."; \
+  throw std::logic_error(ss.str()); \
+}
+
 #endif

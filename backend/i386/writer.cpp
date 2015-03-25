@@ -32,6 +32,22 @@ using ArgIter = vector<u64>::const_iterator;
 struct FuncWriter final {
   FuncWriter(ostream* outarg) : out(outarg) {}
 
+  string Sized(SizeClass size, const string& b1, const string& b2, const string& b4) {
+    switch(size) {
+      case SizeClass::BOOL: // Fall through.
+      case SizeClass::BYTE:
+        return b1;
+      case SizeClass::SHORT: // Fall through.
+      case SizeClass::CHAR:
+        return b2;
+      case SizeClass::INT: // Fall through.
+      case SizeClass::PTR:
+        return b4;
+      default:
+        UNREACHABLE();
+    }
+  }
+
   void WritePrologue(const Stream& stream) {
     if (stream.is_entry_point) {
       *out << "global _entry\n";
@@ -57,8 +73,7 @@ struct FuncWriter final {
     SizeClass size = (SizeClass)begin[1];
     // bool is_immutable = begin[2] == 1;
 
-    // TODO: support other size classes.
-    CHECK(size == SizeClass::INT);
+    // TODO: We always allocate 4 bytes. Fixes here will also affect dealloc.
 
     i64 offset = cur_offset;
     cur_offset += 4;
@@ -82,7 +97,6 @@ struct FuncWriter final {
     auto entry = stack.back();
 
     CHECK(entry.id == memid);
-    CHECK(entry.size == SizeClass::INT);
     stack.pop_back();
 
     stack_map.erase(memid);
@@ -111,11 +125,10 @@ struct FuncWriter final {
     const StackEntry& entry = stack_map.at(memid);
     CHECK(entry.size == size);
 
-    // TODO: handle more sizes.
-    CHECK(entry.size == SizeClass::INT);
+    string mov_size = Sized(size, "byte", "word", "dword");
 
     *out << "; t" << memid << " = " << value << '\n';
-    *out << "mov dword [ebp-" << entry.offset << "], " << value << '\n';
+    *out << "mov " << mov_size << " [ebp-" << entry.offset << "], " << value << '\n';
   }
 
   void Mov(ArgIter begin, ArgIter end) {
@@ -128,12 +141,11 @@ struct FuncWriter final {
     const StackEntry& src_e = stack_map.at(src);
     CHECK(dst_e.size == src_e.size);
 
-    // TODO: more size classes.
-    CHECK(dst_e.size == SizeClass::INT);
+    string reg_size = Sized(dst_e.size, "al", "ax", "eax");
 
     *out << "; t" << dst_e.id << " = t" << src_e.id << '\n';
-    *out << "mov eax, [ebp-" << src_e.offset << "]\n";
-    *out << "mov [ebp-" << dst_e.offset << "], eax\n";
+    *out << "mov " << reg_size << ", [ebp-" << src_e.offset << "]\n";
+    *out << "mov [ebp-" << dst_e.offset << "], " << reg_size << '\n';
   }
 
   void Add(ArgIter begin, ArgIter end) {
