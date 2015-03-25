@@ -1,6 +1,8 @@
 #ifndef IR_MEM_H
 #define IR_MEM_H
 
+#include "ir/stream.h"
+
 namespace ir {
 
 // Forward declared to avoid circular dep.
@@ -10,11 +12,17 @@ using MemId = u64;
 
 class Mem {
  public:
-  MemId Id() const;
+  Mem(const Mem&) = default;
 
-  // TODO: size class.
+  MemId Id() const;
+  SizeClass Size() const;
+  bool Immutable() const;
 
  private:
+  friend class StreamBuilder;
+
+  Mem(sptr<MemImpl> impl) : impl_(impl) {}
+
   sptr<MemImpl> impl_;
 };
 

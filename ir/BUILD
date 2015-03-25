@@ -5,6 +5,8 @@ cc_library(
     srcs = [
         "mem.cpp",
         "mem_impl.cpp",
+        "stream.cpp",
+        "stream_builder.cpp",
     ],
     hdrs = [
         "mem.h",
