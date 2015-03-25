@@ -68,7 +68,13 @@ class MethodIRGenerator final : public ast::Visitor {
     }
 
     if (is_assg) {
+      // TODO: Double deref or alias lvalue Mem.
       builder_.Mov(lhs, rhs);
+
+      // Assign result of assignment expression.
+      if (res_.IsValid()) {
+        builder_.Mov(res_, rhs);
+      }
       return VisitResult::SKIP;
     }
 
@@ -113,6 +119,15 @@ class MethodIRGenerator final : public ast::Visitor {
     return VisitResult::SKIP;
   }
 
+  VISIT_DECL(ReturnStmt, stmt,) {
+    Mem ret = builder_.AllocTemp(sizeOfTypeId(stmt.GetExprPtr()->GetTypeId()));
+    MethodIRGenerator gen(ret, false, builder_, locals_, locals_map_);
+    gen.Visit(stmt.GetExprPtr());
+
+    // TODO: Return.
+    return VisitResult::SKIP;
+  }
+
   VISIT_DECL(LocalDeclStmt, stmt,) {
     ast::TypeId tid = stmt.GetType().GetTypeId();
     Mem local = builder_.AllocLocal(sizeOfTypeId(tid));
@@ -122,6 +137,123 @@ class MethodIRGenerator final : public ast::Visitor {
     MethodIRGenerator gen(local, false, builder_, locals_, locals_map_);
     gen.Visit(stmt.GetExprPtr());
 
+    return VisitResult::SKIP;
+  }
+
+  VISIT_DECL(IfStmt, stmt,) {
+    Mem cond = builder_.AllocTemp(SizeClass::BOOL);
+    {
+      MethodIRGenerator gen(cond, false, builder_, locals_, locals_map_);
+      gen.Visit(stmt.CondPtr());
+    }
+
+    bool has_else = (dynamic_cast<const ast::EmptyStmt*>(stmt.FalseBodyPtr().get()) != nullptr);
+
+    LabelId after_true = builder_.AllocLabel();
+    LabelId after_if = after_true;
+
+    // Jump after true body if condition is false.
+    // TODO: JumpNotIf or use mutable temp.
+    Mem not_cond = builder_.AllocTemp(SizeClass::BOOL);
+    builder_.Not(not_cond, cond);
+    builder_.JmpIf(after_true, not_cond);
+
+    // Emit true body code.
+    Visit(stmt.TrueBodyPtr());
+
+    if (has_else) {
+      // If else exists, need another label. Emit jump to
+      // end of if as last statement in true body.
+      after_if = builder_.AllocLabel();
+      // At end of true body, jump to end of if to skip false body.
+      builder_.Jmp(after_if);
+      // Entry point of false body.
+      builder_.EmitLabel(after_true);
+
+      // Emit false body code.
+      Visit(stmt.FalseBodyPtr());
+    }
+
+    // End of if (either where false if condition jumps if no else, or where
+    // true body jumps over false body).
+    builder_.EmitLabel(after_if);
+
+    return VisitResult::SKIP;
+  }
+
+  VISIT_DECL(WhileStmt, stmt,) {
+    // Top of loop label.
+    LabelId loop = builder_.AllocLabel();
+    builder_.EmitLabel(loop);
+
+    // Condition code.
+    Mem cond = builder_.AllocTemp(SizeClass::BOOL);
+    {
+      MethodIRGenerator gen(cond, false, builder_, locals_, locals_map_);
+      gen.Visit(stmt.CondPtr());
+    }
+
+    // Leave loop if condition is false.
+    LabelId loop_end = builder_.AllocLabel();
+    // TODO: JumpNotIf or use mutable temp.
+    Mem not_cond = builder_.AllocTemp(SizeClass::BOOL);
+    builder_.Not(not_cond, cond);
+    builder_.JmpIf(loop_end, not_cond);
+
+    // Loop body.
+    Visit(stmt.BodyPtr());
+
+    // Loop back to first label.
+    builder_.Jmp(loop);
+
+    builder_.EmitLabel(loop_end);
+
+    return VisitResult::SKIP;
+  }
+
+  VISIT_DECL(ForStmt, stmt,) {
+    // Scope initializer variable.
+    vector<ast::LocalVarId> loop_locals;
+    {
+      // Do initialization.
+      MethodIRGenerator gen(res_, false, builder_, loop_locals, locals_map_);
+      gen.Visit(stmt.InitPtr());
+
+      LabelId loop = builder_.AllocLabel();
+      builder_.EmitLabel(loop);
+
+      // Condition code.
+      Mem cond = builder_.AllocTemp(SizeClass::BOOL);
+      {
+        MethodIRGenerator gen(cond, false, builder_, locals_, locals_map_);
+        gen.Visit(stmt.CondPtr());
+      }
+
+      // Leave loop if condition is false.
+      LabelId loop_end = builder_.AllocLabel();
+      // TODO: JumpNotIf or use mutable temp.
+      Mem not_cond = builder_.AllocTemp(SizeClass::BOOL);
+      builder_.Not(not_cond, cond);
+      builder_.JmpIf(loop_end, not_cond);
+
+      // Loop body.
+      Visit(stmt.BodyPtr());
+
+      // Loop update.
+      Visit(stmt.UpdatePtr());
+
+      // Loop back to first label.
+      builder_.Jmp(loop);
+
+      builder_.EmitLabel(loop_end);
+    }
+
+    // Have the Mems deallocated in order of allocation, so we maintain stack
+    // invariant.
+    std::reverse(loop_locals.begin(), loop_locals.end());
+    for (auto vid : loop_locals) {
+      locals_map_.erase(vid);
+    }
     return VisitResult::SKIP;
   }
 
@@ -158,7 +290,7 @@ class ProgramIRGenerator final : public ast::Visitor {
     vector<ast::LocalVarId> empty_locals;
     map<ast::LocalVarId, Mem> locals_map;
     {
-      Mem ret = builder.AllocTemp(SizeClass::INT);
+      Mem ret = builder.AllocDummy();
 
       MethodIRGenerator gen(ret, false, builder, empty_locals, locals_map);
       gen.Visit(declptr);
