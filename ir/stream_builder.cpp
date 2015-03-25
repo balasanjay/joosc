@@ -174,8 +174,8 @@ void StreamBuilder::Not(Mem dst, Mem src) {
   SetAssigned({dst});
 }
 
-Stream StreamBuilder::Build() const {
-  return Stream{args_, ops_};
+Stream StreamBuilder::Build(bool is_entry_point, ast::TypeId::Base tid, ast::MethodId mid) const {
+  return Stream{is_entry_point, tid, mid, args_, ops_};
 }
 
 } // namespace ir

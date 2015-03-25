@@ -1,6 +1,7 @@
 #ifndef IR_STREAM_BUILDER_H
 #define IR_STREAM_BUILDER_H
 
+#include "ast/ids.h"
 #include "ir/mem.h"
 #include "ir/stream.h"
 
@@ -66,7 +67,7 @@ class StreamBuilder {
   void Not(Mem, Mem);
 
   // Builds a stream of IR.
-  Stream Build() const;
+  Stream Build(bool is_entry_point, ast::TypeId::Base tid, ast::MethodId mid) const;
 
  private:
   friend struct MemImpl;
