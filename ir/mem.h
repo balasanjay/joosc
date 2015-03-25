@@ -9,6 +9,8 @@ namespace ir {
 struct MemImpl;
 
 using MemId = u64;
+const MemId kInvalidMemId = 0;
+const MemId kFirstMemId = 1;
 
 class Mem {
  public:
@@ -17,6 +19,9 @@ class Mem {
   MemId Id() const;
   SizeClass Size() const;
   bool Immutable() const;
+  bool IsValid() const {
+    return Id() != kInvalidMemId;
+  }
 
  private:
   friend class StreamBuilder;

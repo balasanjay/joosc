@@ -83,7 +83,6 @@ struct FuncWriter final {
 
   void WriteEpilogue() {
     // TODO: this is assuming that it was an int.
-    Col1("mov eax, [ebp-8]\n");
     Col0(".epilogue:");
     Col1("pop ebp");
     Col1("ret");
@@ -216,6 +215,24 @@ struct FuncWriter final {
     Col1("jnz .L%v", lid);
   }
 
+  void Ret(ArgIter begin, ArgIter end) {
+    CHECK((end-begin) <= 1);
+
+    if ((end - begin) == 1) {
+      MemId ret = begin[0];
+      const StackEntry& ret_e = stack_map.at(ret);
+
+      string reg_size = Sized(ret_e.size, "al", "ax", "eax");
+
+      Col1("; Return t%v.", ret_e.id);
+      Col1("mov %v, [ebp-%v]", reg_size, ret_e.offset);
+    } else {
+      Col1("; Return.");
+    }
+
+    Col1("jmp .epilogue");
+  }
+
  private:
   struct StackEntry {
     SizeClass size;
@@ -269,6 +286,9 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         break;
       case OpType::JMP_IF:
         writer.JmpIf(begin, end);
+        break;
+      case OpType::RET:
+        writer.Ret(begin, end);
         break;
 
       UNIMPLEMENTED_OP(MOV_ADDR);

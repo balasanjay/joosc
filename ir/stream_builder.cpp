@@ -30,6 +30,7 @@ void StreamBuilder::AssertAssigned(const std::initializer_list<Mem>& mems) const
 }
 void StreamBuilder::SetAssigned(const std::initializer_list<Mem>& mems) {
   for (const auto& mem : mems) {
+    CHECK(mem.IsValid());
     size_t n = unassigned_.erase(mem.Id());
     bool already_written = (n == 0);
     CHECK(!(mem.Immutable() && already_written));
@@ -50,6 +51,9 @@ Mem StreamBuilder::AllocMem(SizeClass size, bool immutable) {
 }
 
 void StreamBuilder::DeallocMem(MemId mid) {
+  if (mid == kInvalidMemId) {
+    return;
+  }
   auto iter = unassigned_.find(mid);
   CHECK(iter == unassigned_.end());
 
@@ -60,19 +64,21 @@ Mem StreamBuilder::AllocTemp(SizeClass size) {
   return AllocMem(size, BoolArg(true));
 }
 
+Mem StreamBuilder::AllocDummy() {
+  auto impl = sptr<MemImpl>(new MemImpl{kInvalidMemId, SizeClass::BOOL, this, true});
+  return Mem(impl);
+}
+
 Mem StreamBuilder::AllocLocal(SizeClass size) {
   return AllocMem(size, BoolArg(false));
 }
 
-// Allocate a label id; the Builder guarantees that the returned id will be
-// unique for this stream.
 LabelId StreamBuilder::AllocLabel() {
   LabelId lid = next_label_;
   ++next_label_;
   return lid;
 }
 
-// Emit a label as the next instruction.
 void StreamBuilder::EmitLabel(LabelId lid) {
   AppendOp(OpType::LABEL, {lid});
 }
@@ -86,92 +92,86 @@ Mem StreamBuilder::Const(SizeClass size, u64 val) {
   return mem;
 }
 
-// Get a reference to a constant i32 value.
 Mem StreamBuilder::ConstInt32(i32 val) {
   return Const(SizeClass::INT, (u64)(i64)val);
 }
 
-// Get a reference to a constant bool value.
 Mem StreamBuilder::ConstBool(bool b) {
   return Const(SizeClass::BOOL, b ? 1 : 0);
 }
 
-// Emit *dst = *src.
 void StreamBuilder::Mov(Mem dst, Mem src) {
   AssertAssigned({src});
   AppendOp(OpType::MOV, {dst.Id(), src.Id()});
   SetAssigned({dst});
 }
 
-// Emit *dst = src.
 void StreamBuilder::MovAddr(Mem dst, Mem src) {
   AssertAssigned({src});
   AppendOp(OpType::MOV_ADDR, {dst.Id(), src.Id()});
   SetAssigned({dst});
 }
 
-// Emit *dst = *lhs + *rhs.
 void StreamBuilder::Add(Mem dst, Mem lhs, Mem rhs) {
   AssertAssigned({lhs, rhs});
   AppendOp(OpType::ADD, {dst.Id(), lhs.Id(), rhs.Id()});
   SetAssigned({dst});
 }
 
-// Emit an unconditional jump to the label lid.
-// Building the Stream will validate that the referenced label exists.
 void StreamBuilder::Jmp(LabelId lid) {
   AppendOp(OpType::JMP, {lid});
 }
 
-// Emit a conditional jump. The SizeClass of the provided Mem must be a BOOL.
 void StreamBuilder::JmpIf(LabelId lid, Mem cond) {
   AssertAssigned({cond});
   AppendOp(OpType::JMP_IF, {lid, cond.Id()});
 }
 
-// Emit *dst = *lhs < *rhs. dst must have SizeClass BOOL.
 void StreamBuilder::Lt(Mem dst, Mem lhs, Mem rhs) {
   AssertAssigned({lhs, rhs});
   AppendOp(OpType::LT, {dst.Id(), lhs.Id(), rhs.Id()});
   SetAssigned({dst});
 }
 
-// Emit *dst = *lhs <= *rhs. dst must have SizeClass BOOL.
 void StreamBuilder::Leq(Mem dst, Mem lhs, Mem rhs) {
   AssertAssigned({lhs, rhs});
   AppendOp(OpType::LEQ, {dst.Id(), lhs.Id(), rhs.Id()});
   SetAssigned({dst});
 }
 
-// Emit *dst = *lhs > *rhs. dst must have SizeClass BOOL.
 void StreamBuilder::Gt(Mem dst, Mem lhs, Mem rhs) {
   Lt(dst, rhs, lhs);
 }
 
-// Emit *dst = *lhs >= *rhs. dst must have SizeClass BOOL.
 void StreamBuilder::Geq(Mem dst, Mem lhs, Mem rhs) {
   Leq(dst, rhs, lhs);
 }
 
-// Emit *dst = *lhs == *rhs. dst must have SizeClass BOOL.
 void StreamBuilder::Eq(Mem dst, Mem lhs, Mem rhs) {
   AssertAssigned({lhs, rhs});
   AppendOp(OpType::EQ, {dst.Id(), lhs.Id(), rhs.Id()});
   SetAssigned({dst});
 }
 
-// Emit *dst = *lhs != *rhs. dst must have SizeClass BOOL.
 void StreamBuilder::Neq(Mem dst, Mem lhs, Mem rhs) {
   AssertAssigned({lhs, rhs});
   AppendOp(OpType::NEQ, {dst.Id(), lhs.Id(), rhs.Id()});
   SetAssigned({dst});
 }
 
-// Emit *dst = !*src. dst and src must have SizeClass BOOL.
 void StreamBuilder::Not(Mem dst, Mem src) {
   AssertAssigned({src});
   AppendOp(OpType::NOT, {dst.Id(), src.Id()});
   SetAssigned({dst});
+}
+
+void StreamBuilder::Ret() {
+  AppendOp(OpType::RET, {});
+}
+
+void StreamBuilder::Ret(Mem ret) {
+  AssertAssigned({ret});
+  AppendOp(OpType::RET, {ret.Id()});
 }
 
 Stream StreamBuilder::Build(bool is_entry_point, ast::TypeId::Base tid, ast::MethodId mid) const {

@@ -68,6 +68,9 @@ enum class OpType {
 
   // (Mem, Mem, SizeClass).
   TRUNCATE,
+
+  // ([Mem]).
+  RET,
 };
 
 struct Op {

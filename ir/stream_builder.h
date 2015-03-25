@@ -16,6 +16,8 @@ class StreamBuilder {
 
   Mem AllocLocal(SizeClass);
 
+  Mem AllocDummy();
+
   // Allocate a label id; the Builder guarantees that the returned id will be
   // unique for this stream.
   LabelId AllocLabel();
@@ -30,26 +32,26 @@ class StreamBuilder {
   Mem ConstBool(bool);
 
   // Emit *dst = *src.
-  void Mov(Mem, Mem);
+  void Mov(Mem dst, Mem src);
 
   // Emit *dst = src.
-  void MovAddr(Mem, Mem);
+  void MovAddr(Mem dst, Mem src);
 
   // Emit *dst = *lhs + *rhs.
-  void Add(Mem, Mem, Mem);
+  void Add(Mem dst, Mem lhs, Mem rhs);
 
   // Emit an unconditional jump to the label lid.
   // Building the Stream will validate that the referenced label exists.
-  void Jmp(LabelId);
+  void Jmp(LabelId lid);
 
   // Emit a conditional jump. The SizeClass of the provided Mem must be a BOOL.
   void JmpIf(LabelId, Mem);
 
   // Emit *dst = *lhs < *rhs. dst must have SizeClass BOOL.
-  void Lt(Mem, Mem, Mem);
+  void Lt(Mem dst, Mem lhs, Mem rhs);
 
   // Emit *dst = *lhs <= *rhs. dst must have SizeClass BOOL.
-  void Leq(Mem, Mem, Mem);
+  void Leq(Mem dst, Mem lhs, Mem rhs);
 
   // Emit *dst = *lhs > *rhs. dst must have SizeClass BOOL.
   void Gt(Mem dst, Mem lhs, Mem rhs);
@@ -58,13 +60,19 @@ class StreamBuilder {
   void Geq(Mem dst, Mem lhs, Mem rhs);
 
   // Emit *dst = *lhs == *rhs. dst must have SizeClass BOOL.
-  void Eq(Mem, Mem, Mem);
+  void Eq(Mem dst, Mem lhs, Mem rhs);
 
   // Emit *dst = *lhs != *rhs. dst must have SizeClass BOOL.
-  void Neq(Mem, Mem, Mem);
+  void Neq(Mem dst, Mem lhs, Mem rhs);
 
   // Emit *dst = !*src. dst and src must have SizeClass BOOL.
-  void Not(Mem, Mem);
+  void Not(Mem dst, Mem src);
+
+  // Return with no value.
+  void Ret();
+
+  // Return with a value.
+  void Ret(Mem);
 
   // Builds a stream of IR.
   Stream Build(bool is_entry_point, ast::TypeId::Base tid, ast::MethodId mid) const;
@@ -87,7 +95,7 @@ class StreamBuilder {
   vector<u64> args_;
   vector<Op> ops_;
 
-  MemId next_mem_ = 0;
+  MemId next_mem_ = kFirstMemId;
   LabelId next_label_ = 0;
 };
 
