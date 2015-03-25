@@ -114,6 +114,30 @@ bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const s
     out << std::flush;
   }
 
+
+  do {
+    string fname = dir + "/start.s";
+    ofstream out(fname);
+    if (!out) {
+      // TODO: make error pretty.
+      *err << "Could not open output file: " << fname << "\n";
+      success = false;
+      break;
+    }
+
+    out << "extern _entry\n";
+    out << "global _start\n";
+    out << "_start:\n";
+    out << "push ebp\n";
+    out << "mov ebp, esp\n";
+    out << "call _entry\n";
+    out << "pop ebp\n";
+    out << "mov ebx, eax\n";
+    out << "mov eax, 1\n";
+    out << "int 0x80\n";
+
+  } while (0);
+
   return success;
 }
 
