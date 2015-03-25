@@ -1,6 +1,8 @@
 #ifndef IR_STREAM_H
 #define IR_STREAM_H
 
+#include "ast/ids.h"
+
 namespace ir {
 
 enum class SizeClass : u64 {
@@ -77,6 +79,9 @@ struct Op {
 };
 
 struct Stream {
+  bool is_entry_point;
+  ast::TypeId::Base tid;
+  ast::MethodId mid;
   vector<u64> args;
   vector<Op> ops;
 };

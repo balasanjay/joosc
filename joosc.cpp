@@ -79,6 +79,15 @@ sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, Err
   return program;
 }
 
+void CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string&) {
+  ir::Program ir_prog = ir::GenerateIR(prog);
+  if (stage == CompilerStage::GEN_IR) {
+    return;
+  }
+
+  // TODO: asm.
+}
+
 bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out, ostream* err) {
   // Open files.
   FileSet* fs = nullptr;
@@ -105,16 +114,12 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
   if (PrintErrors(errors, err, fs)) {
     return false;
   }
-
-  if (stage != CompilerStage::ALL) {
+  if (stage == CompilerStage::TYPE_CHECK) {
     return true;
   }
 
-  // Print out the AST.
-  {
-    PrintVisitor printer = PrintVisitor::Pretty(out);
-    printer.Visit(program);
-  }
+  // TODO.
+  CompilerBackend(stage, program, "build_gen");
 
   return true;
 }
