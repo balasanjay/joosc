@@ -139,7 +139,7 @@ TEST_F(TypeSetTest, QualifiedNameWithTypePrefix) {
     {"bar/baz.java", "package bar; public class baz {}"},
     {"test.java", "import foo.bar; public class test { public bar.baz field; }"},
   });
-  EXPECT_ERRS("TypeWithTypePrefixError(0:43-50)\n");
+  EXPECT_ERRS("TypeWithTypePrefixError(2:43-50)\n");
 }
 
 TEST_F(TypeSetTest, ShortNameNoMatch) {
@@ -201,7 +201,7 @@ TEST_F(TypeSetTest, ShortNameMultipleAmbiguousWildcards) {
       "public class test { public Foo field; }"
     },
   });
-  EXPECT_ERRS("AmbiguousTypeError:[0:35-38,0:7-10,]\n");
+  EXPECT_ERRS("AmbiguousTypeError:[2:35-38,2:7-10,]\n");
 }
 
 TEST_F(TypeSetTest, ShortNameAmbiguousWildcardWithStdlib) {
@@ -214,7 +214,7 @@ TEST_F(TypeSetTest, ShortNameAmbiguousWildcardWithStdlib) {
       "public class test { public String field; }"
     },
   });
-  EXPECT_ERRS("AmbiguousTypeError:[0:7-10,-1:-1--1,]\n");
+  EXPECT_ERRS("AmbiguousTypeError:[1:7-10,-1:-1--1,]\n");
 }
 
 
