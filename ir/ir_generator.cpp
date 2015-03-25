@@ -27,6 +27,10 @@ class ProgramIRGenerator final : public ast::Visitor {
  public:
   ProgramIRGenerator() {}
   VISIT_DECL(CompUnit, unit, ) {
+    stringstream ss;
+    ss << unit.FileId();
+    current_unit_.filename = ss.str();
+
     for (int i = 0; i < unit.Types().Size(); ++i) {
       Visit(unit.Types().At(i));
     }
