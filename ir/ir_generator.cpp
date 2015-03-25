@@ -1,5 +1,7 @@
 #include "ir/ir_generator.h"
 
+#include <algorithm>
+
 #include "ast/ast.h"
 #include "ast/visitor.h"
 #include "ir/stream_builder.h"
@@ -26,9 +28,14 @@ class MethodIRGenerator final : public ast::Visitor {
       auto st = stmt.Stmts().At(i);
       gen.Visit(st);
     }
+
+    // Have the Mems deallocated in order of allocation, so we maintain stack
+    // invariant.
+    std::reverse(block_locals.begin(), block_locals.end());
     for (auto vid : block_locals) {
       locals_map_.erase(vid);
     }
+
     return VisitResult::SKIP;
   }
 

@@ -1,5 +1,7 @@
 #include "backend/i386/writer.h"
 
+#include <iostream>
+
 #include "ir/mem.h"
 #include "ir/stream.h"
 
@@ -28,12 +30,22 @@ using ArgIter = vector<u64>::const_iterator;
 struct FuncWriter final {
   FuncWriter(ostream* outarg) : out(outarg) {}
 
-  void WritePreamble(const Stream& stream) {
+  void WritePrologue(const Stream& stream) {
     if (stream.is_entry_point) {
-      *out << "entry:\n";
+      *out << "global _entry\n";
+      *out << "_entry:\n";
     }
 
-    *out << 't' << stream.tid << "_m" << stream.mid << ":\n";
+    stringstream ss;
+    ss << "_t" << stream.tid << "_m" << stream.mid;
+    string label = ss.str();
+
+    *out << "global " << label << '\n';
+    *out << label << ":\n\n";
+
+    *out << "; function prologue\n";
+    *out << "push ebp\n";
+    *out << "mov ebp, esp\n\n";
   }
 
   void AllocMem(ArgIter begin, ArgIter end) {
@@ -89,8 +101,29 @@ struct FuncWriter final {
     const StackEntry& entry = stack_map.at(memid);
     CHECK(entry.size == size);
 
+    // TODO: handle more sizes.
+    CHECK(entry.size == SizeClass::INT);
+
     *out << "; t" << memid << " = " << value << '\n';
-    *out << "mov [ebp-" << entry.offset << "], " << value << '\n';
+    *out << "mov dword [ebp-" << entry.offset << "], " << value << '\n';
+  }
+
+  void Mov(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(2);
+
+    MemId dst = begin[0];
+    MemId src = begin[1];
+
+    const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& src_e = stack_map.at(src);
+    CHECK(dst_e.size == src_e.size);
+
+    // TODO: more size classes.
+    CHECK(dst_e.size == SizeClass::INT);
+
+    *out << "; t" << dst_e.id << " = t" << src_e.id << '\n';
+    *out << "mov eax, [ebp-" << src_e.offset << "]\n";
+    *out << "mov [ebp-" << dst_e.offset << "], eax\n";
   }
 
   void Add(ArgIter begin, ArgIter end) {
@@ -137,7 +170,7 @@ struct FuncWriter final {
 void Writer::WriteFunc(const Stream& stream, ostream* out) const {
   FuncWriter writer{out};
 
-  writer.WritePreamble(stream);
+  writer.WritePrologue(stream);
 
   for (const Op& op : stream.ops) {
     ArgIter begin = stream.args.begin() + op.begin;
@@ -153,12 +186,14 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::CONST:
         writer.Const(begin, end);
         break;
+      case OpType::MOV:
+        writer.Mov(begin, end);
+        break;
       case OpType::ADD:
         writer.Add(begin, end);
         break;
 
       UNIMPLEMENTED_OP(LABEL);
-      UNIMPLEMENTED_OP(MOV);
       UNIMPLEMENTED_OP(MOV_ADDR);
       UNIMPLEMENTED_OP(JMP);
       UNIMPLEMENTED_OP(JMP_IF);
@@ -175,6 +210,12 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         CHECK(false); // Should be unreachable.
     }
   }
+
+  // TODO: this is assuming that it was an int.
+  *out << "mov eax, [ebp-8]\n\n";
+  *out << ".epilogue:\n";
+  *out << "pop ebp\n";
+  *out << "ret\n";
 }
 
 
