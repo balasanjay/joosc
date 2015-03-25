@@ -29,6 +29,6 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files,
 
 sptr<const ast::Program> CompilerFrontend(CompilerStage stage, const base::FileSet* fs, base::ErrorList* out);
 
-void CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir);
+bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, std::ostream* err);
 
 #endif

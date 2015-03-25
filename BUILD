@@ -20,6 +20,7 @@ cc_library(
     ],
     deps = [
         "//ast",
+        "//backend/i386",
         "//base",
         "//ir",
         "//lexer",
