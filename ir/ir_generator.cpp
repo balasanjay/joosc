@@ -11,6 +11,16 @@ using ast::VisitResult;
 
 namespace ir {
 
+SizeClass sizeOfTypeId(ast::TypeId tid) {
+  if (tid == ast::TypeId::kInt) {
+    return SizeClass::INT;
+  } else if (tid == ast::TypeId::kBool) {
+    return SizeClass::BOOL;
+  }
+  // TODO.
+  return SizeClass::INT;
+}
+
 class MethodIRGenerator final : public ast::Visitor {
  public:
   MethodIRGenerator(Mem res, bool lvalue, StreamBuilder& builder, vector<ast::LocalVarId>& locals, map<ast::LocalVarId, Mem>& locals_map): res_(res), lvalue_(lvalue), builder_(builder), locals_(locals), locals_map_(locals_map)  {}
@@ -40,20 +50,10 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(BinExpr, expr,) {
-    SizeClass size = SizeClass::INT;
+    SizeClass size = sizeOfTypeId(expr.Lhs().GetTypeId());
     bool is_assg = false;
-    if (lexer::IsNumericOp(expr.Op().type)) {
-      size = SizeClass::INT;
-    } else if (lexer::IsBoolOp(expr.Op().type)) {
-      size = SizeClass::BOOL;
-    } else if (expr.Op().type == lexer::ASSG) {
+    if (expr.Op().type == lexer::ASSG) {
       is_assg = true;
-      ast::TypeId tid = expr.Lhs().GetTypeId();
-      if (tid == ast::TypeId::kInt) {
-        size = SizeClass::INT;
-      } else if (tid == ast::TypeId::kBool) {
-        size = SizeClass::BOOL;
-      }
     }
 
     Mem lhs = builder_.AllocTemp(size);
@@ -114,7 +114,8 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(LocalDeclStmt, stmt,) {
-    Mem local = builder_.AllocLocal(SizeClass::INT);
+    ast::TypeId tid = stmt.GetType().GetTypeId();
+    Mem local = builder_.AllocLocal(sizeOfTypeId(tid));
     locals_.push_back(stmt.GetVarId());
     locals_map_.insert({stmt.GetVarId(), local});
 
