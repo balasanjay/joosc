@@ -12,4 +12,4 @@ do
   nasm -O1 -f elf -g -F dwarf output/$f
 done
 
-ld -melf_i386 -o main output/*.o
+ld -melf_i386 -o a.out output/*.o

@@ -123,10 +123,15 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(ReturnStmt, stmt,) {
+    if (stmt.GetExprPtr() == nullptr) {
+      builder_.Ret();
+      return VisitResult::SKIP;
+    }
+
     Mem ret = builder_.AllocTemp(SizeOfTypeId(stmt.GetExprPtr()->GetTypeId()));
     WithResultIn(ret).Visit(stmt.GetExprPtr());
+    builder_.Ret(ret);
 
-    // TODO: Return.
     return VisitResult::SKIP;
   }
 

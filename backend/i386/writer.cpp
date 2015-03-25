@@ -83,7 +83,6 @@ struct FuncWriter final {
 
   void WriteEpilogue() {
     // TODO: this is assuming that it was an int.
-    Col1("mov eax, [ebp-8]\n");
     Col0(".epilogue:");
     Col1("pop ebp");
     Col1("ret");
