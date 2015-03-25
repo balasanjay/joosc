@@ -153,7 +153,7 @@ struct FuncWriter final {
     Col1("mov %v [ebp-%v], %v", mov_size, entry.offset, value);
   }
 
-  void Mov(ArgIter begin, ArgIter end) {
+  void MovImpl(ArgIter begin, ArgIter end, bool addr) {
     EXPECT_NARGS(2);
 
     MemId dst = begin[0];
@@ -164,10 +164,39 @@ struct FuncWriter final {
     CHECK(dst_e.size == src_e.size);
 
     string reg_size = Sized(dst_e.size, "al", "ax", "eax");
+    string src_prefix = addr ? "&" : "";
+    string instr = addr ? "lea" : "mov";
 
-    Col1("; t%v = t%v.", dst_e.id, src_e.id);
-    Col1("mov %v, [ebp-%v]", reg_size, src_e.offset);
+    Col1("; t%v = %vt%v.", dst_e.id, src_prefix, src_e.id);
+    Col1("%v %v, [ebp-%v]", instr, reg_size, src_e.offset);
     Col1("mov [ebp-%v], %v", dst_e.offset, reg_size);
+  }
+
+  void Mov(ArgIter begin, ArgIter end) {
+    MovImpl(begin, end, false);
+  }
+
+  void MovAddr(ArgIter begin, ArgIter end) {
+    MovImpl(begin, end, true);
+  }
+
+  void MovToAddr(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(2);
+
+    MemId dst = begin[0];
+    MemId src = begin[1];
+
+    const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& src_e = stack_map.at(src);
+    CHECK(dst_e.size == src_e.size);
+
+    string dst_reg = Sized(dst_e.size, "al", "ax", "eax");
+    string src_reg = Sized(src_e.size, "bl", "bx", "ebx");
+
+    Col1("; *t%v = t%v.", dst_e.id, src_e.id);
+    Col1("mov %v, [ebp-%v]", src_reg, src_e.offset);
+    Col1("mov %v, [ebp-%v]", dst_reg, dst_e.offset);
+    Col1("mov [%v], %v", dst_reg, src_reg);
   }
 
   void Add(ArgIter begin, ArgIter end) {
@@ -350,6 +379,12 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::MOV:
         writer.Mov(begin, end);
         break;
+      case OpType::MOV_ADDR:
+        writer.MovAddr(begin, end);
+        break;
+      case OpType::MOV_TO_ADDR:
+        writer.MovToAddr(begin, end);
+        break;
       case OpType::ADD:
         writer.Add(begin, end);
         break;
@@ -375,13 +410,12 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         writer.Ret(begin, end);
         break;
 
-      UNIMPLEMENTED_OP(MOV_ADDR);
       UNIMPLEMENTED_OP(SIGN_EXTEND);
       UNIMPLEMENTED_OP(ZERO_EXTEND);
       UNIMPLEMENTED_OP(TRUNCATE);
 
       default:
-        CHECK(false); // Should be unreachable.
+        UNREACHABLE();
     }
   }
 

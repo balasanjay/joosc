@@ -65,16 +65,16 @@ class MethodIRGenerator final : public ast::Visitor {
     }
 
     Mem lhs = builder_.AllocTemp(size);
-    WithResultIn(lhs).Visit(expr.LhsPtr());
+    WithResultIn(lhs, is_assg).Visit(expr.LhsPtr());
 
     Mem rhs = builder_.AllocTemp(size);
     WithResultIn(rhs).Visit(expr.RhsPtr());
 
     if (is_assg) {
-      // TODO: Double deref or alias lvalue Mem.
-      builder_.Mov(lhs, rhs);
+      builder_.MovToAddr(lhs, rhs);
 
-      // Assign result of assignment expression.
+      // The result of an assignment expression is the rhs. We don't bother
+      // with this if it's in a top-level context.
       if (res_.IsValid()) {
         builder_.Mov(res_, rhs);
       }
