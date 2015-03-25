@@ -2,15 +2,20 @@
 
 #include <iostream>
 
+#include "base/printf.h"
 #include "ir/mem.h"
 #include "ir/stream.h"
 
-using ir::Op;
-using ir::MemId;
-using ir::SizeClass;
-using ir::OpType;
-using ir::Stream;
 using std::ostream;
+
+using base::Fprintf;
+using base::Sprintf;
+using ir::LabelId;
+using ir::MemId;
+using ir::Op;
+using ir::OpType;
+using ir::SizeClass;
+using ir::Stream;
 
 #define EXPECT_NARGS(n) CHECK((end - begin) == n)
 
@@ -27,25 +32,61 @@ namespace {
 
 using ArgIter = vector<u64>::const_iterator;
 
+string Sized(SizeClass size, const string& b1, const string& b2, const string& b4) {
+  switch(size) {
+    case SizeClass::BOOL: // Fall through.
+    case SizeClass::BYTE:
+      return b1;
+    case SizeClass::SHORT: // Fall through.
+    case SizeClass::CHAR:
+      return b2;
+    case SizeClass::INT: // Fall through.
+    case SizeClass::PTR:
+      return b4;
+    default:
+      UNREACHABLE();
+  }
+}
+
 struct FuncWriter final {
   FuncWriter(ostream* outarg) : out(outarg) {}
 
+  template<typename... Args>
+  void Col0(const string& fmt, Args... args) {
+    Fprintf(out, fmt, args...);
+    *out << '\n';
+  }
+
+  template<typename... Args>
+  void Col1(const string& fmt, Args... args) {
+    *out << "    ";
+    Col0(fmt, args...);
+  }
+
   void WritePrologue(const Stream& stream) {
+    Col0("; Starting method.");
+
     if (stream.is_entry_point) {
-      *out << "global _entry\n";
-      *out << "_entry:\n";
+      Col0("global _entry");
+      Col0("_entry:");
     }
 
-    stringstream ss;
-    ss << "_t" << stream.tid << "_m" << stream.mid;
-    string label = ss.str();
+    string label = Sprintf("_t%v_m%v", stream.tid, stream.mid);
 
-    *out << "global " << label << '\n';
-    *out << label << ":\n\n";
+    Col0("global %v", label);
+    Col0("%v:\n", label);
 
-    *out << "; function prologue\n";
-    *out << "push ebp\n";
-    *out << "mov ebp, esp\n\n";
+    Col1("; Function prologue.");
+    Col1("push ebp");
+    Col1("mov ebp, esp\n");
+  }
+
+  void WriteEpilogue() {
+    // TODO: this is assuming that it was an int.
+    Col1("mov eax, [ebp-8]\n");
+    Col0(".epilogue:");
+    Col1("pop ebp");
+    Col1("ret");
   }
 
   void AllocMem(ArgIter begin, ArgIter end) {
@@ -55,13 +96,12 @@ struct FuncWriter final {
     SizeClass size = (SizeClass)begin[1];
     // bool is_immutable = begin[2] == 1;
 
-    // TODO: support other size classes.
-    CHECK(size == SizeClass::INT);
+    // TODO: We always allocate 4 bytes. Fixes here will also affect dealloc.
 
     i64 offset = cur_offset;
     cur_offset += 4;
 
-    *out << "; [ebp-" << offset << "] refers to t" << memid << '\n';
+    Col1("; [ebp-%v] refers to t%v.", offset, memid);
 
     StackEntry entry = {size, offset, memid};
 
@@ -80,7 +120,6 @@ struct FuncWriter final {
     auto entry = stack.back();
 
     CHECK(entry.id == memid);
-    CHECK(entry.size == SizeClass::INT);
     stack.pop_back();
 
     stack_map.erase(memid);
@@ -88,7 +127,15 @@ struct FuncWriter final {
     cur_offset -= 4;
     CHECK(cur_offset >= frame_offset);
 
-    *out << "; t" << memid << " deallocated, used to be at [ebp-" << entry.offset << "]\n";
+    Col1("; t%v deallocated, used to be at [ebp-%v].", memid, entry.offset);
+  }
+
+  void Label(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(1);
+
+    LabelId lid = begin[0];
+
+    Col0(".L%v:", lid);
   }
 
   void Const(ArgIter begin, ArgIter end) {
@@ -101,11 +148,10 @@ struct FuncWriter final {
     const StackEntry& entry = stack_map.at(memid);
     CHECK(entry.size == size);
 
-    // TODO: handle more sizes.
-    CHECK(entry.size == SizeClass::INT);
+    string mov_size = Sized(size, "byte", "word", "dword");
 
-    *out << "; t" << memid << " = " << value << '\n';
-    *out << "mov dword [ebp-" << entry.offset << "], " << value << '\n';
+    Col1("; t%v = %v.", memid, value);
+    Col1("mov %v [ebp-%v], %v", mov_size, entry.offset, value);
   }
 
   void Mov(ArgIter begin, ArgIter end) {
@@ -118,12 +164,11 @@ struct FuncWriter final {
     const StackEntry& src_e = stack_map.at(src);
     CHECK(dst_e.size == src_e.size);
 
-    // TODO: more size classes.
-    CHECK(dst_e.size == SizeClass::INT);
+    string reg_size = Sized(dst_e.size, "al", "ax", "eax");
 
-    *out << "; t" << dst_e.id << " = t" << src_e.id << '\n';
-    *out << "mov eax, [ebp-" << src_e.offset << "]\n";
-    *out << "mov [ebp-" << dst_e.offset << "], eax\n";
+    Col1("; t%v = t%v.", dst_e.id, src_e.id);
+    Col1("mov %v, [ebp-%v]", reg_size, src_e.offset);
+    Col1("mov [ebp-%v], %v", dst_e.offset, reg_size);
   }
 
   void Add(ArgIter begin, ArgIter end) {
@@ -141,10 +186,34 @@ struct FuncWriter final {
     CHECK(lhs_e.size == SizeClass::INT);
     CHECK(rhs_e.size == SizeClass::INT);
 
-    *out << "; t" << dst_e.id << " = t" << lhs_e.id << " + t" << rhs_e.id << '\n';
-    *out << "mov eax, [ebp-" << lhs_e.offset << "]\n";
-    *out << "add eax, [ebp-" << rhs_e.offset << "]\n";
-    *out << "mov [ebp-" << dst_e.offset << "], eax\n";
+    Col1("; t%v = t%v + t%v.", dst_e.id, lhs_e.id, rhs_e.id);
+    Col1("mov eax, [ebp-%v]", lhs_e.offset);
+    Col1("add eax, [ebp-%v]", rhs_e.offset);
+    Col1("mov [ebp-%v], eax", dst_e.offset);
+  }
+
+  void Jmp(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(1);
+
+    LabelId lid = begin[0];
+
+    Col1("jmp .L%v", lid);
+  }
+
+  void JmpIf(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(2);
+
+    LabelId lid = begin[0];
+    MemId cond = begin[1];
+
+    const StackEntry& cond_e = stack_map.at(cond);
+
+    CHECK(cond_e.size == SizeClass::BOOL);
+
+    Col1("; Jumping if t%v.", cond);
+    Col1("mov al, [ebp-%v]", cond_e.offset);
+    Col1("tst al, al");
+    Col1("jnz .L%v", lid);
   }
 
  private:
@@ -183,6 +252,9 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::DEALLOC_MEM:
         writer.DeallocMem(begin, end);
         break;
+      case OpType::LABEL:
+        writer.Label(begin, end);
+        break;
       case OpType::CONST:
         writer.Const(begin, end);
         break;
@@ -192,11 +264,14 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::ADD:
         writer.Add(begin, end);
         break;
+      case OpType::JMP:
+        writer.Jmp(begin, end);
+        break;
+      case OpType::JMP_IF:
+        writer.JmpIf(begin, end);
+        break;
 
-      UNIMPLEMENTED_OP(LABEL);
       UNIMPLEMENTED_OP(MOV_ADDR);
-      UNIMPLEMENTED_OP(JMP);
-      UNIMPLEMENTED_OP(JMP_IF);
       UNIMPLEMENTED_OP(LT);
       UNIMPLEMENTED_OP(LEQ);
       UNIMPLEMENTED_OP(EQ);
@@ -211,11 +286,8 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
     }
   }
 
-  // TODO: this is assuming that it was an int.
-  *out << "mov eax, [ebp-8]\n\n";
-  *out << ".epilogue:\n";
-  *out << "pop ebp\n";
-  *out << "ret\n";
+  writer.WriteEpilogue();
+
 }
 
 

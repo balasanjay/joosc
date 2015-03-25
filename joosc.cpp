@@ -106,9 +106,7 @@ bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const s
       // TODO: thread method names through ir generation, so we can emit nice
       // comments.
 
-      out << "; Starting method.\n";
       writer.WriteFunc(method_stream, &out);
-      out << "; Done method.\n\n\n\n" ;
     }
 
     out << std::flush;
