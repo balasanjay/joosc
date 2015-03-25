@@ -13,7 +13,7 @@ namespace ir {
 
 class MethodIRGenerator final : public ast::Visitor {
  public:
-  MethodIRGenerator(Mem res, StreamBuilder& builder, vector<ast::LocalVarId>& locals, map<ast::LocalVarId, Mem>& locals_map): res_(res), builder_(builder), locals_(locals), locals_map_(locals_map)  {}
+  MethodIRGenerator(Mem res, bool lvalue, StreamBuilder& builder, vector<ast::LocalVarId>& locals, map<ast::LocalVarId, Mem>& locals_map): res_(res), lvalue_(lvalue), builder_(builder), locals_(locals), locals_map_(locals_map)  {}
 
   VISIT_DECL(MethodDecl, decl,) {
     // TODO: Calling semantics.
@@ -23,7 +23,7 @@ class MethodIRGenerator final : public ast::Visitor {
 
   VISIT_DECL(BlockStmt, stmt,) {
     vector<ast::LocalVarId> block_locals;
-    MethodIRGenerator gen(res_, builder_, block_locals, locals_map_);
+    MethodIRGenerator gen(res_, false, builder_, block_locals, locals_map_);
     for (int i = 0; i < stmt.Stmts().Size(); ++i) {
       auto st = stmt.Stmts().At(i);
       gen.Visit(st);
@@ -41,21 +41,35 @@ class MethodIRGenerator final : public ast::Visitor {
 
   VISIT_DECL(BinExpr, expr,) {
     SizeClass size = SizeClass::INT;
+    bool is_assg = false;
     if (lexer::IsNumericOp(expr.Op().type)) {
       size = SizeClass::INT;
     } else if (lexer::IsBoolOp(expr.Op().type)) {
       size = SizeClass::BOOL;
+    } else if (expr.Op().type == lexer::ASSG) {
+      is_assg = true;
+      ast::TypeId tid = expr.Lhs().GetTypeId();
+      if (tid == ast::TypeId::kInt) {
+        size = SizeClass::INT;
+      } else if (tid == ast::TypeId::kBool) {
+        size = SizeClass::BOOL;
+      }
     }
 
     Mem lhs = builder_.AllocTemp(size);
     Mem rhs = builder_.AllocTemp(size);
     {
-      MethodIRGenerator gen(lhs, builder_, locals_, locals_map_);
+      MethodIRGenerator gen(lhs, is_assg, builder_, locals_, locals_map_);
       gen.Visit(expr.LhsPtr());
     }
     {
-      MethodIRGenerator gen(rhs, builder_, locals_, locals_map_);
+      MethodIRGenerator gen(rhs, false, builder_, locals_, locals_map_);
       gen.Visit(expr.RhsPtr());
+    }
+
+    if (is_assg) {
+      builder_.Mov(lhs, rhs);
+      return VisitResult::SKIP;
     }
 
 #define C(fn) builder_.fn(res_, lhs, rhs); break;
@@ -91,7 +105,11 @@ class MethodIRGenerator final : public ast::Visitor {
     auto i = locals_map_.find(expr.GetVarId());
     CHECK(i != locals_map_.end());
     Mem local = i->second;
-    builder_.Mov(res_, local);
+    if (lvalue_) {
+      builder_.MovAddr(res_, local);
+    } else {
+      builder_.Mov(res_, local);
+    }
     return VisitResult::SKIP;
   }
 
@@ -100,7 +118,7 @@ class MethodIRGenerator final : public ast::Visitor {
     locals_.push_back(stmt.GetVarId());
     locals_map_.insert({stmt.GetVarId(), local});
 
-    MethodIRGenerator gen(local, builder_, locals_, locals_map_);
+    MethodIRGenerator gen(local, false, builder_, locals_, locals_map_);
     gen.Visit(stmt.GetExprPtr());
 
     return VisitResult::SKIP;
@@ -108,6 +126,7 @@ class MethodIRGenerator final : public ast::Visitor {
 
   // Location result of the computation should be stored.
   Mem res_;
+  bool lvalue_ = false;
   StreamBuilder& builder_;
   vector<ast::LocalVarId>& locals_;
   map<ast::LocalVarId, Mem>& locals_map_;
@@ -140,7 +159,7 @@ class ProgramIRGenerator final : public ast::Visitor {
     {
       Mem ret = builder.AllocTemp(SizeClass::INT);
 
-      MethodIRGenerator gen(ret, builder, empty_locals, locals_map);
+      MethodIRGenerator gen(ret, false, builder, empty_locals, locals_map);
       gen.Visit(declptr);
     }
     // Return mem must be deallocated before Build is called.
