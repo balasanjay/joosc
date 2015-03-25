@@ -11,7 +11,7 @@ using ast::VisitResult;
 
 namespace ir {
 
-SizeClass sizeOfTypeId(ast::TypeId tid) {
+SizeClass SizeOfTypeId(ast::TypeId tid) {
   if (tid == ast::TypeId::kInt) {
     return SizeClass::INT;
   } else if (tid == ast::TypeId::kBool) {
@@ -58,7 +58,7 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(BinExpr, expr,) {
-    SizeClass size = sizeOfTypeId(expr.Lhs().GetTypeId());
+    SizeClass size = SizeOfTypeId(expr.Lhs().GetTypeId());
     bool is_assg = false;
     if (expr.Op().type == lexer::ASSG) {
       is_assg = true;
@@ -123,7 +123,7 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(ReturnStmt, stmt,) {
-    Mem ret = builder_.AllocTemp(sizeOfTypeId(stmt.GetExprPtr()->GetTypeId()));
+    Mem ret = builder_.AllocTemp(SizeOfTypeId(stmt.GetExprPtr()->GetTypeId()));
     WithResultIn(ret).Visit(stmt.GetExprPtr());
 
     // TODO: Return.
@@ -132,7 +132,7 @@ class MethodIRGenerator final : public ast::Visitor {
 
   VISIT_DECL(LocalDeclStmt, stmt,) {
     ast::TypeId tid = stmt.GetType().GetTypeId();
-    Mem local = builder_.AllocLocal(sizeOfTypeId(tid));
+    Mem local = builder_.AllocLocal(SizeOfTypeId(tid));
     locals_.push_back(stmt.GetVarId());
     locals_map_.insert({stmt.GetVarId(), local});
 
@@ -145,35 +145,21 @@ class MethodIRGenerator final : public ast::Visitor {
     Mem cond = builder_.AllocTemp(SizeClass::BOOL);
     WithResultIn(cond).Visit(stmt.CondPtr());
 
-    bool has_else = (dynamic_cast<const ast::EmptyStmt*>(stmt.FalseBodyPtr().get()) != nullptr);
+    LabelId begin_false = builder_.AllocLabel();
+    LabelId after_if = builder_.AllocLabel();
 
-    LabelId after_true = builder_.AllocLabel();
-    LabelId after_if = after_true;
-
-    // Jump after true body if condition is false.
-    // TODO: JumpNotIf or use mutable temp.
     Mem not_cond = builder_.AllocTemp(SizeClass::BOOL);
     builder_.Not(not_cond, cond);
-    builder_.JmpIf(after_true, not_cond);
+    builder_.JmpIf(begin_false, not_cond);
 
     // Emit true body code.
     Visit(stmt.TrueBodyPtr());
+    builder_.Jmp(after_if);
 
-    if (has_else) {
-      // If else exists, need another label. Emit jump to
-      // end of if as last statement in true body.
-      after_if = builder_.AllocLabel();
-      // At end of true body, jump to end of if to skip false body.
-      builder_.Jmp(after_if);
-      // Entry point of false body.
-      builder_.EmitLabel(after_true);
+    // Emit false body code.
+    builder_.EmitLabel(begin_false);
+    Visit(stmt.FalseBodyPtr());
 
-      // Emit false body code.
-      Visit(stmt.FalseBodyPtr());
-    }
-
-    // End of if (either where false if condition jumps if no else, or where
-    // true body jumps over false body).
     builder_.EmitLabel(after_if);
 
     return VisitResult::SKIP;
@@ -182,18 +168,19 @@ class MethodIRGenerator final : public ast::Visitor {
   VISIT_DECL(WhileStmt, stmt,) {
     // Top of loop label.
     LabelId loop = builder_.AllocLabel();
+    LabelId loop_end = builder_.AllocLabel();
     builder_.EmitLabel(loop);
 
     // Condition code.
-    Mem cond = builder_.AllocTemp(SizeClass::BOOL);
-    WithResultIn(cond).Visit(stmt.CondPtr());
+    if (stmt.CondPtr() != nullptr) {
+      Mem cond = builder_.AllocTemp(SizeClass::BOOL);
+      WithResultIn(cond).Visit(stmt.CondPtr());
 
-    // Leave loop if condition is false.
-    LabelId loop_end = builder_.AllocLabel();
-    // TODO: JumpNotIf or use mutable temp.
-    Mem not_cond = builder_.AllocTemp(SizeClass::BOOL);
-    builder_.Not(not_cond, cond);
-    builder_.JmpIf(loop_end, not_cond);
+      // Leave loop if condition is false.
+      Mem not_cond = builder_.AllocTemp(SizeClass::BOOL);
+      builder_.Not(not_cond, cond);
+      builder_.JmpIf(loop_end, not_cond);
+    }
 
     // Loop body.
     Visit(stmt.BodyPtr());
@@ -215,24 +202,28 @@ class MethodIRGenerator final : public ast::Visitor {
       gen.Visit(stmt.InitPtr());
 
       LabelId loop = builder_.AllocLabel();
+      LabelId loop_end = builder_.AllocLabel();
+
       builder_.EmitLabel(loop);
 
       // Condition code.
-      Mem cond = builder_.AllocTemp(SizeClass::BOOL);
-      gen.WithResultIn(cond).Visit(stmt.CondPtr());
+      if (stmt.CondPtr() != nullptr) {
+        Mem cond = builder_.AllocTemp(SizeClass::BOOL);
+        gen.WithResultIn(cond).Visit(stmt.CondPtr());
 
-      // Leave loop if condition is false.
-      LabelId loop_end = builder_.AllocLabel();
-      // TODO: JumpNotIf or use mutable temp.
-      Mem not_cond = builder_.AllocTemp(SizeClass::BOOL);
-      builder_.Not(not_cond, cond);
-      builder_.JmpIf(loop_end, not_cond);
+        // Leave loop if condition is false.
+        Mem not_cond = builder_.AllocTemp(SizeClass::BOOL);
+        builder_.Not(not_cond, cond);
+        builder_.JmpIf(loop_end, not_cond);
+      }
 
       // Loop body.
       Visit(stmt.BodyPtr());
 
       // Loop update.
-      Visit(stmt.UpdatePtr());
+      if (stmt.UpdatePtr() != nullptr) {
+        Visit(stmt.UpdatePtr());
+      }
 
       // Loop back to first label.
       builder_.Jmp(loop);
