@@ -112,6 +112,12 @@ void StreamBuilder::MovAddr(Mem dst, Mem src) {
   SetAssigned({dst});
 }
 
+void StreamBuilder::MovToAddr(Mem dst, Mem src) {
+  AssertAssigned({src});
+  AppendOp(OpType::MOV_TO_ADDR, {dst.Id(), src.Id()});
+  // TODO: We're not sure exactly how to represent what's assigned.
+}
+
 void StreamBuilder::Add(Mem dst, Mem lhs, Mem rhs) {
   AssertAssigned({lhs, rhs});
   AppendOp(OpType::ADD, {dst.Id(), lhs.Id(), rhs.Id()});

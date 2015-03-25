@@ -36,6 +36,9 @@ enum class OpType {
   // (Mem, Mem).
   MOV_ADDR,
 
+  // (Mem, Mem).
+  MOV_TO_ADDR,
+
   // (Mem, Mem, Mem).
   ADD,
 

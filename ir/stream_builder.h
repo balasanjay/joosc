@@ -37,6 +37,9 @@ class StreamBuilder {
   // Emit *dst = src.
   void MovAddr(Mem dst, Mem src);
 
+  // Emit **dst = *src.
+  void MovToAddr(Mem dst, Mem src);
+
   // Emit *dst = *lhs + *rhs.
   void Add(Mem dst, Mem lhs, Mem rhs);
 
