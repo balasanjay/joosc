@@ -16,6 +16,8 @@ class StreamBuilder {
 
   Mem AllocLocal(SizeClass);
 
+  Mem AllocDummy();
+
   // Allocate a label id; the Builder guarantees that the returned id will be
   // unique for this stream.
   LabelId AllocLabel();
@@ -87,7 +89,7 @@ class StreamBuilder {
   vector<u64> args_;
   vector<Op> ops_;
 
-  MemId next_mem_ = 0;
+  MemId next_mem_ = kFirstMemId;
   LabelId next_label_ = 0;
 };
 
