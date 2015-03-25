@@ -130,10 +130,13 @@ class ProgramIRGenerator final : public ast::Visitor {
     StreamBuilder builder;
     vector<ast::LocalVarId> empty_locals;
     map<ast::LocalVarId, Mem> locals_map;
-    Mem ret = builder.AllocTemp(SizeClass::INT);
+    {
+      Mem ret = builder.AllocTemp(SizeClass::INT);
 
-    MethodIRGenerator gen(ret, builder, empty_locals, locals_map);
-    gen.Visit(declptr);
+      MethodIRGenerator gen(ret, builder, empty_locals, locals_map);
+      gen.Visit(declptr);
+    }
+    // Return mem must be deallocated before Build is called.
 
     current_unit_.streams.push_back(builder.Build(true, 2, 2));
     return VisitResult::SKIP;
