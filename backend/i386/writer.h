@@ -9,7 +9,8 @@ namespace backend {
 namespace i386 {
 
 class Writer {
-  void WriteAsm(const ir::Stream& stream, std::ostream* out) const;
+public:
+  void WriteFunc(const ir::Stream& stream, std::ostream* out) const;
 };
 
 } // namespace i386

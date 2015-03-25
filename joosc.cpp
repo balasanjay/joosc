@@ -1,9 +1,11 @@
 #include "joosc.h"
 
+#include <fstream>
 #include <iostream>
 
 #include "ast/ast.h"
 #include "ast/print_visitor.h"
+#include "backend/i386/writer.h"
 #include "base/error.h"
 #include "base/errorlist.h"
 #include "base/fileset.h"
@@ -15,6 +17,7 @@
 using std::cerr;
 using std::cout;
 using std::endl;
+using std::ofstream;
 using std::ostream;
 
 using ast::PrintVisitor;
@@ -79,16 +82,42 @@ sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, Err
   return program;
 }
 
-void CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string&) {
+bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, std::ostream* err) {
   ir::Program ir_prog = ir::GenerateIR(prog);
   if (stage == CompilerStage::GEN_IR) {
-    return;
+    return true;
   }
 
-  // TODO: asm.
+  // TODO: have a more generic backend mechanism.
+  bool success = true;
+  for (const ir::CompUnit& comp_unit : ir_prog.units) {
+    string fname = dir + "/" + comp_unit.filename;
+
+    ofstream out(fname);
+    if (!out) {
+      // TODO: make error pretty.
+      *err << "Could not open output file: " << fname << "\n";
+      success = false;
+      continue;
+    }
+
+    backend::i386::Writer writer;
+    for (const ir::Stream& method_stream : comp_unit.streams) {
+      // TODO: thread method names through ir generation, so we can emit nice
+      // comments.
+
+      out << "; Starting method.\n";
+      writer.WriteFunc(method_stream, &out);
+      out << "; Done method.\n\n\n\n" ;
+    }
+
+    out << std::flush;
+  }
+
+  return success;
 }
 
-bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out, ostream* err) {
+bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream*, ostream* err) {
   // Open files.
   FileSet* fs = nullptr;
   {
@@ -119,7 +148,5 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
   }
 
   // TODO.
-  CompilerBackend(stage, program, "build_gen");
-
-  return true;
+  return CompilerBackend(stage, program, "output", err);
 }
