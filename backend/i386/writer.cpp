@@ -215,7 +215,7 @@ struct FuncWriter final {
     Col1("jnz .L%v", lid);
   }
 
-  void Cmp(ArgIter begin, ArgIter end, const string& relation, const string& instruction) {
+  void RelImpl(ArgIter begin, ArgIter end, const string& relation, const string& instruction) {
     EXPECT_NARGS(3);
 
     MemId dst = begin[0];
@@ -237,11 +237,36 @@ struct FuncWriter final {
   }
 
   void Lt(ArgIter begin, ArgIter end) {
-    Cmp(begin, end, "<", "setl");
+    RelImpl(begin, end, "<", "setl");
   }
 
   void Leq(ArgIter begin, ArgIter end) {
-    Cmp(begin, end, "<=", "setle");
+    RelImpl(begin, end, "<=", "setle");
+  }
+
+  void Eq(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(3);
+
+    MemId dst = begin[0];
+    MemId lhs = begin[1];
+    MemId rhs = begin[2];
+
+    const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& lhs_e = stack_map.at(lhs);
+    const StackEntry& rhs_e = stack_map.at(rhs);
+
+    CHECK(dst_e.size == SizeClass::BOOL);
+    CHECK(lhs_e.size == rhs_e.size);
+    CHECK(lhs_e.size == SizeClass::BOOL ||
+          lhs_e.size == SizeClass::INT ||
+          lhs_e.size == SizeClass::PTR);
+
+    string reg_size = Sized(lhs_e.size, "al", "", "eax");
+
+    Col1("; t%v = (t%v == t%v).", dst_e.id, lhs_e.id, rhs_e.id);
+    Col1("mov %v, [ebp-%v]", reg_size, lhs_e.offset);
+    Col1("cmp %v, [ebp-%v]", reg_size, rhs_e.offset);
+    Col1("sete [ebp-%v]", dst_e.offset);
   }
 
   void Not(ArgIter begin, ArgIter end) {
@@ -340,6 +365,9 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::LEQ:
         writer.Leq(begin, end);
         break;
+      case OpType::EQ:
+        writer.Eq(begin, end);
+        break;
       case OpType::NOT:
         writer.Not(begin, end);
         break;
@@ -348,8 +376,6 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         break;
 
       UNIMPLEMENTED_OP(MOV_ADDR);
-      UNIMPLEMENTED_OP(EQ);
-      UNIMPLEMENTED_OP(NEQ);
       UNIMPLEMENTED_OP(SIGN_EXTEND);
       UNIMPLEMENTED_OP(ZERO_EXTEND);
       UNIMPLEMENTED_OP(TRUNCATE);

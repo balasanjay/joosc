@@ -54,9 +54,6 @@ enum class OpType {
   // (Mem, Mem, Mem).
   EQ,
 
-  // (Mem, Mem, Mem).
-  NEQ,
-
   // (Mem, Mem).
   NOT,
 

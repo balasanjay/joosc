@@ -154,9 +154,9 @@ void StreamBuilder::Eq(Mem dst, Mem lhs, Mem rhs) {
 }
 
 void StreamBuilder::Neq(Mem dst, Mem lhs, Mem rhs) {
-  AssertAssigned({lhs, rhs});
-  AppendOp(OpType::NEQ, {dst.Id(), lhs.Id(), rhs.Id()});
-  SetAssigned({dst});
+  Mem tmp = AllocTemp(SizeClass::BOOL);
+  Eq(tmp, lhs, rhs);
+  Not(dst, tmp);
 }
 
 void StreamBuilder::Not(Mem dst, Mem src) {
