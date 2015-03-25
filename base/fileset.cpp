@@ -1,9 +1,6 @@
 #include "base/file.h"
 #include "base/file_impl.h"
 #include "base/fileset.h"
-#include <algorithm>
-
-using std::sort;
 
 namespace base {
 
