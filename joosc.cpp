@@ -79,10 +79,20 @@ sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, Err
   return program;
 }
 
-void CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string&) {
+void CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, ostream* os) {
   ir::Program ir_prog = ir::GenerateIR(prog);
   if (stage == CompilerStage::GEN_IR) {
     return;
+  }
+
+  // TODO: Just print the asm.
+  ir::Stream stream = ir_prog.units.at(0).streams.at(0);
+  for (ir::Op& op : stream.ops) {
+    *os << (u32)op.type << " ";
+    for (size_t i = op.begin; i < op.end; ++i) {
+      *os << stream.args.at(i) << ", ";
+    }
+    *os << "\n";
   }
 
   // TODO: asm.
@@ -119,7 +129,7 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
   }
 
   // TODO.
-  CompilerBackend(stage, program, "build_gen");
+  CompilerBackend(stage, program, out);
 
   return true;
 }
