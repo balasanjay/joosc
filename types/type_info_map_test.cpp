@@ -38,7 +38,7 @@ TEST_F(TypeInfoMapTest, CyclicGraph) {
     {"Bar.java", "public class Bar extends Baz {}"},
     {"Baz.java", "public class Baz extends Foo {}"},
   });
-  EXPECT_ERRS("ExtendsCycleError{Bar->Baz,Baz->Foo,Foo->Bar,}\n");
+  EXPECT_ERRS("ExtendsCycleError{Foo->Bar,Bar->Baz,Baz->Foo,}\n");
 }
 
 TEST_F(TypeInfoMapTest, SelfCyclicGraph) {
@@ -65,7 +65,7 @@ TEST_F(TypeInfoMapTest, InterfaceExtendingRepeatedInterface) {
     {"Foo.java", "public interface Foo {}"},
     {"Bar.java", "public interface Bar extends Foo, Foo, Foo, Foo {}"},
   });
-  EXPECT_ERRS("DuplicateInheritanceError(0:17-20)\n");
+  EXPECT_ERRS("DuplicateInheritanceError(1:17-20)\n");
 }
 
 TEST_F(TypeInfoMapTest, InterfaceExtendingClass) {
@@ -73,7 +73,7 @@ TEST_F(TypeInfoMapTest, InterfaceExtendingClass) {
     {"Foo.java", "public class Foo {}"},
     {"Bar.java", "public interface Bar extends Foo {}"},
   });
-  EXPECT_ERRS("InterfaceExtendsClassError(0:17-20)\n");
+  EXPECT_ERRS("InterfaceExtendsClassError(1:17-20)\n");
 }
 
 TEST_F(TypeInfoMapTest, ClassExtendingInterface) {
@@ -81,7 +81,7 @@ TEST_F(TypeInfoMapTest, ClassExtendingInterface) {
     {"Foo.java", "public interface Foo {}"},
     {"Bar.java", "public class Bar extends Foo {}"},
   });
-  EXPECT_ERRS("ClassExtendInterfaceError(0:13-16)\n");
+  EXPECT_ERRS("ClassExtendInterfaceError(1:13-16)\n");
 }
 
 TEST_F(TypeInfoMapTest, ClassImplementingClass) {
@@ -89,7 +89,7 @@ TEST_F(TypeInfoMapTest, ClassImplementingClass) {
     {"Foo.java", "public class Foo {}"},
     {"Bar.java", "public class Bar implements Foo {}"},
   });
-  EXPECT_ERRS("ClassImplementsClassError(0:13-16)\n");
+  EXPECT_ERRS("ClassImplementsClassError(1:13-16)\n");
 }
 
 TEST_F(TypeInfoMapTest, ClassImplementingRepeatedInterface) {
@@ -97,7 +97,7 @@ TEST_F(TypeInfoMapTest, ClassImplementingRepeatedInterface) {
     {"Foo.java", "public interface Foo {}"},
     {"Bar.java", "public class Bar implements Foo, Foo, Foo, Foo {}"},
   });
-  EXPECT_ERRS("DuplicateInheritanceError(0:13-16)\n");
+  EXPECT_ERRS("DuplicateInheritanceError(1:13-16)\n");
 }
 
 } // namespace types
