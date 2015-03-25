@@ -167,26 +167,24 @@ class MethodIRGenerator final : public ast::Visitor {
 
   VISIT_DECL(WhileStmt, stmt,) {
     // Top of loop label.
-    LabelId loop = builder_.AllocLabel();
+    LabelId loop_begin = builder_.AllocLabel();
     LabelId loop_end = builder_.AllocLabel();
-    builder_.EmitLabel(loop);
+    builder_.EmitLabel(loop_begin);
 
     // Condition code.
-    if (stmt.CondPtr() != nullptr) {
-      Mem cond = builder_.AllocTemp(SizeClass::BOOL);
-      WithResultIn(cond).Visit(stmt.CondPtr());
+    Mem cond = builder_.AllocTemp(SizeClass::BOOL);
+    WithResultIn(cond).Visit(stmt.CondPtr());
 
-      // Leave loop if condition is false.
-      Mem not_cond = builder_.AllocTemp(SizeClass::BOOL);
-      builder_.Not(not_cond, cond);
-      builder_.JmpIf(loop_end, not_cond);
-    }
+    // Leave loop if condition is false.
+    Mem not_cond = builder_.AllocTemp(SizeClass::BOOL);
+    builder_.Not(not_cond, cond);
+    builder_.JmpIf(loop_end, not_cond);
 
     // Loop body.
     Visit(stmt.BodyPtr());
 
     // Loop back to first label.
-    builder_.Jmp(loop);
+    builder_.Jmp(loop_begin);
 
     builder_.EmitLabel(loop_end);
 
@@ -201,10 +199,10 @@ class MethodIRGenerator final : public ast::Visitor {
       MethodIRGenerator gen = WithLocals(loop_locals);
       gen.Visit(stmt.InitPtr());
 
-      LabelId loop = builder_.AllocLabel();
+      LabelId loop_begin = builder_.AllocLabel();
       LabelId loop_end = builder_.AllocLabel();
 
-      builder_.EmitLabel(loop);
+      builder_.EmitLabel(loop_begin);
 
       // Condition code.
       if (stmt.CondPtr() != nullptr) {
@@ -226,7 +224,7 @@ class MethodIRGenerator final : public ast::Visitor {
       }
 
       // Loop back to first label.
-      builder_.Jmp(loop);
+      builder_.Jmp(loop_begin);
 
       builder_.EmitLabel(loop_end);
     }
