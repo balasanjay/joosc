@@ -5,12 +5,14 @@
 #include "ir/mem.h"
 #include "ir/stream.h"
 
-using ir::Op;
-using ir::MemId;
-using ir::SizeClass;
-using ir::OpType;
-using ir::Stream;
 using std::ostream;
+
+using ir::LabelId;
+using ir::MemId;
+using ir::Op;
+using ir::OpType;
+using ir::SizeClass;
+using ir::Stream;
 
 #define EXPECT_NARGS(n) CHECK((end - begin) == n)
 
@@ -89,6 +91,14 @@ struct FuncWriter final {
     CHECK(cur_offset >= frame_offset);
 
     *out << "; t" << memid << " deallocated, used to be at [ebp-" << entry.offset << "]\n";
+  }
+
+  void Label(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(1);
+
+    LabelId lid = begin[0];
+
+    *out << ".L" << lid << ":\n";
   }
 
   void Const(ArgIter begin, ArgIter end) {
@@ -183,6 +193,9 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::DEALLOC_MEM:
         writer.DeallocMem(begin, end);
         break;
+      case OpType::LABEL:
+        writer.Label(begin, end);
+        break;
       case OpType::CONST:
         writer.Const(begin, end);
         break;
@@ -193,7 +206,6 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         writer.Add(begin, end);
         break;
 
-      UNIMPLEMENTED_OP(LABEL);
       UNIMPLEMENTED_OP(MOV_ADDR);
       UNIMPLEMENTED_OP(JMP);
       UNIMPLEMENTED_OP(JMP_IF);
