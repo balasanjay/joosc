@@ -53,9 +53,11 @@ Mem StreamBuilder::AllocMem(SizeClass size, bool immutable) {
 }
 
 void StreamBuilder::DeallocMem(MemId mid) {
-  if (mid == kInvalidMemId) {
+  // We don't emit DEALLOC_MEMs for parameters.
+  if (mid <= params_.size()) {
     return;
   }
+
   auto iter = unassigned_.find(mid);
   CHECK(iter == unassigned_.end());
 
@@ -80,10 +82,16 @@ void StreamBuilder::AllocParams(const vector<SizeClass>& sizes, vector<Mem>* out
   params_initialized_ = true;
 
   for (SizeClass size : sizes) {
-    out->push_back(AllocLocal(size));
+    MemId mid = next_mem_;
+    ++next_mem_;
+
+    auto impl = sptr<MemImpl>(new MemImpl{mid, size, this, false});
+    out->push_back(Mem(impl));
   }
 
   params_ = sizes;
+
+  CHECK(next_mem_ == (params_.size() + 1));
 }
 
 LabelId StreamBuilder::AllocLabel() {
