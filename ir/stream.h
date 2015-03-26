@@ -93,6 +93,9 @@ enum class OpType {
   // (Mem, Mem, SizeClass).
   TRUNCATE,
 
+  // (Mem, TypeId::Base, MethodId, int nargs, Mem[]).
+  STATIC_CALL,
+
   // ([Mem]).
   RET,
 };
