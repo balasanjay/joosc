@@ -1,11 +1,13 @@
 #include "backend/i386/writer.h"
 
+#include <array>
 #include <iostream>
 
 #include "base/printf.h"
 #include "ir/mem.h"
 #include "ir/stream.h"
 
+using std::array;
 using std::ostream;
 
 using base::Fprintf;
@@ -16,6 +18,7 @@ using ir::Op;
 using ir::OpType;
 using ir::SizeClass;
 using ir::Stream;
+using ir::kInvalidMemId;
 
 #define EXPECT_NARGS(n) CHECK((end - begin) == n)
 
@@ -127,12 +130,20 @@ struct FuncWriter final {
     CHECK(cur_offset >= frame_offset);
 
     Col1("; t%v deallocated, used to be at [ebp-%v].", memid, entry.offset);
+
+    for (auto& reg : regs) {
+      if (reg.mem == memid) {
+        reg.mem = kInvalidMemId;
+      }
+    }
   }
 
   void Label(ArgIter begin, ArgIter end) {
     EXPECT_NARGS(1);
 
     LabelId lid = begin[0];
+
+    SpillAllRegs();
 
     Col0(".L%v:", lid);
   }
@@ -147,10 +158,11 @@ struct FuncWriter final {
     const StackEntry& entry = stack_map.at(memid);
     CHECK(entry.size == size);
 
-    string mov_size = Sized(size, "byte", "word", "dword");
-
     Col1("; t%v = %v.", memid, value);
-    Col1("mov %v [ebp-%v], %v", mov_size, entry.offset, value);
+
+    Reg* dst_reg = GetDstReg(memid, size);
+
+    Col1("mov %v, %v", dst_reg->OfSize(size), value);
   }
 
   void MovImpl(ArgIter begin, ArgIter end, bool addr) {
@@ -163,13 +175,16 @@ struct FuncWriter final {
     const StackEntry& src_e = stack_map.at(src);
     CHECK(dst_e.size == src_e.size);
 
-    string reg_size = Sized(dst_e.size, "al", "ax", "eax");
-    string src_prefix = addr ? "&" : "";
-    string instr = addr ? "lea" : "mov";
+    if (addr) {
+      Col1("; t%v = &t%v.", dst_e.id, src_e.id);
+      Reg* dst_reg = GetDstReg(dst, dst_e.size);
+      Col1("lea %v, [ebp-%v]", dst_reg->OfSize(dst_e.size), src_e.offset);
+      return;
+    }
 
-    Col1("; t%v = %vt%v.", dst_e.id, src_prefix, src_e.id);
-    Col1("%v %v, [ebp-%v]", instr, reg_size, src_e.offset);
-    Col1("mov [ebp-%v], %v", dst_e.offset, reg_size);
+    Col1("; t%v = t%v.", dst_e.id, src_e.id);
+    Reg* dst_reg = GetDstReg(dst, dst_e.size);
+    Col1("mov %v, %v", dst_reg->OfSize(dst_e.size), MemFromStackOrReg(src));
   }
 
   void Mov(ArgIter begin, ArgIter end) {
@@ -193,8 +208,10 @@ struct FuncWriter final {
     string dst_reg = Sized(dst_e.size, "al", "ax", "eax");
     string src_reg = Sized(src_e.size, "bl", "bx", "ebx");
 
+    // TODO: figure out registerization for this.
+
     Col1("; *t%v = t%v.", dst_e.id, src_e.id);
-    Col1("mov %v, [ebp-%v]", src_reg, src_e.offset);
+    Col1("mov %v, %v", src_reg, MemFromStackOrReg(src));
     Col1("mov %v, [ebp-%v]", dst_reg, dst_e.offset);
     Col1("mov [%v], %v", dst_reg, src_reg);
   }
@@ -218,9 +235,9 @@ struct FuncWriter final {
     string instr = add ? "add" : "sub";
 
     Col1("; t%v = t%v %v t%v.", dst_e.id, lhs_e.id, op_str, rhs_e.id);
-    Col1("mov eax, [ebp-%v]", lhs_e.offset);
-    Col1("%v eax, [ebp-%v]", instr, rhs_e.offset);
-    Col1("mov [ebp-%v], eax", dst_e.offset);
+    Reg* dst_reg = GetDstReg(dst_e.id, dst_e.size);
+    Col1("mov %v, %v", dst_reg->b4, MemFromStackOrReg(lhs));
+    Col1("%v %v, %v", instr, dst_reg->b4, MemFromStackOrReg(rhs));
   }
 
   void Add(ArgIter begin, ArgIter end) {
@@ -247,10 +264,16 @@ struct FuncWriter final {
     CHECK(rhs_e.size == SizeClass::INT);
 
     Col1("; t%v = t%v * t%v.", dst_e.id, lhs_e.id, rhs_e.id);
-    Col1("mov eax, [ebp-%v]", lhs_e.offset);
-    Col1("mov ebx, [ebp-%v]", rhs_e.offset);
-    Col1("imul ebx");
-    Col1("mov [ebp-%v], eax", dst_e.offset);
+
+    SpillReg(&regs[0]);
+    SpillReg(&regs[3]);
+
+    Col1("mov eax, %v", MemFromStackOrReg(lhs));
+    Col1("mov edx, %v", MemFromStackOrReg(rhs));
+    Col1("imul edx");
+
+    regs[0].mem = dst;
+    regs[0].memsize = dst_e.size;
   }
 
   void DivMod(ArgIter begin, ArgIter end, bool div) {
@@ -272,11 +295,23 @@ struct FuncWriter final {
     string res_reg = div ? "eax" : "edx";
 
     Col1("; t%v = t%v %v t%v.", dst_e.id, lhs_e.id, op_str, rhs_e.id);
-    Col1("mov eax, [ebp-%v]", lhs_e.offset);
+
+    SpillReg(&regs[0]);
+    SpillReg(&regs[1]);
+    SpillReg(&regs[3]);
+
+    Col1("mov eax, %v", MemFromStackOrReg(lhs));
     Col1("cdq"); // Sign-extend EAX through to EDX.
-    Col1("mov ebx, [ebp-%v]", rhs_e.offset);
+    Col1("mov ebx, %v", MemFromStackOrReg(rhs));
     Col1("idiv ebx");
-    Col1("mov [ebp-%v], %v", dst_e.offset, res_reg);
+
+    if (div) {
+      regs[0].mem = dst;
+      regs[0].memsize = dst_e.size;
+    } else {
+      regs[3].mem = dst;
+      regs[3].memsize = dst_e.size;
+    }
   }
 
   void Div(ArgIter begin, ArgIter end) {
@@ -292,6 +327,8 @@ struct FuncWriter final {
 
     LabelId lid = begin[0];
 
+    SpillAllRegs();
+
     Col1("jmp .L%v", lid);
   }
 
@@ -306,6 +343,9 @@ struct FuncWriter final {
     CHECK(cond_e.size == SizeClass::BOOL);
 
     Col1("; Jumping if t%v.", cond);
+  
+    SpillAllRegs();
+
     Col1("mov al, [ebp-%v]", cond_e.offset);
     Col1("test al, al");
     Col1("jnz .L%v", lid);
@@ -327,9 +367,10 @@ struct FuncWriter final {
     CHECK(rhs_e.size == SizeClass::INT);
 
     Col1("; t%v = (t%v %v t%v).", dst_e.id, lhs_e.id, relation, rhs_e.id);
-    Col1("mov eax, [ebp-%v]", lhs_e.offset);
-    Col1("cmp eax, [ebp-%v]", rhs_e.offset);
-    Col1("%v [ebp-%v]", instruction, dst_e.offset);
+    Reg* dst_reg = GetDstReg(dst, dst_e.size);
+    Col1("mov %v, %v", dst_reg->b4, MemFromStackOrReg(lhs));
+    Col1("cmp %v, %v", dst_reg->b4, MemFromStackOrReg(rhs));
+    Col1("%v %v", instruction, dst_reg->b1);
   }
 
   void Lt(ArgIter begin, ArgIter end) {
@@ -360,9 +401,10 @@ struct FuncWriter final {
     string reg_size = Sized(lhs_e.size, "al", "", "eax");
 
     Col1("; t%v = (t%v == t%v).", dst_e.id, lhs_e.id, rhs_e.id);
-    Col1("mov %v, [ebp-%v]", reg_size, lhs_e.offset);
-    Col1("cmp %v, [ebp-%v]", reg_size, rhs_e.offset);
-    Col1("sete [ebp-%v]", dst_e.offset);
+    Reg* dst_reg = GetDstReg(dst, dst_e.size);
+    Col1("mov %v, %v", dst_reg->OfSize(dst_e.size), MemFromStackOrReg(lhs));
+    Col1("cmp %v, %v", dst_reg->OfSize(dst_e.size), MemFromStackOrReg(rhs));
+    Col1("sete %v", dst_reg->b1);
   }
 
   void Not(ArgIter begin, ArgIter end) {
@@ -378,9 +420,9 @@ struct FuncWriter final {
     CHECK(src_e.size == SizeClass::BOOL);
 
     Col1("; t%v = !t%v", dst_e.id, src_e.id);
-    Col1("mov al, [ebp-%v]", src_e.offset);
-    Col1("xor al, 1");
-    Col1("mov [ebp-%v], al", dst_e.offset);
+    Reg* dst_reg = GetDstReg(dst, dst_e.size);
+    Col1("mov %v, %v", dst_reg->b1, MemFromStackOrReg(src));
+    Col1("xor %v, 1", dst_reg->b1);
   }
 
   void BoolOpImpl(ArgIter begin, ArgIter end, const string& op_str, const string& instr) {
@@ -399,9 +441,9 @@ struct FuncWriter final {
     CHECK(rhs_e.size == SizeClass::BOOL);
 
     Col1("; t%v = t%v %v t%v.", dst_e.id, lhs_e.id, op_str, rhs_e.id);
-    Col1("mov al, [ebp-%v]", lhs_e.offset);
-    Col1("%v al, [ebp-%v]", instr, rhs_e.offset);
-    Col1("mov [ebp-%v], al", dst_e.offset);
+    Reg* dst_reg = GetDstReg(dst, dst_e.size);
+    Col1("mov %v, %v", dst_reg->b1, MemFromStackOrReg(lhs));
+    Col1("%v %v, %v", instr, dst_reg->b1, MemFromStackOrReg(rhs));
   }
 
   void And(ArgIter begin, ArgIter end) {
@@ -426,7 +468,9 @@ struct FuncWriter final {
       string reg_size = Sized(ret_e.size, "al", "ax", "eax");
 
       Col1("; Return t%v.", ret_e.id);
-      Col1("mov %v, [ebp-%v]", reg_size, ret_e.offset);
+      auto* reg = &regs[0];
+      SpillReg(reg);
+      Col1("mov %v, %v", reg->OfSize(ret_e.size), MemFromStackOrReg(ret));
     } else {
       Col1("; Return.");
     }
@@ -441,11 +485,73 @@ struct FuncWriter final {
     MemId id;
   };
 
+  struct Reg {
+    MemId mem;
+    SizeClass memsize;
+
+    string b1;
+    string b2;
+    string b4;
+
+    string OfSize(SizeClass size) {
+      return Sized(size, b1, b2, b4);
+    }
+  };
+
+  void SpillReg(Reg* reg) {
+    CHECK(reg != nullptr);
+    if (reg->mem == kInvalidMemId) {
+      return;
+    }
+
+    Col1("; Spilling t%v", reg->mem);
+    Col1("mov [ebp-%v], %v", stack_map.at(reg->mem).offset, reg->OfSize(reg->memsize));
+  }
+
+  void SpillAllRegs() {
+    for (auto& reg : regs) {
+      SpillReg(&reg);
+    }
+  }
+
+  string MemFromStackOrReg(MemId mem) {
+    for (auto& reg : regs) {
+      if (reg.mem == mem) {
+        return reg.OfSize(reg.memsize);
+      }
+    }
+    return Sprintf("[ebp-%v]", stack_map.at(mem).offset);
+  }
+
+  Reg* GetDstReg(MemId mem, SizeClass size) {
+    for (auto& reg : regs) {
+      if (reg.mem == kInvalidMemId) {
+        reg.mem = mem;
+        reg.memsize = size;
+        return &reg;
+      }
+    }
+
+    // TODO: use LRU spilling, rather than always spilling ebx.
+    auto reg = &regs[1];
+    SpillReg(reg);
+    reg->mem = mem;
+    reg->memsize = size;
+    return reg;
+  }
+
   const i64 frame_offset = 8;
 
   map<MemId, StackEntry> stack_map;
   i64 cur_offset = frame_offset;
   vector<StackEntry> stack;
+
+  array<Reg, 4> regs = {{
+    {kInvalidMemId, SizeClass::INT, "al", "ax", "eax"},
+    {kInvalidMemId, SizeClass::INT, "bl", "bx", "ebx"},
+    {kInvalidMemId, SizeClass::INT, "cl", "cx", "ecx"},
+    {kInvalidMemId, SizeClass::INT, "dl", "dx", "edx"},
+  }};
 
   // TODO: do more optimal stack management for non-int-sized things.
 
