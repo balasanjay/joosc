@@ -72,9 +72,10 @@ class MethodIRGenerator final : public ast::Visitor {
     // Special code for short-circuiting boolean and or.
     if (expr.Op().type == lexer::AND) {
       LabelId short_circuit = builder_.AllocLabel();
+      Mem not_lhs = builder_.AllocLocal(SizeClass::BOOL);
 
-      builder_.Not(lhs, lhs);
-      builder_.JmpIf(short_circuit, lhs);
+      builder_.Not(not_lhs, lhs);
+      builder_.JmpIf(short_circuit, not_lhs);
 
       // Rhs code.
       WithResultIn(rhs).Visit(expr.RhsPtr());
