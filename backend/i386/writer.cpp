@@ -48,6 +48,14 @@ string Sized(SizeClass size, const string& b1, const string& b2, const string& b
   }
 }
 
+// Convert our internal stack offset to an "[ebp-x]"-style string.
+string StackOffset(i64 offset) {
+  if (offset > 0) {
+    return Sprintf("[ebp-%v]", offset);
+  }
+  return Sprintf("[ebp+%v]", -offset);
+}
+
 struct FuncWriter final {
   FuncWriter(ostream* outarg) : out(outarg) {}
 
@@ -88,6 +96,20 @@ struct FuncWriter final {
     Col1("ret");
   }
 
+  void SetupParams(const Stream& stream) {
+    // TODO: figure out the correct initial offset.
+    i64 param_offset = 0;
+    for (size_t i = 0; i < stream.params.size(); ++i) {
+      i64 cur_offset = param_offset;
+      param_offset -= 4;
+
+      StackEntry entry = {stream.params.at(i), cur_offset, i + 1};
+
+      auto iter_pair = stack_map.insert({entry.id, entry});
+      CHECK(iter_pair.second);
+    }
+  }
+
   void AllocMem(ArgIter begin, ArgIter end) {
     EXPECT_NARGS(3);
 
@@ -100,7 +122,7 @@ struct FuncWriter final {
     i64 offset = cur_offset;
     cur_offset += 4;
 
-    Col1("; [ebp-%v] refers to t%v.", offset, memid);
+    Col1("; %v refers to t%v.", StackOffset(offset), memid);
 
     StackEntry entry = {size, offset, memid};
 
@@ -126,7 +148,7 @@ struct FuncWriter final {
     cur_offset -= 4;
     CHECK(cur_offset >= frame_offset);
 
-    Col1("; t%v deallocated, used to be at [ebp-%v].", memid, entry.offset);
+    Col1("; t%v deallocated, used to be at %v.", memid, StackOffset(entry.offset));
   }
 
   void Label(ArgIter begin, ArgIter end) {
@@ -150,7 +172,7 @@ struct FuncWriter final {
     string mov_size = Sized(size, "byte", "word", "dword");
 
     Col1("; t%v = %v.", memid, value);
-    Col1("mov %v [ebp-%v], %v", mov_size, entry.offset, value);
+    Col1("mov %v %v, %v", mov_size, StackOffset(entry.offset), value);
   }
 
   void MovImpl(ArgIter begin, ArgIter end, bool addr) {
@@ -168,8 +190,8 @@ struct FuncWriter final {
     string instr = addr ? "lea" : "mov";
 
     Col1("; t%v = %vt%v.", dst_e.id, src_prefix, src_e.id);
-    Col1("%v %v, [ebp-%v]", instr, reg_size, src_e.offset);
-    Col1("mov [ebp-%v], %v", dst_e.offset, reg_size);
+    Col1("%v %v, %v", instr, reg_size, StackOffset(src_e.offset));
+    Col1("mov %v, %v", StackOffset(dst_e.offset), reg_size);
   }
 
   void Mov(ArgIter begin, ArgIter end) {
@@ -194,8 +216,8 @@ struct FuncWriter final {
     string src_reg = Sized(src_e.size, "bl", "bx", "ebx");
 
     Col1("; *t%v = t%v.", dst_e.id, src_e.id);
-    Col1("mov %v, [ebp-%v]", src_reg, src_e.offset);
-    Col1("mov %v, [ebp-%v]", dst_reg, dst_e.offset);
+    Col1("mov %v, %v", src_reg, StackOffset(src_e.offset));
+    Col1("mov %v, %v", dst_reg, StackOffset(dst_e.offset));
     Col1("mov [%v], %v", dst_reg, src_reg);
   }
 
@@ -218,9 +240,9 @@ struct FuncWriter final {
     string instr = add ? "add" : "sub";
 
     Col1("; t%v = t%v %v t%v.", dst_e.id, lhs_e.id, op_str, rhs_e.id);
-    Col1("mov eax, [ebp-%v]", lhs_e.offset);
-    Col1("%v eax, [ebp-%v]", instr, rhs_e.offset);
-    Col1("mov [ebp-%v], eax", dst_e.offset);
+    Col1("mov eax, %v", StackOffset(lhs_e.offset));
+    Col1("%v eax, %v", instr, StackOffset(rhs_e.offset));
+    Col1("mov %v, eax", StackOffset(dst_e.offset));
   }
 
   void Add(ArgIter begin, ArgIter end) {
@@ -247,10 +269,10 @@ struct FuncWriter final {
     CHECK(rhs_e.size == SizeClass::INT);
 
     Col1("; t%v = t%v * t%v.", dst_e.id, lhs_e.id, rhs_e.id);
-    Col1("mov eax, [ebp-%v]", lhs_e.offset);
-    Col1("mov ebx, [ebp-%v]", rhs_e.offset);
+    Col1("mov eax, %v", StackOffset(lhs_e.offset));
+    Col1("mov ebx, %v", StackOffset(rhs_e.offset));
     Col1("imul ebx");
-    Col1("mov [ebp-%v], eax", dst_e.offset);
+    Col1("mov %v, eax", StackOffset(dst_e.offset));
   }
 
   void DivMod(ArgIter begin, ArgIter end, bool div) {
@@ -272,11 +294,11 @@ struct FuncWriter final {
     string res_reg = div ? "eax" : "edx";
 
     Col1("; t%v = t%v %v t%v.", dst_e.id, lhs_e.id, op_str, rhs_e.id);
-    Col1("mov eax, [ebp-%v]", lhs_e.offset);
+    Col1("mov eax, %v", StackOffset(lhs_e.offset));
     Col1("cdq"); // Sign-extend EAX through to EDX.
-    Col1("mov ebx, [ebp-%v]", rhs_e.offset);
+    Col1("mov ebx, %v", StackOffset(rhs_e.offset));
     Col1("idiv ebx");
-    Col1("mov [ebp-%v], %v", dst_e.offset, res_reg);
+    Col1("mov %v, %v", StackOffset(dst_e.offset), res_reg);
   }
 
   void Div(ArgIter begin, ArgIter end) {
@@ -306,7 +328,7 @@ struct FuncWriter final {
     CHECK(cond_e.size == SizeClass::BOOL);
 
     Col1("; Jumping if t%v.", cond);
-    Col1("mov al, [ebp-%v]", cond_e.offset);
+    Col1("mov al, %v", StackOffset(cond_e.offset));
     Col1("test al, al");
     Col1("jnz .L%v", lid);
   }
@@ -327,9 +349,9 @@ struct FuncWriter final {
     CHECK(rhs_e.size == SizeClass::INT);
 
     Col1("; t%v = (t%v %v t%v).", dst_e.id, lhs_e.id, relation, rhs_e.id);
-    Col1("mov eax, [ebp-%v]", lhs_e.offset);
-    Col1("cmp eax, [ebp-%v]", rhs_e.offset);
-    Col1("%v [ebp-%v]", instruction, dst_e.offset);
+    Col1("mov eax, %v", StackOffset(lhs_e.offset));
+    Col1("cmp eax, %v", StackOffset(rhs_e.offset));
+    Col1("%v %v", instruction, StackOffset(dst_e.offset));
   }
 
   void Lt(ArgIter begin, ArgIter end) {
@@ -360,9 +382,9 @@ struct FuncWriter final {
     string reg_size = Sized(lhs_e.size, "al", "", "eax");
 
     Col1("; t%v = (t%v == t%v).", dst_e.id, lhs_e.id, rhs_e.id);
-    Col1("mov %v, [ebp-%v]", reg_size, lhs_e.offset);
-    Col1("cmp %v, [ebp-%v]", reg_size, rhs_e.offset);
-    Col1("sete [ebp-%v]", dst_e.offset);
+    Col1("mov %v, %v", reg_size, StackOffset(lhs_e.offset));
+    Col1("cmp %v, %v", reg_size, StackOffset(rhs_e.offset));
+    Col1("sete %v", StackOffset(dst_e.offset));
   }
 
   void Not(ArgIter begin, ArgIter end) {
@@ -378,9 +400,9 @@ struct FuncWriter final {
     CHECK(src_e.size == SizeClass::BOOL);
 
     Col1("; t%v = !t%v", dst_e.id, src_e.id);
-    Col1("mov al, [ebp-%v]", src_e.offset);
+    Col1("mov al, %v", StackOffset(src_e.offset));
     Col1("xor al, 1");
-    Col1("mov [ebp-%v], al", dst_e.offset);
+    Col1("mov %v, al", StackOffset(dst_e.offset));
   }
 
   void BoolOpImpl(ArgIter begin, ArgIter end, const string& op_str, const string& instr) {
@@ -399,9 +421,9 @@ struct FuncWriter final {
     CHECK(rhs_e.size == SizeClass::BOOL);
 
     Col1("; t%v = t%v %v t%v.", dst_e.id, lhs_e.id, op_str, rhs_e.id);
-    Col1("mov al, [ebp-%v]", lhs_e.offset);
-    Col1("%v al, [ebp-%v]", instr, rhs_e.offset);
-    Col1("mov [ebp-%v], al", dst_e.offset);
+    Col1("mov al, %v", StackOffset(lhs_e.offset));
+    Col1("%v al, %v", instr, StackOffset(rhs_e.offset));
+    Col1("mov %v, al", StackOffset(dst_e.offset));
   }
 
   void And(ArgIter begin, ArgIter end) {
@@ -426,7 +448,7 @@ struct FuncWriter final {
       string reg_size = Sized(ret_e.size, "al", "ax", "eax");
 
       Col1("; Return t%v.", ret_e.id);
-      Col1("mov %v, [ebp-%v]", reg_size, ret_e.offset);
+      Col1("mov %v, %v", reg_size, StackOffset(ret_e.offset));
     } else {
       Col1("; Return.");
     }
@@ -458,6 +480,8 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
   FuncWriter writer{out};
 
   writer.WritePrologue(stream);
+
+  writer.SetupParams(stream);
 
   for (const Op& op : stream.ops) {
     ArgIter begin = stream.args.begin() + op.begin;
