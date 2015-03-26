@@ -59,18 +59,13 @@ class MethodIRGenerator final : public ast::Visitor {
 
   VISIT_DECL(BinExpr, expr,) {
     SizeClass size = SizeOfTypeId(expr.Lhs().GetTypeId());
-    bool is_assg = false;
-    if (expr.Op().type == lexer::ASSG) {
-      is_assg = true;
-    }
-
-    // Mutable for and/or.
-    Mem lhs = builder_.AllocLocal(size);
-    Mem rhs = builder_.AllocTemp(size);
-    WithResultIn(lhs, is_assg).Visit(expr.LhsPtr());
 
     // Special code for short-circuiting boolean and or.
     if (expr.Op().type == lexer::AND) {
+      Mem lhs = builder_.AllocLocal(size);
+      Mem rhs = builder_.AllocTemp(size);
+      WithResultIn(lhs).Visit(expr.LhsPtr());
+
       LabelId short_circuit = builder_.AllocLabel();
       Mem not_lhs = builder_.AllocLocal(SizeClass::BOOL);
 
@@ -88,6 +83,10 @@ class MethodIRGenerator final : public ast::Visitor {
       return VisitResult::SKIP;
 
     } else if (expr.Op().type == lexer::OR) {
+      Mem lhs = builder_.AllocLocal(size);
+      Mem rhs = builder_.AllocTemp(size);
+      WithResultIn(lhs).Visit(expr.LhsPtr());
+
       LabelId short_circuit = builder_.AllocLabel();
 
       builder_.JmpIf(short_circuit, lhs);
@@ -103,6 +102,14 @@ class MethodIRGenerator final : public ast::Visitor {
       return VisitResult::SKIP;
     }
 
+    bool is_assg = false;
+    if (expr.Op().type == lexer::ASSG) {
+      is_assg = true;
+    }
+
+    Mem lhs = builder_.AllocTemp(size);
+    WithResultIn(lhs, is_assg).Visit(expr.LhsPtr());
+    Mem rhs = builder_.AllocTemp(size);
     WithResultIn(rhs).Visit(expr.RhsPtr());
 
     if (is_assg) {
