@@ -104,10 +104,14 @@ struct Op {
 
 struct Stream {
   bool is_entry_point;
+
   ast::TypeId::Base tid;
   ast::MethodId mid;
+
   vector<u64> args;
   vector<Op> ops;
+
+  vector<SizeClass> params;
 };
 
 } // namespace ir

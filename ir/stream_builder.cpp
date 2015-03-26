@@ -38,6 +38,8 @@ void StreamBuilder::SetAssigned(const std::initializer_list<Mem>& mems) {
 }
 
 Mem StreamBuilder::AllocMem(SizeClass size, bool immutable) {
+  CHECK(params_initialized_);
+
   MemId mid = next_mem_;
   ++next_mem_;
 
@@ -51,9 +53,11 @@ Mem StreamBuilder::AllocMem(SizeClass size, bool immutable) {
 }
 
 void StreamBuilder::DeallocMem(MemId mid) {
-  if (mid == kInvalidMemId) {
+  // We don't emit DEALLOC_MEMs for parameters.
+  if (mid <= params_.size()) {
     return;
   }
+
   auto iter = unassigned_.find(mid);
   CHECK(iter == unassigned_.end());
 
@@ -71,6 +75,23 @@ Mem StreamBuilder::AllocDummy() {
 
 Mem StreamBuilder::AllocLocal(SizeClass size) {
   return AllocMem(size, BoolArg(false));
+}
+
+void StreamBuilder::AllocParams(const vector<SizeClass>& sizes, vector<Mem>* out) {
+  CHECK(!params_initialized_);
+  params_initialized_ = true;
+
+  for (SizeClass size : sizes) {
+    MemId mid = next_mem_;
+    ++next_mem_;
+
+    auto impl = sptr<MemImpl>(new MemImpl{mid, size, this, false});
+    out->push_back(Mem(impl));
+  }
+
+  params_ = sizes;
+
+  CHECK(next_mem_ == (params_.size() + 1));
 }
 
 LabelId StreamBuilder::AllocLabel() {
@@ -205,7 +226,8 @@ void StreamBuilder::Ret(Mem ret) {
 }
 
 Stream StreamBuilder::Build(bool is_entry_point, ast::TypeId::Base tid, ast::MethodId mid) const {
-  return Stream{is_entry_point, tid, mid, args_, ops_};
+  CHECK(params_initialized_);
+  return Stream{is_entry_point, tid, mid, args_, ops_, params_};
 }
 
 } // namespace ir

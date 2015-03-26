@@ -278,6 +278,11 @@ class ProgramIRGenerator final : public ast::Visitor {
       return VisitResult::SKIP;
     }
     StreamBuilder builder;
+
+    // TODO: actually pass real parameter sizes, and put the params in locals_map.
+    vector<Mem> param_mems;
+    builder.AllocParams({}, &param_mems);
+
     vector<ast::LocalVarId> empty_locals;
     map<ast::LocalVarId, Mem> locals_map;
     {
