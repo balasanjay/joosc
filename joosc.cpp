@@ -102,12 +102,7 @@ bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const s
     }
 
     backend::i386::Writer writer;
-    for (const ir::Stream& method_stream : comp_unit.streams) {
-      // TODO: thread method names through ir generation, so we can emit nice
-      // comments.
-
-      writer.WriteFunc(method_stream, &out);
-    }
+    writer.WriteCompUnit(comp_unit, &out);
 
     out << std::flush;
   }

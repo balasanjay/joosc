@@ -8,8 +8,11 @@
 
 using std::ostream;
 
+using ast::MethodId;
+using ast::TypeId;
 using base::Fprintf;
 using base::Sprintf;
+using ir::CompUnit;
 using ir::LabelId;
 using ir::MemId;
 using ir::Op;
@@ -75,13 +78,11 @@ struct FuncWriter final {
     Col0("; Starting method.");
 
     if (stream.is_entry_point) {
-      Col0("global _entry");
       Col0("_entry:");
     }
 
     string label = Sprintf("_t%v_m%v", stream.tid, stream.mid);
 
-    Col0("global %v", label);
     Col0("%v:\n", label);
 
     Col1("; Function prologue.");
@@ -457,6 +458,36 @@ struct FuncWriter final {
     BoolOpImpl(begin, end, "^", "xor");
   }
 
+  void StaticCall(ArgIter begin, ArgIter end) {
+    CHECK((end-begin) >= 4);
+
+    MemId dst = begin[0];
+    TypeId::Base tid = begin[1];
+    MethodId mid = begin[2];
+    u64 nargs = begin[3];
+
+    CHECK(((u64)(end-begin) - 4) == nargs);
+
+    i64 param_offset = cur_offset;
+
+    // Push args onto stack in reverse order.
+    for (ArgIter cur = end; cur != (begin + 4); --cur) {
+      MemId arg = *(cur - 1);
+      const StackEntry& arg_e = stack_map.at(arg);
+
+      string reg = Sized(arg_e.size, "al", "ax", "eax");
+      Col1("mov %v, %v", reg, StackOffset(arg_e.offset));
+      Col1("mov %v, %v", StackOffset(param_offset), reg);
+
+      param_offset += 4;
+    }
+
+    Col1("sub esp, %v", param_offset);
+    Col1("call t%v_m%v", tid, mid);
+    Col1("add esp, %v", param_offset);
+    Col1("mov %v, eax", StackOffset(stack_map.at(dst).offset));
+  }
+
   void Ret(ArgIter begin, ArgIter end) {
     CHECK((end-begin) <= 1);
 
@@ -494,6 +525,46 @@ struct FuncWriter final {
 };
 
 } // namespace
+
+void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
+  static string kMethodNameFmt = "_t%v_m%v";
+
+  set<string> externs;
+  set<string> globals;
+  for (const Stream& method_stream : comp_unit.streams) {
+    if (method_stream.is_entry_point) {
+      globals.insert("_entry");
+    }
+
+    globals.insert(Sprintf(kMethodNameFmt, method_stream.tid, method_stream.mid));
+
+    for (const Op& op : method_stream.ops) {
+      // TODO: also will need things like static fields here.
+      if (op.type == OpType::STATIC_CALL) {
+        TypeId::Base tid = method_stream.args[op.begin+1];
+        MethodId mid = method_stream.args[op.begin+2];
+
+        externs.insert(Sprintf(kMethodNameFmt, tid, mid));
+      }
+    }
+  }
+
+  Fprintf(out, "; Predeclaring all necessary symbols.\n");
+  for (const auto& global : globals) {
+    // We cannot extern a symbol we are declaring in this file, so we remove
+    // any local method calls from the externs map.
+    externs.erase(global);
+
+    Fprintf(out, "global %v\n", global);
+  }
+  for (const auto& ext : externs) {
+    Fprintf(out, "extern %v\n", ext);
+  }
+
+  for (const ir::Stream& method_stream : comp_unit.streams) {
+    WriteFunc(method_stream, out);
+  }
+}
 
 void Writer::WriteFunc(const Stream& stream, ostream* out) const {
   FuncWriter writer{out};
@@ -573,11 +644,13 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::XOR:
         writer.Xor(begin, end);
         break;
+      case OpType::STATIC_CALL:
+        writer.StaticCall(begin, end);
+        break;
       case OpType::RET:
         writer.Ret(begin, end);
         break;
 
-      UNIMPLEMENTED_OP(STATIC_CALL);
       UNIMPLEMENTED_OP(SIGN_EXTEND);
       UNIMPLEMENTED_OP(ZERO_EXTEND);
       UNIMPLEMENTED_OP(TRUNCATE);
