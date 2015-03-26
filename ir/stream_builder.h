@@ -46,6 +46,15 @@ class StreamBuilder {
   // Emit *dst = *lhs - *rhs.
   void Sub(Mem dst, Mem lhs, Mem rhs);
 
+  // Emit *dst = *lhs * *rhs.
+  void Mul(Mem dst, Mem lhs, Mem rhs);
+
+  // Emit *dst = *lhs / *rhs.
+  void Div(Mem dst, Mem lhs, Mem rhs);
+
+  // Emit *dst = *lhs % *rhs.
+  void Mod(Mem dst, Mem lhs, Mem rhs);
+
   // Emit an unconditional jump to the label lid.
   // Building the Stream will validate that the referenced label exists.
   void Jmp(LabelId lid);
@@ -92,6 +101,7 @@ class StreamBuilder {
   void DeallocMem(MemId);
 
   void Const(Mem, u64);
+  void Arithmetic(Mem, Mem, Mem, OpType);
 
   void AssertAssigned(const std::initializer_list<Mem>& mems) const;
   void SetAssigned(const std::initializer_list<Mem>& mems);

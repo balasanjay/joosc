@@ -45,6 +45,15 @@ enum class OpType {
   // (Mem, Mem, Mem).
   SUB,
 
+  // (Mem, Mem, Mem).
+  MUL,
+
+  // (Mem, Mem, Mem).
+  DIV,
+
+  // (Mem, Mem, Mem).
+  MOD,
+
   // (LabelId).
   JMP,
 

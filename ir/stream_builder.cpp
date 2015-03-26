@@ -116,16 +116,30 @@ void StreamBuilder::MovToAddr(Mem dst, Mem src) {
   // TODO: We're not sure exactly how to represent what's assigned.
 }
 
-void StreamBuilder::Add(Mem dst, Mem lhs, Mem rhs) {
+void StreamBuilder::Arithmetic(Mem dst, Mem lhs, Mem rhs, OpType op) {
   AssertAssigned({lhs, rhs});
-  AppendOp(OpType::ADD, {dst.Id(), lhs.Id(), rhs.Id()});
+  AppendOp(op, {dst.Id(), lhs.Id(), rhs.Id()});
   SetAssigned({dst});
 }
 
+void StreamBuilder::Add(Mem dst, Mem lhs, Mem rhs) {
+  Arithmetic(dst, lhs, rhs, OpType::ADD);
+}
+
 void StreamBuilder::Sub(Mem dst, Mem lhs, Mem rhs) {
-  AssertAssigned({lhs, rhs});
-  AppendOp(OpType::SUB, {dst.Id(), lhs.Id(), rhs.Id()});
-  SetAssigned({dst});
+  Arithmetic(dst, lhs, rhs, OpType::SUB);
+}
+
+void StreamBuilder::Mul(Mem dst, Mem lhs, Mem rhs) {
+  Arithmetic(dst, lhs, rhs, OpType::MUL);
+}
+
+void StreamBuilder::Div(Mem dst, Mem lhs, Mem rhs) {
+  Arithmetic(dst, lhs, rhs, OpType::DIV);
+}
+
+void StreamBuilder::Mod(Mem dst, Mem lhs, Mem rhs) {
+  Arithmetic(dst, lhs, rhs, OpType::MOD);
 }
 
 void StreamBuilder::Jmp(LabelId lid) {
