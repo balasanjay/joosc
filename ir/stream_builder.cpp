@@ -122,6 +122,12 @@ void StreamBuilder::Add(Mem dst, Mem lhs, Mem rhs) {
   SetAssigned({dst});
 }
 
+void StreamBuilder::Sub(Mem dst, Mem lhs, Mem rhs) {
+  AssertAssigned({lhs, rhs});
+  AppendOp(OpType::SUB, {dst.Id(), lhs.Id(), rhs.Id()});
+  SetAssigned({dst});
+}
+
 void StreamBuilder::Jmp(LabelId lid) {
   AppendOp(OpType::JMP, {lid});
 }

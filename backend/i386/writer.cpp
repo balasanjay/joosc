@@ -199,7 +199,7 @@ struct FuncWriter final {
     Col1("mov [%v], %v", dst_reg, src_reg);
   }
 
-  void Add(ArgIter begin, ArgIter end) {
+  void Arithmetic(ArgIter begin, ArgIter end, bool add) {
     EXPECT_NARGS(3);
 
     MemId dst = begin[0];
@@ -214,10 +214,21 @@ struct FuncWriter final {
     CHECK(lhs_e.size == SizeClass::INT);
     CHECK(rhs_e.size == SizeClass::INT);
 
-    Col1("; t%v = t%v + t%v.", dst_e.id, lhs_e.id, rhs_e.id);
+    string str_op = add ? "+" : "-";
+    string instr = add ? "add" : "sub";
+
+    Col1("; t%v = t%v %v t%v.", dst_e.id, lhs_e.id, str_op, rhs_e.id);
     Col1("mov eax, [ebp-%v]", lhs_e.offset);
-    Col1("add eax, [ebp-%v]", rhs_e.offset);
+    Col1("%v eax, [ebp-%v]", instr, rhs_e.offset);
     Col1("mov [ebp-%v], eax", dst_e.offset);
+  }
+
+  void Add(ArgIter begin, ArgIter end) {
+    Arithmetic(begin, end, true);
+  }
+
+  void Sub(ArgIter begin, ArgIter end) {
+    Arithmetic(begin, end, false);
   }
 
   void Jmp(ArgIter begin, ArgIter end) {
@@ -387,6 +398,9 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         break;
       case OpType::ADD:
         writer.Add(begin, end);
+        break;
+      case OpType::SUB:
+        writer.Sub(begin, end);
         break;
       case OpType::JMP:
         writer.Jmp(begin, end);

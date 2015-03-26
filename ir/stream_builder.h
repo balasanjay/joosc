@@ -43,6 +43,9 @@ class StreamBuilder {
   // Emit *dst = *lhs + *rhs.
   void Add(Mem dst, Mem lhs, Mem rhs);
 
+  // Emit *dst = *lhs - *rhs.
+  void Sub(Mem dst, Mem lhs, Mem rhs);
+
   // Emit an unconditional jump to the label lid.
   // Building the Stream will validate that the referenced label exists.
   void Jmp(LabelId lid);
