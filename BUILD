@@ -3,8 +3,6 @@ package(default_visibility = ["//visibility:public"])
 cc_binary(
     name = "joosc",
     srcs = [
-        "joosc.cpp",
-        "joosc.h",
         "joosc_main.cpp",
     ],
     deps = [
@@ -22,7 +20,9 @@ cc_library(
     ],
     deps = [
         "//ast",
+        "//backend/i386",
         "//base",
+        "//ir",
         "//lexer",
         "//parser",
         "//types",

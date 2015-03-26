@@ -67,15 +67,15 @@ TEST_F(FileSetTest, MultiEntry) {
 
   File *file0 = fs->Get(0);
   EXPECT_EQ(1, file0->Size());
-  EXPECT_EQ('a', file0->At(0));
+  EXPECT_EQ('b', file0->At(0));
   EXPECT_EQ("base/testdata", file0->Dirname());
-  EXPECT_EQ("a.txt", file0->Basename());
+  EXPECT_EQ("b.txt", file0->Basename());
 
   File *file1 = fs->Get(1);
   EXPECT_EQ(1, file1->Size());
-  EXPECT_EQ('b', file1->At(0));
+  EXPECT_EQ('a', file1->At(0));
   EXPECT_EQ("base/testdata", file1->Dirname());
-  EXPECT_EQ("b.txt", file1->Basename());
+  EXPECT_EQ("a.txt", file1->Basename());
 }
 
 }  // namespace base

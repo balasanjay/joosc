@@ -1,9 +1,11 @@
 #include "joosc.h"
 
+#include <fstream>
 #include <iostream>
 
 #include "ast/ast.h"
 #include "ast/print_visitor.h"
+#include "backend/i386/writer.h"
 #include "base/error.h"
 #include "base/errorlist.h"
 #include "base/fileset.h"
@@ -15,6 +17,7 @@
 using std::cerr;
 using std::cout;
 using std::endl;
+using std::ofstream;
 using std::ostream;
 
 using ast::PrintVisitor;
@@ -79,7 +82,64 @@ sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, Err
   return program;
 }
 
-bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out, ostream* err) {
+bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, std::ostream* err) {
+  ir::Program ir_prog = ir::GenerateIR(prog);
+  if (stage == CompilerStage::GEN_IR) {
+    return true;
+  }
+
+  // TODO: have a more generic backend mechanism.
+  bool success = true;
+  for (const ir::CompUnit& comp_unit : ir_prog.units) {
+    string fname = dir + "/" + comp_unit.filename;
+
+    ofstream out(fname);
+    if (!out) {
+      // TODO: make error pretty.
+      *err << "Could not open output file: " << fname << "\n";
+      success = false;
+      continue;
+    }
+
+    backend::i386::Writer writer;
+    for (const ir::Stream& method_stream : comp_unit.streams) {
+      // TODO: thread method names through ir generation, so we can emit nice
+      // comments.
+
+      writer.WriteFunc(method_stream, &out);
+    }
+
+    out << std::flush;
+  }
+
+
+  do {
+    string fname = dir + "/start.s";
+    ofstream out(fname);
+    if (!out) {
+      // TODO: make error pretty.
+      *err << "Could not open output file: " << fname << "\n";
+      success = false;
+      break;
+    }
+
+    out << "extern _entry\n";
+    out << "global _start\n";
+    out << "_start:\n";
+    out << "push ebp\n";
+    out << "mov ebp, esp\n";
+    out << "call _entry\n";
+    out << "pop ebp\n";
+    out << "mov ebx, eax\n";
+    out << "mov eax, 1\n";
+    out << "int 0x80\n";
+
+  } while (0);
+
+  return success;
+}
+
+bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream*, ostream* err) {
   // Open files.
   FileSet* fs = nullptr;
   {
@@ -105,16 +165,10 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream* out
   if (PrintErrors(errors, err, fs)) {
     return false;
   }
-
-  if (stage != CompilerStage::ALL) {
+  if (stage == CompilerStage::TYPE_CHECK) {
     return true;
   }
 
-  // Print out the AST.
-  {
-    PrintVisitor printer = PrintVisitor::Josh(out);
-    printer.Visit(program);
-  }
-
-  return true;
+  // TODO.
+  return CompilerBackend(stage, program, "output", err);
 }

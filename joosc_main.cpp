@@ -1,5 +1,6 @@
-#include "joosc.h"
 #include <iostream>
+
+#include "joosc.h"
 
 using std::cout;
 using std::cerr;

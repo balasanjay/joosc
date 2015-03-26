@@ -1,9 +1,6 @@
 #include "base/file.h"
 #include "base/file_impl.h"
 #include "base/fileset.h"
-#include <algorithm>
-
-using std::sort;
 
 namespace base {
 
@@ -43,18 +40,6 @@ bool FileSet::Builder::Build(FileSet** fs, ErrorList* errors) const {
     *fs = nullptr;
     return false;
   }
-
-  // Sort entries, so that compilation order is deterministic.
-  // TODO: replace this with a lambda if we can get C++11 on the school servers.
-  struct {
-    bool operator()(File* left, File* right) {
-      if (left->Dirname() != right->Dirname()) {
-        return left->Dirname() < right->Dirname();
-      }
-      return left->Basename() < right->Basename();
-    }
-  } cmp;
-  sort(files.begin(), files.end(), cmp);
 
   // TODO: figure out what we should do with duplicate file names, invalid file
   // names, etc. It's possible that some of these will be caught by later
