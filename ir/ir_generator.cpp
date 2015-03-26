@@ -68,7 +68,7 @@ class MethodIRGenerator final : public ast::Visitor {
 
       LabelId short_circuit = builder_.AllocLabel();
       {
-        // Short circuit and with a false result if lhs is false.
+        // Short circuit 'and' with a false result if lhs is false.
         Mem not_lhs = builder_.AllocLocal(SizeClass::BOOL);
         builder_.Not(not_lhs, lhs);
         builder_.JmpIf(short_circuit, not_lhs);
@@ -89,7 +89,7 @@ class MethodIRGenerator final : public ast::Visitor {
       Mem rhs = builder_.AllocTemp(size);
       WithResultIn(lhs).Visit(expr.LhsPtr());
 
-      // Short circuit or with a true result if lhs is true.
+      // Short circuit 'or' with a true result if lhs is true.
       LabelId short_circuit = builder_.AllocLabel();
       builder_.JmpIf(short_circuit, lhs);
 
