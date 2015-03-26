@@ -59,6 +59,51 @@ class MethodIRGenerator final : public ast::Visitor {
 
   VISIT_DECL(BinExpr, expr,) {
     SizeClass size = SizeOfTypeId(expr.Lhs().GetTypeId());
+
+    // Special code for short-circuiting boolean and or.
+    if (expr.Op().type == lexer::AND) {
+      Mem lhs = builder_.AllocLocal(size);
+      Mem rhs = builder_.AllocTemp(size);
+      WithResultIn(lhs).Visit(expr.LhsPtr());
+
+      LabelId short_circuit = builder_.AllocLabel();
+      {
+        // Short circuit 'and' with a false result if lhs is false.
+        Mem not_lhs = builder_.AllocLocal(SizeClass::BOOL);
+        builder_.Not(not_lhs, lhs);
+        builder_.JmpIf(short_circuit, not_lhs);
+      }
+
+      // Rhs code.
+      WithResultIn(rhs).Visit(expr.RhsPtr());
+      // Using lhs as answer.
+      builder_.Mov(lhs, rhs);
+
+      builder_.EmitLabel(short_circuit);
+      builder_.Mov(res_, lhs);
+
+      return VisitResult::SKIP;
+
+    } else if (expr.Op().type == lexer::OR) {
+      Mem lhs = builder_.AllocLocal(size);
+      Mem rhs = builder_.AllocTemp(size);
+      WithResultIn(lhs).Visit(expr.LhsPtr());
+
+      // Short circuit 'or' with a true result if lhs is true.
+      LabelId short_circuit = builder_.AllocLabel();
+      builder_.JmpIf(short_circuit, lhs);
+
+      // Rhs code.
+      WithResultIn(rhs).Visit(expr.RhsPtr());
+      builder_.Mov(lhs, rhs);
+
+      // Short circuit code.
+      builder_.EmitLabel(short_circuit);
+      builder_.Mov(res_, lhs);
+
+      return VisitResult::SKIP;
+    }
+
     bool is_assg = false;
     if (expr.Op().type == lexer::ASSG) {
       is_assg = true;
@@ -66,7 +111,6 @@ class MethodIRGenerator final : public ast::Visitor {
 
     Mem lhs = builder_.AllocTemp(size);
     WithResultIn(lhs, is_assg).Visit(expr.LhsPtr());
-
     Mem rhs = builder_.AllocTemp(size);
     WithResultIn(rhs).Visit(expr.RhsPtr());
 
