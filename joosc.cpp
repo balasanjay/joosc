@@ -10,6 +10,7 @@
 #include "base/errorlist.h"
 #include "base/fileset.h"
 #include "lexer/lexer.h"
+#include "opt/opt.h"
 #include "parser/parser.h"
 #include "types/types.h"
 #include "weeder/weeder.h"
@@ -87,6 +88,9 @@ bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const s
   if (stage == CompilerStage::GEN_IR) {
     return true;
   }
+
+  // Run through IR-level-optimizations.
+  ir_prog = opt::Optimize(ir_prog);
 
   // TODO: have a more generic backend mechanism.
   bool success = true;

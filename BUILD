@@ -24,6 +24,7 @@ cc_library(
         "//base",
         "//ir",
         "//lexer",
+        "//opt",
         "//parser",
         "//types",
         "//weeder",
