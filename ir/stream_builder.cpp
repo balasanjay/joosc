@@ -38,6 +38,8 @@ void StreamBuilder::SetAssigned(const std::initializer_list<Mem>& mems) {
 }
 
 Mem StreamBuilder::AllocMem(SizeClass size, bool immutable) {
+  CHECK(params_initialized_);
+
   MemId mid = next_mem_;
   ++next_mem_;
 
@@ -71,6 +73,17 @@ Mem StreamBuilder::AllocDummy() {
 
 Mem StreamBuilder::AllocLocal(SizeClass size) {
   return AllocMem(size, BoolArg(false));
+}
+
+void StreamBuilder::AllocParams(const vector<SizeClass>& sizes, vector<Mem>* out) {
+  CHECK(!params_initialized_);
+  params_initialized_ = true;
+
+  for (SizeClass size : sizes) {
+    out->push_back(AllocLocal(size));
+  }
+
+  params_ = sizes;
 }
 
 LabelId StreamBuilder::AllocLabel() {
@@ -205,7 +218,8 @@ void StreamBuilder::Ret(Mem ret) {
 }
 
 Stream StreamBuilder::Build(bool is_entry_point, ast::TypeId::Base tid, ast::MethodId mid) const {
-  return Stream{is_entry_point, tid, mid, args_, ops_};
+  CHECK(params_initialized_);
+  return Stream{is_entry_point, tid, mid, args_, ops_, params_};
 }
 
 } // namespace ir
