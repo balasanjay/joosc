@@ -34,8 +34,25 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(MethodDecl, decl,) {
-    // TODO: Calling semantics.
+    // Get param sizes.
+    auto params = decl.Params().Params();
+    vector<SizeClass> param_sizes;
+    for (int i = 0; i < params.Size(); ++i) {
+      param_sizes.push_back(SizeOfTypeId(params.At(i)->GetType().GetTypeId()));
+    }
+
+    // Allocate params.
+    vector<Mem> param_mems;
+    builder_.AllocParams(param_sizes, &param_mems);
+
+    // Add params to local map.
+    for (int i = 0; i < params.Size(); ++i) {
+      locals_map_.insert({params.At(i)->GetVarId(), param_mems.at(i)});
+    }
+
     Visit(decl.BodyPtr());
+    // Param Mems will be deallocated when map is deallocated.
+
     return VisitResult::SKIP;
   }
 
@@ -322,10 +339,6 @@ class ProgramIRGenerator final : public ast::Visitor {
       return VisitResult::SKIP;
     }
     StreamBuilder builder;
-
-    // TODO: actually pass real parameter sizes, and put the params in locals_map.
-    vector<Mem> param_mems;
-    builder.AllocParams({}, &param_mems);
 
     vector<ast::LocalVarId> empty_locals;
     map<ast::LocalVarId, Mem> locals_map;
