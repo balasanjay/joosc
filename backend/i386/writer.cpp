@@ -199,7 +199,7 @@ struct FuncWriter final {
     Col1("mov [%v], %v", dst_reg, src_reg);
   }
 
-  void Arithmetic(ArgIter begin, ArgIter end, bool add) {
+  void AddSub(ArgIter begin, ArgIter end, bool add) {
     EXPECT_NARGS(3);
 
     MemId dst = begin[0];
@@ -224,11 +224,11 @@ struct FuncWriter final {
   }
 
   void Add(ArgIter begin, ArgIter end) {
-    Arithmetic(begin, end, true);
+    AddSub(begin, end, true);
   }
 
   void Sub(ArgIter begin, ArgIter end) {
-    Arithmetic(begin, end, false);
+    AddSub(begin, end, false);
   }
 
   void Mul(ArgIter begin, ArgIter end) {
