@@ -4,6 +4,9 @@
 
 using std::initializer_list;
 
+using ast::MethodId;
+using ast::TypeId;
+
 namespace ir {
 
 namespace {
@@ -214,6 +217,21 @@ void StreamBuilder::Or(Mem dst, Mem lhs, Mem rhs) {
 
 void StreamBuilder::Xor(Mem dst, Mem lhs, Mem rhs) {
   BinOp(dst, lhs, rhs, OpType::XOR);
+}
+
+void StreamBuilder::StaticCall(Mem dst, TypeId::Base tid, MethodId mid, const vector<Mem>& args) {
+  size_t begin = args_.size();
+
+  args_.push_back(dst.Id());
+  args_.push_back(tid);
+  args_.push_back(mid);
+  args_.push_back(args.size());
+  for (auto val : args) {
+    AssertAssigned({val});
+    args_.push_back(val.Id());
+  }
+
+  ops_.push_back({OpType::STATIC_CALL, begin, args_.size()});
 }
 
 void StreamBuilder::Ret() {
