@@ -83,6 +83,9 @@ class StreamBuilder {
   // Emit *dst = !*src. dst and src must have SizeClass BOOL.
   void Not(Mem dst, Mem src);
 
+  // Emit *dst = -(*src). dst and src must have SizeClass INT.
+  void Neg(Mem dst, Mem src);
+
   // Emit *dst = *lhs & *rhs. They must all have SizeClass BOOL.
   void And(Mem dst, Mem lhs, Mem rhs);
 
@@ -111,6 +114,7 @@ class StreamBuilder {
 
   void Const(Mem, u64);
   void BinOp(Mem, Mem, Mem, OpType);
+  void UnOp(Mem, Mem, OpType);
 
   void AssertAssigned(const std::initializer_list<Mem>& mems) const;
   void SetAssigned(const std::initializer_list<Mem>& mems);

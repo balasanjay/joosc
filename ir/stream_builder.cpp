@@ -122,6 +122,12 @@ void StreamBuilder::BinOp(Mem dst, Mem lhs, Mem rhs, OpType op) {
   SetAssigned({dst});
 }
 
+void StreamBuilder::UnOp(Mem dst, Mem src, OpType op) {
+  AssertAssigned({src});
+  AppendOp(op, {dst.Id(), src.Id()});
+  SetAssigned({dst});
+}
+
 void StreamBuilder::Add(Mem dst, Mem lhs, Mem rhs) {
   BinOp(dst, lhs, rhs, OpType::ADD);
 }
@@ -178,9 +184,11 @@ void StreamBuilder::Neq(Mem dst, Mem lhs, Mem rhs) {
 }
 
 void StreamBuilder::Not(Mem dst, Mem src) {
-  AssertAssigned({src});
-  AppendOp(OpType::NOT, {dst.Id(), src.Id()});
-  SetAssigned({dst});
+  UnOp(dst, src, OpType::NOT);
+}
+
+void StreamBuilder::Neg(Mem dst, Mem src) {
+  UnOp(dst, src, OpType::NEG);
 }
 
 void StreamBuilder::And(Mem dst, Mem lhs, Mem rhs) {

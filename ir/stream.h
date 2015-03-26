@@ -72,6 +72,9 @@ enum class OpType {
   // (Mem, Mem).
   NOT,
 
+  // (Mem, Mem).
+  NEG,
+
   // (Mem, Mem, Mem).
   AND,
 
