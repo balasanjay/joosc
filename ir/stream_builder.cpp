@@ -116,30 +116,30 @@ void StreamBuilder::MovToAddr(Mem dst, Mem src) {
   // TODO: We're not sure exactly how to represent what's assigned.
 }
 
-void StreamBuilder::Arithmetic(Mem dst, Mem lhs, Mem rhs, OpType op) {
+void StreamBuilder::BinOp(Mem dst, Mem lhs, Mem rhs, OpType op) {
   AssertAssigned({lhs, rhs});
   AppendOp(op, {dst.Id(), lhs.Id(), rhs.Id()});
   SetAssigned({dst});
 }
 
 void StreamBuilder::Add(Mem dst, Mem lhs, Mem rhs) {
-  Arithmetic(dst, lhs, rhs, OpType::ADD);
+  BinOp(dst, lhs, rhs, OpType::ADD);
 }
 
 void StreamBuilder::Sub(Mem dst, Mem lhs, Mem rhs) {
-  Arithmetic(dst, lhs, rhs, OpType::SUB);
+  BinOp(dst, lhs, rhs, OpType::SUB);
 }
 
 void StreamBuilder::Mul(Mem dst, Mem lhs, Mem rhs) {
-  Arithmetic(dst, lhs, rhs, OpType::MUL);
+  BinOp(dst, lhs, rhs, OpType::MUL);
 }
 
 void StreamBuilder::Div(Mem dst, Mem lhs, Mem rhs) {
-  Arithmetic(dst, lhs, rhs, OpType::DIV);
+  BinOp(dst, lhs, rhs, OpType::DIV);
 }
 
 void StreamBuilder::Mod(Mem dst, Mem lhs, Mem rhs) {
-  Arithmetic(dst, lhs, rhs, OpType::MOD);
+  BinOp(dst, lhs, rhs, OpType::MOD);
 }
 
 void StreamBuilder::Jmp(LabelId lid) {
@@ -152,15 +152,11 @@ void StreamBuilder::JmpIf(LabelId lid, Mem cond) {
 }
 
 void StreamBuilder::Lt(Mem dst, Mem lhs, Mem rhs) {
-  AssertAssigned({lhs, rhs});
-  AppendOp(OpType::LT, {dst.Id(), lhs.Id(), rhs.Id()});
-  SetAssigned({dst});
+  BinOp(dst, lhs, rhs, OpType::LT);
 }
 
 void StreamBuilder::Leq(Mem dst, Mem lhs, Mem rhs) {
-  AssertAssigned({lhs, rhs});
-  AppendOp(OpType::LEQ, {dst.Id(), lhs.Id(), rhs.Id()});
-  SetAssigned({dst});
+  BinOp(dst, lhs, rhs, OpType::LEQ);
 }
 
 void StreamBuilder::Gt(Mem dst, Mem lhs, Mem rhs) {
@@ -172,9 +168,7 @@ void StreamBuilder::Geq(Mem dst, Mem lhs, Mem rhs) {
 }
 
 void StreamBuilder::Eq(Mem dst, Mem lhs, Mem rhs) {
-  AssertAssigned({lhs, rhs});
-  AppendOp(OpType::EQ, {dst.Id(), lhs.Id(), rhs.Id()});
-  SetAssigned({dst});
+  BinOp(dst, lhs, rhs, OpType::EQ);
 }
 
 void StreamBuilder::Neq(Mem dst, Mem lhs, Mem rhs) {
@@ -187,6 +181,18 @@ void StreamBuilder::Not(Mem dst, Mem src) {
   AssertAssigned({src});
   AppendOp(OpType::NOT, {dst.Id(), src.Id()});
   SetAssigned({dst});
+}
+
+void StreamBuilder::And(Mem dst, Mem lhs, Mem rhs) {
+  BinOp(dst, lhs, rhs, OpType::AND);
+}
+
+void StreamBuilder::Or(Mem dst, Mem lhs, Mem rhs) {
+  BinOp(dst, lhs, rhs, OpType::OR);
+}
+
+void StreamBuilder::Xor(Mem dst, Mem lhs, Mem rhs) {
+  BinOp(dst, lhs, rhs, OpType::XOR);
 }
 
 void StreamBuilder::Ret() {

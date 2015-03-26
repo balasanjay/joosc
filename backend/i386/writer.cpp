@@ -383,6 +383,39 @@ struct FuncWriter final {
     Col1("mov [ebp-%v], al", dst_e.offset);
   }
 
+  void BoolOpImpl(ArgIter begin, ArgIter end, const string& op_str, const string& instr) {
+    EXPECT_NARGS(3);
+
+    MemId dst = begin[0];
+    MemId lhs = begin[1];
+    MemId rhs = begin[2];
+
+    const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& lhs_e = stack_map.at(lhs);
+    const StackEntry& rhs_e = stack_map.at(rhs);
+
+    CHECK(dst_e.size == SizeClass::BOOL);
+    CHECK(lhs_e.size == SizeClass::BOOL);
+    CHECK(rhs_e.size == SizeClass::BOOL);
+
+    Col1("; t%v = t%v %v t%v.", dst_e.id, lhs_e.id, op_str, rhs_e.id);
+    Col1("mov al, [ebp-%v]", lhs_e.offset);
+    Col1("%v al, [ebp-%v]", instr, rhs_e.offset);
+    Col1("mov [ebp-%v], al", dst_e.offset);
+  }
+
+  void And(ArgIter begin, ArgIter end) {
+    BoolOpImpl(begin, end, "&", "and");
+  }
+
+  void Or(ArgIter begin, ArgIter end) {
+    BoolOpImpl(begin, end, "|", "or");
+  }
+
+  void Xor(ArgIter begin, ArgIter end) {
+    BoolOpImpl(begin, end, "^", "xor");
+  }
+
   void Ret(ArgIter begin, ArgIter end) {
     CHECK((end-begin) <= 1);
 
@@ -484,6 +517,15 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         break;
       case OpType::NOT:
         writer.Not(begin, end);
+        break;
+      case OpType::AND:
+        writer.And(begin, end);
+        break;
+      case OpType::OR:
+        writer.Or(begin, end);
+        break;
+      case OpType::XOR:
+        writer.Xor(begin, end);
         break;
       case OpType::RET:
         writer.Ret(begin, end);

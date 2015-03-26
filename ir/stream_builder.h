@@ -83,6 +83,15 @@ class StreamBuilder {
   // Emit *dst = !*src. dst and src must have SizeClass BOOL.
   void Not(Mem dst, Mem src);
 
+  // Emit *dst = *lhs & *rhs. They must all have SizeClass BOOL.
+  void And(Mem dst, Mem lhs, Mem rhs);
+
+  // Emit *dst = *lhs | *rhs. They must all have SizeClass BOOL.
+  void Or(Mem dst, Mem lhs, Mem rhs);
+
+  // Emit *dst = *lhs ^ *rhs. They must all have SizeClass BOOL.
+  void Xor(Mem dst, Mem lhs, Mem rhs);
+
   // Return with no value.
   void Ret();
 
@@ -101,7 +110,7 @@ class StreamBuilder {
   void DeallocMem(MemId);
 
   void Const(Mem, u64);
-  void Arithmetic(Mem, Mem, Mem, OpType);
+  void BinOp(Mem, Mem, Mem, OpType);
 
   void AssertAssigned(const std::initializer_list<Mem>& mems) const;
   void SetAssigned(const std::initializer_list<Mem>& mems);

@@ -72,6 +72,15 @@ enum class OpType {
   // (Mem, Mem).
   NOT,
 
+  // (Mem, Mem, Mem).
+  AND,
+
+  // (Mem, Mem, Mem).
+  OR,
+
+  // (Mem, Mem, Mem).
+  XOR,
+
   // (Mem, Mem).
   SIGN_EXTEND,
 
