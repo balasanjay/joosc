@@ -199,7 +199,7 @@ struct FuncWriter final {
     Col1("mov [%v], %v", dst_reg, src_reg);
   }
 
-  void Add(ArgIter begin, ArgIter end) {
+  void AddSub(ArgIter begin, ArgIter end, bool add) {
     EXPECT_NARGS(3);
 
     MemId dst = begin[0];
@@ -214,10 +214,77 @@ struct FuncWriter final {
     CHECK(lhs_e.size == SizeClass::INT);
     CHECK(rhs_e.size == SizeClass::INT);
 
-    Col1("; t%v = t%v + t%v.", dst_e.id, lhs_e.id, rhs_e.id);
+    string op_str = add ? "+" : "-";
+    string instr = add ? "add" : "sub";
+
+    Col1("; t%v = t%v %v t%v.", dst_e.id, lhs_e.id, op_str, rhs_e.id);
     Col1("mov eax, [ebp-%v]", lhs_e.offset);
-    Col1("add eax, [ebp-%v]", rhs_e.offset);
+    Col1("%v eax, [ebp-%v]", instr, rhs_e.offset);
     Col1("mov [ebp-%v], eax", dst_e.offset);
+  }
+
+  void Add(ArgIter begin, ArgIter end) {
+    AddSub(begin, end, true);
+  }
+
+  void Sub(ArgIter begin, ArgIter end) {
+    AddSub(begin, end, false);
+  }
+
+  void Mul(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(3);
+
+    MemId dst = begin[0];
+    MemId lhs = begin[1];
+    MemId rhs = begin[2];
+
+    const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& lhs_e = stack_map.at(lhs);
+    const StackEntry& rhs_e = stack_map.at(rhs);
+
+    CHECK(dst_e.size == SizeClass::INT);
+    CHECK(lhs_e.size == SizeClass::INT);
+    CHECK(rhs_e.size == SizeClass::INT);
+
+    Col1("; t%v = t%v * t%v.", dst_e.id, lhs_e.id, rhs_e.id);
+    Col1("mov eax, [ebp-%v]", lhs_e.offset);
+    Col1("mov ebx, [ebp-%v]", rhs_e.offset);
+    Col1("imul ebx");
+    Col1("mov [ebp-%v], eax", dst_e.offset);
+  }
+
+  void DivMod(ArgIter begin, ArgIter end, bool div) {
+    EXPECT_NARGS(3);
+
+    MemId dst = begin[0];
+    MemId lhs = begin[1];
+    MemId rhs = begin[2];
+
+    const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& lhs_e = stack_map.at(lhs);
+    const StackEntry& rhs_e = stack_map.at(rhs);
+
+    CHECK(dst_e.size == SizeClass::INT);
+    CHECK(lhs_e.size == SizeClass::INT);
+    CHECK(rhs_e.size == SizeClass::INT);
+
+    string op_str = div ? "/" : "%";
+    string res_reg = div ? "eax" : "edx";
+
+    Col1("; t%v = t%v %v t%v.", dst_e.id, lhs_e.id, op_str, rhs_e.id);
+    Col1("mov eax, [ebp-%v]", lhs_e.offset);
+    Col1("cdq"); // Sign-extend EAX through to EDX.
+    Col1("mov ebx, [ebp-%v]", rhs_e.offset);
+    Col1("idiv ebx");
+    Col1("mov [ebp-%v], %v", dst_e.offset, res_reg);
+  }
+
+  void Div(ArgIter begin, ArgIter end) {
+    DivMod(begin, end, true);
+  }
+
+  void Mod(ArgIter begin, ArgIter end) {
+    DivMod(begin, end, false);
   }
 
   void Jmp(ArgIter begin, ArgIter end) {
@@ -316,6 +383,39 @@ struct FuncWriter final {
     Col1("mov [ebp-%v], al", dst_e.offset);
   }
 
+  void BoolOpImpl(ArgIter begin, ArgIter end, const string& op_str, const string& instr) {
+    EXPECT_NARGS(3);
+
+    MemId dst = begin[0];
+    MemId lhs = begin[1];
+    MemId rhs = begin[2];
+
+    const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& lhs_e = stack_map.at(lhs);
+    const StackEntry& rhs_e = stack_map.at(rhs);
+
+    CHECK(dst_e.size == SizeClass::BOOL);
+    CHECK(lhs_e.size == SizeClass::BOOL);
+    CHECK(rhs_e.size == SizeClass::BOOL);
+
+    Col1("; t%v = t%v %v t%v.", dst_e.id, lhs_e.id, op_str, rhs_e.id);
+    Col1("mov al, [ebp-%v]", lhs_e.offset);
+    Col1("%v al, [ebp-%v]", instr, rhs_e.offset);
+    Col1("mov [ebp-%v], al", dst_e.offset);
+  }
+
+  void And(ArgIter begin, ArgIter end) {
+    BoolOpImpl(begin, end, "&", "and");
+  }
+
+  void Or(ArgIter begin, ArgIter end) {
+    BoolOpImpl(begin, end, "|", "or");
+  }
+
+  void Xor(ArgIter begin, ArgIter end) {
+    BoolOpImpl(begin, end, "^", "xor");
+  }
+
   void Ret(ArgIter begin, ArgIter end) {
     CHECK((end-begin) <= 1);
 
@@ -388,6 +488,18 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::ADD:
         writer.Add(begin, end);
         break;
+      case OpType::SUB:
+        writer.Sub(begin, end);
+        break;
+      case OpType::MUL:
+        writer.Mul(begin, end);
+        break;
+      case OpType::DIV:
+        writer.Div(begin, end);
+        break;
+      case OpType::MOD:
+        writer.Mod(begin, end);
+        break;
       case OpType::JMP:
         writer.Jmp(begin, end);
         break;
@@ -405,6 +517,15 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         break;
       case OpType::NOT:
         writer.Not(begin, end);
+        break;
+      case OpType::AND:
+        writer.And(begin, end);
+        break;
+      case OpType::OR:
+        writer.Or(begin, end);
+        break;
+      case OpType::XOR:
+        writer.Xor(begin, end);
         break;
       case OpType::RET:
         writer.Ret(begin, end);

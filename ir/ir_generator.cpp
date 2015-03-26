@@ -83,13 +83,20 @@ class MethodIRGenerator final : public ast::Visitor {
 
 #define C(fn) builder_.fn(res_, lhs, rhs); break;
     switch (expr.Op().type) {
-      case lexer::ADD: C(Add);
-      case lexer::EQ:  C(Eq);
-      case lexer::NEQ: C(Neq);
-      case lexer::LT:  C(Lt);
-      case lexer::LE:  C(Leq);
-      case lexer::GT:  C(Gt);
-      case lexer::GE:  C(Geq);
+      case lexer::ADD:  C(Add);
+      case lexer::SUB:  C(Sub);
+      case lexer::MUL:  C(Mul);
+      case lexer::DIV:  C(Div);
+      case lexer::MOD:  C(Mod);
+      case lexer::EQ:   C(Eq);
+      case lexer::NEQ:  C(Neq);
+      case lexer::LT:   C(Lt);
+      case lexer::LE:   C(Leq);
+      case lexer::GT:   C(Gt);
+      case lexer::GE:   C(Geq);
+      case lexer::BAND: C(And);
+      case lexer::BOR:  C(Or);
+      case lexer::XOR:  C(Xor);
       default: break;
     }
 #undef C
