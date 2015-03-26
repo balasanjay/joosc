@@ -383,6 +383,25 @@ struct FuncWriter final {
     Col1("mov [ebp-%v], al", dst_e.offset);
   }
 
+  void Neg(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(2);
+
+    MemId dst = begin[0];
+    MemId src = begin[1];
+
+    const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& src_e = stack_map.at(src);
+
+    CHECK(dst_e.size == SizeClass::INT);
+    CHECK(src_e.size == SizeClass::INT);
+
+    Col1("; t%v = -t%v", dst_e.id, src_e.id);
+    Col1("mov eax, [ebp-%v]", src_e.offset);
+    Col1("neg eax");
+    Col1("mov [ebp-%v], eax", dst_e.offset);
+  }
+
+
   void BoolOpImpl(ArgIter begin, ArgIter end, const string& op_str, const string& instr) {
     EXPECT_NARGS(3);
 
@@ -517,6 +536,9 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         break;
       case OpType::NOT:
         writer.Not(begin, end);
+        break;
+      case OpType::NEG:
+        writer.Neg(begin, end);
         break;
       case OpType::AND:
         writer.And(begin, end);
