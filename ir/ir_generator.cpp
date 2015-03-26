@@ -64,10 +64,44 @@ class MethodIRGenerator final : public ast::Visitor {
       is_assg = true;
     }
 
-    Mem lhs = builder_.AllocTemp(size);
+    // Mutable for and/or.
+    Mem lhs = builder_.AllocLocal(size);
+    Mem rhs = builder_.AllocTemp(size);
     WithResultIn(lhs, is_assg).Visit(expr.LhsPtr());
 
-    Mem rhs = builder_.AllocTemp(size);
+    // Special code for short-circuiting boolean and or.
+    if (expr.Op().type == lexer::AND) {
+      LabelId short_circuit = builder_.AllocLabel();
+
+      builder_.Not(lhs, lhs);
+      builder_.JmpIf(short_circuit, lhs);
+
+      // Rhs code.
+      WithResultIn(rhs).Visit(expr.RhsPtr());
+      // Using lhs as answer.
+      builder_.Mov(lhs, rhs);
+
+      builder_.EmitLabel(short_circuit);
+      builder_.Mov(res_, lhs);
+
+      return VisitResult::SKIP;
+
+    } else if (expr.Op().type == lexer::OR) {
+      LabelId short_circuit = builder_.AllocLabel();
+
+      builder_.JmpIf(short_circuit, lhs);
+
+      // Rhs code.
+      WithResultIn(rhs).Visit(expr.RhsPtr());
+      builder_.Mov(lhs, rhs);
+
+      // Short circuit code.
+      builder_.EmitLabel(short_circuit);
+      builder_.Mov(res_, lhs);
+
+      return VisitResult::SKIP;
+    }
+
     WithResultIn(rhs).Visit(expr.RhsPtr());
 
     if (is_assg) {
