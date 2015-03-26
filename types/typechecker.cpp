@@ -760,6 +760,9 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
     return below.Rewrite(declptr);
   }
 
+  // Rewrite params.
+  sptr<const ParamList> new_params = Rewrite(decl.ParamsPtr());
+
   bool is_constructor = (decl.TypePtr() == nullptr);
   vector<TypeId> paramtids;
   for (const auto& param : decl.Params().Params()) {
@@ -784,7 +787,7 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
   }
 
   return make_shared<MethodDecl>(decl.Mods(), decl.TypePtr(), decl.Name(),
-      decl.NameToken(), decl.ParamsPtr(), body, minfo.mid);
+      decl.NameToken(), new_params, body, minfo.mid);
 }
 
 // Rewrite params to include the local var ids that were just assigned to them.
