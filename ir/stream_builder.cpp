@@ -83,21 +83,19 @@ void StreamBuilder::EmitLabel(LabelId lid) {
   AppendOp(OpType::LABEL, {lid});
 }
 
-Mem StreamBuilder::Const(SizeClass size, u64 val) {
-  Mem mem = AllocTemp(size);
-
+void StreamBuilder::Const(Mem mem, u64 val) {
   AppendOp(OpType::CONST, {mem.Id(), (u64)mem.Size(), val});
   SetAssigned({mem});
-
-  return mem;
 }
 
-Mem StreamBuilder::ConstInt32(i32 val) {
-  return Const(SizeClass::INT, (u64)(i64)val);
+void StreamBuilder::ConstInt32(Mem mem, i32 val) {
+  CHECK(mem.Size() == SizeClass::INT);
+  Const(mem, (u64)(i64)val);
 }
 
-Mem StreamBuilder::ConstBool(bool b) {
-  return Const(SizeClass::BOOL, b ? 1 : 0);
+void StreamBuilder::ConstBool(Mem mem, bool b) {
+  CHECK(mem.Size() == SizeClass::BOOL);
+  Const(mem, b ? 1 : 0);
 }
 
 void StreamBuilder::Mov(Mem dst, Mem src) {

@@ -25,11 +25,11 @@ class StreamBuilder {
   // Emit a label as the next instruction.
   void EmitLabel(LabelId);
 
-  // Get a reference to a constant i32 value.
-  Mem ConstInt32(i32);
+  // Writes a constant i32 value to the given Mem.
+  void ConstInt32(Mem, i32);
 
-  // Get a reference to a constant bool value.
-  Mem ConstBool(bool);
+  // Writes a constant bool value to the given Mem.
+  void ConstBool(Mem, bool);
 
   // Emit *dst = *src.
   void Mov(Mem dst, Mem src);
@@ -88,7 +88,7 @@ class StreamBuilder {
   Mem AllocMem(SizeClass, bool);
   void DeallocMem(MemId);
 
-  Mem Const(SizeClass, u64);
+  void Const(Mem, u64);
 
   void AssertAssigned(const std::initializer_list<Mem>& mems) const;
   void SetAssigned(const std::initializer_list<Mem>& mems);

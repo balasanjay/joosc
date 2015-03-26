@@ -99,14 +99,12 @@ class MethodIRGenerator final : public ast::Visitor {
 
   VISIT_DECL(IntLitExpr, expr,) {
     // TODO: Ensure no overflow.
-    Mem m = builder_.ConstInt32((i32)expr.Value());
-    builder_.Mov(res_, m);
+    builder_.ConstInt32(res_, (i32)expr.Value());
     return VisitResult::SKIP;
   }
 
   VISIT_DECL(BoolLitExpr, expr,) {
-    Mem m = builder_.ConstBool(expr.GetToken().type == lexer::K_TRUE);
-    builder_.Mov(res_, m);
+    builder_.ConstBool(res_, expr.GetToken().type == lexer::K_TRUE);
     return VisitResult::SKIP;
   }
 
