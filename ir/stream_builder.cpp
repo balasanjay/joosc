@@ -240,6 +240,7 @@ void StreamBuilder::StaticCall(Mem dst, TypeId::Base tid, MethodId mid, const ve
   }
 
   ops_.push_back({OpType::STATIC_CALL, begin, args_.size()});
+  SetAssigned({dst});
 }
 
 void StreamBuilder::Ret() {
