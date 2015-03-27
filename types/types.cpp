@@ -4,7 +4,7 @@
 #include "types/decl_resolver.h"
 #include "types/type_info_map.h"
 #include "types/typechecker.h"
-#include "types/constant_folding_visitor.h"
+#include "types/constant_folding.h"
 #include "types/dataflow_visitor.h"
 #include "types/typeset.h"
 
@@ -111,7 +111,8 @@ sptr<const Program> TypecheckProgram(sptr<const Program> prog, TypeInfoMap* tinf
 
   // Phase 4: Dataflow Analysis.
   {
-    prog = ConstantFoldingVisitor().Rewrite(prog);
+    ConstStringMap string_map;
+    prog = ConstantFold(prog, &string_map);
     DataflowVisitor(typeInfo, errors).Visit(prog);
   }
 

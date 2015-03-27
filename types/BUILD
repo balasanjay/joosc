@@ -3,7 +3,7 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "types",
     srcs = [
-        "constant_folding_visitor.cpp",
+        "constant_folding.cpp",
         "dataflow_visitor.cpp",
         "decl_resolver.cpp",
         "symbol_table.cpp",
@@ -16,7 +16,7 @@ cc_library(
         "typeset.cpp",
     ],
     hdrs = [
-        "constant_folding_visitor.h",
+        "constant_folding.h",
         "dataflow_visitor.h",
         "decl_resolver.h",
         "symbol_table.h",
