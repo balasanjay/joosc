@@ -183,7 +183,12 @@ struct FuncWriter final {
 
     const StackEntry& dst_e = stack_map.at(dst);
     const StackEntry& src_e = stack_map.at(src);
-    CHECK(dst_e.size == src_e.size);
+
+    if (addr) {
+      CHECK(dst_e.size == SizeClass::PTR);
+    } else {
+      CHECK(dst_e.size == src_e.size);
+    }
 
     string reg_size = Sized(dst_e.size, "al", "ax", "eax");
     string src_prefix = addr ? "&" : "";
@@ -210,15 +215,15 @@ struct FuncWriter final {
 
     const StackEntry& dst_e = stack_map.at(dst);
     const StackEntry& src_e = stack_map.at(src);
-    CHECK(dst_e.size == src_e.size);
 
-    string dst_reg = Sized(dst_e.size, "al", "ax", "eax");
+    CHECK(dst_e.size == SizeClass::PTR);
+
     string src_reg = Sized(src_e.size, "bl", "bx", "ebx");
 
     Col1("; *t%v = t%v.", dst_e.id, src_e.id);
     Col1("mov %v, %v", src_reg, StackOffset(src_e.offset));
-    Col1("mov %v, %v", dst_reg, StackOffset(dst_e.offset));
-    Col1("mov [%v], %v", dst_reg, src_reg);
+    Col1("mov eax, %v", StackOffset(dst_e.offset));
+    Col1("mov [eax], %v", src_reg);
   }
 
   void AddSub(ArgIter begin, ArgIter end, bool add) {
