@@ -19,6 +19,7 @@ using ir::Op;
 using ir::OpType;
 using ir::SizeClass;
 using ir::Stream;
+using ir::kInvalidMemId;
 
 #define EXPECT_NARGS(n) CHECK((end - begin) == n)
 
@@ -474,7 +475,6 @@ struct FuncWriter final {
 
     CHECK(((u64)(end-begin) - 4) == nargs);
 
-    const StackEntry& dst_e = stack_map.at(dst);
 
     i64 stack_used = cur_offset;
 
@@ -492,14 +492,17 @@ struct FuncWriter final {
       stack_used += 4;
     }
 
-    string dst_reg = Sized(dst_e.size, "al", "ax", "eax");
-
     Col1("; Performing call.");
 
     Col1("sub esp, %v", stack_used);
     Col1("call _t%v_m%v", tid, mid);
     Col1("add esp, %v", stack_used);
-    Col1("mov %v, %v", StackOffset(stack_map.at(dst).offset), dst_reg);
+
+    if (dst != kInvalidMemId) {
+      const StackEntry& dst_e = stack_map.at(dst);
+      string dst_reg = Sized(dst_e.size, "al", "ax", "eax");
+      Col1("mov %v, %v", StackOffset(stack_map.at(dst).offset), dst_reg);
+    }
   }
 
   void Ret(ArgIter begin, ArgIter end) {
