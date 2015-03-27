@@ -28,17 +28,23 @@ namespace ir {
 
 class MethodIRGenerator final : public ast::Visitor {
  public:
-  MethodIRGenerator(Mem res, bool lvalue, StreamBuilder* builder, vector<ast::LocalVarId>* locals, map<ast::LocalVarId, Mem>* locals_map): res_(res), lvalue_(lvalue), builder_(*builder), locals_(*locals), locals_map_(*locals_map)  {}
+  MethodIRGenerator(Mem res, bool lvalue, StreamBuilder* builder, vector<ast::LocalVarId>* locals, map<ast::LocalVarId, Mem>* locals_map, TypeId tid): res_(res), lvalue_(lvalue), builder_(*builder), locals_(*locals), locals_map_(*locals_map), tid_(tid) {}
 
   MethodIRGenerator WithResultIn(Mem res, bool lvalue=false) {
-    return MethodIRGenerator(res, lvalue, &builder_, &locals_, &locals_map_);
+    return MethodIRGenerator(res, lvalue, &builder_, &locals_, &locals_map_, tid_);
   }
 
   MethodIRGenerator WithLocals(vector<ast::LocalVarId>& locals) {
-    return MethodIRGenerator(res_, lvalue_, &builder_, &locals, &locals_map_);
+    return MethodIRGenerator(res_, lvalue_, &builder_, &locals, &locals_map_, tid_);
   }
 
   VISIT_DECL(MethodDecl, decl,) {
+    // Constructors call the init method.
+    if (decl.TypePtr() == nullptr) {
+      // TODO: pass ``this''.
+      builder_.StaticCall(res_, tid_.base, kInitMethodId, {});
+    }
+
     // Get param sizes.
     auto params = decl.Params().Params();
     vector<SizeClass> param_sizes;
@@ -347,8 +353,8 @@ class MethodIRGenerator final : public ast::Visitor {
     }
 
     // Perform call.
-    // TODO: static_base->GetRefType().GetTypeId().base
-    builder_.StaticCall(res_, 2, expr.GetMethodId(), arg_mems);
+    TypeId tid = static_base->GetRefType().GetTypeId();
+    builder_.StaticCall(res_, tid.base, expr.GetMethodId(), arg_mems);
 
     // Deallocate arg mems.
     while (!arg_mems.empty()) {
@@ -364,6 +370,7 @@ class MethodIRGenerator final : public ast::Visitor {
   StreamBuilder& builder_;
   vector<ast::LocalVarId>& locals_;
   map<ast::LocalVarId, Mem>& locals_map_;
+  TypeId tid_;
 };
 
 class ProgramIRGenerator final : public ast::Visitor {
@@ -387,6 +394,8 @@ class ProgramIRGenerator final : public ast::Visitor {
       return VisitResult::SKIP;
     }
 
+    TypeId tid = decl.GetTypeId();
+
     // Only store fields with initialisers.
     vector<tuple<TypeId, FieldId, sptr<const Expr>>> fields;
 
@@ -394,7 +403,7 @@ class ProgramIRGenerator final : public ast::Visitor {
       sptr<const MemberDecl> member = decl.Members().At(i);
       auto meth = dynamic_pointer_cast<const MethodDecl, const MemberDecl>(member);
       if (meth != nullptr) {
-        VisitMethodDeclImpl(meth, decl.GetTypeId());
+        VisitMethodDeclImpl(meth, tid);
         continue;
       }
 
@@ -428,19 +437,19 @@ class ProgramIRGenerator final : public ast::Visitor {
         // TODO: Get SizeClass of field.
         Mem tmp = builder.AllocTemp(SizeClassFrom(get<0>(tup)));
 
-        MethodIRGenerator gen(tmp, false, &builder, &empty_locals, &locals_map);
+        MethodIRGenerator gen(tmp, false, &builder, &empty_locals, &locals_map, tid);
         gen.Visit(get<2>(tup));
       }
 
-      current_unit_.streams.push_back(builder.Build(false, decl.GetTypeId().base, kInitMethodId));
+      current_unit_.streams.push_back(builder.Build(false, tid.base, kInitMethodId));
     }
 
     return VisitResult::SKIP;
   }
 
   void VisitMethodDeclImpl(sptr<const MethodDecl> decl, TypeId tid) {
-    // TODO: 'this' for non-static methods.
-    if (decl->Name() != "test") {
+    // TODO: 'this' for non-static methods. Also, don't hardcode to 16.
+    if (decl->Name() != "test" && tid.base != 16) {
       // TODO.
       return;
     }
@@ -459,7 +468,7 @@ class ProgramIRGenerator final : public ast::Visitor {
          && decl->Mods().HasModifier(lexer::Modifier::STATIC)
          && decl->Params().Params().Size() == 0);
 
-      MethodIRGenerator gen(ret, false, &builder, &empty_locals, &locals_map);
+      MethodIRGenerator gen(ret, false, &builder, &empty_locals, &locals_map, tid);
       gen.Visit(decl);
     }
     // Return mem must be deallocated before Build is called.
