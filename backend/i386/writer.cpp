@@ -673,8 +673,11 @@ void Writer::WriteMain(ostream* out) const {
   AsmWriter w(out);
 
   // Externs and globals.
+  w.Col0("extern __malloc");
   w.Col0("extern _entry");
-  w.Col0("global _start\n\n");
+  w.Col0("global _joos_malloc");
+  w.Col0("global _start");
+  w.Col0("\n");
 
   // Entry point.
   w.Col0("_start:");
@@ -686,9 +689,29 @@ void Writer::WriteMain(ostream* out) const {
   w.Col1("; Call EXIT syscall.");
   w.Col1("mov ebx, eax");
   w.Col1("mov eax, 1");
-  w.Col1("int 0x80\n\n");
-}
+  w.Col1("int 0x80");
+  w.Col0("\n");
 
+  // Zeroing malloc.
+  w.Col0("; Custom malloc that zeroes memory.");
+  w.Col0("_joos_malloc:");
+  w.Col1("push eax"); // Save number of bytes.
+  w.Col1("push ebp");
+  w.Col1("mov ebp, esp");
+  w.Col1("call __malloc");
+  w.Col1("pop ebp");
+  w.Col1("pop ebx");
+  w.Col1("mov ecx, 0");
+  w.Col0(".before:");
+  w.Col1("cmp ecx, ebx");
+  w.Col1("je .after");
+  w.Col1("mov byte [eax + ecx], 0");
+  w.Col1("inc ecx");
+  w.Col1("jmp .before");
+  w.Col0(".after:");
+  w.Col1("ret");
+
+}
 
 } // namespace i386
 } // namespace backend
