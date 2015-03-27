@@ -24,7 +24,7 @@ using std::ostream;
 
 using ast::PrintVisitor;
 using ast::Program;
-using backend::OffsetTable;
+using backend::common::OffsetTable;
 using base::ErrorList;
 using base::FileSet;
 using lexer::LexJoosFiles;
