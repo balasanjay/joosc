@@ -669,6 +669,26 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
 
 }
 
+void Writer::WriteMain(ostream* out) const {
+  AsmWriter w(out);
+
+  // Externs and globals.
+  w.Col0("extern _entry");
+  w.Col0("global _start\n\n");
+
+  // Entry point.
+  w.Col0("_start:");
+  w.Col1("; Call user code.");
+  w.Col1("push ebp");
+  w.Col1("mov ebp, esp");
+  w.Col1("call _entry");
+  w.Col1("pop ebp");
+  w.Col1("; Call EXIT syscall.");
+  w.Col1("mov ebx, eax");
+  w.Col1("mov eax, 1");
+  w.Col1("int 0x80\n\n");
+}
+
 
 } // namespace i386
 } // namespace backend
