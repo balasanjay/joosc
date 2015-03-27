@@ -40,4 +40,17 @@ TEST_F(ConstantFoldingTest, ConstantUnknownSanity) {
   ShouldBeUnknown("boolean a = true;", "a");
 }
 
+TEST_F(ConstantFoldingTest, ConstantIntExpr) {
+  ShouldBeTrue("", "(1 - 3)*4 / 2 == -4");
+}
+
+TEST_F(ConstantFoldingTest, ConstantBoolExpr) {
+  ShouldBeFalse("", "false || (false || false) || true && false");
+}
+
+TEST_F(ConstantFoldingTest, NotConstantVariable) {
+  ShouldBeUnknown("boolean a = false;", "false || (false || false) || !a && false");
+}
+
+
 } // namespace types
