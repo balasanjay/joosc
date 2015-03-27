@@ -426,9 +426,9 @@ struct FuncWriter final {
     CHECK(src_e.size == SizeClass::INT);
 
     Col1("; t%v = -t%v", dst_e.id, src_e.id);
-    Col1("mov eax, [ebp-%v]", src_e.offset);
+    Col1("mov eax, %v", StackOffset(src_e.offset));
     Col1("neg eax");
-    Col1("mov [ebp-%v], eax", dst_e.offset);
+    Col1("mov %v, eax", StackOffset(dst_e.offset));
   }
 
 
