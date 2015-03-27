@@ -36,6 +36,7 @@ cc_library(
 cc_test(
     name = "types_test",
     srcs = [
+        "constant_folding_test.cpp",
         "field_table_test.cpp",
         "method_table_test.cpp",
         "symbol_table_test.cpp",
