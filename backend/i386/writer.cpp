@@ -54,6 +54,8 @@ string Sized(SizeClass size, const string& b1, const string& b2, const string& b
 // Convert our internal stack offset to an "[ebp-x]"-style string.
 string StackOffset(i64 offset) {
   if (offset >= 0) {
+    // We add 4 since we want our offsets to be 0-indexed, but [ebp-0] contains
+    // the old value of ebp.
     return Sprintf("[ebp-%v]", offset + 4);
   }
   return Sprintf("[ebp+%v]", -offset);
@@ -97,6 +99,7 @@ struct FuncWriter final {
   }
 
   void SetupParams(const Stream& stream) {
+    // [ebp-0] is the old ebp, [ebp-4] is the esp, so we start at [ebp-8].
     i64 param_offset = -8;
     for (size_t i = 0; i < stream.params.size(); ++i) {
       i64 cur = param_offset;
