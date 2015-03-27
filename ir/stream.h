@@ -2,17 +2,9 @@
 #define IR_STREAM_H
 
 #include "ast/ids.h"
+#include "ir/size.h"
 
 namespace ir {
-
-enum class SizeClass : u64 {
-  BOOL,
-  BYTE,
-  SHORT,
-  CHAR,
-  INT,
-  PTR,
-};
 
 // Numbered labels local to a function.
 using LabelId = u64;
@@ -118,6 +110,15 @@ struct Stream {
   vector<Op> ops;
 
   vector<SizeClass> params;
+};
+
+struct CompUnit {
+  string filename;
+  vector<Stream> streams;
+};
+
+struct Program {
+  vector<CompUnit> units;
 };
 
 } // namespace ir

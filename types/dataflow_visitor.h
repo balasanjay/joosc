@@ -1,5 +1,5 @@
-#ifndef DATAFLOW_VISITOR_H
-#define DATAFLOW_VISITOR_H
+#ifndef TYPES_DATAFLOW_VISITOR_H
+#define TYPES_DATAFLOW_VISITOR_H
 
 #include "ast/visitor.h"
 #include "base/errorlist.h"
