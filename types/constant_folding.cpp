@@ -76,11 +76,10 @@ public:
 
       CHECK(lhs != nullptr && rhs != nullptr);
 
-      i64 lhs_value = lhs->Value();
-      i64 rhs_value = rhs->Value();
-      i64 result = 0;
+      u32 lhs_value = (u32)lhs->Value();
+      u32 rhs_value = (u32)rhs->Value();
+      i32 result = 0;
 
-      // TODO: Perform correct overflow and masking depending on size of int/short/byte.
       switch (expr.Op().type) {
         case lexer::ADD: result = lhs_value + rhs_value; break;
         case lexer::SUB: result = lhs_value - rhs_value; break;
@@ -90,7 +89,7 @@ public:
           if (rhs_value == 0) {
             return exprptr;
           }
-          result = lhs_value / rhs_value;
+          result = (i32)lhs_value / (i32)rhs_value;
           break;
         case lexer::MOD:
           // If dividing by 0, don't fold constants.
@@ -103,7 +102,7 @@ public:
       }
 
       auto new_int_expr = make_shared<ast::IntLitExpr>(
-          lexer::Token(lexer::INTEGER, ExtentOf(exprptr)), result, ast::TypeId::kInt);
+          lexer::Token(lexer::INTEGER, ExtentOf(exprptr)), (i64)result, ast::TypeId::kInt);
       return make_shared<ConstExpr>(new_int_expr, original_stripped);
 
     }

@@ -72,5 +72,15 @@ TEST_F(ConstantFoldingTest, IntNarrowing) {
   ShouldBeTrue("", ss.str());
 }
 
+TEST_F(ConstantFoldingTest, OverflowTest) {
+  stringstream ss;
+  i64 i32max = (1 << 31) - 1;
+  i64 i32min = -(1 << 31);
+  ss << i32max
+     << " + 1 == "
+     << i32min;
+  ShouldBeTrue("", ss.str());
+}
+
 
 } // namespace types
