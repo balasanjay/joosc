@@ -61,5 +61,16 @@ TEST_F(ConstantFoldingTest, CastBoolToBool) {
   ShouldBeTrue("", "(boolean)true");
 }
 
+TEST_F(ConstantFoldingTest, IntNarrowing) {
+  stringstream ss;
+  ss << "(short)"
+     << ((1 << 17) + (1 << 9) + 1)
+     << " + (byte)"
+     << ((1 << 9) + 1)
+     << " == "
+     << ((1 << 9) + 2);
+  ShouldBeTrue("", ss.str());
+}
+
 
 } // namespace types

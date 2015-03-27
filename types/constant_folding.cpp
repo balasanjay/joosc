@@ -173,6 +173,7 @@ public:
   REWRITE_DECL(CastExpr, Expr, expr, exprptr) {
     // Check that we are doing a primitive cast.
     // TODO: String cast.
+    // TODO: Treat chars as ints.
     sptr<const Expr> new_inner = Rewrite(expr.GetExprPtr());
 
     ast::TypeId cast_type = expr.GetTypeId();
@@ -198,14 +199,30 @@ public:
     // Booleans can only be cast to strings or themselves, so rest of checks are for ints only.
     CHECK(TypeChecker::IsNumeric(cast_type));
 
+    auto inner_const_int = dynamic_cast<const ast::IntLitExpr*>(inner_const->ConstantPtr().get());
+    CHECK(inner_const_int != nullptr);
 
-    //i64 value = inner_const->Constant().
-    if (TypeChecker::IsPrimitiveWidening(cast_type, rhs_type)) {
-      // Don't have to change value for widening.
-      // TODO.
+    i64 value = inner_const_int->Value();
+    u32 usigned = (u32)value;
+    switch (cast_type.base) {
+      case ast::TypeId::kIntBase:
+        break;
+      case ast::TypeId::kShortBase:
+        usigned = usigned & 0x0000FFFF;
+        break;
+      case ast::TypeId::kByteBase:
+      case ast::TypeId::kCharBase:
+        usigned = usigned & 0x000000FF;
+        break;
+      default:
+        CHECK(false);
     }
+    i64 new_value = (i64)usigned;
 
-    return exprptr;
+    auto new_int_lit = make_shared<ast::IntLitExpr>(
+        lexer::Token(lexer::INTEGER, ExtentOf(exprptr)),
+        new_value, cast_type);
+    return make_shared<ConstExpr>(new_int_lit, exprptr);
   }
 
   ConstStringMap& strings_;
