@@ -91,14 +91,12 @@ struct FuncWriter final {
   }
 
   void WriteEpilogue() {
-    // TODO: this is assuming that it was an int.
     Col0(".epilogue:");
     Col1("pop ebp");
     Col1("ret");
   }
 
   void SetupParams(const Stream& stream) {
-    // TODO: figure out the correct initial offset.
     i64 param_offset = -8;
     for (size_t i = 0; i < stream.params.size(); ++i) {
       i64 cur = param_offset;
