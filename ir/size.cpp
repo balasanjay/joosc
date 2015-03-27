@@ -5,13 +5,20 @@ using ast::TypeId;
 namespace ir {
 
 SizeClass SizeClassFrom(TypeId tid) {
-  if (tid == TypeId::kInt) {
-    return SizeClass::INT;
-  } else if (tid == TypeId::kBool) {
-    return SizeClass::BOOL;
+#define C(t, s) \
+  if (tid == TypeId::k##t) { \
+    return SizeClass::s; \
   }
-  // TODO.
-  return SizeClass::INT;
+
+  C(Bool, BOOL);
+  C(Byte, BYTE);
+  C(Short, SHORT);
+  C(Char, CHAR);
+  C(Int, INT);
+
+#undef C
+
+  return SizeClass::PTR;
 }
 
 } // namespace ir

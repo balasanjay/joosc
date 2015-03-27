@@ -175,6 +175,10 @@ public:
     return info->second;
   }
 
+  const map<FieldId, FieldInfo>& GetFieldMap() const {
+    return field_info_;
+  }
+
 private:
   friend class TypeInfoMapBuilder;
   friend class TypeInfoMap;
