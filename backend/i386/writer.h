@@ -3,6 +3,7 @@
 
 #include <ostream>
 
+#include "ir/ir_generator.h"
 #include "ir/stream.h"
 
 namespace backend {
@@ -10,6 +11,8 @@ namespace i386 {
 
 class Writer {
 public:
+  void WriteCompUnit(const ir::CompUnit& comp_unit, std::ostream* out) const;
+private:
   void WriteFunc(const ir::Stream& stream, std::ostream* out) const;
 };
 

@@ -765,7 +765,7 @@ REWRITE_DEFN(TypeChecker, MethodDecl, MemberDecl, decl, declptr) {
 
   bool is_constructor = (decl.TypePtr() == nullptr);
   vector<TypeId> paramtids;
-  for (const auto& param : decl.Params().Params()) {
+  for (const auto& param : new_params->Params()) {
     paramtids.push_back(param.GetType().GetTypeId());
   }
 

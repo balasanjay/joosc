@@ -68,7 +68,7 @@ REWRITE_DEFN(Visitor, CallExpr, Expr, expr, exprptr) {
     return exprptr;
   }
 
-  return make_shared<CallExpr>(base, expr.Lparen(), args, expr.Rparen());
+  return make_shared<CallExpr>(base, expr.Lparen(), args, expr.Rparen(), expr.GetMethodId(), expr.GetTypeId());
 }
 
 REWRITE_DEFN(Visitor, CastExpr, Expr, expr, exprptr) {
@@ -425,7 +425,7 @@ REWRITE_DEFN(Visitor, MethodDecl, MemberDecl, meth, methptr) {
     return methptr;
   }
 
-  return make_shared<MethodDecl>(meth.Mods(), meth.TypePtr(), meth.Name(), meth.NameToken(), params, body);
+  return make_shared<MethodDecl>(meth.Mods(), meth.TypePtr(), meth.Name(), meth.NameToken(), params, body, meth.GetMethodId());
 }
 
 REWRITE_DEFN(Visitor, TypeDecl, TypeDecl, type, typeptr) {
