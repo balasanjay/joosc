@@ -182,7 +182,12 @@ struct FuncWriter final {
 
     const StackEntry& dst_e = stack_map.at(dst);
     const StackEntry& src_e = stack_map.at(src);
-    CHECK(dst_e.size == src_e.size);
+
+    if (addr) {
+      CHECK(dst_e.size == SizeClass::PTR);
+    } else {
+      CHECK(dst_e.size == src_e.size);
+    }
 
     string reg_size = addr ? "eax" : Sized(dst_e.size, "al", "ax", "eax");
     string src_prefix = addr ? "&" : "";
@@ -209,7 +214,8 @@ struct FuncWriter final {
 
     const StackEntry& dst_e = stack_map.at(dst);
     const StackEntry& src_e = stack_map.at(src);
-    CHECK(dst_e.size == src_e.size);
+
+    CHECK(dst_e.size == SizeClass::PTR);
 
     string src_reg = Sized(src_e.size, "bl", "bx", "ebx");
 

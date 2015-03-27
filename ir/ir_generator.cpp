@@ -127,7 +127,7 @@ class MethodIRGenerator final : public ast::Visitor {
       is_assg = true;
     }
 
-    Mem lhs = builder_.AllocTemp(size);
+    Mem lhs = builder_.AllocTemp(is_assg ? SizeClass::PTR : size);
     WithResultIn(lhs, is_assg).Visit(expr.LhsPtr());
     Mem rhs = builder_.AllocTemp(size);
     WithResultIn(rhs).Visit(expr.RhsPtr());
