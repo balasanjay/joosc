@@ -75,6 +75,22 @@ class MethodIRGenerator final : public ast::Visitor {
     return VisitResult::SKIP;
   }
 
+  VISIT_DECL(UnaryExpr, expr,) {
+    if (expr.Op().type == lexer::SUB) {
+      Mem rhs = builder_.AllocTemp(SizeClass::INT);
+      WithResultIn(rhs).Visit(expr.RhsPtr());
+      builder_.Neg(res_, rhs);
+      return VisitResult::SKIP;
+    }
+
+    CHECK(expr.Op().type == lexer::NOT);
+    Mem rhs = builder_.AllocTemp(SizeClass::BOOL);
+    WithResultIn(rhs).Visit(expr.RhsPtr());
+    builder_.Not(res_, rhs);
+
+    return VisitResult::SKIP;
+  }
+
   VISIT_DECL(BinExpr, expr,) {
     SizeClass size = SizeOfTypeId(expr.Lhs().GetTypeId());
 
