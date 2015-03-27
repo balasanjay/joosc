@@ -56,7 +56,7 @@ string StackOffset(i64 offset) {
   if (offset > 0) {
     return Sprintf("[ebp-%v]", offset);
   }
-  return Sprintf("[ebp+%v]", -offset);
+  return Sprintf("[ebp+%v]", (-offset) + 8);
 }
 
 struct FuncWriter final {
@@ -186,7 +186,7 @@ struct FuncWriter final {
     const StackEntry& src_e = stack_map.at(src);
     CHECK(dst_e.size == src_e.size);
 
-    string reg_size = Sized(dst_e.size, "al", "ax", "eax");
+    string reg_size = addr ? "eax" : Sized(dst_e.size, "al", "ax", "eax");
     string src_prefix = addr ? "&" : "";
     string instr = addr ? "lea" : "mov";
 
@@ -213,13 +213,12 @@ struct FuncWriter final {
     const StackEntry& src_e = stack_map.at(src);
     CHECK(dst_e.size == src_e.size);
 
-    string dst_reg = Sized(dst_e.size, "al", "ax", "eax");
     string src_reg = Sized(src_e.size, "bl", "bx", "ebx");
 
     Col1("; *t%v = t%v.", dst_e.id, src_e.id);
     Col1("mov %v, %v", src_reg, StackOffset(src_e.offset));
-    Col1("mov %v, %v", dst_reg, StackOffset(dst_e.offset));
-    Col1("mov [%v], %v", dst_reg, src_reg);
+    Col1("mov eax, %v", StackOffset(dst_e.offset));
+    Col1("mov [eax], %v", src_reg);
   }
 
   void AddSub(ArgIter begin, ArgIter end, bool add) {
@@ -513,7 +512,7 @@ struct FuncWriter final {
     MemId id;
   };
 
-  const i64 frame_offset = 8;
+  const i64 frame_offset = 0;
 
   map<MemId, StackEntry> stack_map;
   i64 cur_offset = frame_offset;
