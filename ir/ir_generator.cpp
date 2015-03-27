@@ -309,6 +309,29 @@ class MethodIRGenerator final : public ast::Visitor {
     return VisitResult::SKIP;
   }
 
+  VISIT_DECL(CallExpr, expr,) {
+    // TODO: Check if static.
+
+    // Allocate argument temps and generate their code.
+    vector<Mem> arg_mems;
+    for (int i = 0; i < expr.Args().Size(); ++i) {
+      auto arg = expr.Args().At(i);
+      Mem arg_mem = builder_.AllocTemp(SizeOfTypeId(arg->GetTypeId()));
+      WithResultIn(arg_mem).Visit(arg);
+      arg_mems.push_back(arg_mem);
+    }
+
+    // Perform call.
+    builder_.StaticCall(res_, expr.Base().GetTypeId().base, expr.GetMethodId(), arg_mems);
+
+    // Deallocate arg mems.
+    while (!arg_mems.empty()) {
+      arg_mems.pop_back();
+    }
+
+    return VisitResult::SKIP;
+  }
+
   // Location result of the computation should be stored.
   Mem res_;
   bool lvalue_ = false;
@@ -334,6 +357,7 @@ class ProgramIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(MethodDecl, decl, declptr) {
+    // TODO: 'this' for non-static methods.
     if (decl.Name() != "test") {
       // TODO.
       return VisitResult::SKIP;
