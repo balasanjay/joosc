@@ -14,6 +14,7 @@ using ast::MethodId;
 using ast::TypeId;
 using ast::TypeKind;
 using base::FindEqualRanges;
+using ir::ByteSizeFrom;
 using ir::SizeClass;
 using ir::SizeClassFrom;
 using types::FieldInfo;
@@ -50,23 +51,6 @@ vector<FieldInfo> ExtractSimpleFields(const TypeInfo& tinfo) {
   std::stable_sort(fields.begin(), fields.end(), lt_cmp);
 
   return fields;
-}
-
-u64 ByteSizeFrom(SizeClass size, u8 ptr_size) {
-  switch (size) {
-    case SizeClass::BOOL: // Fall through.
-    case SizeClass::BYTE:
-      return 1;
-    case SizeClass::SHORT: // Fall through.
-    case SizeClass::CHAR:
-      return 2;
-    case SizeClass::INT:
-      return 4;
-    case SizeClass::PTR:
-      return (u64)ptr_size;
-    default:
-      UNREACHABLE();
-  }
 }
 
 u64 RoundUpToMultipleOf(u64 size, u64 multiple) {

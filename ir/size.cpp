@@ -21,4 +21,21 @@ SizeClass SizeClassFrom(TypeId tid) {
   return SizeClass::PTR;
 }
 
+u64 ByteSizeFrom(SizeClass size, u8 ptr_size) {
+  switch (size) {
+    case SizeClass::BOOL: // Fall through.
+    case SizeClass::BYTE:
+      return 1;
+    case SizeClass::SHORT: // Fall through.
+    case SizeClass::CHAR:
+      return 2;
+    case SizeClass::INT:
+      return 4;
+    case SizeClass::PTR:
+      return (u64)ptr_size;
+    default:
+      UNREACHABLE();
+  }
+}
+
 } // namespace ir

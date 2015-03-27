@@ -15,6 +15,7 @@ enum class SizeClass : u8 {
 };
 
 SizeClass SizeClassFrom(ast::TypeId tid);
+u64 ByteSizeFrom(SizeClass size, u8 ptr_size);
 
 } // namespace ir
 
