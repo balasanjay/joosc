@@ -11,6 +11,7 @@
 #include "base/fileset.h"
 #include "lexer/lexer.h"
 #include "parser/parser.h"
+#include "types/type_info_map.h"
 #include "types/types.h"
 #include "weeder/weeder.h"
 
@@ -28,6 +29,7 @@ using lexer::LexJoosFiles;
 using lexer::StripSkippableTokens;
 using lexer::Token;
 using parser::Parse;
+using types::TypeInfoMap;
 using types::TypecheckProgram;
 using weeder::WeedProgram;
 
@@ -42,39 +44,39 @@ bool PrintErrors(const ErrorList& errors, ostream* err, const FileSet* fs) {
 
 }
 
-sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, ErrorList* out) {
+sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, TypeInfoMap* tinfo_out, ErrorList* err_out) {
   // Lex files.
   vector<vector<Token>> tokens;
-  LexJoosFiles(fs, &tokens, out);
-  if (out->IsFatal() || stage == CompilerStage::LEX) {
+  LexJoosFiles(fs, &tokens, err_out);
+  if (err_out->IsFatal() || stage == CompilerStage::LEX) {
     return nullptr;
   }
 
-  // Strip out comments and whitespace.
+  // Strip err_out comments and whitespace.
   vector<vector<Token>> filtered_tokens;
   StripSkippableTokens(tokens, &filtered_tokens);
 
   // Look for unsupported tokens.
-  FindUnsupportedTokens(tokens, out);
-  if (out->IsFatal() || stage == CompilerStage::UNSUPPORTED_TOKS) {
+  FindUnsupportedTokens(tokens, err_out);
+  if (err_out->IsFatal() || stage == CompilerStage::UNSUPPORTED_TOKS) {
     return nullptr;
   }
 
   // Parse.
-  sptr<const Program> program = Parse(fs, filtered_tokens, out);
-  if (out->IsFatal() || stage == CompilerStage::PARSE) {
+  sptr<const Program> program = Parse(fs, filtered_tokens, err_out);
+  if (err_out->IsFatal() || stage == CompilerStage::PARSE) {
     return program;
   }
 
   // Weed.
-  program = WeedProgram(fs, program, out);
-  if (out->IsFatal() || stage == CompilerStage::WEED) {
+  program = WeedProgram(fs, program, err_out);
+  if (err_out->IsFatal() || stage == CompilerStage::WEED) {
     return program;
   }
 
   // Type-checking.
-  program = TypecheckProgram(program, out);
-  if (out->IsFatal() || stage == CompilerStage::TYPE_CHECK) {
+  program = TypecheckProgram(program, tinfo_out, err_out);
+  if (err_out->IsFatal() || stage == CompilerStage::TYPE_CHECK) {
     return program;
   }
 
@@ -82,11 +84,14 @@ sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, Err
   return program;
 }
 
-bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, std::ostream* err) {
+bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, const TypeInfoMap&, std::ostream* err) {
   ir::Program ir_prog = ir::GenerateIR(prog);
   if (stage == CompilerStage::GEN_IR) {
     return true;
   }
+
+  // Generate type sizes, field offsets, and method offsets.
+  // TODO: do this.
 
   // TODO: have a more generic backend mechanism.
   bool success = true;
@@ -129,7 +134,7 @@ bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const s
     out << "mov eax, 1\n";
     out << "int 0x80\n";
 
-  } while (0);
+  } while (false);
 
   return success;
 }
@@ -156,7 +161,8 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream*, os
   }
 
   ErrorList errors;
-  sptr<const Program> program = CompilerFrontend(stage, fs, &errors);
+  TypeInfoMap tinfo_map = TypeInfoMap::Empty();
+  sptr<const Program> program = CompilerFrontend(stage, fs, &tinfo_map, &errors);
   if (PrintErrors(errors, err, fs)) {
     return false;
   }
@@ -165,5 +171,5 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream*, os
   }
 
   // TODO.
-  return CompilerBackend(stage, program, "output", err);
+  return CompilerBackend(stage, program, "output", tinfo_map, err);
 }

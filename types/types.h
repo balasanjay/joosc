@@ -7,8 +7,11 @@
 
 namespace types {
 
+class TypeInfoMap;
+
 sptr<const ast::Program> TypecheckProgram(sptr<const ast::Program> prog,
-                                          base::ErrorList* out);
+                                          TypeInfoMap* tinfo_out,
+                                          base::ErrorList* err_out);
 
 }  // namespace types
 

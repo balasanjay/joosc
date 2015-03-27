@@ -1,6 +1,7 @@
 #include "types/types_test.h"
 
 #include "joosc.h"
+#include "types/type_info_map.h"
 
 using ast::Program;
 using base::ErrorList;
@@ -38,7 +39,8 @@ namespace types {
     }
     CHECK(fs_builder.Build(fs, out));
 
-    return CompilerFrontend(CompilerStage::TYPE_CHECK, *fs, out);
+    TypeInfoMap tinfo_map = TypeInfoMap::Empty();
+    return CompilerFrontend(CompilerStage::TYPE_CHECK, *fs, &tinfo_map, out);
   }
 
 } // namespace types
