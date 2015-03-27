@@ -7,6 +7,7 @@
 #include "ir/stream_builder.h"
 #include "lexer/lexer.h"
 
+using ast::StaticRefExpr;
 using ast::VisitResult;
 
 namespace ir {

@@ -53,10 +53,10 @@ string Sized(SizeClass size, const string& b1, const string& b2, const string& b
 
 // Convert our internal stack offset to an "[ebp-x]"-style string.
 string StackOffset(i64 offset) {
-  if (offset > 0) {
-    return Sprintf("[ebp-%v]", offset);
+  if (offset >= 0) {
+    return Sprintf("[ebp-%v]", offset + 4);
   }
-  return Sprintf("[ebp+%v]", (-offset) + 8);
+  return Sprintf("[ebp+%v]", -offset);
 }
 
 struct FuncWriter final {
@@ -99,12 +99,12 @@ struct FuncWriter final {
 
   void SetupParams(const Stream& stream) {
     // TODO: figure out the correct initial offset.
-    i64 param_offset = 0;
+    i64 param_offset = -8;
     for (size_t i = 0; i < stream.params.size(); ++i) {
-      i64 cur_offset = param_offset;
+      i64 cur = param_offset;
       param_offset -= 4;
 
-      StackEntry entry = {stream.params.at(i), cur_offset, i + 1};
+      StackEntry entry = {stream.params.at(i), cur, i + 1};
 
       auto iter_pair = stack_map.insert({entry.id, entry});
       CHECK(iter_pair.second);
@@ -147,7 +147,7 @@ struct FuncWriter final {
     stack_map.erase(memid);
 
     cur_offset -= 4;
-    CHECK(cur_offset >= frame_offset);
+    CHECK(cur_offset >= 0);
 
     Col1("; t%v deallocated, used to be at %v.", memid, StackOffset(entry.offset));
   }
@@ -467,7 +467,11 @@ struct FuncWriter final {
 
     CHECK(((u64)(end-begin) - 4) == nargs);
 
-    i64 param_offset = cur_offset;
+    const StackEntry& dst_e = stack_map.at(dst);
+
+    i64 stack_used = cur_offset;
+
+    Col1("; Pushing %v arguments onto stack for call.", nargs);
 
     // Push args onto stack in reverse order.
     for (ArgIter cur = end; cur != (begin + 4); --cur) {
@@ -476,15 +480,19 @@ struct FuncWriter final {
 
       string reg = Sized(arg_e.size, "al", "ax", "eax");
       Col1("mov %v, %v", reg, StackOffset(arg_e.offset));
-      Col1("mov %v, %v", StackOffset(param_offset), reg);
+      Col1("mov %v, %v", StackOffset(stack_used), reg);
 
-      param_offset += 4;
+      stack_used += 4;
     }
 
-    Col1("sub esp, %v", param_offset);
-    Col1("call t%v_m%v", tid, mid);
-    Col1("add esp, %v", param_offset);
-    Col1("mov %v, eax", StackOffset(stack_map.at(dst).offset));
+    string dst_reg = Sized(dst_e.size, "al", "ax", "eax");
+
+    Col1("; Performing call.");
+
+    Col1("sub esp, %v", stack_used);
+    Col1("call _t%v_m%v", tid, mid);
+    Col1("add esp, %v", stack_used);
+    Col1("mov %v, %v", StackOffset(stack_map.at(dst).offset), dst_reg);
   }
 
   void Ret(ArgIter begin, ArgIter end) {
@@ -512,10 +520,8 @@ struct FuncWriter final {
     MemId id;
   };
 
-  const i64 frame_offset = 0;
-
   map<MemId, StackEntry> stack_map;
-  i64 cur_offset = frame_offset;
+  i64 cur_offset = 0;
   vector<StackEntry> stack;
 
   // TODO: do more optimal stack management for non-int-sized things.
