@@ -310,7 +310,11 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(CallExpr, expr,) {
-    // TODO: Check if static.
+    // TODO: handle more than just static calls.
+    auto static_base = dynamic_cast<const StaticRefExpr*>(expr.BasePtr().get());
+    if (static_base == nullptr) {
+      return VisitResult::SKIP;
+    }
 
     // Allocate argument temps and generate their code.
     vector<Mem> arg_mems;
@@ -322,7 +326,8 @@ class MethodIRGenerator final : public ast::Visitor {
     }
 
     // Perform call.
-    builder_.StaticCall(res_, expr.Base().GetTypeId().base, expr.GetMethodId(), arg_mems);
+    // TODO: static_base->GetRefType().GetTypeId().base
+    builder_.StaticCall(res_, 2, expr.GetMethodId(), arg_mems);
 
     // Deallocate arg mems.
     while (!arg_mems.empty()) {
@@ -362,25 +367,27 @@ class ProgramIRGenerator final : public ast::Visitor {
       // TODO.
       return VisitResult::SKIP;
     }
+
     StreamBuilder builder;
 
     vector<ast::LocalVarId> empty_locals;
     map<ast::LocalVarId, Mem> locals_map;
+    bool is_entry_point = false;
     {
       Mem ret = builder.AllocDummy();
 
       // Entry point is a static method called "test" with no params.
-      bool is_entry_point =
+      is_entry_point =
         decl.Name() == "test"
         && decl.Mods().HasModifier(lexer::Modifier::STATIC)
         && decl.Params().Params().Size() == 0;
 
-      MethodIRGenerator gen(ret, is_entry_point, builder, empty_locals, locals_map);
+      MethodIRGenerator gen(ret, false, builder, empty_locals, locals_map);
       gen.Visit(declptr);
     }
     // Return mem must be deallocated before Build is called.
 
-    current_unit_.streams.push_back(builder.Build(true, 2, 2));
+    current_unit_.streams.push_back(builder.Build(is_entry_point, 2, decl.GetMethodId()));
     return VisitResult::SKIP;
   }
 
