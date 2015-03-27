@@ -84,7 +84,7 @@ TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, sptr<const Program> prog,
 
 }  // namespace
 
-sptr<const Program> TypecheckProgram(sptr<const Program> prog, ErrorList* errors) {
+sptr<const Program> TypecheckProgram(sptr<const Program> prog, TypeInfoMap* tinfo_out, ErrorList* errors) {
   // Phase 1: Build a typeset.
   TypeSet typeSet = BuildTypeSet(*prog, errors);
   if (!VerifyTypeSet(typeSet, errors)) {
@@ -115,9 +115,9 @@ sptr<const Program> TypecheckProgram(sptr<const Program> prog, ErrorList* errors
     DataflowVisitor(typeInfo, errors).Visit(prog);
   }
 
-  return prog;
+  *tinfo_out = typeInfo;
 
-  // TODO: this function needs to return all the data structures it has built.
+  return prog;
 }
 
 }  // namespace types

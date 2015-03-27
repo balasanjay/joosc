@@ -247,6 +247,10 @@ public:
 
   bool IsAncestor(ast::TypeId child, ast::TypeId ancestor) const;
 
+  const map<ast::TypeId, TypeInfo>& GetTypeMap() const {
+    return type_info_;
+  }
+
 private:
   friend class TypeInfoMapBuilder;
 
