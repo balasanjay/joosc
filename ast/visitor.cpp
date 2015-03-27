@@ -410,7 +410,7 @@ REWRITE_DEFN(Visitor, FieldDecl, MemberDecl, field, fieldptr) {
     return fieldptr;
   }
 
-  return make_shared<FieldDecl>(field.Mods(), field.GetTypePtr(), field.Name(), field.NameToken(), val);
+  return make_shared<FieldDecl>(field.Mods(), field.GetTypePtr(), field.Name(), field.NameToken(), val, field.GetFieldId());
 }
 
 REWRITE_DEFN(Visitor, MethodDecl, MemberDecl, meth, methptr) {

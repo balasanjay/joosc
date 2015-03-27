@@ -1,6 +1,7 @@
 #include "ir/ir_generator.h"
 
 #include <algorithm>
+#include <tuple>
 
 #include "ast/ast.h"
 #include "ast/visitor.h"
@@ -8,21 +9,33 @@
 #include "ir/stream_builder.h"
 #include "lexer/lexer.h"
 
+using std::dynamic_pointer_cast;
+using std::get;
+using std::tuple;
+
+using ast::Expr;
+using ast::FieldDecl;
+using ast::FieldId;
+using ast::MemberDecl;
+using ast::MethodDecl;
 using ast::StaticRefExpr;
+using ast::TypeId;
+using ast::TypeKind;
 using ast::VisitResult;
+using ast::kInitMethodId;
 
 namespace ir {
 
 class MethodIRGenerator final : public ast::Visitor {
  public:
-  MethodIRGenerator(Mem res, bool lvalue, StreamBuilder& builder, vector<ast::LocalVarId>& locals, map<ast::LocalVarId, Mem>& locals_map): res_(res), lvalue_(lvalue), builder_(builder), locals_(locals), locals_map_(locals_map)  {}
+  MethodIRGenerator(Mem res, bool lvalue, StreamBuilder* builder, vector<ast::LocalVarId>* locals, map<ast::LocalVarId, Mem>* locals_map): res_(res), lvalue_(lvalue), builder_(*builder), locals_(*locals), locals_map_(*locals_map)  {}
 
   MethodIRGenerator WithResultIn(Mem res, bool lvalue=false) {
-    return MethodIRGenerator(res, lvalue, builder_, locals_, locals_map_);
+    return MethodIRGenerator(res, lvalue, &builder_, &locals_, &locals_map_);
   }
 
   MethodIRGenerator WithLocals(vector<ast::LocalVarId>& locals) {
-    return MethodIRGenerator(res_, lvalue_, builder_, locals, locals_map_);
+    return MethodIRGenerator(res_, lvalue_, &builder_, &locals, &locals_map_);
   }
 
   VISIT_DECL(MethodDecl, decl,) {
@@ -369,11 +382,67 @@ class ProgramIRGenerator final : public ast::Visitor {
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(MethodDecl, decl, declptr) {
-    // TODO: 'this' for non-static methods.
-    if (decl.Name() != "test") {
-      // TODO.
+  VISIT_DECL(TypeDecl, decl,) {
+    if (decl.Kind() == TypeKind::INTERFACE) {
       return VisitResult::SKIP;
+    }
+
+    // Only store fields with initialisers.
+    vector<tuple<TypeId, FieldId, sptr<const Expr>>> fields;
+
+    for (int i = 0; i < decl.Members().Size(); ++i) {
+      sptr<const MemberDecl> member = decl.Members().At(i);
+      auto meth = dynamic_pointer_cast<const MethodDecl, const MemberDecl>(member);
+      if (meth != nullptr) {
+        VisitMethodDeclImpl(meth, decl.GetTypeId());
+        continue;
+      }
+
+      auto field = dynamic_pointer_cast<const FieldDecl, const MemberDecl>(member);
+      CHECK(field != nullptr);
+
+      if (field->Mods().HasModifier(lexer::STATIC)) {
+        // TODO: deal with static fields.
+        continue;
+      }
+
+      if (field->ValPtr() == nullptr) {
+        continue;
+      }
+
+      fields.push_back(make_tuple(field->GetType().GetTypeId(), field->GetFieldId(), field->ValPtr()));
+    }
+
+    {
+      StreamBuilder builder;
+
+      // TODO: Pass ``this'' as a parameter so fields can be initialised.
+      {
+        vector<Mem> mem_out;
+        builder.AllocParams({}, &mem_out);
+      }
+
+      vector<ast::LocalVarId> empty_locals;
+      map<ast::LocalVarId, Mem> locals_map;
+      for (auto tup : fields) {
+        // TODO: Get SizeClass of field.
+        Mem tmp = builder.AllocTemp(SizeClassFrom(get<0>(tup)));
+
+        MethodIRGenerator gen(tmp, false, &builder, &empty_locals, &locals_map);
+        gen.Visit(get<2>(tup));
+      }
+
+      current_unit_.streams.push_back(builder.Build(false, decl.GetTypeId().base, kInitMethodId));
+    }
+
+    return VisitResult::SKIP;
+  }
+
+  void VisitMethodDeclImpl(sptr<const MethodDecl> decl, TypeId tid) {
+    // TODO: 'this' for non-static methods.
+    if (decl->Name() != "test") {
+      // TODO.
+      return;
     }
 
     StreamBuilder builder;
@@ -386,17 +455,16 @@ class ProgramIRGenerator final : public ast::Visitor {
 
       // Entry point is a static method called "test" with no params.
       is_entry_point =
-        decl.Name() == "test"
-        && decl.Mods().HasModifier(lexer::Modifier::STATIC)
-        && decl.Params().Params().Size() == 0;
+        (decl->Name() == "test"
+         && decl->Mods().HasModifier(lexer::Modifier::STATIC)
+         && decl->Params().Params().Size() == 0);
 
-      MethodIRGenerator gen(ret, false, builder, empty_locals, locals_map);
-      gen.Visit(declptr);
+      MethodIRGenerator gen(ret, false, &builder, &empty_locals, &locals_map);
+      gen.Visit(decl);
     }
     // Return mem must be deallocated before Build is called.
 
-    current_unit_.streams.push_back(builder.Build(is_entry_point, 2, decl.GetMethodId()));
-    return VisitResult::SKIP;
+    current_unit_.streams.push_back(builder.Build(is_entry_point, tid.base, decl->GetMethodId()));
   }
 
   ir::Program prog;

@@ -87,6 +87,7 @@ struct FuncWriter final {
     w.Col0(".epilogue:");
     w.Col1("pop ebp");
     w.Col1("ret");
+    w.Col0("\n");
   }
 
   void SetupParams(const Stream& stream) {
