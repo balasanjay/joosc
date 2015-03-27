@@ -4,7 +4,7 @@
 #include "ast/extent.h"
 #include "ast/visitor.h"
 #include "types/type_info_map.h"
-
+#include "types/typechecker.h"
 
 using ast::Expr;
 using ast::ConstExpr;
@@ -165,6 +165,44 @@ public:
       auto new_bool_lit = make_shared<ast::BoolLitExpr>(
           lexer::Token(new_bool_value ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)), ast::TypeId::kBool);
       return make_shared<ConstExpr>(new_bool_lit, exprptr);
+    }
+
+    return exprptr;
+  }
+
+  REWRITE_DECL(CastExpr, Expr, expr, exprptr) {
+    // Check that we are doing a primitive cast.
+    // TODO: String cast.
+    sptr<const Expr> new_inner = Rewrite(expr.GetExprPtr());
+
+    ast::TypeId cast_type = expr.GetTypeId();
+    ast::TypeId rhs_type = new_inner->GetTypeId();
+
+    sptr<const Expr> new_cast_expr = make_shared<ast::CastExpr>(expr.Lparen(), expr.GetTypePtr(), expr.Rparen(), new_inner, cast_type);
+
+    auto inner_const = dynamic_cast<const ConstExpr*>(new_inner.get());
+    // Check that we are casting a constant.
+    if (inner_const == nullptr) {
+      return new_cast_expr;
+    }
+
+    if (!TypeChecker::IsPrimitive(cast_type)) {
+      return exprptr;
+    }
+
+    // Propagate constant past identity cast.
+    if (cast_type == rhs_type) {
+      return make_shared<ConstExpr>(inner_const->ConstantPtr(), exprptr);
+    }
+
+    // Booleans can only be cast to strings or themselves, so rest of checks are for ints only.
+    CHECK(TypeChecker::IsNumeric(cast_type));
+
+
+    //i64 value = inner_const->Constant().
+    if (TypeChecker::IsPrimitiveWidening(cast_type, rhs_type)) {
+      // Don't have to change value for widening.
+      // TODO.
     }
 
     return exprptr;

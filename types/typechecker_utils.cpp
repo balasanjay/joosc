@@ -24,7 +24,7 @@ TypeId TypeChecker::JavaLangType(const string& name) const {
   return typeset_.TryGet("java.lang." + name);
 }
 
-bool TypeChecker::IsNumeric(TypeId tid) const {
+bool TypeChecker::IsNumeric(TypeId tid) {
   // Arrays are not numeric.
   if (tid.ndims != 0) {
     return false;
@@ -40,7 +40,7 @@ bool TypeChecker::IsNumeric(TypeId tid) const {
   }
 }
 
-bool TypeChecker::IsPrimitive(TypeId tid) const {
+bool TypeChecker::IsPrimitive(TypeId tid) {
   // All arrays are reference types.
   if (tid.ndims != 0) {
     return false;
@@ -57,7 +57,7 @@ bool TypeChecker::IsPrimitive(TypeId tid) const {
   }
 }
 
-bool TypeChecker::IsReference(TypeId tid) const {
+bool TypeChecker::IsReference(TypeId tid) {
   // All arrays are reference types.
   if (tid.ndims > 0) {
     return true;
@@ -87,7 +87,7 @@ bool IsOneOf(TypeId::Base base, initializer_list<TypeId::Base> allowed) {
 
 // Returns true iff an assignment `lhs x = (rhs)y' is a primitive widening
 // conversion.
-bool TypeChecker::IsPrimitiveWidening(TypeId lhs, TypeId rhs) const {
+bool TypeChecker::IsPrimitiveWidening(TypeId lhs, TypeId rhs) {
   if (!IsNumeric(lhs) || !IsNumeric(rhs)) {
     return false;
   }
@@ -105,7 +105,7 @@ bool TypeChecker::IsPrimitiveWidening(TypeId lhs, TypeId rhs) const {
 
 // Returns true iff an assignment `lhs x = (rhs)y' is a primitive narrowing
 // conversion.
-bool TypeChecker::IsPrimitiveNarrowing(TypeId lhs, TypeId rhs) const {
+bool TypeChecker::IsPrimitiveNarrowing(TypeId lhs, TypeId rhs) {
   if (!IsNumeric(lhs) || !IsNumeric(rhs)) {
     return false;
   }
