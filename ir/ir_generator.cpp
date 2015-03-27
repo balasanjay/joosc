@@ -345,7 +345,13 @@ class ProgramIRGenerator final : public ast::Visitor {
     {
       Mem ret = builder.AllocDummy();
 
-      MethodIRGenerator gen(ret, false, builder, empty_locals, locals_map);
+      // Entry point is a static method called "test" with no params.
+      bool is_entry_point =
+        decl.Name() == "test"
+        && decl.Mods().HasModifier(lexer::Modifier::STATIC)
+        && decl.Params().Params().Size() == 0;
+
+      MethodIRGenerator gen(ret, is_entry_point, builder, empty_locals, locals_map);
       gen.Visit(declptr);
     }
     // Return mem must be deallocated before Build is called.
