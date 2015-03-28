@@ -91,7 +91,7 @@ REWRITE_DEFN(Visitor, FieldDerefExpr, Expr, expr, exprptr) {
   } else if (base == expr.BasePtr()) {
     return exprptr;
   }
-  return make_shared<FieldDerefExpr>(base, expr.FieldName(), expr.GetToken());
+  return make_shared<FieldDerefExpr>(base, expr.FieldName(), expr.GetToken(), expr.GetFieldId(), expr.GetTypeId());
 }
 
 REWRITE_DEFN(Visitor, BoolLitExpr, Expr, expr, exprptr) {

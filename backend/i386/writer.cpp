@@ -683,6 +683,8 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         writer.Ret(begin, end);
         break;
 
+      UNIMPLEMENTED_OP(FIELD);
+      UNIMPLEMENTED_OP(FIELD_ADDR);
       UNIMPLEMENTED_OP(SIGN_EXTEND);
       UNIMPLEMENTED_OP(ZERO_EXTEND);
       UNIMPLEMENTED_OP(TRUNCATE);

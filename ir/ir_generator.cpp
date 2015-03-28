@@ -221,6 +221,27 @@ class MethodIRGenerator final : public ast::Visitor {
     return VisitResult::SKIP;
   }
 
+  VISIT_DECL(FieldDerefExpr, expr,) {
+    // TODO: handle static fields.
+    {
+      auto static_base = dynamic_cast<const StaticRefExpr*>(expr.BasePtr().get());
+      if (static_base != nullptr) {
+        return VisitResult::SKIP;
+      }
+    }
+
+    Mem tmp = builder_.AllocTemp(SizeClass::PTR);
+    WithResultIn(tmp, false).Visit(expr.BasePtr());
+
+    if (lvalue_) {
+      builder_.FieldAddr(res_, tmp, expr.GetFieldId(), expr.GetToken().pos);
+    } else {
+      builder_.Field(res_, tmp, expr.GetFieldId(), expr.GetToken().pos);
+    }
+
+    return VisitResult::SKIP;
+  }
+
   VISIT_DECL(NameExpr, expr,) {
     auto i = locals_map_.find(expr.GetVarId());
     CHECK(i != locals_map_.end());
