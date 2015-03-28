@@ -2,6 +2,7 @@
 
 #include "ast/ast.h"
 #include "base/macros.h"
+#include "base/file.h"
 #include "base/unique_ptr_vector.h"
 #include "lexer/lexer.h"
 #include "parser/parser_internal.h"
@@ -616,6 +617,7 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
     return Fail(MakeUnexpectedEOFError(), out);
   }
 
+  string s = "";
   if (IsNext(IsLiteral)) {
     Token lit = GetNext();
     Parser after = (*this).Advance();
@@ -630,7 +632,9 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
       case K_NULL:
         return after.Success(new NullLitExpr(lit), out);
       case STRING:
-        return after.Success(new StringLitExpr(lit), out);
+        // Strip off quotes.
+        s = TokenString(GetFile(), Token(lit.type, base::PosRange(fid_, lit.pos.begin + 1, lit.pos.end - 1)));
+        return after.Success(new StringLitExpr(lit, s), out);
       default:
         CHECK(false);
     }

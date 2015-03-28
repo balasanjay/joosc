@@ -13,7 +13,14 @@ namespace types {
 
 class ConstantFoldingVisitor final : public ast::Visitor {
 public:
-  ConstantFoldingVisitor(ConstStringMap* strings): strings_(*strings) {
+  ConstantFoldingVisitor(ConstStringMap* strings, ast::TypeId string_type): strings_(*strings), string_type_(string_type) {
+  }
+
+  void AddString(const string& s) {
+    if (strings_.count(s) == 0) {
+      strings_.insert({s, next_string_id_});
+      ++next_string_id_;
+    }
   }
 
   REWRITE_DECL(ConstExpr, Expr, , exprptr) {
@@ -21,7 +28,6 @@ public:
     return exprptr;
   }
 
-  // TODO: Rewrite StringLitExpr.
   // TODO: Rewrite CharLitExpr.
   // TODO: Casting between primitive types.
 
@@ -30,6 +36,11 @@ public:
   }
 
   REWRITE_DECL(BoolLitExpr, Expr, , exprptr) {
+    return make_shared<ConstExpr>(exprptr, exprptr);
+  }
+
+  REWRITE_DECL(StringLitExpr, Expr, expr, exprptr) {
+    AddString(expr.Str());
     return make_shared<ConstExpr>(exprptr, exprptr);
   }
 
@@ -42,8 +53,8 @@ public:
       return exprptr;
     }
 
-    auto original_stripped = make_shared<ast::BinExpr>(
-        lhs_const->OriginalPtr(), expr.Op(), rhs_const->OriginalPtr(), expr.GetTypeId());
+    ast::TypeId lhs_type = lhs_const->Constant().GetTypeId();
+    ast::TypeId rhs_type = rhs_const->Constant().GetTypeId();
 
     if (lexer::IsBoolOp(expr.Op().type)) {
       auto lhs = dynamic_cast<const ast::BoolLitExpr*>(
@@ -64,11 +75,22 @@ public:
 
       auto new_bool_expr = make_shared<ast::BoolLitExpr>(
           lexer::Token(result ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)), ast::TypeId::kBool);
-      return make_shared<ConstExpr>(new_bool_expr, original_stripped);
+      return make_shared<ConstExpr>(new_bool_expr, exprptr);
     }
 
     if (IsNumericOp(expr.Op().type)) {
-      // TODO: Chars, Strings,
+      if (lhs_type == string_type_ && rhs_type == string_type_) {
+        CHECK(expr.Op().type == lexer::ADD);
+        auto lhs_str_lit = dynamic_cast<const ast::StringLitExpr*>(lhs_const->ConstantPtr().get());
+        auto rhs_str_lit = dynamic_cast<const ast::StringLitExpr*>(rhs_const->ConstantPtr().get());
+        CHECK(lhs_str_lit != nullptr && rhs_str_lit != nullptr);
+        string new_str = lhs_str_lit->Str() + rhs_str_lit->Str();
+        AddString(new_str);
+
+        auto new_str_lit = make_shared<ast::StringLitExpr>(lhs_str_lit->GetToken(), new_str, string_type_);
+        return make_shared<ConstExpr>(new_str_lit, exprptr);
+      }
+      // TODO: Chars.
       auto lhs = dynamic_cast<const ast::IntLitExpr*>(
           lhs_const->ConstantPtr().get());
       auto rhs = dynamic_cast<const ast::IntLitExpr*>(
@@ -103,12 +125,26 @@ public:
 
       auto new_int_expr = make_shared<ast::IntLitExpr>(
           lexer::Token(lexer::INTEGER, ExtentOf(exprptr)), (i64)result, ast::TypeId::kInt);
-      return make_shared<ConstExpr>(new_int_expr, original_stripped);
+      return make_shared<ConstExpr>(new_int_expr, exprptr);
 
     }
 
     if (IsRelationalOp(expr.Op().type) || IsEqualityOp(expr.Op().type)) {
-      // TODO: Relational and equality checks for other types.
+      // TODO: Chars.
+      if (lhs_type == string_type_ && rhs_type == string_type_) {
+        bool is_eq = expr.Op().type == lexer::EQ;
+        CHECK(is_eq || expr.Op().type == lexer::NEQ);
+        auto lhs_str_lit = dynamic_cast<const ast::StringLitExpr*>(lhs_const->ConstantPtr().get());
+        auto rhs_str_lit = dynamic_cast<const ast::StringLitExpr*>(rhs_const->ConstantPtr().get());
+        CHECK(lhs_str_lit != nullptr && rhs_str_lit != nullptr);
+        bool eq = lhs_str_lit->Str() == rhs_str_lit->Str();
+        bool result = (eq && is_eq) || (!eq && !is_eq);
+        auto new_bool_lit = make_shared<ast::BoolLitExpr>(
+            lexer::Token(result ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)),
+            ast::TypeId::kBool);
+        return make_shared<ConstExpr>(new_bool_lit, exprptr);
+      }
+
       auto lhs = dynamic_cast<const ast::IntLitExpr*>(
           lhs_const->ConstantPtr().get());
       auto rhs = dynamic_cast<const ast::IntLitExpr*>(
@@ -132,7 +168,7 @@ public:
 
         auto new_bool_expr = make_shared<ast::BoolLitExpr>(
             lexer::Token(result ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)), ast::TypeId::kBool);
-        return make_shared<ConstExpr>(new_bool_expr, original_stripped);
+        return make_shared<ConstExpr>(new_bool_expr, exprptr);
       }
     }
 
@@ -225,10 +261,12 @@ public:
   }
 
   ConstStringMap& strings_;
+  ast::TypeId string_type_;
+  StringId next_string_id_ = 0;
 };
 
-sptr<const ast::Program> ConstantFold(sptr<const ast::Program> prog, ConstStringMap* out_strings) {
-  ConstantFoldingVisitor v(out_strings);
+sptr<const ast::Program> ConstantFold(sptr<const ast::Program> prog, ast::TypeId string_type, ConstStringMap* out_strings) {
+  ConstantFoldingVisitor v(out_strings, string_type);
   return v.Rewrite(prog);
 }
 
