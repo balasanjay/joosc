@@ -8,6 +8,7 @@
 #include "ir/size.h"
 #include "ir/stream_builder.h"
 #include "lexer/lexer.h"
+#include "types/type_info_map.h"
 
 using std::dynamic_pointer_cast;
 using std::get;
@@ -18,6 +19,7 @@ using ast::FieldDecl;
 using ast::FieldId;
 using ast::MemberDecl;
 using ast::MethodDecl;
+using ast::MethodId;
 using ast::StaticRefExpr;
 using ast::TypeId;
 using ast::TypeKind;
@@ -25,8 +27,13 @@ using ast::VisitResult;
 using ast::kInitMethodId;
 using ast::kVarImplicitThis;
 using base::PosRange;
+using types::TypeIdList;
+using types::TypeInfo;
+using types::TypeInfoMap;
 
 namespace ir {
+
+namespace {
 
 class MethodIRGenerator final : public ast::Visitor {
  public:
@@ -446,7 +453,7 @@ class MethodIRGenerator final : public ast::Visitor {
 
 class ProgramIRGenerator final : public ast::Visitor {
  public:
-  ProgramIRGenerator() {}
+  ProgramIRGenerator(const TypeInfoMap& tinfo_map) : tinfo_map_(tinfo_map) {}
   VISIT_DECL(CompUnit, unit, ) {
     stringstream ss;
     ss << 'f' << unit.FileId() << ".s";
@@ -499,7 +506,21 @@ class ProgramIRGenerator final : public ast::Visitor {
       vector<Mem> mem_out;
       builder.AllocParams({SizeClass::PTR}, &mem_out);
 
-      // TODO: Call parent's 0-argument constructor.
+      const TypeInfo& tinfo = tinfo_map_.LookupTypeInfo(tid);
+
+      if (tinfo.extends.Size() > 0) {
+        CHECK(tinfo.extends.Size() == 1);
+        TypeId ptid = tinfo.extends.At(0);
+        const TypeInfo& pinfo = tinfo_map_.LookupTypeInfo(ptid);
+        MethodId mid = pinfo
+          .methods
+          .LookupMethod({true, pinfo.name, TypeIdList({})})
+          .mid;
+
+        Mem dummy = builder.AllocDummy();
+
+        builder.StaticCall(dummy, ptid.base, mid, {mem_out[0]});
+      }
 
       vector<ast::LocalVarId> empty_locals{kVarImplicitThis};
       map<ast::LocalVarId, Mem> locals_map{{kVarImplicitThis, mem_out[0]}};
@@ -522,18 +543,13 @@ class ProgramIRGenerator final : public ast::Visitor {
   }
 
   void VisitMethodDeclImpl(sptr<const MethodDecl> decl, TypeId tid) {
-    // TODO: 'this' for non-static methods. Also, don't hardcode to 16.
-    if (decl->Name() != "test" && tid.base != 16) {
-      // TODO.
-      return;
-    }
-
     StreamBuilder builder;
 
     vector<ast::LocalVarId> empty_locals;
     map<ast::LocalVarId, Mem> locals_map;
     bool is_entry_point = false;
-    {
+    // TODO: don't hardcode to test and 16.
+    if (decl->Name() == "test" || tid.base == 16) {
       Mem ret = builder.AllocDummy();
 
       // Entry point is a static method called "test" with no params.
@@ -544,6 +560,10 @@ class ProgramIRGenerator final : public ast::Visitor {
 
       MethodIRGenerator gen(ret, false, &builder, &empty_locals, &locals_map, tid);
       gen.Visit(decl);
+    } else {
+      // TODO: Dirty hack to get stdlib generating empty methods.
+      vector<Mem> nothing;
+      builder.AllocParams({}, &nothing);
     }
     // Return mem must be deallocated before Build is called.
 
@@ -554,10 +574,13 @@ class ProgramIRGenerator final : public ast::Visitor {
 
  private:
   ir::CompUnit current_unit_;
+  const TypeInfoMap& tinfo_map_;
 };
 
-Program GenerateIR(sptr<const ast::Program> program) {
-  ProgramIRGenerator gen;
+} // namespace
+
+Program GenerateIR(sptr<const ast::Program> program, const TypeInfoMap& tinfo_map) {
+  ProgramIRGenerator gen(tinfo_map);
   gen.Visit(program);
   return gen.prog;
 }
