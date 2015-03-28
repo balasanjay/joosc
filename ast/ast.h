@@ -270,21 +270,26 @@ class IntLitExpr : public LitExpr {
 
 class StringLitExpr : public LitExpr {
  public:
-  StringLitExpr(lexer::Token token, const string& str, TypeId tid = TypeId::kUnassigned) : LitExpr(token, tid), str_(str) {}
+  StringLitExpr(lexer::Token token, const jstring& str, TypeId tid = TypeId::kUnassigned) : LitExpr(token, tid), str_(str) {}
 
   ACCEPT_VISITOR(StringLitExpr, Expr);
 
-  REF_GETTER(string, Str, str_);
+  REF_GETTER(jstring, Str, str_);
 
  private:
-  const string str_;
+  const jstring str_;
 };
 
 class CharLitExpr : public LitExpr {
  public:
-  CharLitExpr(lexer::Token token, TypeId tid = TypeId::kUnassigned) : LitExpr(token, tid) {}
+  CharLitExpr(lexer::Token token, jchar the_char, TypeId tid = TypeId::kUnassigned) : LitExpr(token, tid), char_(the_char) {}
 
   ACCEPT_VISITOR(CharLitExpr, Expr);
+
+  VAL_GETTER(jchar, Char, char_);
+
+ private:
+  jchar char_;
 };
 
 class NullLitExpr : public LitExpr {

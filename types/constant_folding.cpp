@@ -16,7 +16,7 @@ public:
   ConstantFoldingVisitor(ConstStringMap& strings, ast::TypeId string_type): strings_(strings), string_type_(string_type) {
   }
 
-  void AddString(const string& s) {
+  void AddString(const jstring& s) {
     if (strings_.count(s) == 0) {
       strings_.insert({s, next_string_id_});
       ++next_string_id_;
@@ -26,18 +26,24 @@ public:
   // Convert either a ConstExpr wrapping one of the
   // literals, or just a literal, into its string
   // representation.
-  string Stringify(sptr<const Expr> expr) {
+  jstring Stringify(sptr<const Expr> expr) {
     sptr<const Expr> inside_const = expr;
     auto const_expr = dynamic_cast<const ast::ConstExpr*>(expr.get());
     if (const_expr != nullptr) {
       inside_const = const_expr->ConstantPtr();
     }
 
-    // TODO: Char.
     if (inside_const->GetTypeId() == string_type_) {
       auto inner_const_str = dynamic_cast<const ast::StringLitExpr*>(inside_const.get());
       CHECK(inner_const_str != nullptr);
       return inner_const_str->Str();
+    }
+
+    if (inside_const->GetTypeId() == ast::TypeId::kChar) {
+      auto inner_const_char = dynamic_cast<const ast::CharLitExpr*>(inside_const.get());
+      CHECK(inner_const_char != nullptr);
+
+      return jstring(1, inner_const_char->Char());
     }
 
     if (TypeChecker::IsNumeric(inside_const->GetTypeId())) {
@@ -45,16 +51,35 @@ public:
       CHECK(inner_const_int != nullptr);
 
       i64 value = inner_const_int->Value();
-      stringstream value_stream;
-      value_stream << value;
-      return value_stream.str();
+      stringstream ss;
+      ss << value;
+      string s = ss.str();
+      jstring js;
+      js.insert(js.begin(), s.begin(), s.end());
+      return js;
     }
 
     CHECK(inside_const->GetTypeId() == ast::TypeId::kBool);
 
     auto inner_const_bool = dynamic_cast<const ast::BoolLitExpr*>(inside_const.get());
     CHECK(inner_const_bool != nullptr);
-    return inner_const_bool->GetToken().type == lexer::K_TRUE ? "true" : "false";
+    string s = inner_const_bool->GetToken().type == lexer::K_TRUE ? "true" : "false";
+    jstring js;
+    js.insert(js.begin(), s.begin(), s.end());
+    return js;
+  }
+
+  // Get integer value from an int or character literal.
+  i64 GetIntValue(sptr<const Expr> expr) {
+    if (expr->GetTypeId() == ast::TypeId::kChar) {
+      auto char_expr = dynamic_cast<const ast::CharLitExpr*>(expr.get());
+      CHECK(char_expr != nullptr);
+      return (u64)char_expr->Char();
+    }
+
+    auto int_expr = dynamic_cast<const ast::IntLitExpr*>(expr.get());
+    CHECK(int_expr != nullptr);
+    return int_expr->Value();
   }
 
   REWRITE_DECL(ConstExpr, Expr, , exprptr) {
@@ -62,10 +87,11 @@ public:
     return exprptr;
   }
 
-  // TODO: Rewrite CharLitExpr.
-  // TODO: Casting between primitive types.
-
   REWRITE_DECL(IntLitExpr, Expr, , exprptr) {
+    return make_shared<ConstExpr>(exprptr, exprptr);
+  }
+
+  REWRITE_DECL(CharLitExpr, Expr, , exprptr) {
     return make_shared<ConstExpr>(exprptr, exprptr);
   }
 
@@ -112,13 +138,14 @@ public:
       return make_shared<ConstExpr>(new_bool_expr, exprptr);
     }
 
+    // Note: Includes chars.
     if (IsNumericOp(expr.Op().type)) {
       if (lhs_type == string_type_ || rhs_type == string_type_) {
         CHECK(expr.Op().type == lexer::ADD);
 
-        string lhs_str = Stringify(lhs_const->ConstantPtr());
-        string rhs_str = Stringify(rhs_const->ConstantPtr());
-        string new_str = lhs_str + rhs_str;
+        jstring lhs_str = Stringify(lhs_const->ConstantPtr());
+        jstring rhs_str = Stringify(rhs_const->ConstantPtr());
+        jstring new_str = lhs_str + rhs_str;
         AddString(new_str);
 
         auto new_str_lit = make_shared<ast::StringLitExpr>(
@@ -127,16 +154,8 @@ public:
         return make_shared<ConstExpr>(new_str_lit, exprptr);
       }
 
-      // TODO: Chars.
-      auto lhs = dynamic_cast<const ast::IntLitExpr*>(
-          lhs_const->ConstantPtr().get());
-      auto rhs = dynamic_cast<const ast::IntLitExpr*>(
-          rhs_const->ConstantPtr().get());
-
-      CHECK(lhs != nullptr && rhs != nullptr);
-
-      u32 lhs_value = (u32)lhs->Value();
-      u32 rhs_value = (u32)rhs->Value();
+      u32 lhs_value = (u32)GetIntValue(lhs_const->ConstantPtr());
+      u32 rhs_value = (u32)GetIntValue(rhs_const->ConstantPtr());
       i32 result = 0;
 
       switch (expr.Op().type) {
@@ -166,50 +185,40 @@ public:
 
     }
 
-    if (IsRelationalOp(expr.Op().type) || IsEqualityOp(expr.Op().type)) {
-      // TODO: Chars.
-      if (lhs_type == string_type_ && rhs_type == string_type_) {
-        bool is_eq = expr.Op().type == lexer::EQ;
-        CHECK(is_eq || expr.Op().type == lexer::NEQ);
-        auto lhs_str_lit = dynamic_cast<const ast::StringLitExpr*>(lhs_const->ConstantPtr().get());
-        auto rhs_str_lit = dynamic_cast<const ast::StringLitExpr*>(rhs_const->ConstantPtr().get());
-        CHECK(lhs_str_lit != nullptr && rhs_str_lit != nullptr);
-        bool eq = lhs_str_lit->Str() == rhs_str_lit->Str();
-        bool result = (eq && is_eq) || (!eq && !is_eq);
-        auto new_bool_lit = make_shared<ast::BoolLitExpr>(
-            lexer::Token(result ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)),
-            ast::TypeId::kBool);
-        return make_shared<ConstExpr>(new_bool_lit, exprptr);
-      }
+    CHECK(IsRelationalOp(expr.Op().type) || IsEqualityOp(expr.Op().type));
 
-      auto lhs = dynamic_cast<const ast::IntLitExpr*>(
-          lhs_const->ConstantPtr().get());
-      auto rhs = dynamic_cast<const ast::IntLitExpr*>(
-          rhs_const->ConstantPtr().get());
+    if (lhs_type == string_type_ && rhs_type == string_type_) {
+      bool is_eq = expr.Op().type == lexer::EQ;
+      CHECK(is_eq || expr.Op().type == lexer::NEQ);
 
-      if (lhs != nullptr && rhs != nullptr) {
-        i64 lhs_value = lhs->Value();
-        i64 rhs_value = rhs->Value();
-        bool result = 0;
-        switch (expr.Op().type) {
-          case lexer::LE: result = lhs_value <= rhs_value; break;
-          case lexer::GE: result = lhs_value >= rhs_value; break;
-          case lexer::LT: result = lhs_value < rhs_value; break;
-          case lexer::GT: result = lhs_value > rhs_value; break;
-
-          case lexer::EQ: result = lhs_value == rhs_value; break;
-          case lexer::NEQ: result = lhs_value != rhs_value; break;
-
-          default: break;
-        }
-
-        auto new_bool_expr = make_shared<ast::BoolLitExpr>(
-            lexer::Token(result ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)), ast::TypeId::kBool);
-        return make_shared<ConstExpr>(new_bool_expr, exprptr);
-      }
+      jstring lhs_str = Stringify(lhs_const->ConstantPtr());
+      jstring rhs_str = Stringify(rhs_const->ConstantPtr());
+      bool eq = (lhs_str == rhs_str);
+      bool result = (eq && is_eq) || (!eq && !is_eq);
+      auto new_bool_lit = make_shared<ast::BoolLitExpr>(
+          lexer::Token(result ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)),
+          ast::TypeId::kBool);
+      return make_shared<ConstExpr>(new_bool_lit, exprptr);
     }
 
-    return exprptr;
+    i64 lhs_value = GetIntValue(lhs_const->ConstantPtr());
+    i64 rhs_value = GetIntValue(rhs_const->ConstantPtr());
+    bool result = 0;
+    switch (expr.Op().type) {
+      case lexer::LE: result = lhs_value <= rhs_value; break;
+      case lexer::GE: result = lhs_value >= rhs_value; break;
+      case lexer::LT: result = lhs_value < rhs_value; break;
+      case lexer::GT: result = lhs_value > rhs_value; break;
+
+      case lexer::EQ: result = lhs_value == rhs_value; break;
+      case lexer::NEQ: result = lhs_value != rhs_value; break;
+
+      default: break;
+    }
+
+    auto new_bool_expr = make_shared<ast::BoolLitExpr>(
+        lexer::Token(result ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)), ast::TypeId::kBool);
+    return make_shared<ConstExpr>(new_bool_expr, exprptr);
   }
 
   REWRITE_DECL(UnaryExpr, Expr, expr, exprptr) {
@@ -243,7 +252,6 @@ public:
   }
 
   REWRITE_DECL(CastExpr, Expr, expr, exprptr) {
-    // TODO: Treat chars as ints.
     sptr<const Expr> new_inner = Rewrite(expr.GetExprPtr());
 
     ast::TypeId cast_type = expr.GetTypeId();
@@ -295,7 +303,9 @@ public:
     // Cast to String (for a constant type).
     // TODO: Is this even possible in the type system?
     CHECK(cast_type == string_type_);
-    string str = Stringify(inner_const->ConstantPtr());
+    jstring str = Stringify(inner_const->ConstantPtr());
+    AddString(str);
+
     auto new_str_lit = make_shared<ast::StringLitExpr>(
         lexer::Token(lexer::STRING, ExtentOf(exprptr)),
         str, string_type_);

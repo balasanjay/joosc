@@ -272,6 +272,9 @@ bool IsRelationalOp(TokenType op);
 bool IsEqualityOp(TokenType op);
 bool IsNumericOp(TokenType op);
 
+jchar ConvertCharEscape(string s, u64 start, u64* next);
+jstring ConvertStringEscapes(string s);
+
 }  // namespace lexer
 
 #endif

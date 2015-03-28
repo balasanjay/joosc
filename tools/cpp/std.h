@@ -32,6 +32,10 @@ using std::string;
 using std::stringstream;
 using std::vector;
 
+// Joos char and string - Java's char is u16.
+using jchar = u16;
+using jstring = std::basic_string<jchar>;
+
 template<
   class T,
   class Deleter = std::default_delete<T>

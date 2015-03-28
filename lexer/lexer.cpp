@@ -413,17 +413,17 @@ bool AdvanceEscapedChar(LexState* state) {
     return true;
   }
 
-  const int maxOctalEscape = 377;
-  const int maxOctalDigits = 3;
-  int currentOctalEscape = 0;
+  const u64 maxOctalEscape = 255; // 377 in octal.
+  const u64 maxOctalDigits = 3;
+  u64 currentOctalEscape = 0;
 
   // Include up to maxOctalDigits digits.
-  for (int i = 0; i < maxOctalDigits; ++i) {
+  for (u64 i = 0; i < maxOctalDigits; ++i) {
     u8 next = state->Peek();
     if (!IsOctal(next)) {
       break;
     }
-    currentOctalEscape = currentOctalEscape * 10 + (next - '0');
+    currentOctalEscape = currentOctalEscape * 8 + (next - '0');
     if (currentOctalEscape > maxOctalEscape) {
       // Don't include next digit if it would make the value larger than
       // maxOctalEscape.
@@ -510,6 +510,57 @@ void String(LexState* state) {
 }
 
 }  // namespace internal
+
+jchar ConvertCharEscape(string s, u64 start, u64* next) {
+  if (s[start] != '\\') {
+    *next = start + 1;
+    return s[start];
+  }
+  if (internal::IsOctal(s[start + 1])) {
+    const jchar maxOctalEscape = 255;
+    const jchar maxOctalDigits = 3;
+    jchar currentOctalEscape = 0;
+    u64 i = start + 1;
+    for (; i < s.length() && i - 1 - start < maxOctalDigits; ++i) {
+      if (!internal::IsOctal(s[i])) {
+        break;
+      }
+      currentOctalEscape = currentOctalEscape * 8 + (s[i] - '0');
+      if (currentOctalEscape > maxOctalEscape) {
+        break;
+      }
+    }
+    *next = i + 1;
+    return currentOctalEscape;
+  }
+
+  *next = start + 2;
+  switch (s[start + 1]) {
+    case 'b': return 8;
+    case 't': return 9;
+    case 'n': return 10;
+    case 'f': return 12;
+    case 'r': return 13;
+    case '"': return 34;
+    case '\'': return 39;
+    case '\\': return 92;
+    default: UNREACHABLE();
+  }
+}
+
+jstring ConvertStringEscapes(string s) {
+  u64 i = 0;
+  u64 next = 0;
+  jstring out;
+  jchar c = 0;
+
+  while (i < s.length()) {
+    c = ConvertCharEscape(s, i, &next);
+    out.push_back(c);
+    i = next;
+  }
+  return out;
+}
 
 void LexJoosFile(const base::FileSet* fs, const base::File* file, int fileid,
                  vector<Token>* tokens_out, base::ErrorList* errors_out) {

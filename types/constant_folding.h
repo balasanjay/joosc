@@ -7,7 +7,7 @@
 namespace types {
 
 using StringId = u64;
-using ConstStringMap = map<string, StringId>;
+using ConstStringMap = map<jstring, StringId>;
 
 sptr<const ast::Program> ConstantFold(sptr<const ast::Program> prog, ast::TypeId string_type, ConstStringMap* out_strings);
 

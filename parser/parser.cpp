@@ -618,6 +618,8 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
   }
 
   string s = "";
+  jchar c;
+  u64 next = 0;
   if (IsNext(IsLiteral)) {
     Token lit = GetNext();
     Parser after = (*this).Advance();
@@ -625,7 +627,12 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
       case INTEGER:
         return after.Success(new IntLitExpr(lit), out);
       case CHAR:
-        return after.Success(new CharLitExpr(lit), out);
+        s = TokenString(GetFile(), Token(lit.type, base::PosRange(fid_, lit.pos.begin + 1, lit.pos.end - 1)));
+        c = lexer::ConvertCharEscape(s, 0, &next);
+        CHECK(next == s.length());
+        return after.Success(
+            new CharLitExpr(lit, c),
+            out);
       case K_TRUE:
       case K_FALSE:
         return after.Success(new BoolLitExpr(lit), out);
@@ -634,7 +641,9 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
       case STRING:
         // Strip off quotes.
         s = TokenString(GetFile(), Token(lit.type, base::PosRange(fid_, lit.pos.begin + 1, lit.pos.end - 1)));
-        return after.Success(new StringLitExpr(lit, s), out);
+        return after.Success(
+            new StringLitExpr(lit, lexer::ConvertStringEscapes(s)),
+            out);
       default:
         CHECK(false);
     }
