@@ -24,6 +24,7 @@ using ast::TypeKind;
 using ast::VisitResult;
 using ast::kInitMethodId;
 using ast::kVarImplicitThis;
+using base::PosRange;
 
 namespace ir {
 
@@ -503,11 +504,15 @@ class ProgramIRGenerator final : public ast::Visitor {
       vector<ast::LocalVarId> empty_locals{kVarImplicitThis};
       map<ast::LocalVarId, Mem> locals_map{{kVarImplicitThis, mem_out[0]}};
       for (auto tup : fields) {
-        // TODO: Get SizeClass of field.
-        Mem tmp = builder.AllocTemp(SizeClassFrom(get<0>(tup)));
+        Mem field = builder.AllocTemp(SizeClass::PTR);
+        Mem val = builder.AllocTemp(SizeClassFrom(get<0>(tup)));
 
-        MethodIRGenerator gen(tmp, false, &builder, &empty_locals, &locals_map, tid);
+        builder.FieldAddr(field, mem_out[0], get<1>(tup), PosRange(-1, -1, -1));
+
+        MethodIRGenerator gen(val, false, &builder, &empty_locals, &locals_map, tid);
         gen.Visit(get<2>(tup));
+
+        builder.MovToAddr(field, val);
       }
 
       current_unit_.streams.push_back(builder.Build(false, tid.base, kInitMethodId));
