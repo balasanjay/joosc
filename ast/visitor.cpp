@@ -91,7 +91,7 @@ REWRITE_DEFN(Visitor, FieldDerefExpr, Expr, expr, exprptr) {
   } else if (base == expr.BasePtr()) {
     return exprptr;
   }
-  return make_shared<FieldDerefExpr>(base, expr.FieldName(), expr.GetToken());
+  return make_shared<FieldDerefExpr>(base, expr.FieldName(), expr.GetToken(), expr.GetFieldId(), expr.GetTypeId());
 }
 
 REWRITE_DEFN(Visitor, BoolLitExpr, Expr, expr, exprptr) {
@@ -176,7 +176,7 @@ REWRITE_DEFN(Visitor, NewClassExpr, Expr, expr, exprptr) {
   if (!argsChanged) {
     return exprptr;
   }
-  return make_shared<NewClassExpr>(expr.NewToken(), expr.GetTypePtr(), expr.Lparen(), args, expr.Rparen());
+  return make_shared<NewClassExpr>(expr.NewToken(), expr.GetTypePtr(), expr.Lparen(), args, expr.Rparen(), expr.GetMethodId(), expr.GetTypeId());
 }
 
 REWRITE_DEFN(Visitor, ParenExpr, Expr, expr, exprptr) {
@@ -410,7 +410,7 @@ REWRITE_DEFN(Visitor, FieldDecl, MemberDecl, field, fieldptr) {
     return fieldptr;
   }
 
-  return make_shared<FieldDecl>(field.Mods(), field.GetTypePtr(), field.Name(), field.NameToken(), val);
+  return make_shared<FieldDecl>(field.Mods(), field.GetTypePtr(), field.Name(), field.NameToken(), val, field.GetFieldId());
 }
 
 REWRITE_DEFN(Visitor, MethodDecl, MemberDecl, meth, methptr) {

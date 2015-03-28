@@ -9,6 +9,7 @@ cc_library(
         "file_impl.cpp",
         "file_walker.cpp",
         "fileset.cpp",
+        "printf.cpp",
     ],
     hdrs = [
         "algorithm.h",

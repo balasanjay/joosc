@@ -2,6 +2,7 @@
 #define STD_H
 
 #include <cstdint>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <set>

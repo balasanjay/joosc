@@ -13,7 +13,7 @@ namespace types {
 
 class ConstantFoldingVisitor final : public ast::Visitor {
 public:
-  ConstantFoldingVisitor(ConstStringMap& strings, ast::TypeId string_type): strings_(strings), string_type_(string_type) {
+  ConstantFoldingVisitor(ConstStringMap* strings, ast::TypeId string_type): strings_(*strings), string_type_(string_type) {
   }
 
   void AddString(const jstring& s) {
@@ -123,13 +123,13 @@ public:
           rhs_const->ConstantPtr().get());
       CHECK(lhs != nullptr && rhs != nullptr);
 
-      bool lhs_value = lhs->GetToken().type == lexer::K_TRUE;
-      bool rhs_value = rhs->GetToken().type == lexer::K_TRUE;
+      bool lhs_value = (lhs->GetToken().type == lexer::K_TRUE);
+      bool rhs_value = (rhs->GetToken().type == lexer::K_TRUE);
       bool result = false;
 
       switch (expr.Op().type) {
-        case lexer::OR: result = lhs_value || rhs_value; break;
-        case lexer::AND: result = lhs_value && rhs_value; break;
+        case lexer::OR: result = (lhs_value || rhs_value); break;
+        case lexer::AND: result = (lhs_value && rhs_value); break;
         default: break;
       }
 
@@ -282,15 +282,15 @@ public:
       switch (cast_type.base) {
         case ast::TypeId::kIntBase:
           break;
+        case ast::TypeId::kCharBase:
         case ast::TypeId::kShortBase:
           usigned = usigned & 0x0000FFFF;
           break;
         case ast::TypeId::kByteBase:
-        case ast::TypeId::kCharBase:
           usigned = usigned & 0x000000FF;
           break;
         default:
-          CHECK(false);
+          UNREACHABLE();
       }
       i64 new_value = (i64)usigned;
 
@@ -318,7 +318,7 @@ public:
 };
 
 sptr<const ast::Program> ConstantFold(sptr<const ast::Program> prog, ast::TypeId string_type, ConstStringMap* out_strings) {
-  ConstantFoldingVisitor v(*out_strings, string_type);
+  ConstantFoldingVisitor v(out_strings, string_type);
   return v.Rewrite(prog);
 }
 

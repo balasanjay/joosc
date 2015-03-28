@@ -6,6 +6,7 @@ cc_library(
         "ir_generator.cpp",
         "mem.cpp",
         "mem_impl.cpp",
+        "size.cpp",
         "stream.cpp",
         "stream_builder.cpp",
     ],
@@ -13,12 +14,14 @@ cc_library(
         "ir_generator.h",
         "mem.h",
         "mem_impl.h",
+        "size.h",
         "stream.h",
         "stream_builder.h",
     ],
     deps = [
         "//ast",
         "//base",
+        "//types",
     ],
 )
 

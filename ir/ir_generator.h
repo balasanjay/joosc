@@ -1,21 +1,13 @@
-#ifndef DATAFLOW_VISITOR_H
-#define DATAFLOW_VISITOR_H
+#ifndef IR_IR_GENERATOR_H
+#define IR_IR_GENERATOR_H
 
 #include "ast/ast_fwd.h"
 #include "ir/stream.h"
+#include "types/type_info_map.h"
 
 namespace ir {
 
-struct CompUnit {
-  string filename;
-  vector<Stream> streams;
-};
-
-struct Program {
-  vector<CompUnit> units;
-};
-
-Program GenerateIR(sptr<const ast::Program> program);
+Program GenerateIR(sptr<const ast::Program> program, const types::TypeInfoMap& tinfo_map);
 
 } // namespace ir
 

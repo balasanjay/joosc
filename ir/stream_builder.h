@@ -2,6 +2,7 @@
 #define IR_STREAM_BUILDER_H
 
 #include "ast/ids.h"
+#include "base/file.h"
 #include "ir/mem.h"
 #include "ir/stream.h"
 
@@ -12,6 +13,10 @@ struct MemImpl;
 
 class StreamBuilder {
  public:
+
+  // Return a Mem of SizeClass::PTR that can fit an instance of type t.
+  Mem AllocHeap(ast::TypeId t);
+
   Mem AllocTemp(SizeClass);
 
   Mem AllocLocal(SizeClass);
@@ -41,6 +46,14 @@ class StreamBuilder {
 
   // Emit **dst = *src.
   void MovToAddr(Mem dst, Mem src);
+
+  // Return in dst the value of field fid in src. If src points to null, an
+  // exception will be generated.
+  void Field(Mem dst, Mem src, ast::FieldId fid, base::PosRange pos);
+
+  // Return in dst a pointer to fid in src. If src points to null, an exception
+  // will be generated.
+  void FieldAddr(Mem dst, Mem src, ast::FieldId fid, base::PosRange pos);
 
   // Emit *dst = *lhs + *rhs.
   void Add(Mem dst, Mem lhs, Mem rhs);

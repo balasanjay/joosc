@@ -1,19 +1,18 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_library(
-    name = "i386",
+    name = "common",
     srcs = [
-        "writer.cpp",
+        "offset_table.cpp",
     ],
     hdrs = [
-        "writer.h",
+        "asm_writer.h",
+        "offset_table.h",
     ],
     deps = [
         "//ast",
-        "//backend/common",
         "//base",
         "//ir",
         "//types",
     ],
 )
-

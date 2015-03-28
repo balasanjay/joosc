@@ -5,6 +5,7 @@
 
 #include "ast/ast.h"
 #include "ast/print_visitor.h"
+#include "backend/common/offset_table.h"
 #include "backend/i386/writer.h"
 #include "base/error.h"
 #include "base/errorlist.h"
@@ -23,6 +24,7 @@ using std::ostream;
 
 using ast::PrintVisitor;
 using ast::Program;
+using backend::common::OffsetTable;
 using base::ErrorList;
 using base::FileSet;
 using lexer::LexJoosFiles;
@@ -84,17 +86,18 @@ sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, Typ
   return program;
 }
 
-bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, const TypeInfoMap&, std::ostream* err) {
-  ir::Program ir_prog = ir::GenerateIR(prog);
+bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, const TypeInfoMap& tinfo_map, std::ostream* err) {
+  ir::Program ir_prog = ir::GenerateIR(prog, tinfo_map);
   if (stage == CompilerStage::GEN_IR) {
     return true;
   }
 
-  // Generate type sizes, field offsets, and method offsets.
-  // TODO: do this.
-
   // TODO: have a more generic backend mechanism.
+  // Generate type sizes, field offsets, and method offsets.
+  OffsetTable offset_table = OffsetTable::Build(tinfo_map, 4);
+
   bool success = true;
+  backend::i386::Writer writer(offset_table);
   for (const ir::CompUnit& comp_unit : ir_prog.units) {
     string fname = dir + "/" + comp_unit.filename;
 
@@ -106,15 +109,13 @@ bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const s
       continue;
     }
 
-    backend::i386::Writer writer;
     writer.WriteCompUnit(comp_unit, &out);
 
     out << std::flush;
   }
 
-
   do {
-    string fname = dir + "/start.s";
+    string fname = dir + "/main.s";
     ofstream out(fname);
     if (!out) {
       // TODO: make error pretty.
@@ -123,16 +124,8 @@ bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const s
       break;
     }
 
-    out << "extern _entry\n";
-    out << "global _start\n";
-    out << "_start:\n";
-    out << "push ebp\n";
-    out << "mov ebp, esp\n";
-    out << "call _entry\n";
-    out << "pop ebp\n";
-    out << "mov ebx, eax\n";
-    out << "mov eax, 1\n";
-    out << "int 0x80\n";
+    writer.WriteMain(&out);
+    out << std::flush;
 
   } while (false);
 
