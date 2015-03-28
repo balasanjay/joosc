@@ -92,4 +92,12 @@ TEST_F(ConstantFoldingTest, DiffStrings) {
   ShouldBeFalse("", "\"foo\" + \"bar\" == \"ooba\" + \"r\"");
 }
 
+TEST_F(ConstantFoldingTest, StringifyInt) {
+  ShouldBeTrue("", "\"foo\" + -12 == \"foo-12\"");
+}
+
+TEST_F(ConstantFoldingTest, StringifyBools) {
+  ShouldBeTrue("", "true + \"foo\" + false == \"truefoofalse\"");
+}
+
 } // namespace types
