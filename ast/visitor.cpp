@@ -176,7 +176,7 @@ REWRITE_DEFN(Visitor, NewClassExpr, Expr, expr, exprptr) {
   if (!argsChanged) {
     return exprptr;
   }
-  return make_shared<NewClassExpr>(expr.NewToken(), expr.GetTypePtr(), expr.Lparen(), args, expr.Rparen());
+  return make_shared<NewClassExpr>(expr.NewToken(), expr.GetTypePtr(), expr.Lparen(), args, expr.Rparen(), expr.GetMethodId(), expr.GetTypeId());
 }
 
 REWRITE_DEFN(Visitor, ParenExpr, Expr, expr, exprptr) {

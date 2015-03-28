@@ -16,6 +16,9 @@ enum class OpType {
   // (Mem).
   DEALLOC_MEM,
 
+  // (Mem, TypeId::Base).
+  ALLOC_HEAP,
+
   // (LabelId).
   LABEL,
 

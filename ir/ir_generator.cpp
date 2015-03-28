@@ -364,6 +364,32 @@ class MethodIRGenerator final : public ast::Visitor {
     return VisitResult::SKIP;
   }
 
+  VISIT_DECL(NewClassExpr, expr,) {
+
+    Mem this_mem = builder_.AllocHeap(expr.GetTypeId());
+
+    // TODO: Refactor with CallExpr.
+    // Allocate argument temps and generate their code.
+    vector<Mem> arg_mems;
+    arg_mems.push_back(this_mem);
+    for (int i = 0; i < expr.Args().Size(); ++i) {
+      auto arg = expr.Args().At(i);
+      Mem arg_mem = builder_.AllocTemp(SizeClassFrom(arg->GetTypeId()));
+      WithResultIn(arg_mem).Visit(arg);
+      arg_mems.push_back(arg_mem);
+    }
+
+    // Perform constructor call.
+    builder_.StaticCall(res_, expr.GetTypeId().base, expr.GetMethodId(), arg_mems);
+
+    // Deallocate arg mems.
+    while (!arg_mems.empty()) {
+      arg_mems.pop_back();
+    }
+
+    return VisitResult::SKIP;
+  }
+
   // Location result of the computation should be stored.
   Mem res_;
   bool lvalue_ = false;
@@ -430,6 +456,8 @@ class ProgramIRGenerator final : public ast::Visitor {
         vector<Mem> mem_out;
         builder.AllocParams({}, &mem_out);
       }
+
+      // TODO: Call parent's 0-argument constructor.
 
       vector<ast::LocalVarId> empty_locals;
       map<ast::LocalVarId, Mem> locals_map;

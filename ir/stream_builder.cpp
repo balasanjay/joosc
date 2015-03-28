@@ -40,6 +40,14 @@ void StreamBuilder::SetAssigned(const std::initializer_list<Mem>& mems) {
   }
 }
 
+Mem StreamBuilder::AllocHeap(TypeId tid) {
+  Mem tmp = AllocTemp(SizeClass::PTR);
+  // TODO: Handle arrays.
+  AppendOp(OpType::ALLOC_HEAP, {tmp.Id(), tid.base});
+  SetAssigned({tmp});
+  return tmp;
+}
+
 Mem StreamBuilder::AllocMem(SizeClass size, bool immutable) {
   CHECK(params_initialized_);
 

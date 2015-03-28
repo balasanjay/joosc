@@ -657,6 +657,7 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         writer.Ret(begin, end);
         break;
 
+      UNIMPLEMENTED_OP(ALLOC_HEAP);
       UNIMPLEMENTED_OP(SIGN_EXTEND);
       UNIMPLEMENTED_OP(ZERO_EXTEND);
       UNIMPLEMENTED_OP(TRUNCATE);

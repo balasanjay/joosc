@@ -12,6 +12,10 @@ struct MemImpl;
 
 class StreamBuilder {
  public:
+
+  // Return a Mem of SizeClass::PTR that can fit an instance of type t.
+  Mem AllocHeap(ast::TypeId t);
+
   Mem AllocTemp(SizeClass);
 
   Mem AllocLocal(SizeClass);
