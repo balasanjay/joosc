@@ -80,7 +80,7 @@ REWRITE_DEFN(Visitor, CastExpr, Expr, expr, exprptr) {
   } else if (castedExpr == expr.GetExprPtr()) {
     return exprptr;
   }
-  return make_shared<CastExpr>(expr.Lparen(), expr.GetTypePtr(), expr.Rparen(), castedExpr);
+  return make_shared<CastExpr>(expr.Lparen(), expr.GetTypePtr(), expr.Rparen(), castedExpr, expr.GetTypeId());
 }
 
 REWRITE_DEFN(Visitor, FieldDerefExpr, Expr, expr, exprptr) {

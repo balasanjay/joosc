@@ -63,6 +63,12 @@ class TypeChecker final : public ast::Visitor {
         true, is_static, cur_member_type, SymbolTable(paramInfos, errors_));
   }
 
+  static bool IsNumeric(ast::TypeId tid);
+  static bool IsPrimitive(ast::TypeId tid);
+  static bool IsReference(ast::TypeId tid);
+  static bool IsPrimitiveWidening(ast::TypeId lhs, ast::TypeId rhs);
+  static  bool IsPrimitiveNarrowing(ast::TypeId lhs, ast::TypeId rhs);
+
   REWRITE_DECL(ArrayIndexExpr, Expr, expr, exprptr);
   REWRITE_DECL(BinExpr, Expr, expr, exprptr);
   REWRITE_DECL(BoolLitExpr, Expr, expr, exprptr);
@@ -114,11 +120,6 @@ class TypeChecker final : public ast::Visitor {
   sptr<const ast::Type> MustResolveType(sptr<const ast::Type> type);
   ast::TypeId JavaLangType(const string& name) const;
 
-  bool IsNumeric(ast::TypeId tid) const;
-  bool IsPrimitive(ast::TypeId tid) const;
-  bool IsReference(ast::TypeId tid) const;
-  bool IsPrimitiveWidening(ast::TypeId lhs, ast::TypeId rhs) const;
-  bool IsPrimitiveNarrowing(ast::TypeId lhs, ast::TypeId rhs) const;
   bool IsReferenceWidening(ast::TypeId lhs, ast::TypeId rhs) const;
   bool IsAssignable(ast::TypeId lhs, ast::TypeId rhs) const;
   bool IsComparable(ast::TypeId lhs, ast::TypeId rhs) const;
