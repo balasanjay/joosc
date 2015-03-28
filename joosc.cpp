@@ -5,6 +5,7 @@
 
 #include "ast/ast.h"
 #include "ast/print_visitor.h"
+#include "backend/common/offset_table.h"
 #include "backend/i386/writer.h"
 #include "base/error.h"
 #include "base/errorlist.h"
@@ -23,6 +24,7 @@ using std::ostream;
 
 using ast::PrintVisitor;
 using ast::Program;
+using backend::OffsetTable;
 using base::ErrorList;
 using base::FileSet;
 using lexer::LexJoosFiles;
@@ -84,16 +86,16 @@ sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, Typ
   return program;
 }
 
-bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, const TypeInfoMap&, std::ostream* err) {
+bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, const TypeInfoMap& tinfo_map, std::ostream* err) {
   ir::Program ir_prog = ir::GenerateIR(prog);
   if (stage == CompilerStage::GEN_IR) {
     return true;
   }
 
-  // Generate type sizes, field offsets, and method offsets.
-  // TODO: do this.
-
   // TODO: have a more generic backend mechanism.
+  // Generate type sizes, field offsets, and method offsets.
+  OffsetTable offset_table = OffsetTable::Build(tinfo_map, 4);
+
   bool success = true;
   for (const ir::CompUnit& comp_unit : ir_prog.units) {
     string fname = dir + "/" + comp_unit.filename;

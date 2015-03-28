@@ -4,6 +4,7 @@
 
 #include "ast/ast.h"
 #include "ast/visitor.h"
+#include "ir/size.h"
 #include "ir/stream_builder.h"
 #include "lexer/lexer.h"
 
@@ -11,16 +12,6 @@ using ast::StaticRefExpr;
 using ast::VisitResult;
 
 namespace ir {
-
-SizeClass SizeOfTypeId(ast::TypeId tid) {
-  if (tid == ast::TypeId::kInt) {
-    return SizeClass::INT;
-  } else if (tid == ast::TypeId::kBool) {
-    return SizeClass::BOOL;
-  }
-  // TODO.
-  return SizeClass::INT;
-}
 
 class MethodIRGenerator final : public ast::Visitor {
  public:
@@ -39,7 +30,7 @@ class MethodIRGenerator final : public ast::Visitor {
     auto params = decl.Params().Params();
     vector<SizeClass> param_sizes;
     for (int i = 0; i < params.Size(); ++i) {
-      param_sizes.push_back(SizeOfTypeId(params.At(i)->GetType().GetTypeId()));
+      param_sizes.push_back(SizeClassFrom(params.At(i)->GetType().GetTypeId()));
     }
 
     // Allocate params.
@@ -92,7 +83,7 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(BinExpr, expr,) {
-    SizeClass size = SizeOfTypeId(expr.Lhs().GetTypeId());
+    SizeClass size = SizeClassFrom(expr.Lhs().GetTypeId());
 
     // Special code for short-circuiting boolean and or.
     if (expr.Op().type == lexer::AND) {
@@ -211,7 +202,7 @@ class MethodIRGenerator final : public ast::Visitor {
       return VisitResult::SKIP;
     }
 
-    Mem ret = builder_.AllocTemp(SizeOfTypeId(stmt.GetExprPtr()->GetTypeId()));
+    Mem ret = builder_.AllocTemp(SizeClassFrom(stmt.GetExprPtr()->GetTypeId()));
     WithResultIn(ret).Visit(stmt.GetExprPtr());
     builder_.Ret(ret);
 
@@ -220,7 +211,7 @@ class MethodIRGenerator final : public ast::Visitor {
 
   VISIT_DECL(LocalDeclStmt, stmt,) {
     ast::TypeId tid = stmt.GetType().GetTypeId();
-    Mem local = builder_.AllocLocal(SizeOfTypeId(tid));
+    Mem local = builder_.AllocLocal(SizeClassFrom(tid));
     locals_.push_back(stmt.GetVarId());
     locals_map_.insert({stmt.GetVarId(), local});
 
@@ -337,7 +328,7 @@ class MethodIRGenerator final : public ast::Visitor {
     vector<Mem> arg_mems;
     for (int i = 0; i < expr.Args().Size(); ++i) {
       auto arg = expr.Args().At(i);
-      Mem arg_mem = builder_.AllocTemp(SizeOfTypeId(arg->GetTypeId()));
+      Mem arg_mem = builder_.AllocTemp(SizeClassFrom(arg->GetTypeId()));
       WithResultIn(arg_mem).Visit(arg);
       arg_mems.push_back(arg_mem);
     }
