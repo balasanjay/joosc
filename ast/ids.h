@@ -55,6 +55,7 @@ struct TypeId {
 
 using LocalVarId = u64;
 const LocalVarId kVarUnassigned = 0;
+const LocalVarId kVarImplicitThis = 1;
 const LocalVarId kVarFirst = 100;
 
 using MethodId = u64;

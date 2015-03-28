@@ -23,6 +23,7 @@ using ast::TypeId;
 using ast::TypeKind;
 using ast::VisitResult;
 using ast::kInitMethodId;
+using ast::kVarImplicitThis;
 
 namespace ir {
 
@@ -39,15 +40,14 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(MethodDecl, decl,) {
-    // Constructors call the init method.
-    if (decl.TypePtr() == nullptr) {
-      // TODO: pass ``this''.
-      builder_.StaticCall(res_, tid_.base, kInitMethodId, {});
-    }
-
     // Get param sizes.
     auto params = decl.Params().Params();
     vector<SizeClass> param_sizes;
+    bool is_static = decl.Mods().HasModifier(lexer::STATIC);
+    if (!is_static) {
+      param_sizes.push_back(SizeClass::PTR);
+    }
+
     for (int i = 0; i < params.Size(); ++i) {
       param_sizes.push_back(SizeClassFrom(params.At(i)->GetType().GetTypeId()));
     }
@@ -56,9 +56,20 @@ class MethodIRGenerator final : public ast::Visitor {
     vector<Mem> param_mems;
     builder_.AllocParams(param_sizes, &param_mems);
 
+    // Constructors call the init method, passing ``this'' as the only
+    // argument.
+    if (decl.TypePtr() == nullptr) {
+      builder_.StaticCall(res_, tid_.base, kInitMethodId, {param_mems[0]});
+    }
+
     // Add params to local map.
     for (int i = 0; i < params.Size(); ++i) {
-      locals_map_.insert({params.At(i)->GetVarId(), param_mems.at(i)});
+      int idx = is_static ? i : i + 1;
+      locals_map_.insert({params.At(i)->GetVarId(), param_mems.at(idx)});
+    }
+
+    if (!is_static) {
+      locals_map_.insert({kVarImplicitThis, param_mems[0]});
     }
 
     Visit(decl.BodyPtr());
@@ -200,6 +211,13 @@ class MethodIRGenerator final : public ast::Visitor {
 
   VISIT_DECL(BoolLitExpr, expr,) {
     builder_.ConstBool(res_, expr.GetToken().type == lexer::K_TRUE);
+    return VisitResult::SKIP;
+  }
+
+  VISIT_DECL(ThisExpr,,) {
+    auto i = locals_map_.find(kVarImplicitThis);
+    CHECK(i != locals_map_.end());
+    builder_.Mov(res_, i->second);
     return VisitResult::SKIP;
   }
 
@@ -451,16 +469,13 @@ class ProgramIRGenerator final : public ast::Visitor {
     {
       StreamBuilder builder;
 
-      // TODO: Pass ``this'' as a parameter so fields can be initialised.
-      {
-        vector<Mem> mem_out;
-        builder.AllocParams({}, &mem_out);
-      }
+      vector<Mem> mem_out;
+      builder.AllocParams({SizeClass::PTR}, &mem_out);
 
       // TODO: Call parent's 0-argument constructor.
 
-      vector<ast::LocalVarId> empty_locals;
-      map<ast::LocalVarId, Mem> locals_map;
+      vector<ast::LocalVarId> empty_locals{kVarImplicitThis};
+      map<ast::LocalVarId, Mem> locals_map{{kVarImplicitThis, mem_out[0]}};
       for (auto tup : fields) {
         // TODO: Get SizeClass of field.
         Mem tmp = builder.AllocTemp(SizeClassFrom(get<0>(tup)));
