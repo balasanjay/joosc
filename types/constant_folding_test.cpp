@@ -74,11 +74,9 @@ TEST_F(ConstantFoldingTest, IntNarrowing) {
 
 TEST_F(ConstantFoldingTest, OverflowTest) {
   stringstream ss;
-  i64 i32max = (1 << 31) - 1;
-  i64 i32min = -(1 << 31);
-  ss << i32max
+  ss << std::numeric_limits<i32>::max()
      << " + 1 == "
-     << i32min;
+     << std::numeric_limits<i32>::min();
   ShouldBeTrue("", ss.str());
 }
 

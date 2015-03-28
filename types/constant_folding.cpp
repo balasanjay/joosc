@@ -13,7 +13,7 @@ namespace types {
 
 class ConstantFoldingVisitor final : public ast::Visitor {
 public:
-  ConstantFoldingVisitor(ConstStringMap& strings): strings_(strings) {
+  ConstantFoldingVisitor(ConstStringMap* strings): strings_(*strings) {
   }
 
   REWRITE_DECL(ConstExpr, Expr, , exprptr) {
@@ -52,13 +52,13 @@ public:
           rhs_const->ConstantPtr().get());
       CHECK(lhs != nullptr && rhs != nullptr);
 
-      bool lhs_value = lhs->GetToken().type == lexer::K_TRUE;
-      bool rhs_value = rhs->GetToken().type == lexer::K_TRUE;
+      bool lhs_value = (lhs->GetToken().type == lexer::K_TRUE);
+      bool rhs_value = (rhs->GetToken().type == lexer::K_TRUE);
       bool result = false;
 
       switch (expr.Op().type) {
-        case lexer::OR: result = lhs_value || rhs_value; break;
-        case lexer::AND: result = lhs_value && rhs_value; break;
+        case lexer::OR: result = (lhs_value || rhs_value); break;
+        case lexer::AND: result = (lhs_value && rhs_value); break;
         default: break;
       }
 
@@ -119,13 +119,13 @@ public:
         i64 rhs_value = rhs->Value();
         bool result = 0;
         switch (expr.Op().type) {
-          case lexer::LE: result = lhs_value <= rhs_value; break;
-          case lexer::GE: result = lhs_value >= rhs_value; break;
-          case lexer::LT: result = lhs_value < rhs_value; break;
-          case lexer::GT: result = lhs_value > rhs_value; break;
+          case lexer::LE: result = (lhs_value <= rhs_value); break;
+          case lexer::GE: result = (lhs_value >= rhs_value); break;
+          case lexer::LT: result = (lhs_value < rhs_value); break;
+          case lexer::GT: result = (lhs_value > rhs_value); break;
 
-          case lexer::EQ: result = lhs_value == rhs_value; break;
-          case lexer::NEQ: result = lhs_value != rhs_value; break;
+          case lexer::EQ: result = (lhs_value == rhs_value); break;
+          case lexer::NEQ: result = (lhs_value != rhs_value); break;
 
           default: break;
         }
@@ -206,15 +206,15 @@ public:
     switch (cast_type.base) {
       case ast::TypeId::kIntBase:
         break;
+      case ast::TypeId::kCharBase:
       case ast::TypeId::kShortBase:
         usigned = usigned & 0x0000FFFF;
         break;
       case ast::TypeId::kByteBase:
-      case ast::TypeId::kCharBase:
         usigned = usigned & 0x000000FF;
         break;
       default:
-        CHECK(false);
+        UNREACHABLE();
     }
     i64 new_value = (i64)usigned;
 
@@ -228,7 +228,7 @@ public:
 };
 
 sptr<const ast::Program> ConstantFold(sptr<const ast::Program> prog, ConstStringMap* out_strings) {
-  ConstantFoldingVisitor v(*out_strings);
+  ConstantFoldingVisitor v(out_strings);
   return v.Rewrite(prog);
 }
 
