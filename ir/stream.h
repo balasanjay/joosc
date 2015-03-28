@@ -16,6 +16,9 @@ enum class OpType {
   // (Mem).
   DEALLOC_MEM,
 
+  // (Mem, TypeId::Base).
+  ALLOC_HEAP,
+
   // (LabelId).
   LABEL,
 
@@ -30,6 +33,12 @@ enum class OpType {
 
   // (Mem, Mem).
   MOV_TO_ADDR,
+
+  // (Mem, Mem, FieldId).
+  FIELD,
+
+  // (Mem, Mem, FieldId).
+  FIELD_ADDR,
 
   // (Mem, Mem, Mem).
   ADD,

@@ -6,6 +6,7 @@ cc_library(
         "offset_table.cpp",
     ],
     hdrs = [
+        "asm_writer.h",
         "offset_table.h",
     ],
     deps = [

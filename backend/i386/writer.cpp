@@ -2,14 +2,18 @@
 
 #include <iostream>
 
+#include "backend/common/asm_writer.h"
 #include "base/printf.h"
 #include "ir/mem.h"
 #include "ir/stream.h"
 
 using std::ostream;
 
+using ast::FieldId;
 using ast::MethodId;
 using ast::TypeId;
+using backend::common::AsmWriter;
+using backend::common::OffsetTable;
 using base::Fprintf;
 using base::Sprintf;
 using ir::CompUnit;
@@ -63,40 +67,29 @@ string StackOffset(i64 offset) {
 }
 
 struct FuncWriter final {
-  FuncWriter(ostream* outarg) : out(outarg) {}
-
-  template<typename... Args>
-  void Col0(const string& fmt, Args... args) {
-    Fprintf(out, fmt, args...);
-    *out << '\n';
-  }
-
-  template<typename... Args>
-  void Col1(const string& fmt, Args... args) {
-    *out << "    ";
-    Col0(fmt, args...);
-  }
+  FuncWriter(const OffsetTable& offsets, ostream* out) : offsets(offsets), w(out) {}
 
   void WritePrologue(const Stream& stream) {
-    Col0("; Starting method.");
+    w.Col0("; Starting method.");
 
     if (stream.is_entry_point) {
-      Col0("_entry:");
+      w.Col0("_entry:");
     }
 
     string label = Sprintf("_t%v_m%v", stream.tid, stream.mid);
 
-    Col0("%v:\n", label);
+    w.Col0("%v:\n", label);
 
-    Col1("; Function prologue.");
-    Col1("push ebp");
-    Col1("mov ebp, esp\n");
+    w.Col1("; Function prologue.");
+    w.Col1("push ebp");
+    w.Col1("mov ebp, esp\n");
   }
 
   void WriteEpilogue() {
-    Col0(".epilogue:");
-    Col1("pop ebp");
-    Col1("ret");
+    w.Col0(".epilogue:");
+    w.Col1("pop ebp");
+    w.Col1("ret");
+    w.Col0("\n");
   }
 
   void SetupParams(const Stream& stream) {
@@ -113,6 +106,27 @@ struct FuncWriter final {
     }
   }
 
+  void AllocHeap(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(2);
+
+    MemId dst = begin[0];
+    TypeId::Base tid = begin[1];
+
+    const StackEntry& dst_e = stack_map.at(dst);
+
+    CHECK(dst_e.size == SizeClass::PTR);
+
+    u64 size = offsets.SizeOf({tid, 0});
+    i64 stack_used = cur_offset;
+
+    w.Col1("; t%v = new %v", dst, size);
+    w.Col1("mov eax, %v", size);
+    w.Col1("sub esp, %v", stack_used);
+    w.Col1("call _joos_malloc");
+    w.Col1("add esp, %v", stack_used);
+    w.Col1("mov %v, eax", StackOffset(dst_e.offset));
+  }
+
   void AllocMem(ArgIter begin, ArgIter end) {
     EXPECT_NARGS(3);
 
@@ -125,7 +139,7 @@ struct FuncWriter final {
     i64 offset = cur_offset;
     cur_offset += 4;
 
-    Col1("; %v refers to t%v.", StackOffset(offset), memid);
+    w.Col1("; %v refers to t%v.", StackOffset(offset), memid);
 
     StackEntry entry = {size, offset, memid};
 
@@ -151,7 +165,7 @@ struct FuncWriter final {
     cur_offset -= 4;
     CHECK(cur_offset >= 0);
 
-    Col1("; t%v deallocated, used to be at %v.", memid, StackOffset(entry.offset));
+    w.Col1("; t%v deallocated, used to be at %v.", memid, StackOffset(entry.offset));
   }
 
   void Label(ArgIter begin, ArgIter end) {
@@ -159,7 +173,7 @@ struct FuncWriter final {
 
     LabelId lid = begin[0];
 
-    Col0(".L%v:", lid);
+    w.Col0(".L%v:", lid);
   }
 
   void Const(ArgIter begin, ArgIter end) {
@@ -174,8 +188,8 @@ struct FuncWriter final {
 
     string mov_size = Sized(size, "byte", "word", "dword");
 
-    Col1("; t%v = %v.", memid, value);
-    Col1("mov %v %v, %v", mov_size, StackOffset(entry.offset), value);
+    w.Col1("; t%v = %v.", memid, value);
+    w.Col1("mov %v %v, %v", mov_size, StackOffset(entry.offset), value);
   }
 
   void MovImpl(ArgIter begin, ArgIter end, bool addr) {
@@ -193,13 +207,13 @@ struct FuncWriter final {
       CHECK(dst_e.size == src_e.size);
     }
 
-    string reg_size = addr ? "eax" : Sized(dst_e.size, "al", "ax", "eax");
+    string sized_reg = addr ? "eax" : Sized(dst_e.size, "al", "ax", "eax");
     string src_prefix = addr ? "&" : "";
     string instr = addr ? "lea" : "mov";
 
-    Col1("; t%v = %vt%v.", dst_e.id, src_prefix, src_e.id);
-    Col1("%v %v, %v", instr, reg_size, StackOffset(src_e.offset));
-    Col1("mov %v, %v", StackOffset(dst_e.offset), reg_size);
+    w.Col1("; t%v = %vt%v.", dst_e.id, src_prefix, src_e.id);
+    w.Col1("%v %v, %v", instr, sized_reg, StackOffset(src_e.offset));
+    w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
   }
 
   void Mov(ArgIter begin, ArgIter end) {
@@ -223,10 +237,45 @@ struct FuncWriter final {
 
     string src_reg = Sized(src_e.size, "bl", "bx", "ebx");
 
-    Col1("; *t%v = t%v.", dst_e.id, src_e.id);
-    Col1("mov %v, %v", src_reg, StackOffset(src_e.offset));
-    Col1("mov eax, %v", StackOffset(dst_e.offset));
-    Col1("mov [eax], %v", src_reg);
+    w.Col1("; *t%v = t%v.", dst_e.id, src_e.id);
+    w.Col1("mov %v, %v", src_reg, StackOffset(src_e.offset));
+    w.Col1("mov eax, %v", StackOffset(dst_e.offset));
+    w.Col1("mov [eax], %v", src_reg);
+  }
+
+  void FieldImpl(ArgIter begin, ArgIter end, bool addr) {
+    // TODO: Handle PosRange and NPEs.
+    EXPECT_NARGS(3);
+
+    MemId dst = begin[0];
+    MemId src = begin[1];
+    FieldId fid = begin[2];
+
+    const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& src_e = stack_map.at(src);
+
+    if (addr) {
+      CHECK(dst_e.size == SizeClass::PTR);
+    }
+
+    string sized_reg = addr ? "eax" : Sized(dst_e.size, "al", "ax", "eax");
+    string src_prefix = addr ? "&" : "";
+    string instr = addr ? "lea" : "mov";
+
+    u64 field_offset = offsets.OffsetOf(fid);
+
+    w.Col1("; t%v = %vt%v.f%v.", dst_e.id, src_prefix, src_e.id, fid);
+    w.Col1("mov ebx, %v", StackOffset(src_e.offset));
+    w.Col1("%v %v, [ebx+%v]", instr, sized_reg, field_offset);
+    w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
+  }
+
+  void Field(ArgIter begin, ArgIter end) {
+    FieldImpl(begin, end, false);
+  }
+
+  void FieldAddr(ArgIter begin, ArgIter end) {
+    FieldImpl(begin, end, true);
   }
 
   void AddSub(ArgIter begin, ArgIter end, bool add) {
@@ -247,10 +296,10 @@ struct FuncWriter final {
     string op_str = add ? "+" : "-";
     string instr = add ? "add" : "sub";
 
-    Col1("; t%v = t%v %v t%v.", dst_e.id, lhs_e.id, op_str, rhs_e.id);
-    Col1("mov eax, %v", StackOffset(lhs_e.offset));
-    Col1("%v eax, %v", instr, StackOffset(rhs_e.offset));
-    Col1("mov %v, eax", StackOffset(dst_e.offset));
+    w.Col1("; t%v = t%v %v t%v.", dst_e.id, lhs_e.id, op_str, rhs_e.id);
+    w.Col1("mov eax, %v", StackOffset(lhs_e.offset));
+    w.Col1("%v eax, %v", instr, StackOffset(rhs_e.offset));
+    w.Col1("mov %v, eax", StackOffset(dst_e.offset));
   }
 
   void Add(ArgIter begin, ArgIter end) {
@@ -276,11 +325,11 @@ struct FuncWriter final {
     CHECK(lhs_e.size == SizeClass::INT);
     CHECK(rhs_e.size == SizeClass::INT);
 
-    Col1("; t%v = t%v * t%v.", dst_e.id, lhs_e.id, rhs_e.id);
-    Col1("mov eax, %v", StackOffset(lhs_e.offset));
-    Col1("mov ebx, %v", StackOffset(rhs_e.offset));
-    Col1("imul ebx");
-    Col1("mov %v, eax", StackOffset(dst_e.offset));
+    w.Col1("; t%v = t%v * t%v.", dst_e.id, lhs_e.id, rhs_e.id);
+    w.Col1("mov eax, %v", StackOffset(lhs_e.offset));
+    w.Col1("mov ebx, %v", StackOffset(rhs_e.offset));
+    w.Col1("imul ebx");
+    w.Col1("mov %v, eax", StackOffset(dst_e.offset));
   }
 
   void DivMod(ArgIter begin, ArgIter end, bool div) {
@@ -301,12 +350,12 @@ struct FuncWriter final {
     string op_str = div ? "/" : "%";
     string res_reg = div ? "eax" : "edx";
 
-    Col1("; t%v = t%v %v t%v.", dst_e.id, lhs_e.id, op_str, rhs_e.id);
-    Col1("mov eax, %v", StackOffset(lhs_e.offset));
-    Col1("cdq"); // Sign-extend EAX through to EDX.
-    Col1("mov ebx, %v", StackOffset(rhs_e.offset));
-    Col1("idiv ebx");
-    Col1("mov %v, %v", StackOffset(dst_e.offset), res_reg);
+    w.Col1("; t%v = t%v %v t%v.", dst_e.id, lhs_e.id, op_str, rhs_e.id);
+    w.Col1("mov eax, %v", StackOffset(lhs_e.offset));
+    w.Col1("cdq"); // Sign-extend EAX through to EDX.
+    w.Col1("mov ebx, %v", StackOffset(rhs_e.offset));
+    w.Col1("idiv ebx");
+    w.Col1("mov %v, %v", StackOffset(dst_e.offset), res_reg);
   }
 
   void Div(ArgIter begin, ArgIter end) {
@@ -322,7 +371,7 @@ struct FuncWriter final {
 
     LabelId lid = begin[0];
 
-    Col1("jmp .L%v", lid);
+    w.Col1("jmp .L%v", lid);
   }
 
   void JmpIf(ArgIter begin, ArgIter end) {
@@ -335,10 +384,10 @@ struct FuncWriter final {
 
     CHECK(cond_e.size == SizeClass::BOOL);
 
-    Col1("; Jumping if t%v.", cond);
-    Col1("mov al, %v", StackOffset(cond_e.offset));
-    Col1("test al, al");
-    Col1("jnz .L%v", lid);
+    w.Col1("; Jumping if t%v.", cond);
+    w.Col1("mov al, %v", StackOffset(cond_e.offset));
+    w.Col1("test al, al");
+    w.Col1("jnz .L%v", lid);
   }
 
   void RelImpl(ArgIter begin, ArgIter end, const string& relation, const string& instruction) {
@@ -356,10 +405,10 @@ struct FuncWriter final {
     CHECK(lhs_e.size == SizeClass::INT);
     CHECK(rhs_e.size == SizeClass::INT);
 
-    Col1("; t%v = (t%v %v t%v).", dst_e.id, lhs_e.id, relation, rhs_e.id);
-    Col1("mov eax, %v", StackOffset(lhs_e.offset));
-    Col1("cmp eax, %v", StackOffset(rhs_e.offset));
-    Col1("%v %v", instruction, StackOffset(dst_e.offset));
+    w.Col1("; t%v = (t%v %v t%v).", dst_e.id, lhs_e.id, relation, rhs_e.id);
+    w.Col1("mov eax, %v", StackOffset(lhs_e.offset));
+    w.Col1("cmp eax, %v", StackOffset(rhs_e.offset));
+    w.Col1("%v %v", instruction, StackOffset(dst_e.offset));
   }
 
   void Lt(ArgIter begin, ArgIter end) {
@@ -387,12 +436,12 @@ struct FuncWriter final {
           lhs_e.size == SizeClass::INT ||
           lhs_e.size == SizeClass::PTR);
 
-    string reg_size = Sized(lhs_e.size, "al", "", "eax");
+    string sized_reg = Sized(lhs_e.size, "al", "", "eax");
 
-    Col1("; t%v = (t%v == t%v).", dst_e.id, lhs_e.id, rhs_e.id);
-    Col1("mov %v, %v", reg_size, StackOffset(lhs_e.offset));
-    Col1("cmp %v, %v", reg_size, StackOffset(rhs_e.offset));
-    Col1("sete %v", StackOffset(dst_e.offset));
+    w.Col1("; t%v = (t%v == t%v).", dst_e.id, lhs_e.id, rhs_e.id);
+    w.Col1("mov %v, %v", sized_reg, StackOffset(lhs_e.offset));
+    w.Col1("cmp %v, %v", sized_reg, StackOffset(rhs_e.offset));
+    w.Col1("sete %v", StackOffset(dst_e.offset));
   }
 
   void Not(ArgIter begin, ArgIter end) {
@@ -407,10 +456,10 @@ struct FuncWriter final {
     CHECK(dst_e.size == SizeClass::BOOL);
     CHECK(src_e.size == SizeClass::BOOL);
 
-    Col1("; t%v = !t%v", dst_e.id, src_e.id);
-    Col1("mov al, %v", StackOffset(src_e.offset));
-    Col1("xor al, 1");
-    Col1("mov %v, al", StackOffset(dst_e.offset));
+    w.Col1("; t%v = !t%v", dst_e.id, src_e.id);
+    w.Col1("mov al, %v", StackOffset(src_e.offset));
+    w.Col1("xor al, 1");
+    w.Col1("mov %v, al", StackOffset(dst_e.offset));
   }
 
   void Neg(ArgIter begin, ArgIter end) {
@@ -425,10 +474,10 @@ struct FuncWriter final {
     CHECK(dst_e.size == SizeClass::INT);
     CHECK(src_e.size == SizeClass::INT);
 
-    Col1("; t%v = -t%v", dst_e.id, src_e.id);
-    Col1("mov eax, %v", StackOffset(src_e.offset));
-    Col1("neg eax");
-    Col1("mov %v, eax", StackOffset(dst_e.offset));
+    w.Col1("; t%v = -t%v", dst_e.id, src_e.id);
+    w.Col1("mov eax, %v", StackOffset(src_e.offset));
+    w.Col1("neg eax");
+    w.Col1("mov %v, eax", StackOffset(dst_e.offset));
   }
 
 
@@ -447,10 +496,10 @@ struct FuncWriter final {
     CHECK(lhs_e.size == SizeClass::BOOL);
     CHECK(rhs_e.size == SizeClass::BOOL);
 
-    Col1("; t%v = t%v %v t%v.", dst_e.id, lhs_e.id, op_str, rhs_e.id);
-    Col1("mov al, %v", StackOffset(lhs_e.offset));
-    Col1("%v al, %v", instr, StackOffset(rhs_e.offset));
-    Col1("mov %v, al", StackOffset(dst_e.offset));
+    w.Col1("; t%v = t%v %v t%v.", dst_e.id, lhs_e.id, op_str, rhs_e.id);
+    w.Col1("mov al, %v", StackOffset(lhs_e.offset));
+    w.Col1("%v al, %v", instr, StackOffset(rhs_e.offset));
+    w.Col1("mov %v, al", StackOffset(dst_e.offset));
   }
 
   void And(ArgIter begin, ArgIter end) {
@@ -478,7 +527,7 @@ struct FuncWriter final {
 
     i64 stack_used = cur_offset;
 
-    Col1("; Pushing %v arguments onto stack for call.", nargs);
+    w.Col1("; Pushing %v arguments onto stack for call.", nargs);
 
     // Push args onto stack in reverse order.
     for (ArgIter cur = end; cur != (begin + 4); --cur) {
@@ -486,22 +535,22 @@ struct FuncWriter final {
       const StackEntry& arg_e = stack_map.at(arg);
 
       string reg = Sized(arg_e.size, "al", "ax", "eax");
-      Col1("mov %v, %v", reg, StackOffset(arg_e.offset));
-      Col1("mov %v, %v", StackOffset(stack_used), reg);
+      w.Col1("mov %v, %v", reg, StackOffset(arg_e.offset));
+      w.Col1("mov %v, %v", StackOffset(stack_used), reg);
 
       stack_used += 4;
     }
 
-    Col1("; Performing call.");
+    w.Col1("; Performing call.");
 
-    Col1("sub esp, %v", stack_used);
-    Col1("call _t%v_m%v", tid, mid);
-    Col1("add esp, %v", stack_used);
+    w.Col1("sub esp, %v", stack_used);
+    w.Col1("call _t%v_m%v", tid, mid);
+    w.Col1("add esp, %v", stack_used);
 
     if (dst != kInvalidMemId) {
       const StackEntry& dst_e = stack_map.at(dst);
       string dst_reg = Sized(dst_e.size, "al", "ax", "eax");
-      Col1("mov %v, %v", StackOffset(stack_map.at(dst).offset), dst_reg);
+      w.Col1("mov %v, %v", StackOffset(stack_map.at(dst).offset), dst_reg);
     }
   }
 
@@ -512,15 +561,15 @@ struct FuncWriter final {
       MemId ret = begin[0];
       const StackEntry& ret_e = stack_map.at(ret);
 
-      string reg_size = Sized(ret_e.size, "al", "ax", "eax");
+      string sized_reg = Sized(ret_e.size, "al", "ax", "eax");
 
-      Col1("; Return t%v.", ret_e.id);
-      Col1("mov %v, %v", reg_size, StackOffset(ret_e.offset));
+      w.Col1("; Return t%v.", ret_e.id);
+      w.Col1("mov %v, %v", sized_reg, StackOffset(ret_e.offset));
     } else {
-      Col1("; Return.");
+      w.Col1("; Return.");
     }
 
-    Col1("jmp .epilogue");
+    w.Col1("jmp .epilogue");
   }
 
  private:
@@ -536,7 +585,8 @@ struct FuncWriter final {
 
   // TODO: do more optimal stack management for non-int-sized things.
 
-  ostream* out;
+  const OffsetTable& offsets;
+  AsmWriter w;
 };
 
 } // namespace
@@ -544,7 +594,7 @@ struct FuncWriter final {
 void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
   static string kMethodNameFmt = "_t%v_m%v";
 
-  set<string> externs;
+  set<string> externs{"_joos_malloc"};
   set<string> globals;
   for (const Stream& method_stream : comp_unit.streams) {
     if (method_stream.is_entry_point) {
@@ -582,7 +632,7 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
 }
 
 void Writer::WriteFunc(const Stream& stream, ostream* out) const {
-  FuncWriter writer{out};
+  FuncWriter writer{offsets_, out};
 
   writer.WritePrologue(stream);
 
@@ -593,6 +643,9 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
     ArgIter end = stream.args.begin() + op.end;
 
     switch (op.type) {
+      case OpType::ALLOC_HEAP:
+        writer.AllocHeap(begin, end);
+        break;
       case OpType::ALLOC_MEM:
         writer.AllocMem(begin, end);
         break;
@@ -613,6 +666,12 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         break;
       case OpType::MOV_TO_ADDR:
         writer.MovToAddr(begin, end);
+        break;
+      case OpType::FIELD:
+        writer.Field(begin, end);
+        break;
+      case OpType::FIELD_ADDR:
+        writer.FieldAddr(begin, end);
         break;
       case OpType::ADD:
         writer.Add(begin, end);
@@ -679,6 +738,49 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
 
 }
 
+void Writer::WriteMain(ostream* out) const {
+  AsmWriter w(out);
+
+  // Externs and globals.
+  w.Col0("extern __malloc");
+  w.Col0("extern _entry");
+  w.Col0("global _joos_malloc");
+  w.Col0("global _start");
+  w.Col0("\n");
+
+  // Entry point.
+  w.Col0("_start:");
+  w.Col1("; Call user code.");
+  w.Col1("push ebp");
+  w.Col1("mov ebp, esp");
+  w.Col1("call _entry");
+  w.Col1("pop ebp");
+  w.Col1("; Call EXIT syscall.");
+  w.Col1("mov ebx, eax");
+  w.Col1("mov eax, 1");
+  w.Col1("int 0x80");
+  w.Col0("\n");
+
+  // Zeroing malloc.
+  w.Col0("; Custom malloc that zeroes memory.");
+  w.Col0("_joos_malloc:");
+  w.Col1("push eax"); // Save number of bytes.
+  w.Col1("push ebp");
+  w.Col1("mov ebp, esp");
+  w.Col1("call __malloc"); // TODO: use native call.
+  w.Col1("pop ebp");
+  w.Col1("pop ebx");
+  w.Col1("mov ecx, 0");
+  w.Col0(".before:");
+  w.Col1("cmp ecx, ebx");
+  w.Col1("je .after");
+  w.Col1("mov byte [eax + ecx], 0");
+  w.Col1("inc ecx");
+  w.Col1("jmp .before");
+  w.Col0(".after:");
+  w.Col1("ret");
+
+}
 
 } // namespace i386
 } // namespace backend

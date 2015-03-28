@@ -3,10 +3,11 @@
 
 #include "ast/ast_fwd.h"
 #include "ir/stream.h"
+#include "types/type_info_map.h"
 
 namespace ir {
 
-Program GenerateIR(sptr<const ast::Program> program);
+Program GenerateIR(sptr<const ast::Program> program, const types::TypeInfoMap& tinfo_map);
 
 } // namespace ir
 

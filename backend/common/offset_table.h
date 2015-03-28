@@ -1,10 +1,11 @@
-#ifndef BACKEND_OFFSET_TABLE_H
-#define BACKEND_OFFSET_TABLE_H
+#ifndef BACKEND_COMMON_OFFSET_TABLE_H
+#define BACKEND_COMMON_OFFSET_TABLE_H
 
 #include "ast/ids.h"
 #include "types/type_info_map.h"
 
 namespace backend {
+namespace common {
 
 class OffsetTable {
 public:
@@ -32,6 +33,7 @@ private:
   u8 ptr_size_;
 };
 
+} // namespace common
 } // namespace backend
 
 #endif

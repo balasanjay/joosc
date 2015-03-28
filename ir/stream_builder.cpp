@@ -4,8 +4,10 @@
 
 using std::initializer_list;
 
+using ast::FieldId;
 using ast::MethodId;
 using ast::TypeId;
+using base::PosRange;
 
 namespace ir {
 
@@ -38,6 +40,14 @@ void StreamBuilder::SetAssigned(const std::initializer_list<Mem>& mems) {
     bool already_written = (n == 0);
     CHECK(!(mem.Immutable() && already_written));
   }
+}
+
+Mem StreamBuilder::AllocHeap(TypeId tid) {
+  Mem tmp = AllocTemp(SizeClass::PTR);
+  // TODO: Handle arrays.
+  AppendOp(OpType::ALLOC_HEAP, {tmp.Id(), tid.base});
+  SetAssigned({tmp});
+  return tmp;
 }
 
 Mem StreamBuilder::AllocMem(SizeClass size, bool immutable) {
@@ -138,6 +148,20 @@ void StreamBuilder::MovToAddr(Mem dst, Mem src) {
   AssertAssigned({src});
   AppendOp(OpType::MOV_TO_ADDR, {dst.Id(), src.Id()});
   // TODO: We're not sure exactly how to represent what's assigned.
+}
+
+void StreamBuilder::Field(Mem dst, Mem src, FieldId fid, PosRange) {
+  AssertAssigned({src});
+  // TODO: Pass the PosRange.
+  AppendOp(OpType::FIELD, {dst.Id(), src.Id(), fid});
+  SetAssigned({dst});
+}
+
+void StreamBuilder::FieldAddr(Mem dst, Mem src, FieldId fid, PosRange) {
+  AssertAssigned({src});
+  // TODO: Pass the PosRange.
+  AppendOp(OpType::FIELD_ADDR, {dst.Id(), src.Id(), fid});
+  SetAssigned({dst});
 }
 
 void StreamBuilder::BinOp(Mem dst, Mem lhs, Mem rhs, OpType op) {

@@ -22,6 +22,7 @@ using types::TypeInfo;
 using types::TypeInfoMap;
 
 namespace backend {
+namespace common {
 
 namespace {
 
@@ -109,4 +110,5 @@ OffsetTable OffsetTable::Build(const TypeInfoMap& tinfo_map, u8 ptr_size) {
   return OffsetTable(type_sizes, field_offsets, ptr_size);
 }
 
+} // namespace common
 } // namespace backend
