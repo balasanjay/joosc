@@ -9,6 +9,7 @@
 
 using std::ostream;
 
+using ast::FieldId;
 using ast::MethodId;
 using ast::TypeId;
 using backend::common::AsmWriter;
@@ -240,6 +241,41 @@ struct FuncWriter final {
     w.Col1("mov %v, %v", src_reg, StackOffset(src_e.offset));
     w.Col1("mov eax, %v", StackOffset(dst_e.offset));
     w.Col1("mov [eax], %v", src_reg);
+  }
+
+  void FieldImpl(ArgIter begin, ArgIter end, bool addr) {
+    // TODO: Handle PosRange and NPEs.
+    EXPECT_NARGS(3);
+
+    MemId dst = begin[0];
+    MemId src = begin[1];
+    FieldId fid = begin[2];
+
+    const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& src_e = stack_map.at(src);
+
+    if (addr) {
+      CHECK(dst_e.size == SizeClass::PTR);
+    }
+
+    string reg_size = addr ? "eax" : Sized(dst_e.size, "al", "ax", "eax");
+    string src_prefix = addr ? "&" : "";
+    string instr = addr ? "lea" : "mov";
+
+    u64 field_offset = offsets.OffsetOf(fid);
+
+    w.Col1("; t%v = %vt%v.f%v.", dst_e.id, src_prefix, src_e.id, fid);
+    w.Col1("mov ebx, %v", StackOffset(src_e.offset));
+    w.Col1("%v %v, [ebx+%v]", instr, reg_size, field_offset);
+    w.Col1("mov %v, %v", StackOffset(dst_e.offset), reg_size);
+  }
+
+  void Field(ArgIter begin, ArgIter end) {
+    FieldImpl(begin, end, false);
+  }
+
+  void FieldAddr(ArgIter begin, ArgIter end) {
+    FieldImpl(begin, end, true);
   }
 
   void AddSub(ArgIter begin, ArgIter end, bool add) {
@@ -631,6 +667,12 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::MOV_TO_ADDR:
         writer.MovToAddr(begin, end);
         break;
+      case OpType::FIELD:
+        writer.Field(begin, end);
+        break;
+      case OpType::FIELD_ADDR:
+        writer.FieldAddr(begin, end);
+        break;
       case OpType::ADD:
         writer.Add(begin, end);
         break;
@@ -683,8 +725,6 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         writer.Ret(begin, end);
         break;
 
-      UNIMPLEMENTED_OP(FIELD);
-      UNIMPLEMENTED_OP(FIELD_ADDR);
       UNIMPLEMENTED_OP(SIGN_EXTEND);
       UNIMPLEMENTED_OP(ZERO_EXTEND);
       UNIMPLEMENTED_OP(TRUNCATE);

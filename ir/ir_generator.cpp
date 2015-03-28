@@ -419,12 +419,17 @@ class MethodIRGenerator final : public ast::Visitor {
     }
 
     // Perform constructor call.
-    builder_.StaticCall(res_, expr.GetTypeId().base, expr.GetMethodId(), arg_mems);
+    {
+      Mem tmp = builder_.AllocDummy();
+      builder_.StaticCall(tmp, expr.GetTypeId().base, expr.GetMethodId(), arg_mems);
+    }
 
     // Deallocate arg mems.
     while (!arg_mems.empty()) {
       arg_mems.pop_back();
     }
+
+    builder_.Mov(res_, this_mem);
 
     return VisitResult::SKIP;
   }
