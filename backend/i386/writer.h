@@ -3,6 +3,7 @@
 
 #include <ostream>
 
+#include "backend/common/offset_table.h"
 #include "ir/ir_generator.h"
 #include "ir/stream.h"
 
@@ -11,10 +12,13 @@ namespace i386 {
 
 class Writer {
 public:
+  Writer(const backend::common::OffsetTable& offsets) : offsets_(offsets) {}
   void WriteCompUnit(const ir::CompUnit& comp_unit, std::ostream* out) const;
   void WriteMain(std::ostream* out) const;
 private:
   void WriteFunc(const ir::Stream& stream, std::ostream* out) const;
+
+  const backend::common::OffsetTable& offsets_;
 };
 
 } // namespace i386

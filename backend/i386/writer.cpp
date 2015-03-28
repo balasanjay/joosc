@@ -12,6 +12,7 @@ using std::ostream;
 using ast::MethodId;
 using ast::TypeId;
 using backend::common::AsmWriter;
+using backend::common::OffsetTable;
 using base::Fprintf;
 using base::Sprintf;
 using ir::CompUnit;
@@ -65,7 +66,7 @@ string StackOffset(i64 offset) {
 }
 
 struct FuncWriter final {
-  FuncWriter(ostream* out) : w(out) {}
+  FuncWriter(const OffsetTable& offsets, ostream* out) : offsets(offsets), w(out) {}
 
   void WritePrologue(const Stream& stream) {
     w.Col0("; Starting method.");
@@ -102,6 +103,27 @@ struct FuncWriter final {
       auto iter_pair = stack_map.insert({entry.id, entry});
       CHECK(iter_pair.second);
     }
+  }
+
+  void AllocHeap(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(2);
+
+    MemId dst = begin[0];
+    TypeId::Base tid = begin[1];
+
+    const StackEntry& dst_e = stack_map.at(dst);
+
+    CHECK(dst_e.size == SizeClass::PTR);
+
+    u64 size = offsets.SizeOf({tid, 0});
+    i64 stack_used = cur_offset;
+
+    w.Col1("; t%v = new %v", dst, size);
+    w.Col1("mov eax, %v", size);
+    w.Col1("sub esp, %v", stack_used);
+    w.Col1("call _joos_malloc");
+    w.Col1("add esp, %v", stack_used);
+    w.Col1("mov %v, eax", StackOffset(dst_e.offset));
   }
 
   void AllocMem(ArgIter begin, ArgIter end) {
@@ -527,6 +549,7 @@ struct FuncWriter final {
 
   // TODO: do more optimal stack management for non-int-sized things.
 
+  const OffsetTable& offsets;
   AsmWriter w;
 };
 
@@ -535,7 +558,7 @@ struct FuncWriter final {
 void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
   static string kMethodNameFmt = "_t%v_m%v";
 
-  set<string> externs;
+  set<string> externs{"_joos_malloc"};
   set<string> globals;
   for (const Stream& method_stream : comp_unit.streams) {
     if (method_stream.is_entry_point) {
@@ -573,7 +596,7 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
 }
 
 void Writer::WriteFunc(const Stream& stream, ostream* out) const {
-  FuncWriter writer{out};
+  FuncWriter writer{offsets_, out};
 
   writer.WritePrologue(stream);
 
@@ -584,6 +607,9 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
     ArgIter end = stream.args.begin() + op.end;
 
     switch (op.type) {
+      case OpType::ALLOC_HEAP:
+        writer.AllocHeap(begin, end);
+        break;
       case OpType::ALLOC_MEM:
         writer.AllocMem(begin, end);
         break;
@@ -657,7 +683,6 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         writer.Ret(begin, end);
         break;
 
-      UNIMPLEMENTED_OP(ALLOC_HEAP);
       UNIMPLEMENTED_OP(SIGN_EXTEND);
       UNIMPLEMENTED_OP(ZERO_EXTEND);
       UNIMPLEMENTED_OP(TRUNCATE);

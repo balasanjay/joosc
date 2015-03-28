@@ -97,7 +97,7 @@ bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const s
   OffsetTable offset_table = OffsetTable::Build(tinfo_map, 4);
 
   bool success = true;
-  backend::i386::Writer writer;
+  backend::i386::Writer writer(offset_table);
   for (const ir::CompUnit& comp_unit : ir_prog.units) {
     string fname = dir + "/" + comp_unit.filename;
 
