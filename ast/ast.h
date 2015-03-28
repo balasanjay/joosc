@@ -270,9 +270,14 @@ class IntLitExpr : public LitExpr {
 
 class StringLitExpr : public LitExpr {
  public:
-  StringLitExpr(lexer::Token token, TypeId tid = TypeId::kUnassigned) : LitExpr(token, tid) {}
+  StringLitExpr(lexer::Token token, const string& str, TypeId tid = TypeId::kUnassigned) : LitExpr(token, tid), str_(str) {}
 
   ACCEPT_VISITOR(StringLitExpr, Expr);
+
+  REF_GETTER(string, Str, str_);
+
+ private:
+  const string str_;
 };
 
 class CharLitExpr : public LitExpr {
