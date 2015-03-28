@@ -23,6 +23,40 @@ public:
     }
   }
 
+  // Convert either a ConstExpr wrapping one of the
+  // literals, or just a literal, into its string
+  // representation.
+  string Stringify(sptr<const Expr> expr) {
+    sptr<const Expr> inside_const = expr;
+    auto const_expr = dynamic_cast<const ast::ConstExpr*>(expr.get());
+    if (const_expr != nullptr) {
+      inside_const = const_expr->ConstantPtr();
+    }
+
+    // TODO: Char.
+    if (inside_const->GetTypeId() == string_type_) {
+      auto inner_const_str = dynamic_cast<const ast::StringLitExpr*>(inside_const.get());
+      CHECK(inner_const_str != nullptr);
+      return inner_const_str->Str();
+    }
+
+    if (TypeChecker::IsNumeric(inside_const->GetTypeId())) {
+      auto inner_const_int = dynamic_cast<const ast::IntLitExpr*>(inside_const.get());
+      CHECK(inner_const_int != nullptr);
+
+      i64 value = inner_const_int->Value();
+      stringstream value_stream;
+      value_stream << value;
+      return value_stream.str();
+    }
+
+    CHECK(inside_const->GetTypeId() == ast::TypeId::kBool);
+
+    auto inner_const_bool = dynamic_cast<const ast::BoolLitExpr*>(inside_const.get());
+    CHECK(inner_const_bool != nullptr);
+    return inner_const_bool->GetToken().type == lexer::K_TRUE ? "true" : "false";
+  }
+
   REWRITE_DECL(ConstExpr, Expr, , exprptr) {
     // Simply return the folded constant expr so that this pass is idempotent.
     return exprptr;
@@ -79,17 +113,20 @@ public:
     }
 
     if (IsNumericOp(expr.Op().type)) {
-      if (lhs_type == string_type_ && rhs_type == string_type_) {
+      if (lhs_type == string_type_ || rhs_type == string_type_) {
         CHECK(expr.Op().type == lexer::ADD);
-        auto lhs_str_lit = dynamic_cast<const ast::StringLitExpr*>(lhs_const->ConstantPtr().get());
-        auto rhs_str_lit = dynamic_cast<const ast::StringLitExpr*>(rhs_const->ConstantPtr().get());
-        CHECK(lhs_str_lit != nullptr && rhs_str_lit != nullptr);
-        string new_str = lhs_str_lit->Str() + rhs_str_lit->Str();
+
+        string lhs_str = Stringify(lhs_const->ConstantPtr());
+        string rhs_str = Stringify(rhs_const->ConstantPtr());
+        string new_str = lhs_str + rhs_str;
         AddString(new_str);
 
-        auto new_str_lit = make_shared<ast::StringLitExpr>(lhs_str_lit->GetToken(), new_str, string_type_);
+        auto new_str_lit = make_shared<ast::StringLitExpr>(
+            lexer::Token(lexer::STRING, ExtentOf(exprptr)),
+            new_str, string_type_);
         return make_shared<ConstExpr>(new_str_lit, exprptr);
       }
+
       // TODO: Chars.
       auto lhs = dynamic_cast<const ast::IntLitExpr*>(
           lhs_const->ConstantPtr().get());
@@ -206,8 +243,6 @@ public:
   }
 
   REWRITE_DECL(CastExpr, Expr, expr, exprptr) {
-    // Check that we are doing a primitive cast.
-    // TODO: String cast.
     // TODO: Treat chars as ints.
     sptr<const Expr> new_inner = Rewrite(expr.GetExprPtr());
 
@@ -222,42 +257,49 @@ public:
       return new_cast_expr;
     }
 
-    if (!TypeChecker::IsPrimitive(cast_type)) {
-      return exprptr;
-    }
-
     // Propagate constant past identity cast.
     if (cast_type == rhs_type) {
       return make_shared<ConstExpr>(inner_const->ConstantPtr(), exprptr);
     }
 
-    // Booleans can only be cast to strings or themselves, so rest of checks are for ints only.
-    CHECK(TypeChecker::IsNumeric(cast_type));
+    if (TypeChecker::IsPrimitive(cast_type)) {
+      // Booleans can only be cast to strings or themselves, so these must be ints.
+      CHECK(TypeChecker::IsNumeric(cast_type));
 
-    auto inner_const_int = dynamic_cast<const ast::IntLitExpr*>(inner_const->ConstantPtr().get());
-    CHECK(inner_const_int != nullptr);
+      auto inner_const_int = dynamic_cast<const ast::IntLitExpr*>(inner_const->ConstantPtr().get());
+      CHECK(inner_const_int != nullptr);
 
-    i64 value = inner_const_int->Value();
-    u32 usigned = (u32)value;
-    switch (cast_type.base) {
-      case ast::TypeId::kIntBase:
-        break;
-      case ast::TypeId::kShortBase:
-        usigned = usigned & 0x0000FFFF;
-        break;
-      case ast::TypeId::kByteBase:
-      case ast::TypeId::kCharBase:
-        usigned = usigned & 0x000000FF;
-        break;
-      default:
-        CHECK(false);
+      i64 value = inner_const_int->Value();
+      u32 usigned = (u32)value;
+      switch (cast_type.base) {
+        case ast::TypeId::kIntBase:
+          break;
+        case ast::TypeId::kShortBase:
+          usigned = usigned & 0x0000FFFF;
+          break;
+        case ast::TypeId::kByteBase:
+        case ast::TypeId::kCharBase:
+          usigned = usigned & 0x000000FF;
+          break;
+        default:
+          CHECK(false);
+      }
+      i64 new_value = (i64)usigned;
+
+      auto new_int_lit = make_shared<ast::IntLitExpr>(
+          lexer::Token(lexer::INTEGER, ExtentOf(exprptr)),
+          new_value, cast_type);
+      return make_shared<ConstExpr>(new_int_lit, exprptr);
     }
-    i64 new_value = (i64)usigned;
 
-    auto new_int_lit = make_shared<ast::IntLitExpr>(
-        lexer::Token(lexer::INTEGER, ExtentOf(exprptr)),
-        new_value, cast_type);
-    return make_shared<ConstExpr>(new_int_lit, exprptr);
+    // Cast to String (for a constant type).
+    // TODO: Is this even possible in the type system?
+    CHECK(cast_type == string_type_);
+    string str = Stringify(inner_const->ConstantPtr());
+    auto new_str_lit = make_shared<ast::StringLitExpr>(
+        lexer::Token(lexer::STRING, ExtentOf(exprptr)),
+        str, string_type_);
+    return make_shared<ConstExpr>(new_str_lit, exprptr);
   }
 
   ConstStringMap& strings_;
