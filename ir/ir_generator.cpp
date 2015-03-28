@@ -239,6 +239,7 @@ class MethodIRGenerator final : public ast::Visitor {
     }
 
     Mem tmp = builder_.AllocTemp(SizeClass::PTR);
+    // We want an rvalue of the pointer, so set lvalue to false.
     WithResultIn(tmp, false).Visit(expr.BasePtr());
 
     if (lvalue_) {
