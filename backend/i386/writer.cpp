@@ -671,8 +671,10 @@ struct FuncWriter final {
     u64 offset = offsets.OffsetOfMethod(mid);
 
     w.Col1("sub esp, %v", stack_used);
-    w.Col1("mov eax, %v", StackOffset(this_e.offset));
+    // Dereference the `this' ptr to get the vtable ptr.
     w.Col1("mov eax, [eax]");
+    // Dereference the vtable ptr plus the offset to give us the method and
+    // call it.
     w.Col1("call [eax + %v]", offset);
     w.Col1("add esp, %v", stack_used);
 
