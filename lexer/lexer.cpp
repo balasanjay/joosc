@@ -536,14 +536,14 @@ jchar ConvertCharEscape(string s, u64 start, u64* next) {
 
   *next = start + 2;
   switch (s[start + 1]) {
-    case 'b': return 8;
-    case 't': return 9;
-    case 'n': return 10;
-    case 'f': return 12;
-    case 'r': return 13;
-    case '"': return 34;
-    case '\'': return 39;
-    case '\\': return 92;
+    case 'b': return '\b';
+    case 't': return '\t';
+    case 'n': return '\n';
+    case 'f': return '\f';
+    case 'r': return '\r';
+    case '"': return '"';
+    case '\'': return '\'';
+    case '\\': return '\\';
     default: UNREACHABLE();
   }
 }
