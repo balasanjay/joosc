@@ -628,6 +628,57 @@ struct FuncWriter final {
     }
   }
 
+  void DynamicCall(ArgIter begin, ArgIter end) {
+    CHECK((end-begin) >= 4);
+
+    MemId dst = begin[0];
+    MemId this_ptr = begin[1];
+    MethodId mid = begin[2];
+    u64 nargs = begin[3];
+
+    CHECK(((u64)(end-begin) - 4) == nargs);
+
+    const StackEntry& this_e = stack_map.at(this_ptr);
+
+    i64 stack_used = cur_offset;
+
+    w.Col1("; Pushing %v arguments onto stack for call.", nargs);
+
+    // Push args onto stack in reverse order.
+    for (ArgIter cur = end; cur != (begin + 4); --cur) {
+      MemId arg = *(cur - 1);
+      const StackEntry& arg_e = stack_map.at(arg);
+
+      string reg = Sized(arg_e.size, "al", "ax", "eax");
+      w.Col1("mov %v, %v", reg, StackOffset(arg_e.offset));
+      w.Col1("mov %v, %v", StackOffset(stack_used), reg);
+
+      stack_used += 4;
+    }
+
+    w.Col1("; Pushing `this' onto stack for call.");
+    w.Col1("mov eax, %v", StackOffset(this_e.offset));
+    w.Col1("mov %v, eax", StackOffset(stack_used));
+
+    stack_used += 4;
+
+    w.Col1("; Performing call.");
+
+    u64 offset = offsets.OffsetOfMethod(mid);
+
+    w.Col1("sub esp, %v", stack_used);
+    w.Col1("mov eax, %v", StackOffset(this_e.offset));
+    w.Col1("mov eax, [eax]");
+    w.Col1("call [eax + %v]", offset);
+    w.Col1("add esp, %v", stack_used);
+
+    if (dst != kInvalidMemId) {
+      const StackEntry& dst_e = stack_map.at(dst);
+      string dst_reg = Sized(dst_e.size, "al", "ax", "eax");
+      w.Col1("mov %v, %v", StackOffset(stack_map.at(dst).offset), dst_reg);
+    }
+  }
+
   void Ret(ArgIter begin, ArgIter end) {
     CHECK((end-begin) <= 1);
 
@@ -820,11 +871,13 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::STATIC_CALL:
         writer.StaticCall(begin, end);
         break;
+      case OpType::DYNAMIC_CALL:
+        writer.DynamicCall(begin, end);
+        break;
       case OpType::RET:
         writer.Ret(begin, end);
         break;
 
-      UNIMPLEMENTED_OP(DYNAMIC_CALL);
       UNIMPLEMENTED_OP(SIGN_EXTEND);
       UNIMPLEMENTED_OP(ZERO_EXTEND);
       UNIMPLEMENTED_OP(TRUNCATE);
