@@ -161,6 +161,42 @@ void BuildMethodOffsets(const vector<TypeInfo>& types, u8 ptr_size,
   }
 }
 
+void BuildStaticFieldMap(const vector<TypeInfo>& types,
+    OffsetTable::StaticFieldMap* out) {
+  for (const TypeInfo& tinfo : types) {
+    // Joos interfaces don't have fields.
+    if (tinfo.kind == TypeKind::INTERFACE) {
+      continue;
+    }
+
+    OffsetTable::StaticFields fields;
+    for (const auto& f_pair: tinfo.fields.GetFieldMap()) {
+      const FieldInfo& finfo = f_pair.second;
+      if (!finfo.mods.HasModifier(lexer::STATIC)) {
+        continue;
+      }
+
+      // Skip static fields that were pushed down from the parent.
+      if (finfo.class_type != tinfo.type) {
+        continue;
+      }
+
+      fields.push_back({finfo.fid, SizeClassFrom(finfo.field_type)});
+    }
+
+    {
+      using Fpair = pair<FieldId, SizeClass>;
+      auto cmp = [](const Fpair& lhs, const Fpair& rhs) {
+        return lhs.second > rhs.second;
+      };
+      std::stable_sort(fields.begin(), fields.end(), cmp);
+    }
+
+    auto iter = out->insert({tinfo.type, fields});
+    CHECK(iter.second);
+  }
+}
+
 } // namespace
 
 OffsetTable OffsetTable::Build(const TypeInfoMap& tinfo_map, u8 ptr_size) {
@@ -186,7 +222,10 @@ OffsetTable OffsetTable::Build(const TypeInfoMap& tinfo_map, u8 ptr_size) {
   VtableMap vtables;
   BuildMethodOffsets(types, ptr_size, &method_offsets, &vtables);
 
-  return OffsetTable(type_sizes, field_offsets, method_offsets, vtables, ptr_size);
+  StaticFieldMap statics;
+  BuildStaticFieldMap(types, &statics);
+
+  return OffsetTable(type_sizes, field_offsets, method_offsets, vtables, statics, ptr_size);
 }
 
 } // namespace common

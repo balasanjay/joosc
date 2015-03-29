@@ -719,6 +719,7 @@ struct FuncWriter final {
 void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
   static string kMethodNameFmt = "_t%v_m%v";
   static string kVtableNameFmt = "vtable_t%v";
+  static string kStaticNameFmt = "static_f%v";
 
   set<string> externs{"_joos_malloc"};
   set<string> globals;
@@ -746,7 +747,11 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
     }
 
     for (const auto& v_pair : offsets_.VtableOf({type.tid, 0})) {
-      externs.insert(Sprintf("_t%v_m%v", v_pair.first.base, v_pair.second));
+      externs.insert(Sprintf(kMethodNameFmt, v_pair.first.base, v_pair.second));
+    }
+
+    for (const auto& s_pair : offsets_.StaticFieldsOf({type.tid, 0})) {
+      globals.insert(Sprintf(kStaticNameFmt, s_pair.first));
     }
   }
 
@@ -769,6 +774,8 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
     }
     Fprintf(out, "section .rodata\n");
     WriteVtable(type, out);
+    Fprintf(out, "section .data\n");
+    WriteStatics(type, out);
   }
 }
 
@@ -898,6 +905,16 @@ void Writer::WriteVtable(const Type& type, ostream* out) const {
 
   for (const auto& v_pair : offsets_.VtableOf({type.tid, 0})) {
     w.Col1("dd _t%v_m%v", v_pair.first.base, v_pair.second);
+  }
+  w.Col0("\n");
+}
+
+void Writer::WriteStatics(const Type& type, ostream* out) const {
+  AsmWriter w(out);
+
+  for (const auto& f_pair : offsets_.StaticFieldsOf({type.tid, 0})) {
+    w.Col0("static_f%v:", f_pair.first);
+    w.Col1("%v 0", Sized(f_pair.second, "db", "dw", "dd"));
   }
 }
 
