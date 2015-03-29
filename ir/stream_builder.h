@@ -125,9 +125,15 @@ class StreamBuilder {
   // Emit *dst = *lhs ^ *rhs. They must all have SizeClass BOOL.
   void Xor(Mem dst, Mem lhs, Mem rhs);
 
-  // Emit a static call to method mid in Type tid, passing args. All args must
-  // have been initialized. The result of calling the method will be stored in dst.
+  // Emit a static call to method mid in Type tid, passing args. All args
+  // must have been initialized. The result of calling the method will be
+  // stored in dst.
   void StaticCall(Mem dst, ast::TypeId::Base tid, ast::MethodId mid, const vector<Mem>& args);
+
+  // Emit a dynamic call to method mid on this_ptr, passing args. All args
+  // must have been initialized. The result of calling the method will be
+  // stored in dst.
+  void DynamicCall(Mem dst, Mem this_ptr, ast::MethodId mid, const vector<Mem>& args);
 
   // Return with no value.
   void Ret();

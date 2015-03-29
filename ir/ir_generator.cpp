@@ -412,12 +412,6 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(CallExpr, expr,) {
-    // TODO: handle more than just static calls.
-    auto static_base = dynamic_cast<const StaticRefExpr*>(expr.BasePtr().get());
-    if (static_base == nullptr) {
-      return VisitResult::SKIP;
-    }
-
     // Allocate argument temps and generate their code.
     vector<Mem> arg_mems;
     for (int i = 0; i < expr.Args().Size(); ++i) {
@@ -427,9 +421,16 @@ class MethodIRGenerator final : public ast::Visitor {
       arg_mems.push_back(arg_mem);
     }
 
-    // Perform call.
-    TypeId tid = static_base->GetRefType().GetTypeId();
-    builder_.StaticCall(res_, tid.base, expr.GetMethodId(), arg_mems);
+    auto static_base = dynamic_cast<const StaticRefExpr*>(expr.BasePtr().get());
+    if (static_base == nullptr) {
+      Mem this_ptr = builder_.AllocTemp(SizeClass::PTR);
+      WithResultIn(this_ptr).Visit(expr.BasePtr());
+
+      builder_.DynamicCall(res_, this_ptr, expr.GetMethodId(), arg_mems);
+    } else {
+      TypeId tid = static_base->GetRefType().GetTypeId();
+      builder_.StaticCall(res_, tid.base, expr.GetMethodId(), arg_mems);
+    }
 
     // Deallocate arg mems.
     while (!arg_mems.empty()) {

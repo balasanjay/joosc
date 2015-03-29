@@ -106,6 +106,9 @@ enum class OpType {
   // (Mem, TypeId::Base, MethodId, int nargs, Mem[]).
   STATIC_CALL,
 
+  // (Mem, Mem, MethodId, int nargs, Mem[]).
+  DYNAMIC_CALL,
+
   // ([Mem]).
   RET,
 };
