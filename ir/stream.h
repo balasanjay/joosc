@@ -38,7 +38,7 @@ enum class OpType {
   MOV_TO_ADDR,
 
   // (Mem, Mem, FieldId).
-  FIELD,
+  FIELD_DEREF,
 
   // (Mem, Mem, FieldId).
   FIELD_ADDR,

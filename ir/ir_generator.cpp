@@ -252,7 +252,7 @@ class MethodIRGenerator final : public ast::Visitor {
     if (lvalue_) {
       builder_.FieldAddr(res_, tmp, expr.GetFieldId(), expr.GetToken().pos);
     } else {
-      builder_.Field(res_, tmp, expr.GetFieldId(), expr.GetToken().pos);
+      builder_.FieldDeref(res_, tmp, expr.GetFieldId(), expr.GetToken().pos);
     }
 
     return VisitResult::SKIP;

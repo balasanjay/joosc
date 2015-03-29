@@ -301,7 +301,7 @@ struct FuncWriter final {
     w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
   }
 
-  void Field(ArgIter begin, ArgIter end) {
+  void FieldDeref(ArgIter begin, ArgIter end) {
     FieldImpl(begin, end, false);
   }
 
@@ -811,8 +811,8 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::MOV_TO_ADDR:
         writer.MovToAddr(begin, end);
         break;
-      case OpType::FIELD:
-        writer.Field(begin, end);
+      case OpType::FIELD_DEREF:
+        writer.FieldDeref(begin, end);
         break;
       case OpType::FIELD_ADDR:
         writer.FieldAddr(begin, end);
