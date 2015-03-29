@@ -23,6 +23,7 @@ using ir::Op;
 using ir::OpType;
 using ir::SizeClass;
 using ir::Stream;
+using ir::Type;
 using ir::kInvalidMemId;
 
 #define EXPECT_NARGS(n) CHECK((end - begin) == n)
@@ -668,20 +669,22 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
 
   set<string> externs{"_joos_malloc"};
   set<string> globals;
-  for (const Stream& method_stream : comp_unit.streams) {
-    if (method_stream.is_entry_point) {
-      globals.insert("_entry");
-    }
+  for (const Type& type : comp_unit.types) {
+    for (const Stream& method_stream : type.streams) {
+      if (method_stream.is_entry_point) {
+        globals.insert("_entry");
+      }
 
-    globals.insert(Sprintf(kMethodNameFmt, method_stream.tid, method_stream.mid));
+      globals.insert(Sprintf(kMethodNameFmt, method_stream.tid, method_stream.mid));
 
-    for (const Op& op : method_stream.ops) {
-      // TODO: also will need things like static fields here.
-      if (op.type == OpType::STATIC_CALL) {
-        TypeId::Base tid = method_stream.args[op.begin+1];
-        MethodId mid = method_stream.args[op.begin+2];
+      for (const Op& op : method_stream.ops) {
+        // TODO: also will need things like static fields here.
+        if (op.type == OpType::STATIC_CALL) {
+          TypeId::Base tid = method_stream.args[op.begin+1];
+          MethodId mid = method_stream.args[op.begin+2];
 
-        externs.insert(Sprintf(kMethodNameFmt, tid, mid));
+          externs.insert(Sprintf(kMethodNameFmt, tid, mid));
+        }
       }
     }
   }
@@ -698,8 +701,10 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
     Fprintf(out, "extern %v\n", ext);
   }
 
-  for (const ir::Stream& method_stream : comp_unit.streams) {
-    WriteFunc(method_stream, out);
+  for (const Type& type : comp_unit.types) {
+    for (const Stream& method_stream : type.streams) {
+      WriteFunc(method_stream, out);
+    }
   }
 }
 

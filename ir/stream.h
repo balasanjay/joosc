@@ -130,9 +130,14 @@ struct Stream {
   vector<SizeClass> params;
 };
 
+struct Type {
+  ast::TypeId::Base tid;
+  vector<Stream> streams;
+};
+
 struct CompUnit {
   string filename;
-  vector<Stream> streams;
+  vector<Type> types;
 };
 
 struct Program {
