@@ -141,6 +141,11 @@ void StreamBuilder::ConstBool(Mem mem, bool b) {
   Const(mem, b ? 1 : 0);
 }
 
+void StreamBuilder::ConstNull(Mem mem) {
+  CHECK(mem.Size() == SizeClass::PTR);
+  Const(mem, 0);
+}
+
 void StreamBuilder::Mov(Mem dst, Mem src) {
   AssertAssigned({src});
   AppendOp(OpType::MOV, {dst.Id(), src.Id()});

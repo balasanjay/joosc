@@ -42,6 +42,9 @@ class StreamBuilder {
   // Writes a constant bool value to the given Mem.
   void ConstBool(Mem, bool);
 
+  // Writes null to the given Mem.
+  void ConstNull(Mem);
+
   // Emit *dst = *src.
   void Mov(Mem dst, Mem src);
 

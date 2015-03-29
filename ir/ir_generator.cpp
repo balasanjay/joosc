@@ -224,6 +224,11 @@ class MethodIRGenerator final : public ast::Visitor {
     return VisitResult::SKIP;
   }
 
+  VISIT_DECL(NullLitExpr,,) {
+    builder_.ConstNull(res_);
+    return VisitResult::SKIP;
+  }
+
   VISIT_DECL(ThisExpr,,) {
     auto i = locals_map_.find(kVarImplicitThis);
     CHECK(i != locals_map_.end());
