@@ -116,15 +116,36 @@ struct FuncWriter final {
 
     CHECK(dst_e.size == SizeClass::PTR);
 
-    u64 size = offsets.SizeOf({tid, 0});
+    AllocImpl(offsets.SizeOf({tid, 0}), dst, dst_e.offset);
+  }
+
+  void AllocArray(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(3);
+
+    MemId dst = begin[0];
+    SizeClass elem_size_class = (SizeClass)begin[1];
+    MemId len = begin[2];
+
+    const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& len_e = stack_map.at(len);
+
+    CHECK(dst_e.size == SizeClass::PTR);
+    CHECK(len_e.size == SizeClass::INT);
+
+    u64 elem_size = ByteSizeFrom(elem_size_class, 4);
     i64 stack_used = cur_offset;
 
-    w.Col1("; t%v = new %v", dst, size);
-    w.Col1("mov eax, %v", size);
+    w.Col1("; t%v = new[t%v]", dst, len);
+    w.Col1("mov eax, %v", StackOffset(len_e.offset));
+    w.Col1("mov ebx, %v", elem_size);
+    w.Col1("imul ebx");
+    w.Col1("add eax, 8"); // Add space for vptr and length.
     w.Col1("sub esp, %v", stack_used);
     w.Col1("call _joos_malloc");
     w.Col1("add esp, %v", stack_used);
     w.Col1("mov %v, eax", StackOffset(dst_e.offset));
+
+    // TODO: we need to set the length field.
   }
 
   void AllocMem(ArgIter begin, ArgIter end) {
@@ -276,6 +297,49 @@ struct FuncWriter final {
 
   void FieldAddr(ArgIter begin, ArgIter end) {
     FieldImpl(begin, end, true);
+  }
+
+  void ArrayImpl(ArgIter begin, ArgIter end, bool addr) {
+    // TODO: Handle PosRange, NPEs, and out-of-range exceptions.
+    EXPECT_NARGS(4);
+
+    MemId dst = begin[0];
+    MemId src = begin[1];
+    MemId idx = begin[2];
+    SizeClass elemsize = (SizeClass)begin[3];
+
+    const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& src_e = stack_map.at(src);
+    const StackEntry& idx_e = stack_map.at(idx);
+
+    CHECK(idx_e.size == SizeClass::INT);
+    CHECK(src_e.size == SizeClass::PTR);
+    if (addr) {
+      CHECK(dst_e.size == SizeClass::PTR);
+    }
+
+    string sized_reg = addr ? "eax" : Sized(dst_e.size, "al", "ax", "eax");
+    string src_prefix = addr ? "&" : "";
+    string instr = addr ? "lea" : "mov";
+
+    // TODO: check the array access is in range.
+
+    w.Col1("; t%v = %vt%v[t%v]", dst, src_prefix, src, idx);
+    w.Col1("mov eax, %v", StackOffset(idx_e.offset));
+    w.Col1("mov ebx, %v", ByteSizeFrom(elemsize, 4));
+    w.Col1("imul ebx");
+    w.Col1("add eax, 8"); // Move past the vptr and the length field.
+    w.Col1("mov ebx, %v", StackOffset(src_e.offset));
+    w.Col1("%v %v, [ebx+eax]", instr, sized_reg);
+    w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
+  }
+
+  void ArrayDeref(ArgIter begin, ArgIter end) {
+    ArrayImpl(begin, end, false);
+  }
+
+  void ArrayAddr(ArgIter begin, ArgIter end) {
+    ArrayImpl(begin, end, true);
   }
 
   void AddSub(ArgIter begin, ArgIter end, bool add) {
@@ -646,6 +710,9 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::ALLOC_HEAP:
         writer.AllocHeap(begin, end);
         break;
+      case OpType::ALLOC_ARRAY:
+        writer.AllocArray(begin, end);
+        break;
       case OpType::ALLOC_MEM:
         writer.AllocMem(begin, end);
         break;
@@ -672,6 +739,12 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         break;
       case OpType::FIELD_ADDR:
         writer.FieldAddr(begin, end);
+        break;
+      case OpType::ARRAY_DEREF:
+        writer.ArrayDeref(begin, end);
+        break;
+      case OpType::ARRAY_ADDR:
+        writer.ArrayAddr(begin, end);
         break;
       case OpType::ADD:
         writer.Add(begin, end);

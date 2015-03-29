@@ -36,7 +36,7 @@ REWRITE_DEFN(Visitor, ArrayIndexExpr, Expr, expr, exprptr) {
   if (base == expr.BasePtr() && index == expr.IndexPtr()) {
     return exprptr;
   }
-  return make_shared<ArrayIndexExpr>(base, expr.Lbrack(), index, expr.Rbrack());
+  return make_shared<ArrayIndexExpr>(base, expr.Lbrack(), index, expr.Rbrack(), expr.GetTypeId());
 }
 
 REWRITE_DEFN(Visitor, BinExpr, Expr, expr, exprptr) {
@@ -161,7 +161,7 @@ REWRITE_DEFN(Visitor, NewArrayExpr, Expr, expr, exprptr) {
   } else if (arrayExpr == expr.GetExprPtr()) {
     return exprptr;
   }
-  return make_shared<NewArrayExpr>(expr.NewToken(), expr.GetTypePtr(), expr.Lbrack(), arrayExpr, expr.Rbrack());
+  return make_shared<NewArrayExpr>(expr.NewToken(), expr.GetTypePtr(), expr.Lbrack(), arrayExpr, expr.Rbrack(), expr.GetTypeId());
 }
 
 REWRITE_DEFN(Visitor, NewClassExpr, Expr, expr, exprptr) {
