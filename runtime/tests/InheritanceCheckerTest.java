@@ -66,15 +66,15 @@ public class InheritanceCheckerTest {
       type_infos[4] = new TypeInfo(num_types, parents);
     }
 
-    InheritanceChecker checker = new InheritanceChecker(type_infos);
-    ExpectEq(true, checker.IsAncestor(0, 1));
-    ExpectEq(true, checker.IsAncestor(0, 3));
-    ExpectEq(true, checker.IsAncestor(0, 4));
-    ExpectEq(true, checker.IsAncestor(1, 4));
-    ExpectEq(false, checker.IsAncestor(2, 4));
-    ExpectEq(false, checker.IsAncestor(0, 0));
-    ExpectEq(false, checker.IsAncestor(2, 0));
-    ExpectEq(false, checker.IsAncestor(4, 3));
+    InheritanceChecker.Initialize(type_infos);
+    ExpectEq(true,  InheritanceChecker.IsAncestor(0, 1));
+    ExpectEq(true,  InheritanceChecker.IsAncestor(0, 3));
+    ExpectEq(true,  InheritanceChecker.IsAncestor(0, 4));
+    ExpectEq(true,  InheritanceChecker.IsAncestor(1, 4));
+    ExpectEq(false, InheritanceChecker.IsAncestor(2, 4));
+    ExpectEq(false, InheritanceChecker.IsAncestor(0, 0));
+    ExpectEq(false, InheritanceChecker.IsAncestor(2, 0));
+    ExpectEq(false, InheritanceChecker.IsAncestor(4, 3));
   }
 
   public static void main(String[] args) {

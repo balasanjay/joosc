@@ -1,14 +1,14 @@
 package runtime;
 
 public class InheritanceChecker {
-  protected TypeInfo[] type_infos;
+  static protected TypeInfo[] type_infos;
 
-  public InheritanceChecker(TypeInfo[] type_infos) {
-    this.type_infos = type_infos;
+  public static void Initialize(TypeInfo[] type_infos) {
+    InheritanceChecker.type_infos = type_infos;
   }
 
-  public boolean IsAncestor(int child_type, int ancestor_type) {
-    TypeInfo child = type_infos[child_type];
+  public static boolean IsAncestor(int child_type, int ancestor_type) {
+    TypeInfo child = InheritanceChecker.type_infos[child_type];
 
     // Check if already memoized.
     int ancestor_lookup = child.IsAncestor(ancestor_type);
@@ -25,8 +25,8 @@ public class InheritanceChecker {
     return is_ancestor;
   }
 
-  protected boolean IsAncestorRec(int child_type, int ancestor_type) {
-    TypeInfo child = type_infos[child_type];
+  protected static boolean IsAncestorRec(int child_type, int ancestor_type) {
+    TypeInfo child = InheritanceChecker.type_infos[child_type];
     int[] parents = child.Parents();
     for (int i = 0; i < parents.length; i = i + 1) {
       // If parent is ancestor, return true immediately.
@@ -36,7 +36,7 @@ public class InheritanceChecker {
 
       // Recurse using memoized lookup on parents.
       // This call will also record the intermediate ancestory relation between the parent and the ancestor.
-      if (IsAncestor(parents[i], ancestor_type) ){
+      if (InheritanceChecker.IsAncestor(parents[i], ancestor_type) ){
         return true;
       }
     }
