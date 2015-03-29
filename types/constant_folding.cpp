@@ -11,6 +11,8 @@ using ast::ConstExpr;
 
 namespace types {
 
+StringId kFirstStringId = 0;
+
 class ConstantFoldingVisitor final : public ast::Visitor {
 public:
   ConstantFoldingVisitor(ConstStringMap* strings, ast::TypeId string_type): strings_(*strings), string_type_(string_type) {
@@ -27,6 +29,7 @@ public:
   // literals, or just a literal, into its string
   // representation.
   string Stringify(sptr<const Expr> expr) {
+    // TODO: Null literals.
     sptr<const Expr> inside_const = expr;
     auto const_expr = dynamic_cast<const ast::ConstExpr*>(expr.get());
     if (const_expr != nullptr) {
@@ -54,7 +57,7 @@ public:
 
     auto inner_const_bool = dynamic_cast<const ast::BoolLitExpr*>(inside_const.get());
     CHECK(inner_const_bool != nullptr);
-    return inner_const_bool->GetToken().type == lexer::K_TRUE ? "true" : "false";
+    return (inner_const_bool->GetToken().type == lexer::K_TRUE) ? "true" : "false";
   }
 
   REWRITE_DECL(ConstExpr, Expr, , exprptr) {
@@ -169,7 +172,7 @@ public:
     if (IsRelationalOp(expr.Op().type) || IsEqualityOp(expr.Op().type)) {
       // TODO: Chars.
       if (lhs_type == string_type_ && rhs_type == string_type_) {
-        bool is_eq = expr.Op().type == lexer::EQ;
+        bool is_eq = (expr.Op().type == lexer::EQ);
         CHECK(is_eq || expr.Op().type == lexer::NEQ);
         auto lhs_str_lit = dynamic_cast<const ast::StringLitExpr*>(lhs_const->ConstantPtr().get());
         auto rhs_str_lit = dynamic_cast<const ast::StringLitExpr*>(rhs_const->ConstantPtr().get());
@@ -304,7 +307,7 @@ public:
 
   ConstStringMap& strings_;
   ast::TypeId string_type_;
-  StringId next_string_id_ = 0;
+  StringId next_string_id_ = kFirstStringId;
 };
 
 sptr<const ast::Program> ConstantFold(sptr<const ast::Program> prog, ast::TypeId string_type, ConstStringMap* out_strings) {
