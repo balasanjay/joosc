@@ -5,6 +5,7 @@
 
 #include "ast/ids.h"
 #include "ast/visitor.h"
+#include "base/joos_types.h"
 #include "base/shared_ptr_vector.h"
 #include "base/unique_ptr_vector.h"
 #include "lexer/lexer.h"

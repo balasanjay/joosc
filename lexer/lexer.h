@@ -4,6 +4,7 @@
 #include "base/errorlist.h"
 #include "base/file.h"
 #include "base/fileset.h"
+#include "base/joos_types.h"
 
 namespace lexer {
 

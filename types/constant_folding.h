@@ -3,6 +3,7 @@
 
 #include "ast/ids.h"
 #include "ast/ast_fwd.h"
+#include "base/joos_types.h"
 
 namespace types {
 
