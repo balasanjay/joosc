@@ -177,7 +177,7 @@ public:
         auto lhs_str_lit = dynamic_cast<const ast::StringLitExpr*>(lhs_const->ConstantPtr().get());
         auto rhs_str_lit = dynamic_cast<const ast::StringLitExpr*>(rhs_const->ConstantPtr().get());
         CHECK(lhs_str_lit != nullptr && rhs_str_lit != nullptr);
-        bool eq = lhs_str_lit->Str() == rhs_str_lit->Str();
+        bool eq = (lhs_str_lit->Str() == rhs_str_lit->Str());
         bool result = (eq && is_eq) || (!eq && !is_eq);
         auto new_bool_lit = make_shared<ast::BoolLitExpr>(
             lexer::Token(result ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)),
