@@ -23,6 +23,7 @@ using ir::Op;
 using ir::OpType;
 using ir::SizeClass;
 using ir::Stream;
+using ir::Type;
 using ir::kInvalidMemId;
 
 #define EXPECT_NARGS(n) CHECK((end - begin) == n)
@@ -124,6 +125,7 @@ struct FuncWriter final {
     w.Col1("sub esp, %v", stack_used);
     w.Col1("call _joos_malloc");
     w.Col1("add esp, %v", stack_used);
+    w.Col1("mov dword [eax], vtable_t%v", tid);
     w.Col1("mov %v, eax", StackOffset(dst_e.offset));
   }
 
@@ -291,7 +293,7 @@ struct FuncWriter final {
     string src_prefix = addr ? "&" : "";
     string instr = addr ? "lea" : "mov";
 
-    u64 field_offset = offsets.OffsetOf(fid);
+    u64 field_offset = offsets.OffsetOfField(fid);
 
     w.Col1("; t%v = %vt%v.f%v.", dst_e.id, src_prefix, src_e.id, fid);
     w.Col1("mov ebx, %v", StackOffset(src_e.offset));
@@ -626,6 +628,59 @@ struct FuncWriter final {
     }
   }
 
+  void DynamicCall(ArgIter begin, ArgIter end) {
+    CHECK((end-begin) >= 4);
+
+    MemId dst = begin[0];
+    MemId this_ptr = begin[1];
+    MethodId mid = begin[2];
+    u64 nargs = begin[3];
+
+    CHECK(((u64)(end-begin) - 4) == nargs);
+
+    const StackEntry& this_e = stack_map.at(this_ptr);
+
+    i64 stack_used = cur_offset;
+
+    w.Col1("; Pushing %v arguments onto stack for call.", nargs);
+
+    // Push args onto stack in reverse order.
+    for (ArgIter cur = end; cur != (begin + 4); --cur) {
+      MemId arg = *(cur - 1);
+      const StackEntry& arg_e = stack_map.at(arg);
+
+      string reg = Sized(arg_e.size, "al", "ax", "eax");
+      w.Col1("mov %v, %v", reg, StackOffset(arg_e.offset));
+      w.Col1("mov %v, %v", StackOffset(stack_used), reg);
+
+      stack_used += 4;
+    }
+
+    w.Col1("; Pushing `this' onto stack for call.");
+    w.Col1("mov eax, %v", StackOffset(this_e.offset));
+    w.Col1("mov %v, eax", StackOffset(stack_used));
+
+    stack_used += 4;
+
+    w.Col1("; Performing call.");
+
+    u64 offset = offsets.OffsetOfMethod(mid);
+
+    w.Col1("sub esp, %v", stack_used);
+    // Dereference the `this' ptr to get the vtable ptr.
+    w.Col1("mov eax, [eax]");
+    // Dereference the vtable ptr plus the offset to give us the method and
+    // call it.
+    w.Col1("call [eax + %v]", offset);
+    w.Col1("add esp, %v", stack_used);
+
+    if (dst != kInvalidMemId) {
+      const StackEntry& dst_e = stack_map.at(dst);
+      string dst_reg = Sized(dst_e.size, "al", "ax", "eax");
+      w.Col1("mov %v, %v", StackOffset(stack_map.at(dst).offset), dst_reg);
+    }
+  }
+
   void Ret(ArgIter begin, ArgIter end) {
     CHECK((end-begin) <= 1);
 
@@ -665,24 +720,35 @@ struct FuncWriter final {
 
 void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
   static string kMethodNameFmt = "_t%v_m%v";
+  static string kVtableNameFmt = "vtable_t%v";
 
   set<string> externs{"_joos_malloc"};
   set<string> globals;
-  for (const Stream& method_stream : comp_unit.streams) {
-    if (method_stream.is_entry_point) {
-      globals.insert("_entry");
+  for (const Type& type : comp_unit.types) {
+    globals.insert(Sprintf(kVtableNameFmt, type.tid));
+    for (const Stream& method_stream : type.streams) {
+      if (method_stream.is_entry_point) {
+        globals.insert("_entry");
+      }
+
+      globals.insert(Sprintf(kMethodNameFmt, method_stream.tid, method_stream.mid));
+
+      for (const Op& op : method_stream.ops) {
+        // TODO: also will need things like static fields here.
+        if (op.type == OpType::STATIC_CALL) {
+          TypeId::Base tid = method_stream.args[op.begin+1];
+          MethodId mid = method_stream.args[op.begin+2];
+
+          externs.insert(Sprintf(kMethodNameFmt, tid, mid));
+        } else if (op.type == OpType::ALLOC_HEAP) {
+          TypeId::Base tid = method_stream.args[op.begin+1];
+          externs.insert(Sprintf(kVtableNameFmt, tid));
+        }
+      }
     }
 
-    globals.insert(Sprintf(kMethodNameFmt, method_stream.tid, method_stream.mid));
-
-    for (const Op& op : method_stream.ops) {
-      // TODO: also will need things like static fields here.
-      if (op.type == OpType::STATIC_CALL) {
-        TypeId::Base tid = method_stream.args[op.begin+1];
-        MethodId mid = method_stream.args[op.begin+2];
-
-        externs.insert(Sprintf(kMethodNameFmt, tid, mid));
-      }
+    for (const auto& v_pair : offsets_.VtableOf({type.tid, 0})) {
+      externs.insert(Sprintf("_t%v_m%v", v_pair.first.base, v_pair.second));
     }
   }
 
@@ -698,8 +764,13 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
     Fprintf(out, "extern %v\n", ext);
   }
 
-  for (const ir::Stream& method_stream : comp_unit.streams) {
-    WriteFunc(method_stream, out);
+  for (const Type& type : comp_unit.types) {
+    Fprintf(out, "section .text\n\n");
+    for (const Stream& method_stream : type.streams) {
+      WriteFunc(method_stream, out);
+    }
+    Fprintf(out, "section .rodata\n");
+    WriteVtable(type, out);
   }
 }
 
@@ -802,6 +873,9 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::STATIC_CALL:
         writer.StaticCall(begin, end);
         break;
+      case OpType::DYNAMIC_CALL:
+        writer.DynamicCall(begin, end);
+        break;
       case OpType::RET:
         writer.Ret(begin, end);
         break;
@@ -816,7 +890,17 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
   }
 
   writer.WriteEpilogue();
+}
 
+void Writer::WriteVtable(const Type& type, ostream* out) const {
+  AsmWriter w(out);
+  w.Col0("vtable_t%v:", type.tid);
+  w.Col1("dd 0"); // Type info ptr.
+  w.Col1("dd 0"); // Selector index.
+
+  for (const auto& v_pair : offsets_.VtableOf({type.tid, 0})) {
+    w.Col1("dd _t%v_m%v", v_pair.first.base, v_pair.second);
+  }
 }
 
 void Writer::WriteMain(ostream* out) const {

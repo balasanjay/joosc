@@ -141,6 +141,11 @@ void StreamBuilder::ConstBool(Mem mem, bool b) {
   Const(mem, b ? 1 : 0);
 }
 
+void StreamBuilder::ConstNull(Mem mem) {
+  CHECK(mem.Size() == SizeClass::PTR);
+  Const(mem, 0);
+}
+
 void StreamBuilder::Mov(Mem dst, Mem src) {
   AssertAssigned({src});
   AppendOp(OpType::MOV, {dst.Id(), src.Id()});
@@ -287,6 +292,25 @@ void StreamBuilder::StaticCall(Mem dst, TypeId::Base tid, MethodId mid, const ve
   }
 
   ops_.push_back({OpType::STATIC_CALL, begin, args_.size()});
+  if (dst.IsValid()) {
+    SetAssigned({dst});
+  }
+}
+
+void StreamBuilder::DynamicCall(Mem dst, Mem this_ptr, ast::MethodId mid, const vector<Mem>& args) {
+  AssertAssigned({this_ptr});
+  size_t begin = args_.size();
+
+  args_.push_back(dst.Id());
+  args_.push_back(this_ptr.Id());
+  args_.push_back(mid);
+  args_.push_back(args.size());
+  for (auto val : args) {
+    AssertAssigned({val});
+    args_.push_back(val.Id());
+  }
+
+  ops_.push_back({OpType::DYNAMIC_CALL, begin, args_.size()});
   if (dst.IsValid()) {
     SetAssigned({dst});
   }

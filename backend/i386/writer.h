@@ -17,6 +17,7 @@ public:
   void WriteMain(std::ostream* out) const;
 private:
   void WriteFunc(const ir::Stream& stream, std::ostream* out) const;
+  void WriteVtable(const ir::Type& type, std::ostream* out) const;
 
   const backend::common::OffsetTable& offsets_;
 };
