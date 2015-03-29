@@ -17,6 +17,10 @@ class StreamBuilder {
   // Return a Mem of SizeClass::PTR that can fit an instance of type t.
   Mem AllocHeap(ast::TypeId t);
 
+  // Return a Mem of SizeClass::PTR that holds an array of elements, each of
+  // size elemtype. Space for n elements will be allocated.
+  Mem AllocArray(SizeClass elemtype, Mem n);
+
   Mem AllocTemp(SizeClass);
 
   Mem AllocLocal(SizeClass);
@@ -54,6 +58,14 @@ class StreamBuilder {
   // Return in dst a pointer to fid in src. If src points to null, an exception
   // will be generated.
   void FieldAddr(Mem dst, Mem src, ast::FieldId fid, base::PosRange pos);
+
+  // Return in dst the value of array[index]. If array is null, or index is out
+  // of range, an exception will be generated.
+  void ArrayDeref(Mem dst, Mem array, Mem index, SizeClass elemsize, base::PosRange pos);
+
+  // Return in dst the value of &array[index]. If array is null, or index is out
+  // of range, an exception will be generated.
+  void ArrayAddr(Mem dst, Mem array, Mem index, SizeClass elemsize, base::PosRange pos);
 
   // Emit *dst = *lhs + *rhs.
   void Add(Mem dst, Mem lhs, Mem rhs);

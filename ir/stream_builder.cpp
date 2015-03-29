@@ -43,12 +43,21 @@ void StreamBuilder::SetAssigned(const std::initializer_list<Mem>& mems) {
 }
 
 Mem StreamBuilder::AllocHeap(TypeId tid) {
+  CHECK(tid.ndims == 0);
   Mem tmp = AllocTemp(SizeClass::PTR);
-  // TODO: Handle arrays.
   AppendOp(OpType::ALLOC_HEAP, {tmp.Id(), tid.base});
   SetAssigned({tmp});
   return tmp;
 }
+
+Mem StreamBuilder::AllocArray(SizeClass elemtype, Mem len) {
+  AssertAssigned({len});
+  Mem tmp = AllocTemp(SizeClass::PTR);
+  AppendOp(OpType::ALLOC_ARRAY, {tmp.Id(), (u64)elemtype, len.Id()});
+  SetAssigned({tmp});
+  return tmp;
+}
+
 
 Mem StreamBuilder::AllocMem(SizeClass size, bool immutable) {
   CHECK(params_initialized_);
@@ -161,6 +170,20 @@ void StreamBuilder::FieldAddr(Mem dst, Mem src, FieldId fid, PosRange) {
   AssertAssigned({src});
   // TODO: Pass the PosRange.
   AppendOp(OpType::FIELD_ADDR, {dst.Id(), src.Id(), fid});
+  SetAssigned({dst});
+}
+
+void StreamBuilder::ArrayDeref(Mem dst, Mem array, Mem index, SizeClass elemsize, PosRange) {
+  AssertAssigned({array, index});
+  // TODO: Pass the PosRange.
+  AppendOp(OpType::ARRAY_DEREF, {dst.Id(), array.Id(), index.Id(), (u64)elemsize});
+  SetAssigned({dst});
+}
+
+void StreamBuilder::ArrayAddr(Mem dst, Mem array, Mem index, SizeClass elemsize, PosRange) {
+  AssertAssigned({array, index});
+  // TODO: Pass the PosRange.
+  AppendOp(OpType::ARRAY_ADDR, {dst.Id(), array.Id(), index.Id(), (u64)elemsize});
   SetAssigned({dst});
 }
 

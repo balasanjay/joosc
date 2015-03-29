@@ -4,6 +4,7 @@
 #include <tuple>
 
 #include "ast/ast.h"
+#include "ast/extent.h"
 #include "ast/visitor.h"
 #include "ir/size.h"
 #include "ir/stream_builder.h"
@@ -15,6 +16,7 @@ using std::get;
 using std::tuple;
 
 using ast::Expr;
+using ast::ExtentOf;
 using ast::FieldDecl;
 using ast::FieldId;
 using ast::MemberDecl;
@@ -251,6 +253,26 @@ class MethodIRGenerator final : public ast::Visitor {
     return VisitResult::SKIP;
   }
 
+  VISIT_DECL(ArrayIndexExpr, expr, exprptr) {
+    Mem array = builder_.AllocTemp(SizeClass::PTR);
+
+    // We want an rvalue of the pointer, so set lvalue to false.
+    WithResultIn(array, false).Visit(expr.BasePtr());
+
+    Mem index = builder_.AllocTemp(SizeClass::INT);
+    WithResultIn(index).Visit(expr.IndexPtr());
+
+    PosRange pos = ExtentOf(exprptr);
+    SizeClass elemsize = SizeClassFrom(expr.GetTypeId());
+    if (lvalue_) {
+      builder_.ArrayAddr(res_, array, index, elemsize, pos);
+    } else {
+      builder_.ArrayDeref(res_, array, index, elemsize, pos);
+    }
+
+    return VisitResult::SKIP;
+  }
+
   VISIT_DECL(NameExpr, expr,) {
     auto i = locals_map_.find(expr.GetVarId());
     CHECK(i != locals_map_.end());
@@ -412,8 +434,22 @@ class MethodIRGenerator final : public ast::Visitor {
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(NewClassExpr, expr,) {
+  VISIT_DECL(NewArrayExpr, expr,) {
+    // TODO: handle optional expr.
+    if (expr.GetExprPtr() == nullptr) {
+      return VisitResult::SKIP;
+    }
 
+    Mem size = builder_.AllocTemp(SizeClass::INT);
+    WithResultIn(size).Visit(expr.GetExprPtr());
+
+    Mem array_mem = builder_.AllocArray(SizeClassFrom(expr.GetType().GetTypeId()), size);
+    builder_.Mov(res_, array_mem);
+
+    return VisitResult::SKIP;
+  }
+
+  VISIT_DECL(NewClassExpr, expr,) {
     Mem this_mem = builder_.AllocHeap(expr.GetTypeId());
 
     // TODO: Refactor with CallExpr.

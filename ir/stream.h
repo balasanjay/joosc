@@ -19,6 +19,9 @@ enum class OpType {
   // (Mem, TypeId::Base).
   ALLOC_HEAP,
 
+  // (Mem, SizeClass elemsize, Mem len).
+  ALLOC_ARRAY,
+
   // (LabelId).
   LABEL,
 
@@ -39,6 +42,12 @@ enum class OpType {
 
   // (Mem, Mem, FieldId).
   FIELD_ADDR,
+
+  // (Mem, Mem, Mem, SizeClass).
+  ARRAY_DEREF,
+
+  // (Mem, Mem, Mem, SizeClass).
+  ARRAY_ADDR,
 
   // (Mem, Mem, Mem).
   ADD,
