@@ -283,8 +283,6 @@ struct FuncWriter final {
     FieldId fid = begin[2];
 
     const StackEntry& dst_e = stack_map.at(dst);
-    const StackEntry& src_e = stack_map.at(src);
-
     if (addr) {
       CHECK(dst_e.size == SizeClass::PTR);
     }
@@ -293,12 +291,18 @@ struct FuncWriter final {
     string src_prefix = addr ? "&" : "";
     string instr = addr ? "lea" : "mov";
 
-    u64 field_offset = offsets.OffsetOfField(fid);
-
-    w.Col1("; t%v = %vt%v.f%v.", dst_e.id, src_prefix, src_e.id, fid);
-    w.Col1("mov ebx, %v", StackOffset(src_e.offset));
-    w.Col1("%v %v, [ebx+%v]", instr, sized_reg, field_offset);
-    w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
+    if (src == kInvalidMemId) {
+      w.Col1("; t%v = %vstatic.f%v", dst_e.id, src_prefix, fid);
+      w.Col1("%v %v, [static_f%v]", instr, sized_reg, fid);
+      w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
+    } else {
+      const StackEntry& src_e = stack_map.at(src);
+      u64 field_offset = offsets.OffsetOfField(fid);
+      w.Col1("; t%v = %vt%v.f%v.", dst_e.id, src_prefix, src_e.id, fid);
+      w.Col1("mov ebx, %v", StackOffset(src_e.offset));
+      w.Col1("%v %v, [ebx+%v]", instr, sized_reg, field_offset);
+      w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
+    }
   }
 
   void FieldDeref(ArgIter begin, ArgIter end) {
@@ -733,15 +737,16 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
       globals.insert(Sprintf(kMethodNameFmt, method_stream.tid, method_stream.mid));
 
       for (const Op& op : method_stream.ops) {
-        // TODO: also will need things like static fields here.
         if (op.type == OpType::STATIC_CALL) {
-          TypeId::Base tid = method_stream.args[op.begin+1];
-          MethodId mid = method_stream.args[op.begin+2];
-
+          TypeId::Base tid = method_stream.args[op.begin + 1];
+          MethodId mid = method_stream.args[op.begin + 2];
           externs.insert(Sprintf(kMethodNameFmt, tid, mid));
         } else if (op.type == OpType::ALLOC_HEAP) {
-          TypeId::Base tid = method_stream.args[op.begin+1];
+          TypeId::Base tid = method_stream.args[op.begin + 1];
           externs.insert(Sprintf(kVtableNameFmt, tid));
+        } else if (op.type == OpType::FIELD_DEREF || op.type == OpType::FIELD_ADDR) {
+          FieldId fid = method_stream.args[op.begin + 2];
+          externs.insert(Sprintf(kStaticNameFmt, fid));
         }
       }
     }

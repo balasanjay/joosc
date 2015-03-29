@@ -237,17 +237,20 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(FieldDerefExpr, expr,) {
-    // TODO: handle static fields.
+    bool is_static = false;
     {
       auto static_base = dynamic_cast<const StaticRefExpr*>(expr.BasePtr().get());
       if (static_base != nullptr) {
-        return VisitResult::SKIP;
+        is_static = true;
       }
     }
 
-    Mem tmp = builder_.AllocTemp(SizeClass::PTR);
-    // We want an rvalue of the pointer, so set lvalue to false.
-    WithResultIn(tmp, false).Visit(expr.BasePtr());
+    Mem tmp = builder_.AllocDummy();
+    if (!is_static) {
+      tmp = builder_.AllocTemp(SizeClass::PTR);
+      // We want an rvalue of the pointer, so set lvalue to false.
+      WithResultIn(tmp, false).Visit(expr.BasePtr());
+    }
 
     if (lvalue_) {
       builder_.FieldAddr(res_, tmp, expr.GetFieldId(), expr.GetToken().pos);
