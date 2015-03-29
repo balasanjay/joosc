@@ -80,5 +80,24 @@ TEST_F(ConstantFoldingTest, OverflowTest) {
   ShouldBeTrue("", ss.str());
 }
 
+TEST_F(ConstantFoldingTest, SameStringsSimple) {
+  ShouldBeTrue("", "\"foo\" == \"foo\"");
+}
+
+TEST_F(ConstantFoldingTest, SameStringsConcat) {
+  ShouldBeTrue("", "\"foo\" + \"bar\" == \"fooba\" + \"r\"");
+}
+
+TEST_F(ConstantFoldingTest, DiffStrings) {
+  ShouldBeFalse("", "\"foo\" + \"bar\" == \"ooba\" + \"r\"");
+}
+
+TEST_F(ConstantFoldingTest, StringifyInt) {
+  ShouldBeTrue("", "\"foo\" + -12 == \"foo-12\"");
+}
+
+TEST_F(ConstantFoldingTest, StringifyBools) {
+  ShouldBeTrue("", "true + \"foo\" + false == \"truefoofalse\"");
+}
 
 } // namespace types

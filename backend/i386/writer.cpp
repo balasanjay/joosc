@@ -309,7 +309,7 @@ struct FuncWriter final {
     FieldImpl(begin, end, true);
   }
 
-  void ArrayImpl(ArgIter begin, ArgIter end, bool addr) {
+  void ArrayAccessImpl(ArgIter begin, ArgIter end, bool addr) {
     // TODO: Handle PosRange, NPEs, and out-of-range exceptions.
     EXPECT_NARGS(4);
 
@@ -345,11 +345,11 @@ struct FuncWriter final {
   }
 
   void ArrayDeref(ArgIter begin, ArgIter end) {
-    ArrayImpl(begin, end, false);
+    ArrayAccessImpl(begin, end, false);
   }
 
   void ArrayAddr(ArgIter begin, ArgIter end) {
-    ArrayImpl(begin, end, true);
+    ArrayAccessImpl(begin, end, true);
   }
 
   void AddSub(ArgIter begin, ArgIter end, bool add) {
