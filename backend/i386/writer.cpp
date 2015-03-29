@@ -116,7 +116,15 @@ struct FuncWriter final {
 
     CHECK(dst_e.size == SizeClass::PTR);
 
-    AllocImpl(offsets.SizeOf({tid, 0}), dst, dst_e.offset);
+    i64 stack_used = cur_offset;
+    u64 size = offsets.SizeOf({tid, 0});
+
+    w.Col1("; t%v = new %v", dst, size);
+    w.Col1("mov eax, %v", size);
+    w.Col1("sub esp, %v", stack_used);
+    w.Col1("call _joos_malloc");
+    w.Col1("add esp, %v", stack_used);
+    w.Col1("mov %v, eax", StackOffset(dst_e.offset));
   }
 
   void AllocArray(ArgIter begin, ArgIter end) {
