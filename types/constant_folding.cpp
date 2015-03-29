@@ -191,7 +191,7 @@ public:
     CHECK(IsRelationalOp(expr.Op().type) || IsEqualityOp(expr.Op().type));
 
     if (lhs_type == string_type_ && rhs_type == string_type_) {
-      bool is_eq = expr.Op().type == lexer::EQ;
+      bool is_eq = (expr.Op().type == lexer::EQ);
       CHECK(is_eq || expr.Op().type == lexer::NEQ);
 
       jstring lhs_str = Stringify(lhs_const->ConstantPtr());
@@ -208,13 +208,13 @@ public:
     i64 rhs_value = GetIntValue(rhs_const->ConstantPtr());
     bool result = 0;
     switch (expr.Op().type) {
-      case lexer::LE: result = lhs_value <= rhs_value; break;
-      case lexer::GE: result = lhs_value >= rhs_value; break;
-      case lexer::LT: result = lhs_value < rhs_value; break;
-      case lexer::GT: result = lhs_value > rhs_value; break;
+      case lexer::LE: result = (lhs_value <= rhs_value); break;
+      case lexer::GE: result = (lhs_value >= rhs_value); break;
+      case lexer::LT: result = (lhs_value < rhs_value); break;
+      case lexer::GT: result = (lhs_value > rhs_value); break;
 
-      case lexer::EQ: result = lhs_value == rhs_value; break;
-      case lexer::NEQ: result = lhs_value != rhs_value; break;
+      case lexer::EQ: result = (lhs_value == rhs_value); break;
+      case lexer::NEQ: result = (lhs_value != rhs_value); break;
 
       default: break;
     }
