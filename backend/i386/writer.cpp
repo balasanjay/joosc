@@ -116,8 +116,8 @@ struct FuncWriter final {
 
     CHECK(dst_e.size == SizeClass::PTR);
 
-    i64 stack_used = cur_offset;
     u64 size = offsets.SizeOf({tid, 0});
+    i64 stack_used = cur_offset;
 
     w.Col1("; t%v = new %v", dst, size);
     w.Col1("mov eax, %v", size);
