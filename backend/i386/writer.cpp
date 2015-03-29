@@ -291,7 +291,7 @@ struct FuncWriter final {
     string src_prefix = addr ? "&" : "";
     string instr = addr ? "lea" : "mov";
 
-    u64 field_offset = offsets.OffsetOf(fid);
+    u64 field_offset = offsets.OffsetOfField(fid);
 
     w.Col1("; t%v = %vt%v.f%v.", dst_e.id, src_prefix, src_e.id, fid);
     w.Col1("mov ebx, %v", StackOffset(src_e.offset));

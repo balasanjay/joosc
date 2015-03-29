@@ -9,6 +9,12 @@ namespace common {
 
 class OffsetTable {
 public:
+  using TypeMap = map<ast::TypeId, u64>;
+  using FieldMap = map<ast::FieldId, u64>;
+  using MethodMap = map<ast::MethodId, u64>;
+  using Vtable = vector<pair<ast::TypeId, ast::MethodId>>;
+  using VtableMap = map<ast::TypeId, Vtable>;
+
   static OffsetTable Build(const types::TypeInfoMap& tinfo_map, u8 ptr_size);
 
   u64 SizeOf(ast::TypeId tid) const {
@@ -16,20 +22,36 @@ public:
     return type_sizes_.at(tid) + ObjectOverhead();
   }
 
-  u64 OffsetOf(ast::FieldId fid) const {
+  u64 OffsetOfField(ast::FieldId fid) const {
     return field_offsets_.at(fid) + ObjectOverhead();
   }
 
-private:
-  OffsetTable(const map<ast::TypeId, u64>& type_sizes, const map<ast::FieldId, u64>& field_offsets, u8 ptr_size) : type_sizes_(type_sizes), field_offsets_(field_offsets), ptr_size_(ptr_size) {}
-
-  u64 ObjectOverhead() const {
-    // vtable pointer.
-    return (u64)ptr_size_;
+  u64 OffsetOfMethod(ast::MethodId mid) const {
+    return method_offsets_.at(mid) + VtableOverhead();
   }
 
-  map<ast::TypeId, u64> type_sizes_;
-  map<ast::FieldId, u64> field_offsets_;
+  const Vtable& VtableOf(ast::TypeId tid) const {
+    return vtables_.at(tid);
+  }
+
+private:
+  OffsetTable(const TypeMap& type_sizes, const FieldMap& field_offsets, const MethodMap& method_offsets, const VtableMap& vtables, u8 ptr_size) : type_sizes_(type_sizes), field_offsets_(field_offsets), method_offsets_(method_offsets), vtables_(vtables), ptr_size_(ptr_size) {}
+
+  u64 ObjectOverhead() const {
+    u64 vtable_ptr_size = (u64)ptr_size_;
+    return vtable_ptr_size;
+  }
+
+  u64 VtableOverhead() const {
+    u64 type_info_size = (u64)ptr_size_;
+    u64 selector_ptr_size = (u64)ptr_size_;
+    return type_info_size + selector_ptr_size;
+  }
+
+  TypeMap type_sizes_;
+  FieldMap field_offsets_;
+  MethodMap method_offsets_;
+  VtableMap vtables_;
   u8 ptr_size_;
 };
 
