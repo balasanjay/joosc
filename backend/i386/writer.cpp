@@ -125,6 +125,7 @@ struct FuncWriter final {
     w.Col1("sub esp, %v", stack_used);
     w.Col1("call _joos_malloc");
     w.Col1("add esp, %v", stack_used);
+    w.Col1("mov dword [eax], vtable_t%v", tid);
     w.Col1("mov %v, eax", StackOffset(dst_e.offset));
   }
 
@@ -666,10 +667,12 @@ struct FuncWriter final {
 
 void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
   static string kMethodNameFmt = "_t%v_m%v";
+  static string kVtableNameFmt = "vtable_t%v";
 
   set<string> externs{"_joos_malloc"};
   set<string> globals;
   for (const Type& type : comp_unit.types) {
+    globals.insert(Sprintf(kVtableNameFmt, type.tid));
     for (const Stream& method_stream : type.streams) {
       if (method_stream.is_entry_point) {
         globals.insert("_entry");
@@ -684,8 +687,15 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
           MethodId mid = method_stream.args[op.begin+2];
 
           externs.insert(Sprintf(kMethodNameFmt, tid, mid));
+        } else if (op.type == OpType::ALLOC_HEAP) {
+          TypeId::Base tid = method_stream.args[op.begin+1];
+          externs.insert(Sprintf(kVtableNameFmt, tid));
         }
       }
+    }
+
+    for (const auto& v_pair : offsets_.VtableOf({type.tid, 0})) {
+      externs.insert(Sprintf("_t%v_m%v", v_pair.first.base, v_pair.second));
     }
   }
 
@@ -702,9 +712,12 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
   }
 
   for (const Type& type : comp_unit.types) {
+    Fprintf(out, "section .text\n\n");
     for (const Stream& method_stream : type.streams) {
       WriteFunc(method_stream, out);
     }
+    Fprintf(out, "section .rodata\n");
+    WriteVtable(type, out);
   }
 }
 
@@ -821,7 +834,17 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
   }
 
   writer.WriteEpilogue();
+}
 
+void Writer::WriteVtable(const Type& type, ostream* out) const {
+  AsmWriter w(out);
+  w.Col0("vtable_t%v:", type.tid);
+  w.Col1("dd 0"); // Type info ptr.
+  w.Col1("dd 0"); // Selector index.
+
+  for (const auto& v_pair : offsets_.VtableOf({type.tid, 0})) {
+    w.Col1("dd _t%v_m%v", v_pair.first.base, v_pair.second);
+  }
 }
 
 void Writer::WriteMain(ostream* out) const {
