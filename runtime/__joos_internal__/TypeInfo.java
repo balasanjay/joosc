@@ -1,4 +1,4 @@
-package runtime;
+package __joos_internal__;
 
 public class TypeInfo {
   public static int UNSET = 0;

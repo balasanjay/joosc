@@ -1,4 +1,4 @@
-package runtime;
+package __joos_internal__;
 
 public class InheritanceChecker {
   static protected TypeInfo[] type_infos;

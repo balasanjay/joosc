@@ -1,7 +1,7 @@
-package runtime.tests;
+package joostests;
 
-import runtime.InheritanceChecker;
-import runtime.TypeInfo;
+import __joos_internal__.InheritanceChecker;
+import __joos_internal__.TypeInfo;
 
 public class InheritanceCheckerTest {
   protected int tests = 0;
