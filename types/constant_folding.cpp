@@ -11,6 +11,8 @@ using ast::ConstExpr;
 
 namespace types {
 
+StringId kFirstStringId = 0;
+
 class ConstantFoldingVisitor final : public ast::Visitor {
 public:
   ConstantFoldingVisitor(ConstStringMap* strings, ast::TypeId string_type): strings_(*strings), string_type_(string_type) {
@@ -27,6 +29,7 @@ public:
   // literals, or just a literal, into its string
   // representation.
   jstring Stringify(sptr<const Expr> expr) {
+    // TODO: Null literals.
     sptr<const Expr> inside_const = expr;
     auto const_expr = dynamic_cast<const ast::ConstExpr*>(expr.get());
     if (const_expr != nullptr) {
@@ -314,7 +317,7 @@ public:
 
   ConstStringMap& strings_;
   ast::TypeId string_type_;
-  StringId next_string_id_ = 0;
+  StringId next_string_id_ = kFirstStringId;
 };
 
 sptr<const ast::Program> ConstantFold(sptr<const ast::Program> prog, ast::TypeId string_type, ConstStringMap* out_strings) {
