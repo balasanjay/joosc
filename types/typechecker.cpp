@@ -533,7 +533,7 @@ REWRITE_DEFN(TypeChecker, StringLitExpr, Expr, expr,) {
     return nullptr;
   }
 
-  return make_shared<StringLitExpr>(expr.GetToken(), strType);
+  return make_shared<StringLitExpr>(expr.GetToken(), expr.Str(), strType);
 }
 
 REWRITE_DEFN(TypeChecker, ThisExpr, Expr, expr,) {

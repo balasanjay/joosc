@@ -63,6 +63,8 @@ class TypeChecker final : public ast::Visitor {
         true, is_static, cur_member_type, SymbolTable(paramInfos, errors_));
   }
 
+  ast::TypeId JavaLangType(const string& name) const;
+
   static bool IsNumeric(ast::TypeId tid);
   static bool IsPrimitive(ast::TypeId tid);
   static bool IsReference(ast::TypeId tid);
@@ -118,7 +120,6 @@ class TypeChecker final : public ast::Visitor {
         symbol_table_(symbol_table) {}
 
   sptr<const ast::Type> MustResolveType(sptr<const ast::Type> type);
-  ast::TypeId JavaLangType(const string& name) const;
 
   bool IsReferenceWidening(ast::TypeId lhs, ast::TypeId rhs) const;
   bool IsAssignable(ast::TypeId lhs, ast::TypeId rhs) const;

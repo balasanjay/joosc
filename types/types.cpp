@@ -93,6 +93,7 @@ sptr<const Program> TypecheckProgram(sptr<const Program> prog, TypeInfoMap* tinf
 
   // Phase 2: Build a type info map.
   TypeInfoMap typeInfo = BuildTypeInfoMap(typeSet, prog, &prog, errors);
+  ast::TypeId string_type = ast::TypeId::kUnassigned;
 
   // Phase 3: Typecheck.
   {
@@ -101,6 +102,8 @@ sptr<const Program> TypecheckProgram(sptr<const Program> prog, TypeInfoMap* tinf
         .WithTypeInfoMap(typeInfo);
 
     prog = typechecker.Rewrite(prog);
+
+    string_type = typechecker.JavaLangType("String");
   }
 
   // Don't progress with constant folding and dataflow if we have errors so far
@@ -112,7 +115,7 @@ sptr<const Program> TypecheckProgram(sptr<const Program> prog, TypeInfoMap* tinf
   // Phase 4: Dataflow Analysis.
   {
     ConstStringMap string_map;
-    prog = ConstantFold(prog, &string_map);
+    prog = ConstantFold(prog, string_type, &string_map);
     DataflowVisitor(typeInfo, errors).Visit(prog);
   }
 
