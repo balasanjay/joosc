@@ -18,11 +18,19 @@ public class TypeInfo {
   // All TypeInfos.
   public static TypeInfo[] types;
 
+  // When false, this class hasn't been initialized yet.
+  // This will occur while setting up all of the TypeInfos.
+  // Allow all instanceof checks to pass during this initialization.
+  public static boolean initialized = true;
+
   public TypeInfo(int[] parents) {
     this.parents = parents;
   }
 
   public boolean InstanceOf(int ancestor_id) {
+    if (!TypeInfo.initialized) {
+      return true;
+    }
     if (ancestor_map == null) {
       // TODO: Fix size based off of first ref type base, and maybe use the offset.
       ancestor_map = new int[TypeInfo.types.length + 25];
