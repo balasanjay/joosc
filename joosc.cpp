@@ -12,6 +12,7 @@
 #include "base/fileset.h"
 #include "lexer/lexer.h"
 #include "parser/parser.h"
+#include "runtime/runtime.h"
 #include "types/type_info_map.h"
 #include "types/types.h"
 #include "weeder/weeder.h"
