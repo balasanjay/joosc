@@ -19,6 +19,9 @@ enum class OpType {
   // (Mem, TypeId::Base).
   ALLOC_HEAP,
 
+  // (Mem, SizeClass elemsize, Mem len).
+  ALLOC_ARRAY,
+
   // (LabelId).
   LABEL,
 
@@ -39,6 +42,12 @@ enum class OpType {
 
   // (Mem, Mem, FieldId).
   FIELD_ADDR,
+
+  // (Mem, Mem, Mem, SizeClass).
+  ARRAY_DEREF,
+
+  // (Mem, Mem, Mem, SizeClass).
+  ARRAY_ADDR,
 
   // (Mem, Mem, Mem).
   ADD,
@@ -97,6 +106,9 @@ enum class OpType {
   // (Mem, TypeId::Base, MethodId, int nargs, Mem[]).
   STATIC_CALL,
 
+  // (Mem, Mem, MethodId, int nargs, Mem[]).
+  DYNAMIC_CALL,
+
   // ([Mem]).
   RET,
 };
@@ -121,9 +133,14 @@ struct Stream {
   vector<SizeClass> params;
 };
 
+struct Type {
+  ast::TypeId::Base tid;
+  vector<Stream> streams;
+};
+
 struct CompUnit {
   string filename;
-  vector<Stream> streams;
+  vector<Type> types;
 };
 
 struct Program {

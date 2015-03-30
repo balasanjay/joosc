@@ -17,6 +17,10 @@ class StreamBuilder {
   // Return a Mem of SizeClass::PTR that can fit an instance of type t.
   Mem AllocHeap(ast::TypeId t);
 
+  // Return a Mem of SizeClass::PTR that holds an array of elements, each of
+  // size elemtype. Space for n elements will be allocated.
+  Mem AllocArray(SizeClass elemtype, Mem n);
+
   Mem AllocTemp(SizeClass);
 
   Mem AllocLocal(SizeClass);
@@ -38,6 +42,9 @@ class StreamBuilder {
   // Writes a constant bool value to the given Mem.
   void ConstBool(Mem, bool);
 
+  // Writes null to the given Mem.
+  void ConstNull(Mem);
+
   // Emit *dst = *src.
   void Mov(Mem dst, Mem src);
 
@@ -54,6 +61,14 @@ class StreamBuilder {
   // Return in dst a pointer to fid in src. If src points to null, an exception
   // will be generated.
   void FieldAddr(Mem dst, Mem src, ast::FieldId fid, base::PosRange pos);
+
+  // Return in dst the value of array[index]. If array is null, or index is out
+  // of range, an exception will be generated.
+  void ArrayDeref(Mem dst, Mem array, Mem index, SizeClass elemsize, base::PosRange pos);
+
+  // Return in dst the value of &array[index]. If array is null, or index is out
+  // of range, an exception will be generated.
+  void ArrayAddr(Mem dst, Mem array, Mem index, SizeClass elemsize, base::PosRange pos);
 
   // Emit *dst = *lhs + *rhs.
   void Add(Mem dst, Mem lhs, Mem rhs);
@@ -110,9 +125,15 @@ class StreamBuilder {
   // Emit *dst = *lhs ^ *rhs. They must all have SizeClass BOOL.
   void Xor(Mem dst, Mem lhs, Mem rhs);
 
-  // Emit a static call to method mid in Type tid, passing args. All args must
-  // have been initialized. The result of calling the method will be stored in dst.
+  // Emit a static call to method mid in Type tid, passing args. All args
+  // must have been initialized. The result of calling the method will be
+  // stored in dst.
   void StaticCall(Mem dst, ast::TypeId::Base tid, ast::MethodId mid, const vector<Mem>& args);
+
+  // Emit a dynamic call to method mid on this_ptr, passing args. All args
+  // must have been initialized. The result of calling the method will be
+  // stored in dst.
+  void DynamicCall(Mem dst, Mem this_ptr, ast::MethodId mid, const vector<Mem>& args);
 
   // Return with no value.
   void Ret();

@@ -3,33 +3,49 @@
 namespace types {
 
 class ConstantFoldingTest: public TypesTest {
+  enum class FoldResult {
+    False = 0,
+    True = 1,
+    Unknown = -1
+  };
+
   // Relies on reachability to check whether the constant
   // was folded at compile-time.
-  void ReachabilityTest(string init, string expr) {
+  FoldResult ReachabilityTest(string init, string expr) {
     ParseProgram({
       {"A.java", "public class A { public int a() { " + init + "while(" + expr + ") return 1; } }"}
     });
+    switch (errors_.Size()) {
+      case 0:
+        return FoldResult::True;
+      case 1:
+        // Expecting method needs a return.
+        return FoldResult::Unknown;
+      case 2:
+        // Expecting unreachable while body and method needs a return.
+        return FoldResult::False;
+      default:
+        CHECK(false);
+    }
   }
 
 public:
   void ShouldBeTrue(string init, string expr) {
-    ReachabilityTest(init, expr);
-    EXPECT_NO_ERRS();
-    if (errors_.Size() > 0) {
-      PRINT_ERRS();
-    }
+    EXPECT_EQ(
+      FoldResult::True,
+      ReachabilityTest(init, expr));
   }
 
   void ShouldBeFalse(string init, string expr) {
-    // Expecting unreachable while body and method needs a return.
-    ReachabilityTest(init, expr);
-    EXPECT_EQ(2, errors_.Size());
+    EXPECT_EQ(
+      FoldResult::False,
+      ReachabilityTest(init, expr));
   }
 
   void ShouldBeUnknown(string init, string expr) {
-    // Expecting method needs a return.
-    ReachabilityTest(init, expr);
-    EXPECT_EQ(1, errors_.Size());
+    EXPECT_EQ(
+      FoldResult::Unknown,
+      ReachabilityTest(init, expr));
   }
 };
 
@@ -80,5 +96,28 @@ TEST_F(ConstantFoldingTest, OverflowTest) {
   ShouldBeTrue("", ss.str());
 }
 
+TEST_F(ConstantFoldingTest, SameStringsSimple) {
+  ShouldBeTrue("", "\"foo\" == \"foo\"");
+}
+
+TEST_F(ConstantFoldingTest, SameStringsConcat) {
+  ShouldBeTrue("", "\"foo\" + \"bar\" == \"fooba\" + \"r\"");
+}
+
+TEST_F(ConstantFoldingTest, DiffStrings) {
+  ShouldBeFalse("", "\"foo\" + \"bar\" == \"ooba\" + \"r\"");
+}
+
+TEST_F(ConstantFoldingTest, StringifyInt) {
+  ShouldBeTrue("", "\"foo\" + -12 == \"foo-12\"");
+}
+
+TEST_F(ConstantFoldingTest, StringifyBools) {
+  ShouldBeTrue("", "true + \"foo\" + false == \"truefoofalse\"");
+}
+
+TEST_F(ConstantFoldingTest, StringifyChars) {
+  ShouldBeTrue("", "'a' + \"foo\" + 'b' == \"afoob\"");
+}
 
 } // namespace types

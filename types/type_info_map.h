@@ -11,13 +11,6 @@
 
 namespace types {
 
-using ast::FieldId;
-using ast::MethodId;
-using ast::kErrorFieldId;
-using ast::kErrorMethodId;
-using ast::kFirstFieldId;
-using ast::kFirstMethodId;
-
 ast::ModifierList MakeModifierList(bool is_protected, bool is_final, bool is_abstract);
 
 struct TypeIdList {
@@ -66,23 +59,26 @@ struct MethodSignature {
 };
 
 struct MethodInfo {
-  MethodId mid;
+  ast::MethodId mid;
   ast::TypeId class_type;
   ast::ModifierList mods;
   ast::TypeId return_type;
   base::PosRange pos;
   MethodSignature signature;
+
+  // kUnassignedMethodId if this doesn't override a method.
+  ast::MethodId parent_mid;
 };
 
 class TypeInfoMap;
 
 class MethodTable {
 public:
-  MethodId ResolveCall(const TypeInfoMap& type_info_map, ast::TypeId caller_type, CallContext ctx, ast::TypeId callee_type, const TypeIdList& params, const string& method_name, base::PosRange pos, base::ErrorList* out) const;
+  ast::MethodId ResolveCall(const TypeInfoMap& type_info_map, ast::TypeId caller_type, CallContext ctx, ast::TypeId callee_type, const TypeIdList& params, const string& method_name, base::PosRange pos, base::ErrorList* out) const;
 
   // Given a valid MethodId, return all the associated info about it.
-  const MethodInfo& LookupMethod(MethodId mid) const {
-    if (mid == kErrorMethodId) {
+  const MethodInfo& LookupMethod(ast::MethodId mid) const {
+    if (mid == ast::kErrorMethodId) {
       return kErrorMethodInfo;
     }
 
@@ -101,12 +97,16 @@ public:
     return info->second;
   }
 
+  const map<ast::MethodId, MethodInfo>& GetMethodMap() const {
+    return method_info_;
+  }
+
 private:
   friend class TypeInfoMap;
   friend class TypeInfoMapBuilder;
 
   using MethodSignatureMap = std::map<MethodSignature, MethodInfo>;
-  using MethodInfoMap = std::map<MethodId, MethodInfo>;
+  using MethodInfoMap = std::map<ast::MethodId, MethodInfo>;
 
   MethodTable(const MethodSignatureMap& entries, const set<string>& bad_methods, bool has_bad_constructor) : method_signatures_(entries), has_bad_constructor_(has_bad_constructor), bad_methods_(bad_methods) {
     for (const auto& entry : entries) {
@@ -142,7 +142,7 @@ private:
 };
 
 struct FieldInfo {
-  FieldId fid;
+  ast::FieldId fid;
   ast::TypeId class_type;
   ast::ModifierList mods;
   ast::TypeId field_type;
@@ -152,11 +152,11 @@ struct FieldInfo {
 
 class FieldTable {
 public:
-  FieldId ResolveAccess(const TypeInfoMap& type_info_map, ast::TypeId callerType, CallContext ctx, ast::TypeId callee_type, string field_name, base::PosRange pos, base::ErrorList* out) const;
+  ast::FieldId ResolveAccess(const TypeInfoMap& type_info_map, ast::TypeId callerType, CallContext ctx, ast::TypeId callee_type, string field_name, base::PosRange pos, base::ErrorList* out) const;
 
   // Given a valid FieldId, return all the associated info about it.
-  const FieldInfo& LookupField(FieldId fid) const {
-    if (fid == kErrorFieldId) {
+  const FieldInfo& LookupField(ast::FieldId fid) const {
+    if (fid == ast::kErrorFieldId) {
       return kErrorFieldInfo;
     }
 
@@ -175,7 +175,7 @@ public:
     return info->second;
   }
 
-  const map<FieldId, FieldInfo>& GetFieldMap() const {
+  const map<ast::FieldId, FieldInfo>& GetFieldMap() const {
     return field_info_;
   }
 
@@ -184,7 +184,7 @@ private:
   friend class TypeInfoMap;
 
   using FieldNameMap = std::map<string, FieldInfo>;
-  using FieldInfoMap = std::map<FieldId, FieldInfo>;
+  using FieldInfoMap = std::map<ast::FieldId, FieldInfo>;
 
   FieldTable(const FieldNameMap& entries, const set<string>& bad_fields) : field_names_(entries), bad_fields_(bad_fields) {
     for (const auto& entry : entries) {
@@ -292,7 +292,7 @@ public:
   }
 
   void PutMethod(ast::TypeId curtid, ast::TypeId rettid, const vector<ast::TypeId>& paramtids, const ast::MemberDecl& meth, bool is_constructor) {
-    PutMethod(curtid, MethodInfo{kErrorMethodId, curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{is_constructor, meth.Name(), TypeIdList(paramtids)}});
+    PutMethod(curtid, MethodInfo{ast::kErrorMethodId, curtid, meth.Mods(), rettid, meth.NameToken().pos, MethodSignature{is_constructor, meth.Name(), TypeIdList(paramtids)}, ast::kUnassignedMethodId});
   }
 
   void PutField(ast::TypeId curtid, const FieldInfo& finfo) {
@@ -300,7 +300,7 @@ public:
   }
 
   void PutField(ast::TypeId curtid, ast::TypeId tid, const ast::MemberDecl& field) {
-    PutField(curtid, FieldInfo{kErrorFieldId, curtid, field.Mods(), tid, field.NameToken().pos, field.Name()});
+    PutField(curtid, FieldInfo{ast::kErrorFieldId, curtid, field.Mods(), tid, field.NameToken().pos, field.Name()});
   }
 
   TypeInfoMap Build(base::ErrorList* out);
@@ -313,9 +313,9 @@ private:
 
   MethodTable MakeResolvedMethodTable(TypeInfo* tinfo, const MethodTable::MethodSignatureMap& good_methods, const set<string>& bad_methods, bool has_bad_constructor, const map<ast::TypeId, TypeInfo>& sofar, const set<ast::TypeId>& bad_types, set<ast::TypeId>* new_bad_types, base::ErrorList* out);
 
-  void BuildMethodTable(MInfoIter begin, MInfoIter end, TypeInfo* tinfo, MethodId* cur_mid, const map<ast::TypeId, TypeInfo>& sofar, const set<ast::TypeId>& bad_types, set<ast::TypeId>* new_bad_types, base::ErrorList* out);
+  void BuildMethodTable(MInfoIter begin, MInfoIter end, TypeInfo* tinfo, ast::MethodId* cur_mid, const map<ast::TypeId, TypeInfo>& sofar, const set<ast::TypeId>& bad_types, set<ast::TypeId>* new_bad_types, base::ErrorList* out);
 
-  void BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInfo* tinfo, FieldId* cur_fid, const map<ast::TypeId, TypeInfo>& sofar, base::ErrorList* out);
+  void BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInfo* tinfo, ast::FieldId* cur_fid, const map<ast::TypeId, TypeInfo>& sofar, base::ErrorList* out);
 
   void ValidateExtendsImplementsGraph(map<ast::TypeId, TypeInfo>* m, set<ast::TypeId>* bad, base::ErrorList* errors);
   void PruneInvalidGraphEdges(const map<ast::TypeId, TypeInfo>&, set<ast::TypeId>*, base::ErrorList*);

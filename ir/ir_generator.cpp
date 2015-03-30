@@ -4,6 +4,7 @@
 #include <tuple>
 
 #include "ast/ast.h"
+#include "ast/extent.h"
 #include "ast/visitor.h"
 #include "ir/size.h"
 #include "ir/stream_builder.h"
@@ -15,6 +16,7 @@ using std::get;
 using std::tuple;
 
 using ast::Expr;
+using ast::ExtentOf;
 using ast::FieldDecl;
 using ast::FieldId;
 using ast::MemberDecl;
@@ -222,6 +224,11 @@ class MethodIRGenerator final : public ast::Visitor {
     return VisitResult::SKIP;
   }
 
+  VISIT_DECL(NullLitExpr,,) {
+    builder_.ConstNull(res_);
+    return VisitResult::SKIP;
+  }
+
   VISIT_DECL(ThisExpr,,) {
     auto i = locals_map_.find(kVarImplicitThis);
     CHECK(i != locals_map_.end());
@@ -246,6 +253,26 @@ class MethodIRGenerator final : public ast::Visitor {
       builder_.FieldAddr(res_, tmp, expr.GetFieldId(), expr.GetToken().pos);
     } else {
       builder_.Field(res_, tmp, expr.GetFieldId(), expr.GetToken().pos);
+    }
+
+    return VisitResult::SKIP;
+  }
+
+  VISIT_DECL(ArrayIndexExpr, expr, exprptr) {
+    Mem array = builder_.AllocTemp(SizeClass::PTR);
+
+    // We want an rvalue of the pointer, so set lvalue to false.
+    WithResultIn(array, false).Visit(expr.BasePtr());
+
+    Mem index = builder_.AllocTemp(SizeClass::INT);
+    WithResultIn(index).Visit(expr.IndexPtr());
+
+    PosRange pos = ExtentOf(exprptr);
+    SizeClass elemsize = SizeClassFrom(expr.GetTypeId());
+    if (lvalue_) {
+      builder_.ArrayAddr(res_, array, index, elemsize, pos);
+    } else {
+      builder_.ArrayDeref(res_, array, index, elemsize, pos);
     }
 
     return VisitResult::SKIP;
@@ -385,12 +412,6 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(CallExpr, expr,) {
-    // TODO: handle more than just static calls.
-    auto static_base = dynamic_cast<const StaticRefExpr*>(expr.BasePtr().get());
-    if (static_base == nullptr) {
-      return VisitResult::SKIP;
-    }
-
     // Allocate argument temps and generate their code.
     vector<Mem> arg_mems;
     for (int i = 0; i < expr.Args().Size(); ++i) {
@@ -400,9 +421,16 @@ class MethodIRGenerator final : public ast::Visitor {
       arg_mems.push_back(arg_mem);
     }
 
-    // Perform call.
-    TypeId tid = static_base->GetRefType().GetTypeId();
-    builder_.StaticCall(res_, tid.base, expr.GetMethodId(), arg_mems);
+    auto static_base = dynamic_cast<const StaticRefExpr*>(expr.BasePtr().get());
+    if (static_base == nullptr) {
+      Mem this_ptr = builder_.AllocTemp(SizeClass::PTR);
+      WithResultIn(this_ptr).Visit(expr.BasePtr());
+
+      builder_.DynamicCall(res_, this_ptr, expr.GetMethodId(), arg_mems);
+    } else {
+      TypeId tid = static_base->GetRefType().GetTypeId();
+      builder_.StaticCall(res_, tid.base, expr.GetMethodId(), arg_mems);
+    }
 
     // Deallocate arg mems.
     while (!arg_mems.empty()) {
@@ -412,8 +440,22 @@ class MethodIRGenerator final : public ast::Visitor {
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(NewClassExpr, expr,) {
+  VISIT_DECL(NewArrayExpr, expr,) {
+    // TODO: handle optional expr.
+    if (expr.GetExprPtr() == nullptr) {
+      return VisitResult::SKIP;
+    }
 
+    Mem size = builder_.AllocTemp(SizeClass::INT);
+    WithResultIn(size).Visit(expr.GetExprPtr());
+
+    Mem array_mem = builder_.AllocArray(SizeClassFrom(expr.GetType().GetTypeId()), size);
+    builder_.Mov(res_, array_mem);
+
+    return VisitResult::SKIP;
+  }
+
+  VISIT_DECL(NewClassExpr, expr,) {
     Mem this_mem = builder_.AllocHeap(expr.GetTypeId());
 
     // TODO: Refactor with CallExpr.
@@ -474,6 +516,7 @@ class ProgramIRGenerator final : public ast::Visitor {
     }
 
     TypeId tid = decl.GetTypeId();
+    Type type{tid.base, {}};
 
     // Only store fields with initialisers.
     vector<tuple<TypeId, FieldId, sptr<const Expr>>> fields;
@@ -482,7 +525,7 @@ class ProgramIRGenerator final : public ast::Visitor {
       sptr<const MemberDecl> member = decl.Members().At(i);
       auto meth = dynamic_pointer_cast<const MethodDecl, const MemberDecl>(member);
       if (meth != nullptr) {
-        VisitMethodDeclImpl(meth, tid);
+        VisitMethodDeclImpl(meth, &type);
         continue;
       }
 
@@ -537,20 +580,22 @@ class ProgramIRGenerator final : public ast::Visitor {
         builder.MovToAddr(field, val);
       }
 
-      current_unit_.streams.push_back(builder.Build(false, tid.base, kInitMethodId));
+      type.streams.push_back(builder.Build(false, tid.base, kInitMethodId));
     }
+
+    current_unit_.types.push_back(type);
 
     return VisitResult::SKIP;
   }
 
-  void VisitMethodDeclImpl(sptr<const MethodDecl> decl, TypeId tid) {
+  void VisitMethodDeclImpl(sptr<const MethodDecl> decl, Type* out) {
     StreamBuilder builder;
 
     vector<ast::LocalVarId> empty_locals;
     map<ast::LocalVarId, Mem> locals_map;
     bool is_entry_point = false;
     // TODO: don't hardcode to test and 16.
-    if (decl->Name() == "test" || tid.base == 16) {
+    if (decl->Name() == "test" || out->tid == 16) {
       Mem ret = builder.AllocDummy();
 
       // Entry point is a static method called "test" with no params.
@@ -559,7 +604,7 @@ class ProgramIRGenerator final : public ast::Visitor {
          && decl->Mods().HasModifier(lexer::Modifier::STATIC)
          && decl->Params().Params().Size() == 0);
 
-      MethodIRGenerator gen(ret, false, &builder, &empty_locals, &locals_map, tid);
+      MethodIRGenerator gen(ret, false, &builder, &empty_locals, &locals_map, {out->tid, 0});
       gen.Visit(decl);
     } else {
       // TODO: Dirty hack to get stdlib generating empty methods.
@@ -568,7 +613,7 @@ class ProgramIRGenerator final : public ast::Visitor {
     }
     // Return mem must be deallocated before Build is called.
 
-    current_unit_.streams.push_back(builder.Build(is_entry_point, tid.base, decl->GetMethodId()));
+    out->streams.push_back(builder.Build(is_entry_point, out->tid, decl->GetMethodId()));
   }
 
   ir::Program prog;

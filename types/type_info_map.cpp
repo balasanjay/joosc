@@ -10,9 +10,16 @@ using std::initializer_list;
 using std::ostream;
 using std::tie;
 
+using ast::FieldId;
+using ast::MethodId;
 using ast::ModifierList;
 using ast::TypeId;
 using ast::TypeKind;
+using ast::kErrorFieldId;
+using ast::kErrorMethodId;
+using ast::kFirstFieldId;
+using ast::kFirstMethodId;
+using ast::kUnassignedMethodId;
 using base::DiagnosticClass;
 using base::Error;
 using base::ErrorList;
@@ -146,7 +153,7 @@ TypeInfo TypeInfoMap::kErrorTypeInfo = TypeInfo{{}, TypeKind::CLASS, TypeId::kEr
 
 MethodTable MethodTable::kEmptyMethodTable = MethodTable({}, {}, false);
 MethodTable MethodTable::kErrorMethodTable = MethodTable();
-MethodInfo MethodTable::kErrorMethodInfo = MethodInfo{kErrorMethodId, TypeId::kError, {}, TypeId::kError, kFakePos, {false, "", TypeIdList({})}};
+MethodInfo MethodTable::kErrorMethodInfo = MethodInfo{kErrorMethodId, TypeId::kError, {}, TypeId::kError, kFakePos, {false, "", TypeIdList({})}, kErrorMethodId};
 
 FieldTable FieldTable::kEmptyFieldTable = FieldTable({}, {});
 FieldTable FieldTable::kErrorFieldTable = FieldTable();
@@ -398,7 +405,8 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
         MakeModifierList(is_protected, is_final, is_abstract),
         mminfo.return_type,
         mminfo.pos,
-        mminfo.signature
+        mminfo.signature,
+        pinfo.kind == TypeKind::CLASS ? pminfo.mid : kUnassignedMethodId,
       };
 
       msig_pair->second = final_mminfo;

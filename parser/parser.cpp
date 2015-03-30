@@ -2,6 +2,7 @@
 
 #include "ast/ast.h"
 #include "base/macros.h"
+#include "base/file.h"
 #include "base/unique_ptr_vector.h"
 #include "lexer/lexer.h"
 #include "parser/parser_internal.h"
@@ -622,15 +623,27 @@ Parser Parser::ParsePrimaryBase(Result<Expr>* out) const {
     switch (lit.type) {
       case INTEGER:
         return after.Success(new IntLitExpr(lit), out);
-      case CHAR:
-        return after.Success(new CharLitExpr(lit), out);
+      case CHAR: {
+        string s = TokenString(GetFile(), Token(lit.type, base::PosRange(fid_, lit.pos.begin + 1, lit.pos.end - 1)));
+        u64 next = 0;
+        jchar c = lexer::ConvertCharEscape(s, 0, &next);
+        CHECK(next == s.length());
+        return after.Success(
+            new CharLitExpr(lit, c),
+            out);
+      }
       case K_TRUE:
       case K_FALSE:
         return after.Success(new BoolLitExpr(lit), out);
       case K_NULL:
         return after.Success(new NullLitExpr(lit), out);
-      case STRING:
-        return after.Success(new StringLitExpr(lit), out);
+      case STRING: {
+        // Strip off quotes.
+        string s = TokenString(GetFile(), Token(lit.type, base::PosRange(fid_, lit.pos.begin + 1, lit.pos.end - 1)));
+        return after.Success(
+            new StringLitExpr(lit, lexer::ConvertStringEscapes(s)),
+            out);
+      }
       default:
         CHECK(false);
     }

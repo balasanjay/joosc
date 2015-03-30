@@ -43,12 +43,21 @@ void StreamBuilder::SetAssigned(const std::initializer_list<Mem>& mems) {
 }
 
 Mem StreamBuilder::AllocHeap(TypeId tid) {
+  CHECK(tid.ndims == 0);
   Mem tmp = AllocTemp(SizeClass::PTR);
-  // TODO: Handle arrays.
   AppendOp(OpType::ALLOC_HEAP, {tmp.Id(), tid.base});
   SetAssigned({tmp});
   return tmp;
 }
+
+Mem StreamBuilder::AllocArray(SizeClass elemtype, Mem len) {
+  AssertAssigned({len});
+  Mem tmp = AllocTemp(SizeClass::PTR);
+  AppendOp(OpType::ALLOC_ARRAY, {tmp.Id(), (u64)elemtype, len.Id()});
+  SetAssigned({tmp});
+  return tmp;
+}
+
 
 Mem StreamBuilder::AllocMem(SizeClass size, bool immutable) {
   CHECK(params_initialized_);
@@ -132,6 +141,11 @@ void StreamBuilder::ConstBool(Mem mem, bool b) {
   Const(mem, b ? 1 : 0);
 }
 
+void StreamBuilder::ConstNull(Mem mem) {
+  CHECK(mem.Size() == SizeClass::PTR);
+  Const(mem, 0);
+}
+
 void StreamBuilder::Mov(Mem dst, Mem src) {
   AssertAssigned({src});
   AppendOp(OpType::MOV, {dst.Id(), src.Id()});
@@ -161,6 +175,20 @@ void StreamBuilder::FieldAddr(Mem dst, Mem src, FieldId fid, PosRange) {
   AssertAssigned({src});
   // TODO: Pass the PosRange.
   AppendOp(OpType::FIELD_ADDR, {dst.Id(), src.Id(), fid});
+  SetAssigned({dst});
+}
+
+void StreamBuilder::ArrayDeref(Mem dst, Mem array, Mem index, SizeClass elemsize, PosRange) {
+  AssertAssigned({array, index});
+  // TODO: Pass the PosRange.
+  AppendOp(OpType::ARRAY_DEREF, {dst.Id(), array.Id(), index.Id(), (u64)elemsize});
+  SetAssigned({dst});
+}
+
+void StreamBuilder::ArrayAddr(Mem dst, Mem array, Mem index, SizeClass elemsize, PosRange) {
+  AssertAssigned({array, index});
+  // TODO: Pass the PosRange.
+  AppendOp(OpType::ARRAY_ADDR, {dst.Id(), array.Id(), index.Id(), (u64)elemsize});
   SetAssigned({dst});
 }
 
@@ -264,6 +292,25 @@ void StreamBuilder::StaticCall(Mem dst, TypeId::Base tid, MethodId mid, const ve
   }
 
   ops_.push_back({OpType::STATIC_CALL, begin, args_.size()});
+  if (dst.IsValid()) {
+    SetAssigned({dst});
+  }
+}
+
+void StreamBuilder::DynamicCall(Mem dst, Mem this_ptr, ast::MethodId mid, const vector<Mem>& args) {
+  AssertAssigned({this_ptr});
+  size_t begin = args_.size();
+
+  args_.push_back(dst.Id());
+  args_.push_back(this_ptr.Id());
+  args_.push_back(mid);
+  args_.push_back(args.size());
+  for (auto val : args) {
+    AssertAssigned({val});
+    args_.push_back(val.Id());
+  }
+
+  ops_.push_back({OpType::DYNAMIC_CALL, begin, args_.size()});
   if (dst.IsValid()) {
     SetAssigned({dst});
   }
