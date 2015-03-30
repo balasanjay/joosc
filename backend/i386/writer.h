@@ -6,6 +6,7 @@
 #include "backend/common/offset_table.h"
 #include "ir/ir_generator.h"
 #include "ir/stream.h"
+#include "types/type_info_map.h"
 
 namespace backend {
 namespace i386 {
@@ -15,7 +16,7 @@ public:
   Writer(const backend::common::OffsetTable& offsets) : offsets_(offsets) {}
   void WriteCompUnit(const ir::CompUnit& comp_unit, std::ostream* out) const;
   void WriteMain(std::ostream* out) const;
-  void WriteStaticInit(const ir::Program& prog, std::ostream* out) const;
+  void WriteStaticInit(const ir::Program& prog, const types::TypeInfoMap& tinfo_map, std::ostream* out) const;
 private:
   void WriteFunc(const ir::Stream& stream, std::ostream* out) const;
   void WriteVtable(const ir::Type& type, std::ostream* out) const;

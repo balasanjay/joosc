@@ -13,6 +13,7 @@ using ast::FieldId;
 using ast::MethodId;
 using ast::TypeId;
 using ast::kStaticInitMethodId;
+using ast::kStaticTypeInfoId;
 using ast::kTypeInitMethodId;
 using backend::common::AsmWriter;
 using backend::common::OffsetTable;
@@ -707,8 +708,10 @@ struct FuncWriter final {
     w.Col1("mov eax, %v", StackOffset(src_e.offset));
     // Get vtable pointer from this.
     w.Col1("mov eax, [eax]");
-    // Get typeinfo pointer from vtable.
+    // Get field pointer from vtable.
     w.Col1("mov eax, [eax + 0]");
+    // Get typeinfo pointer from field.
+    w.Col1("mov eax, [eax]");
     w.Col1("mov %v, eax", StackOffset(dst_e.offset));
   }
 
@@ -819,10 +822,9 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
     for (const Stream& method_stream : type.streams) {
       WriteFunc(method_stream, out);
     }
-    // TODO:
-    //Fprintf(out, "section .rodata\n");
-    Fprintf(out, "section .data\n");
+    Fprintf(out, "section .rodata\n");
     WriteVtable(type, out);
+    Fprintf(out, "section .data\n");
     WriteStatics(type, out);
   }
 }
@@ -954,8 +956,7 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
 void Writer::WriteVtable(const Type& type, ostream* out) const {
   AsmWriter w(out);
   w.Col0("vtable_t%v:", type.tid);
-  // TODO: Use type info static ptr.
-  w.Col1("dd 0"); // Type info ptr.
+  w.Col1("dd static_t%v_f%v", type.tid, kStaticTypeInfoId); // Type info ptr.
   w.Col1("dd 0"); // Selector index.
 
   for (const auto& v_pair : offsets_.VtableOf({type.tid, 0})) {
@@ -1019,7 +1020,7 @@ void Writer::WriteMain(ostream* out) const {
   w.Col1("ret");
 }
 
-void Writer::WriteStaticInit(const Program& prog, ostream* out) const {
+void Writer::WriteStaticInit(const Program& prog, const types::TypeInfoMap& tinfo_map, ostream* out) const {
   AsmWriter w(out);
 
   w.Col0("; Run all static initialisers.");
@@ -1030,6 +1031,17 @@ void Writer::WriteStaticInit(const Program& prog, ostream* out) const {
 
   // Body.
   // Initialize type's static type info.
+  auto units = prog.units;
+  auto t_cmp = [&tinfo_map](CompUnit lhs, CompUnit rhs) {
+    if (lhs.types.size() == 0) {
+      return false;
+    } else if (rhs.types.size() == 0) {
+      return true;
+    }
+    return tinfo_map.GetTypeMap().at({lhs.types[0].tid, 0}).top_sort_index < tinfo_map.GetTypeMap().at({rhs.types[0].tid, 0}).top_sort_index;
+  };
+  stable_sort(units.begin(), units.end(), t_cmp);
+
   for (const CompUnit& comp_unit : prog.units) {
     for (const Type& type : comp_unit.types) {
       string type_init = Sprintf("_t%v_m%v", type.tid, kTypeInitMethodId);
