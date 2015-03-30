@@ -598,6 +598,44 @@ struct FuncWriter final {
     BoolOpImpl(begin, end, "^", "xor");
   }
 
+  void Extend(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(2);
+
+    MemId dst = begin[0];
+    MemId src = begin[1];
+
+    const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& src_e = stack_map.at(src);
+
+    string src_sized_reg = Sized(src_e.size, "al", "ax", "eax");
+    string dst_sized_reg = Sized(dst_e.size, "bl", "bx", "ebx");
+
+    string instr = src_e.size == SizeClass::CHAR ? "movzx" : "movsx";
+
+    w.Col1("; t%v = trunc(t%v)", dst, src);
+    w.Col1("mov %v, %v", src_sized_reg, StackOffset(src_e.offset));
+    w.Col1("%v %v, %v", instr, dst_sized_reg, src_sized_reg);
+    w.Col1("mov %v, %v", StackOffset(dst_e.offset), dst_sized_reg);
+  }
+
+  void Truncate(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(2);
+
+    MemId dst = begin[0];
+    MemId src = begin[1];
+
+    const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& src_e = stack_map.at(src);
+
+    string src_sized_reg = Sized(src_e.size, "al", "ax", "eax");
+    string dst_sized_reg = Sized(dst_e.size, "al", "ax", "eax");
+
+    w.Col1("; t%v = trunc(t%v)", dst, src);
+    w.Col1("mov %v, %v", src_sized_reg, StackOffset(src_e.offset));
+    w.Col1("mov %v, %v", StackOffset(dst_e.offset), dst_sized_reg);
+  }
+
+
   void StaticCall(ArgIter begin, ArgIter end) {
     CHECK((end-begin) >= 4);
 
@@ -910,6 +948,12 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::XOR:
         writer.Xor(begin, end);
         break;
+      case OpType::EXTEND:
+        writer.Extend(begin, end);
+        break;
+      case OpType::TRUNCATE:
+        writer.Truncate(begin, end);
+        break;
       case OpType::STATIC_CALL:
         writer.StaticCall(begin, end);
         break;
@@ -919,10 +963,6 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::RET:
         writer.Ret(begin, end);
         break;
-
-      UNIMPLEMENTED_OP(SIGN_EXTEND);
-      UNIMPLEMENTED_OP(ZERO_EXTEND);
-      UNIMPLEMENTED_OP(TRUNCATE);
 
       default:
         UNREACHABLE();

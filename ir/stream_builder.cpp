@@ -279,6 +279,14 @@ void StreamBuilder::Xor(Mem dst, Mem lhs, Mem rhs) {
   BinOp(dst, lhs, rhs, OpType::XOR);
 }
 
+void StreamBuilder::Extend(Mem dst, Mem src) {
+  UnOp(dst, src, OpType::EXTEND);
+}
+
+void StreamBuilder::Truncate(Mem dst, Mem src) {
+  UnOp(dst, src, OpType::TRUNCATE);
+}
+
 void StreamBuilder::StaticCall(Mem dst, TypeId::Base tid, MethodId mid, const vector<Mem>& args) {
   size_t begin = args_.size();
 
