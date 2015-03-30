@@ -26,6 +26,7 @@ cc_library(
         "//ir",
         "//lexer",
         "//parser",
+        "//runtime",
         "//types",
         "//weeder",
     ],

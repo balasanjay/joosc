@@ -1,3 +1,9 @@
+
+#include "runtime/runtime.h"
+
+namespace runtime {
+
+const string TypeInfoFile = R"(
 package __joos_internal__;
 
 public class TypeInfo {
@@ -47,3 +53,7 @@ public class TypeInfo {
     return lookup == 1;
   }
 }
+)";
+
+} // namespace runtime
+
