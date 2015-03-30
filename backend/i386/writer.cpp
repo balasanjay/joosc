@@ -278,11 +278,12 @@ struct FuncWriter final {
 
   void FieldImpl(ArgIter begin, ArgIter end, bool addr) {
     // TODO: Handle PosRange and NPEs.
-    EXPECT_NARGS(3);
+    EXPECT_NARGS(4);
 
     MemId dst = begin[0];
     MemId src = begin[1];
-    FieldId fid = begin[2];
+    TypeId::Base tid = begin[2];
+    FieldId fid = begin[3];
 
     const StackEntry& dst_e = stack_map.at(dst);
     if (addr) {
@@ -295,7 +296,7 @@ struct FuncWriter final {
 
     if (src == kInvalidMemId) {
       w.Col1("; t%v = %vstatic.f%v", dst_e.id, src_prefix, fid);
-      w.Col1("%v %v, [static_f%v]", instr, sized_reg, fid);
+      w.Col1("%v %v, [static_t%v_f%v]", instr, sized_reg, tid, fid);
       w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
     } else {
       const StackEntry& src_e = stack_map.at(src);
@@ -727,7 +728,7 @@ struct FuncWriter final {
 void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
   static string kMethodNameFmt = "_t%v_m%v";
   static string kVtableNameFmt = "vtable_t%v";
-  static string kStaticNameFmt = "static_f%v";
+  static string kStaticNameFmt = "static_t%v_f%v";
 
   set<string> externs{"_joos_malloc"};
   set<string> globals;
@@ -749,8 +750,9 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
           TypeId::Base tid = method_stream.args[op.begin + 1];
           externs.insert(Sprintf(kVtableNameFmt, tid));
         } else if (op.type == OpType::FIELD_DEREF || op.type == OpType::FIELD_ADDR) {
-          FieldId fid = method_stream.args[op.begin + 2];
-          externs.insert(Sprintf(kStaticNameFmt, fid));
+          TypeId::Base tid = method_stream.args[op.begin + 2];
+          FieldId fid = method_stream.args[op.begin + 3];
+          externs.insert(Sprintf(kStaticNameFmt, tid, fid));
         }
       }
     }
@@ -760,7 +762,7 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
     }
 
     for (const auto& s_pair : offsets_.StaticFieldsOf({type.tid, 0})) {
-      globals.insert(Sprintf(kStaticNameFmt, s_pair.first));
+      globals.insert(Sprintf(kStaticNameFmt, type.tid, s_pair.first));
     }
   }
 
@@ -922,7 +924,7 @@ void Writer::WriteStatics(const Type& type, ostream* out) const {
   AsmWriter w(out);
 
   for (const auto& f_pair : offsets_.StaticFieldsOf({type.tid, 0})) {
-    w.Col0("static_f%v:", f_pair.first);
+    w.Col0("static_t%v_f%v:", type.tid, f_pair.first);
     w.Col1("%v 0", Sized(f_pair.second, "db", "dw", "dd"));
   }
 }

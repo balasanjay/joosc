@@ -28,6 +28,7 @@ using ast::TypeKind;
 using ast::VisitResult;
 using ast::kInstanceInitMethodId;
 using ast::kStaticInitMethodId;
+using ast::kTypeInitMethodId;
 using ast::kVarImplicitThis;
 using base::PosRange;
 using types::TypeIdList;
@@ -254,9 +255,9 @@ class MethodIRGenerator final : public ast::Visitor {
     }
 
     if (lvalue_) {
-      builder_.FieldAddr(res_, tmp, expr.GetFieldId(), expr.GetToken().pos);
+      builder_.FieldAddr(res_, tmp, tid_.base, expr.GetFieldId(), expr.GetToken().pos);
     } else {
-      builder_.FieldDeref(res_, tmp, expr.GetFieldId(), expr.GetToken().pos);
+      builder_.FieldDeref(res_, tmp, tid_.base, expr.GetFieldId(), expr.GetToken().pos);
     }
 
     return VisitResult::SKIP;
@@ -521,6 +522,63 @@ class ProgramIRGenerator final : public ast::Visitor {
 
     TypeId tid = decl.GetTypeId();
     Type type{tid.base, {}};
+    const TypeInfo& tinfo = tinfo_map_.LookupTypeInfo(tid);
+
+    // Runtime type info initialization.
+    {
+      u32 num_parents = tinfo.extends.Size() + tinfo.implements.Size();
+      StreamBuilder t_builder;
+      {
+        vector<Mem> mem_out;
+        t_builder.AllocParams({SizeClass::PTR}, &mem_out);
+      }
+
+      {
+        Mem size = t_builder.AllocTemp(SizeClass::INT);
+        t_builder.ConstInt32(size, num_parents);
+        {
+          Mem array = t_builder.AllocArray(SizeClass::INT, size);
+          auto write_parent = [&](u32 i) -> void {
+            Mem parent = t_builder.AllocTemp(SizeClass::INT);
+            t_builder.ConstInt32(parent, tinfo.extends.At(i).base);
+            Mem idx = t_builder.AllocTemp(SizeClass::INT);
+            t_builder.ConstInt32(idx, i);
+
+            Mem array_slot = t_builder.AllocLocal(SizeClass::PTR);
+            t_builder.ArrayAddr(array_slot, array, idx, SizeClass::INT, base::PosRange(-1, -1, -1));
+            t_builder.MovToAddr(array_slot, parent);
+          };
+
+          for (u32 i = 0; i < (u32)tinfo.extends.Size(); ++i) {
+            write_parent(i);
+          }
+          for (u32 i = 0; i < (u32)tinfo.implements.Size(); ++i) {
+            write_parent(i);
+          }
+
+          // TODO.
+          ast::TypeId::Base rt_type_info_type = 16;
+          ast::MethodId rt_type_info_constructor = 4;
+
+          // Construct the TypeInfo.
+          {
+            Mem rt_type_info = t_builder.AllocTemp(SizeClass::PTR);
+            t_builder.StaticCall(rt_type_info, rt_type_info_type, rt_type_info_constructor, {array});
+
+            // Write the TypeInfo to the special static field on this class.
+            {
+              Mem field = t_builder.AllocTemp(SizeClass::PTR);
+              {
+                Mem dummy_src = t_builder.AllocDummy();
+                t_builder.FieldAddr(field, dummy_src, tid.base, ast::kStaticTypeInfoId, base::PosRange(-1, -1, -1));
+              }
+              t_builder.MovToAddr(field, rt_type_info);
+            }
+          }
+        }
+      }
+      type.streams.push_back(t_builder.Build(false, tid.base, kTypeInitMethodId));
+    }
 
     // Only store fields with initialisers.
     vector<sptr<const FieldDecl>> fields;
@@ -566,7 +624,6 @@ class ProgramIRGenerator final : public ast::Visitor {
         s_builder.AllocParams({}, &mem_out);
       }
 
-      const TypeInfo& tinfo = tinfo_map_.LookupTypeInfo(tid);
 
       if (tinfo.extends.Size() > 0) {
         CHECK(tinfo.extends.Size() == 1);
@@ -600,7 +657,7 @@ class ProgramIRGenerator final : public ast::Visitor {
         Mem f_mem = builder->AllocTemp(SizeClass::PTR);
         Mem val = builder->AllocTemp(SizeClassFrom(field->GetType().GetTypeId()));
 
-        builder->FieldAddr(f_mem, this_ptr, field->GetFieldId(), PosRange(-1, -1, -1));
+        builder->FieldAddr(f_mem, this_ptr, tid.base, field->GetFieldId(), PosRange(-1, -1, -1));
 
         MethodIRGenerator gen(val, false, builder, &empty_locals, &locals_map, tid);
         gen.Visit(field->ValPtr());

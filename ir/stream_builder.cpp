@@ -164,17 +164,17 @@ void StreamBuilder::MovToAddr(Mem dst, Mem src) {
   // TODO: We're not sure exactly how to represent what's assigned.
 }
 
-void StreamBuilder::FieldDeref(Mem dst, Mem src, FieldId fid, PosRange) {
+void StreamBuilder::FieldDeref(Mem dst, Mem src, TypeId::Base tid, FieldId fid, PosRange) {
   AssertAssigned({src});
   // TODO: Pass the PosRange.
-  AppendOp(OpType::FIELD_DEREF, {dst.Id(), src.Id(), fid});
+  AppendOp(OpType::FIELD_DEREF, {dst.Id(), src.Id(), tid, fid});
   SetAssigned({dst});
 }
 
-void StreamBuilder::FieldAddr(Mem dst, Mem src, FieldId fid, PosRange) {
+void StreamBuilder::FieldAddr(Mem dst, Mem src, TypeId::Base tid, FieldId fid, PosRange) {
   AssertAssigned({src});
   // TODO: Pass the PosRange.
-  AppendOp(OpType::FIELD_ADDR, {dst.Id(), src.Id(), fid});
+  AppendOp(OpType::FIELD_ADDR, {dst.Id(), src.Id(), tid, fid});
   SetAssigned({dst});
 }
 

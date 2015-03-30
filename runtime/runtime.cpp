@@ -24,7 +24,8 @@ public class TypeInfo {
 
   public boolean InstanceOf(int ancestor_id) {
     if (ancestor_map == null) {
-      ancestor_map = new int[TypeInfo.types.length];
+      // TODO: Fix size based off of first ref type base, and maybe use the offset.
+      ancestor_map = new int[TypeInfo.types.length + 25];
       // Initialized to 0 -> Unset.
     }
 

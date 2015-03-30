@@ -184,6 +184,9 @@ void BuildStaticFieldMap(const vector<TypeInfo>& types,
       fields.push_back({finfo.fid, SizeClassFrom(finfo.field_type)});
     }
 
+    // Static runtime TypeInfo field.
+    fields.push_back({ast::kStaticTypeInfoId, SizeClass::PTR});
+
     {
       using Fpair = pair<FieldId, SizeClass>;
       auto cmp = [](const Fpair& lhs, const Fpair& rhs) {
