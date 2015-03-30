@@ -2,6 +2,7 @@
 #define BACKEND_COMMON_OFFSET_TABLE_H
 
 #include "ast/ids.h"
+#include "ir/size.h"
 #include "types/type_info_map.h"
 
 namespace backend {
@@ -14,6 +15,8 @@ public:
   using MethodMap = map<ast::MethodId, u64>;
   using Vtable = vector<pair<ast::TypeId, ast::MethodId>>;
   using VtableMap = map<ast::TypeId, Vtable>;
+  using StaticFields = vector<pair<ast::FieldId, ir::SizeClass>>;
+  using StaticFieldMap = map<ast::TypeId, StaticFields>;
 
   static OffsetTable Build(const types::TypeInfoMap& tinfo_map, u8 ptr_size);
 
@@ -34,8 +37,12 @@ public:
     return vtables_.at(tid);
   }
 
+  const StaticFields& StaticFieldsOf(ast::TypeId tid) const {
+    return statics_.at(tid);
+  }
+
 private:
-  OffsetTable(const TypeMap& type_sizes, const FieldMap& field_offsets, const MethodMap& method_offsets, const VtableMap& vtables, u8 ptr_size) : type_sizes_(type_sizes), field_offsets_(field_offsets), method_offsets_(method_offsets), vtables_(vtables), ptr_size_(ptr_size) {}
+  OffsetTable(const TypeMap& type_sizes, const FieldMap& field_offsets, const MethodMap& method_offsets, const VtableMap& vtables, const StaticFieldMap& statics, u8 ptr_size) : type_sizes_(type_sizes), field_offsets_(field_offsets), method_offsets_(method_offsets), vtables_(vtables), statics_(statics), ptr_size_(ptr_size) {}
 
   u64 ObjectOverhead() const {
     u64 vtable_ptr_size = (u64)ptr_size_;
@@ -52,6 +59,7 @@ private:
   FieldMap field_offsets_;
   MethodMap method_offsets_;
   VtableMap vtables_;
+  StaticFieldMap statics_;
   u8 ptr_size_;
 };
 

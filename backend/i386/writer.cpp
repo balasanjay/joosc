@@ -12,6 +12,7 @@ using std::ostream;
 using ast::FieldId;
 using ast::MethodId;
 using ast::TypeId;
+using ast::kStaticInitMethodId;
 using backend::common::AsmWriter;
 using backend::common::OffsetTable;
 using base::Fprintf;
@@ -21,6 +22,7 @@ using ir::LabelId;
 using ir::MemId;
 using ir::Op;
 using ir::OpType;
+using ir::Program;
 using ir::SizeClass;
 using ir::Stream;
 using ir::Type;
@@ -283,8 +285,6 @@ struct FuncWriter final {
     FieldId fid = begin[2];
 
     const StackEntry& dst_e = stack_map.at(dst);
-    const StackEntry& src_e = stack_map.at(src);
-
     if (addr) {
       CHECK(dst_e.size == SizeClass::PTR);
     }
@@ -293,15 +293,21 @@ struct FuncWriter final {
     string src_prefix = addr ? "&" : "";
     string instr = addr ? "lea" : "mov";
 
-    u64 field_offset = offsets.OffsetOfField(fid);
-
-    w.Col1("; t%v = %vt%v.f%v.", dst_e.id, src_prefix, src_e.id, fid);
-    w.Col1("mov ebx, %v", StackOffset(src_e.offset));
-    w.Col1("%v %v, [ebx+%v]", instr, sized_reg, field_offset);
-    w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
+    if (src == kInvalidMemId) {
+      w.Col1("; t%v = %vstatic.f%v", dst_e.id, src_prefix, fid);
+      w.Col1("%v %v, [static_f%v]", instr, sized_reg, fid);
+      w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
+    } else {
+      const StackEntry& src_e = stack_map.at(src);
+      u64 field_offset = offsets.OffsetOfField(fid);
+      w.Col1("; t%v = %vt%v.f%v.", dst_e.id, src_prefix, src_e.id, fid);
+      w.Col1("mov ebx, %v", StackOffset(src_e.offset));
+      w.Col1("%v %v, [ebx+%v]", instr, sized_reg, field_offset);
+      w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
+    }
   }
 
-  void Field(ArgIter begin, ArgIter end) {
+  void FieldDeref(ArgIter begin, ArgIter end) {
     FieldImpl(begin, end, false);
   }
 
@@ -721,6 +727,7 @@ struct FuncWriter final {
 void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
   static string kMethodNameFmt = "_t%v_m%v";
   static string kVtableNameFmt = "vtable_t%v";
+  static string kStaticNameFmt = "static_f%v";
 
   set<string> externs{"_joos_malloc"};
   set<string> globals;
@@ -734,21 +741,26 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
       globals.insert(Sprintf(kMethodNameFmt, method_stream.tid, method_stream.mid));
 
       for (const Op& op : method_stream.ops) {
-        // TODO: also will need things like static fields here.
         if (op.type == OpType::STATIC_CALL) {
-          TypeId::Base tid = method_stream.args[op.begin+1];
-          MethodId mid = method_stream.args[op.begin+2];
-
+          TypeId::Base tid = method_stream.args[op.begin + 1];
+          MethodId mid = method_stream.args[op.begin + 2];
           externs.insert(Sprintf(kMethodNameFmt, tid, mid));
         } else if (op.type == OpType::ALLOC_HEAP) {
-          TypeId::Base tid = method_stream.args[op.begin+1];
+          TypeId::Base tid = method_stream.args[op.begin + 1];
           externs.insert(Sprintf(kVtableNameFmt, tid));
+        } else if (op.type == OpType::FIELD_DEREF || op.type == OpType::FIELD_ADDR) {
+          FieldId fid = method_stream.args[op.begin + 2];
+          externs.insert(Sprintf(kStaticNameFmt, fid));
         }
       }
     }
 
     for (const auto& v_pair : offsets_.VtableOf({type.tid, 0})) {
-      externs.insert(Sprintf("_t%v_m%v", v_pair.first.base, v_pair.second));
+      externs.insert(Sprintf(kMethodNameFmt, v_pair.first.base, v_pair.second));
+    }
+
+    for (const auto& s_pair : offsets_.StaticFieldsOf({type.tid, 0})) {
+      globals.insert(Sprintf(kStaticNameFmt, s_pair.first));
     }
   }
 
@@ -771,6 +783,8 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
     }
     Fprintf(out, "section .rodata\n");
     WriteVtable(type, out);
+    Fprintf(out, "section .data\n");
+    WriteStatics(type, out);
   }
 }
 
@@ -813,8 +827,8 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::MOV_TO_ADDR:
         writer.MovToAddr(begin, end);
         break;
-      case OpType::FIELD:
-        writer.Field(begin, end);
+      case OpType::FIELD_DEREF:
+        writer.FieldDeref(begin, end);
         break;
       case OpType::FIELD_ADDR:
         writer.FieldAddr(begin, end);
@@ -901,6 +915,16 @@ void Writer::WriteVtable(const Type& type, ostream* out) const {
   for (const auto& v_pair : offsets_.VtableOf({type.tid, 0})) {
     w.Col1("dd _t%v_m%v", v_pair.first.base, v_pair.second);
   }
+  w.Col0("\n");
+}
+
+void Writer::WriteStatics(const Type& type, ostream* out) const {
+  AsmWriter w(out);
+
+  for (const auto& f_pair : offsets_.StaticFieldsOf({type.tid, 0})) {
+    w.Col0("static_f%v:", f_pair.first);
+    w.Col1("%v 0", Sized(f_pair.second, "db", "dw", "dd"));
+  }
 }
 
 void Writer::WriteMain(ostream* out) const {
@@ -915,11 +939,14 @@ void Writer::WriteMain(ostream* out) const {
 
   // Entry point.
   w.Col0("_start:");
-  w.Col1("; Call user code.");
+  // Prologue.
   w.Col1("push ebp");
   w.Col1("mov ebp, esp");
+  // Body.
+  w.Col1("; Call static init.");
+  w.Col1("call _static_init");
+  w.Col1("; Call user code.");
   w.Col1("call _entry");
-  w.Col1("pop ebp");
   w.Col1("; Call EXIT syscall.");
   w.Col1("mov ebx, eax");
   w.Col1("mov eax, 1");
@@ -944,7 +971,30 @@ void Writer::WriteMain(ostream* out) const {
   w.Col1("jmp .before");
   w.Col0(".after:");
   w.Col1("ret");
+}
 
+void Writer::WriteStaticInit(const Program& prog, ostream* out) const {
+  AsmWriter w(out);
+
+  w.Col0("; Run all static initialisers.");
+  w.Col0("_static_init:");
+  // Prologue.
+  w.Col1("push ebp");
+  w.Col1("mov ebp, esp\n");
+
+  // Body.
+  for (const CompUnit& comp_unit : prog.units) {
+    for (const Type& type : comp_unit.types) {
+      string init = Sprintf("_t%v_m%v", type.tid, kStaticInitMethodId);
+      w.Col1("extern %v", init);
+      w.Col1("call %v", init);
+    }
+  }
+
+  // Epilogue.
+  w.Col1("pop ebp");
+  w.Col1("ret");
+  w.Col0("\n");
 }
 
 } // namespace i386

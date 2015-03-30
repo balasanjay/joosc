@@ -125,6 +125,7 @@ bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const s
     }
 
     writer.WriteMain(&out);
+    writer.WriteStaticInit(ir_prog, &out);
     out << std::flush;
 
   } while (false);
