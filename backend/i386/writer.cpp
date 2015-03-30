@@ -158,9 +158,8 @@ struct FuncWriter final {
     w.Col1("mov %v, eax", StackOffset(dst_e.offset));
 
     // Set the length field.
-    w.Col1("add eax, 4");
     w.Col1("mov ebx, %v", StackOffset(len_e.offset));
-    w.Col1("mov [eax], ebx");
+    w.Col1("mov [eax + 4], ebx");
   }
 
   void AllocMem(ArgIter begin, ArgIter end) {
