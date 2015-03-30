@@ -4,6 +4,7 @@
 #include "base/errorlist.h"
 #include "base/file.h"
 #include "base/fileset.h"
+#include "base/joos_types.h"
 
 namespace lexer {
 
@@ -271,6 +272,9 @@ bool IsBoolOp(TokenType op);
 bool IsRelationalOp(TokenType op);
 bool IsEqualityOp(TokenType op);
 bool IsNumericOp(TokenType op);
+
+jchar ConvertCharEscape(string s, u64 start, u64* next);
+jstring ConvertStringEscapes(string s);
 
 }  // namespace lexer
 
