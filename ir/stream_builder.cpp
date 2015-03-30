@@ -316,9 +316,11 @@ void StreamBuilder::DynamicCall(Mem dst, Mem this_ptr, ast::MethodId mid, const 
   }
 }
 
-void StreamBuilder::GetTypeInfo(Mem dst) {
+void StreamBuilder::GetTypeInfo(Mem dst, Mem src) {
+  AssertAssigned({src});
   size_t begin = args_.size();
   args_.push_back(dst.Id());
+  args_.push_back(src.Id());
   ops_.push_back({OpType::GET_TYPEINFO, begin, args_.size()});
   SetAssigned({dst});
 }

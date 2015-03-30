@@ -494,7 +494,7 @@ class MethodIRGenerator final : public ast::Visitor {
     Mem lhs = builder_.AllocLocal(SizeClass::PTR);
     WithResultIn(lhs, false).Visit(expr.LhsPtr());
 
-    //builder_.Mov
+    //builder_.GetTypeInfo();
 
     return VisitResult::SKIP;
   }
@@ -539,7 +539,7 @@ class ProgramIRGenerator final : public ast::Visitor {
       StreamBuilder t_builder;
       {
         vector<Mem> mem_out;
-        t_builder.AllocParams({SizeClass::PTR}, &mem_out);
+        t_builder.AllocParams({}, &mem_out);
       }
 
       {
@@ -584,17 +584,15 @@ class ProgramIRGenerator final : public ast::Visitor {
             }
 
             // Write the TypeInfo to the special static field on this class.
-            /*
-            {
-              Mem field = t_builder.AllocTemp(SizeClass::PTR);
-              {
-                Mem dummy_src = t_builder.AllocDummy();
-                t_builder.FieldAddr(field, dummy_src, tid.base, ast::kStaticTypeInfoId, base::PosRange(-1, -1, -1));
-              }
-              t_builder.MovToAddr(field, rt_type_info);
-            }
-            */
-            //t_builder.SetTypeInfo(tid.base, rt_type_info);
+            //{
+              //Mem field = t_builder.AllocTemp(SizeClass::PTR);
+              //{
+                //Mem dummy_src = t_builder.AllocDummy();
+                //t_builder.FieldAddr(field, dummy_src, tid.base, ast::kStaticTypeInfoId, base::PosRange(-1, -1, -1));
+              //}
+              //t_builder.MovToAddr(field, rt_type_info);
+            //}
+            t_builder.SetTypeInfo(tid.base, rt_type_info);
           }
         }
       }

@@ -690,18 +690,21 @@ struct FuncWriter final {
   }
 
   void GetTypeInfo(ArgIter begin, ArgIter end) {
-    CHECK((end-begin) == 1);
+    CHECK((end-begin) == 2);
 
     MemId dst = begin[0];
+    MemId src = begin[1];
     const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& src_e = stack_map.at(src);
     CHECK(dst_e.size == SizeClass::PTR);
+    CHECK(src_e.size == SizeClass::PTR);
 
     // Simply dereference the pointer to get the TypeInfo
     // pointer at the start of the vtable.
     w.Col1("; Getting type id.");
-    w.Col1("mov eax, %v", StackOffset(dst_e.offset));
+    w.Col1("mov eax, %v", StackOffset(src_e.offset));
     w.Col1("mov eax, [eax]");
-    w.Col1("mov %v, [eax]", StackOffset(dst_e.offset));
+    w.Col1("mov %v, [eax + 0]", StackOffset(dst_e.offset));
   }
 
   void SetTypeInfo(ArgIter begin, ArgIter end) {
@@ -946,6 +949,7 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
 void Writer::WriteVtable(const Type& type, ostream* out) const {
   AsmWriter w(out);
   w.Col0("vtable_t%v:", type.tid);
+  // TODO: Use type info static ptr.
   w.Col1("dd 0"); // Type info ptr.
   w.Col1("dd 0"); // Selector index.
 
