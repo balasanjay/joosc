@@ -415,4 +415,28 @@ TEST_F(LexerTest, UnclosedChar) {
 TEST(TokenTypeInfoTest, Unsupported) {
   EXPECT_FALSE(TokenTypeInfo::FromTokenType(K_DO).IsSupported());
 }
+
+TEST(LexerCharEscapeTest, SimpleString) {
+  string s = "abc";
+  jstring js_expected;
+  js_expected.insert(js_expected.begin(), s.begin(), s.end());
+  jstring js = ConvertStringEscapes(s);
+  EXPECT_EQ(js_expected, js);
+}
+
+TEST(LexerCharEscapeTest, Tab) {
+  string s = "foo\tbar";
+  jstring js_expected;
+  js_expected.insert(js_expected.begin(), s.begin(), s.end());
+  jstring js = ConvertStringEscapes("foo\\tbar");
+  EXPECT_EQ(js_expected, js);
+}
+
+TEST(LexerCharEscapeTest, OctalEscape) {
+  string s = "\\32";
+  jstring js_expected({3*8 + 2});
+  jstring js = ConvertStringEscapes(s);
+  EXPECT_EQ(js_expected, js);
+}
+
 }  // namespace base

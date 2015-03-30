@@ -314,7 +314,7 @@ REWRITE_DEFN(TypeChecker, CastExpr, Expr, expr, exprptr) {
 }
 
 REWRITE_DEFN(TypeChecker, CharLitExpr, Expr, expr, ) {
-  return make_shared<CharLitExpr>(expr.GetToken(), TypeId::kChar);
+  return make_shared<CharLitExpr>(expr.GetToken(), expr.Char(), TypeId::kChar);
 }
 
 REWRITE_DEFN(TypeChecker, FieldDerefExpr, Expr, expr,) {

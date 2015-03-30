@@ -19,6 +19,7 @@ cc_library(
         "file_impl.h",
         "file_walker.h",
         "fileset.h",
+        "joos_types.h",
         "macros.h",
         "printf.h",
         "shared_ptr_vector.h",
