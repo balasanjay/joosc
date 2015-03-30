@@ -1,34 +1,49 @@
 package __joos_internal__;
 
 public class TypeInfo {
-  public static int UNSET = 0;
-  public static int YES = 1;
-  public static int NO = -1;
-
+  // 0 -> Unset
+  // 1 -> Yes
+  // -1 -> No
   protected int[] ancestor_map;
+
+  // Type IDs of parents.
   protected int[] parents;
 
-  public TypeInfo(int num_types, int[] parents) {
-    ancestor_map = new int[num_types];
+  // All TypeInfos.
+  public static TypeInfo[] types;
+
+  public TypeInfo(int[] parents) {
     this.parents = parents;
-    for (int i = 0; i < num_types; i = i + 1) {
-      ancestor_map[i] = TypeInfo.UNSET;
+  }
+
+  public boolean InstanceOf(int ancestor_id) {
+    if (ancestor_map == null) {
+      ancestor_map = new int[TypeInfo.types.length];
+      // Initialized to 0 -> Unset.
     }
-  }
 
-  public int[] Parents() {
-    return parents;
-  }
-
-  public int IsAncestor(int type) {
-    return ancestor_map[type];
-  }
-
-  public void SetAncestor(int type, boolean is_ancestor) {
-    if (is_ancestor) {
-      ancestor_map[type] = TypeInfo.YES;
-    } else {
-      ancestor_map[type] = TypeInfo.NO;
+    int lookup = ancestor_map[ancestor_id];
+    // Already checked this - return cached value.
+    if (lookup != 0) {
+      return lookup == 1;
     }
+
+    for (int i = 0; lookup == 0 && i < parents.length; i = i + 1) {
+      // If parent is ancestor, return true immediately.
+      int parent_id = parents[i];
+      if (parent_id == ancestor_id) {
+        lookup = 1; // True.
+      } else {
+        if (types[parent_id].InstanceOf(ancestor_id)) {
+          lookup = 1;
+        }
+      }
+    }
+    if (lookup == 0) {
+      lookup = -1;
+    }
+
+    ancestor_map[ancestor_id] = lookup;
+    return lookup == 1;
   }
 }

@@ -2,5 +2,5 @@
 
 set -e
 javac `find runtime -name "*.java"`
-java -classpath "runtime" joostests.InheritanceCheckerTest
+java -classpath "runtime" joostests.TypeInfoTest
 
