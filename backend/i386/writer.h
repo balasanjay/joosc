@@ -15,6 +15,7 @@ public:
   Writer(const backend::common::OffsetTable& offsets) : offsets_(offsets) {}
   void WriteCompUnit(const ir::CompUnit& comp_unit, std::ostream* out) const;
   void WriteMain(std::ostream* out) const;
+  void WriteStaticInit(const ir::Program& prog, std::ostream* out) const;
 private:
   void WriteFunc(const ir::Stream& stream, std::ostream* out) const;
   void WriteVtable(const ir::Type& type, std::ostream* out) const;

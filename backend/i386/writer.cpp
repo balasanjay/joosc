@@ -12,6 +12,7 @@ using std::ostream;
 using ast::FieldId;
 using ast::MethodId;
 using ast::TypeId;
+using ast::kStaticInitMethodId;
 using backend::common::AsmWriter;
 using backend::common::OffsetTable;
 using base::Fprintf;
@@ -21,6 +22,7 @@ using ir::LabelId;
 using ir::MemId;
 using ir::Op;
 using ir::OpType;
+using ir::Program;
 using ir::SizeClass;
 using ir::Stream;
 using ir::Type;
@@ -937,11 +939,14 @@ void Writer::WriteMain(ostream* out) const {
 
   // Entry point.
   w.Col0("_start:");
-  w.Col1("; Call user code.");
+  // Prologue.
   w.Col1("push ebp");
   w.Col1("mov ebp, esp");
+  // Body.
+  w.Col1("; Call static init.");
+  w.Col1("call _static_init");
+  w.Col1("; Call user code.");
   w.Col1("call _entry");
-  w.Col1("pop ebp");
   w.Col1("; Call EXIT syscall.");
   w.Col1("mov ebx, eax");
   w.Col1("mov eax, 1");
@@ -966,7 +971,30 @@ void Writer::WriteMain(ostream* out) const {
   w.Col1("jmp .before");
   w.Col0(".after:");
   w.Col1("ret");
+}
 
+void Writer::WriteStaticInit(const Program& prog, ostream* out) const {
+  AsmWriter w(out);
+
+  w.Col0("; Run all static initialisers.");
+  w.Col0("_static_init:");
+  // Prologue.
+  w.Col1("push ebp");
+  w.Col1("mov ebp, esp\n");
+
+  // Body.
+  for (const CompUnit& comp_unit : prog.units) {
+    for (const Type& type : comp_unit.types) {
+      string init = Sprintf("_t%v_m%v", type.tid, kStaticInitMethodId);
+      w.Col1("extern %v", init);
+      w.Col1("call %v", init);
+    }
+  }
+
+  // Epilogue.
+  w.Col1("pop ebp");
+  w.Col1("ret");
+  w.Col0("\n");
 }
 
 } // namespace i386
