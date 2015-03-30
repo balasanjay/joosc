@@ -562,8 +562,17 @@ class ProgramIRGenerator final : public ast::Visitor {
 
           // Construct the TypeInfo.
           {
-            Mem rt_type_info = t_builder.AllocTemp(SizeClass::PTR);
-            t_builder.StaticCall(rt_type_info, rt_type_info_type, rt_type_info_constructor, {array});
+            Mem rt_type_info = t_builder.AllocHeap(ast::TypeId{rt_type_info_type, 0});
+
+            vector<Mem> arg_mems;
+            arg_mems.push_back(rt_type_info);
+            arg_mems.push_back(array);
+
+            // Perform constructor call.
+            {
+              Mem tmp = t_builder.AllocDummy();
+              t_builder.StaticCall(tmp, rt_type_info_type, rt_type_info_constructor, {rt_type_info, array});
+            }
 
             // Write the TypeInfo to the special static field on this class.
             {
@@ -596,7 +605,7 @@ class ProgramIRGenerator final : public ast::Visitor {
 
       // TODO: stdlib has casts in field initializers. Remove this when we
       // support casts.
-      if (tid.base != 16 && tid.base != 17) {
+      if (tid.base != 16 && tid.base != 17 && tid.base != 18) {
         continue;
       }
 
