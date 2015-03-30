@@ -558,7 +558,7 @@ class ProgramIRGenerator final : public ast::Visitor {
 
           // TODO.
           ast::TypeId::Base rt_type_info_type = 16;
-          ast::MethodId rt_type_info_constructor = 4;
+          ast::MethodId rt_type_info_constructor = 2;
 
           // Construct the TypeInfo.
           {

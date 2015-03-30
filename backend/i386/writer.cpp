@@ -13,6 +13,7 @@ using ast::FieldId;
 using ast::MethodId;
 using ast::TypeId;
 using ast::kStaticInitMethodId;
+using ast::kTypeInitMethodId;
 using backend::common::AsmWriter;
 using backend::common::OffsetTable;
 using base::Fprintf;
@@ -985,6 +986,16 @@ void Writer::WriteStaticInit(const Program& prog, ostream* out) const {
   w.Col1("mov ebp, esp\n");
 
   // Body.
+  // Initialize type's static type info.
+  for (const CompUnit& comp_unit : prog.units) {
+    for (const Type& type : comp_unit.types) {
+      string type_init = Sprintf("_t%v_m%v", type.tid, kTypeInitMethodId);
+      w.Col1("extern %v", type_init);
+      w.Col1("call %v", type_init);
+    }
+  }
+
+  // Initialize type's statics.
   for (const CompUnit& comp_unit : prog.units) {
     for (const Type& type : comp_unit.types) {
       string init = Sprintf("_t%v_m%v", type.tid, kStaticInitMethodId);
