@@ -34,7 +34,7 @@ public class TypeInfo {
       if (parent_id == ancestor_id) {
         lookup = 1; // True.
       } else {
-        if (types[parent_id].InstanceOf(ancestor_id)) {
+        if (TypeInfo.types[parent_id].InstanceOf(ancestor_id)) {
           lookup = 1;
         }
       }

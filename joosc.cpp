@@ -12,7 +12,6 @@
 #include "base/fileset.h"
 #include "lexer/lexer.h"
 #include "parser/parser.h"
-#include "runtime/runtime.h"
 #include "types/type_info_map.h"
 #include "types/types.h"
 #include "weeder/weeder.h"
@@ -139,6 +138,9 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream*, os
   {
     ErrorList errors;
     FileSet::Builder builder;
+
+    // Runtime files.
+    builder.AddDiskFile("runtime/__joos_internal__/TypeInfo.java");
 
     for (const auto& file : files) {
       builder.AddDiskFile(file);
