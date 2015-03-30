@@ -7,7 +7,10 @@
 #include "base/printf.h"
 #include "ir/size.h"
 
+using std::get;
+using std::make_tuple;
 using std::tie;
+using std::tuple;
 
 using ast::FieldId;
 using ast::MethodId;
@@ -20,6 +23,7 @@ using ir::SizeClass;
 using ir::SizeClassFrom;
 using types::FieldInfo;
 using types::MethodInfo;
+using types::MethodSignature;
 using types::TypeInfo;
 using types::TypeInfoMap;
 
@@ -93,13 +97,13 @@ void BuildTypeSizesAndFieldOffsets(const vector<TypeInfo>& types, u8 ptr_size,
   }
 }
 
-void BuildMethodOffsets(const vector<TypeInfo>& types, u8 ptr_size,
+void BuildClassMethodOffsets(const vector<TypeInfo>& types, u8 ptr_size,
     OffsetTable::MethodMap* method_out, OffsetTable::VtableMap* vtable_out) {
-  map<ast::TypeId, u64> starting_offsets;
+  map<TypeId, u64> starting_offsets;
 
   using Vpair = pair<TypeId, MethodId>;
   auto vtable_cmp = [&](const Vpair& lhs, const Vpair& rhs) {
-    return method_out->at(lhs.second) < method_out->at(rhs.second);
+    return method_out->at(lhs.second).first < method_out->at(rhs.second).first;
   };
 
   for (const TypeInfo& tinfo : types) {
@@ -108,7 +112,7 @@ void BuildMethodOffsets(const vector<TypeInfo>& types, u8 ptr_size,
       continue;
     }
 
-    u64 starting_offset = 0;
+    u64 starting_offset = OffsetTable::VtableOverhead(ptr_size);
     if (tinfo.extends.Size() > 0) {
       CHECK(tinfo.extends.Size() == 1);
       starting_offset = starting_offsets.at(tinfo.extends.At(0));
@@ -143,7 +147,7 @@ void BuildMethodOffsets(const vector<TypeInfo>& types, u8 ptr_size,
         continue;
       }
 
-      method_out->insert({minfo.mid, my_offset});
+      method_out->insert({minfo.mid, {my_offset, TypeKind::CLASS}});
       my_offset += (u64)ptr_size;
     }
 
@@ -158,6 +162,94 @@ void BuildMethodOffsets(const vector<TypeInfo>& types, u8 ptr_size,
       CHECK(iter.second);
     }
 
+  }
+}
+
+void BuildIfaceMethodOffsets(const vector<TypeInfo>& types, u8 ptr_size,
+    OffsetTable::MethodMap* method_out, OffsetTable::ItableMap* itable_out) {
+
+  using Ituple = tuple<u64, TypeId, MethodId>;
+  auto itable_cmp = [&](const Ituple& lhs, const Ituple& rhs) {
+    return get<0>(lhs) < get<0>(rhs);
+  };
+
+  // Pass 1: we collect all interface method signatures.
+  map<MethodSignature, u64> iface_methods;
+  for (const TypeInfo& tinfo : types) {
+    if (tinfo.kind != TypeKind::INTERFACE) {
+      continue;
+    }
+
+    for (const auto& m_pair : tinfo.methods.GetMethodMap()) {
+      const MethodInfo& minfo = m_pair.second;
+
+      // All interfaces inherit from Object, but these methods do not require
+      // going through the itable map. They will simply go through the regular
+      // vtable map. To avoid overriding Object's vtable-mapping, we skip any
+      // such interface methods.
+      {
+        auto iter = method_out->find(minfo.mid);
+        if (iter != method_out->end()) {
+          continue;
+        }
+      }
+
+      iface_methods.insert({minfo.signature, 0});
+    }
+  }
+
+  // Pass 2: we assign all interface method signatures an offset.
+  u64 offset = 0;
+  for (auto& p : iface_methods) {
+    p.second = offset;
+    offset += (u64)ptr_size;
+  }
+
+  // Pass 3: we build a mapping from interface method id to offset.
+  for (const TypeInfo& tinfo : types) {
+    if (tinfo.kind != TypeKind::INTERFACE) {
+      continue;
+    }
+
+    for (const auto& m_pair : tinfo.methods.GetMethodMap()) {
+      const MethodInfo& minfo = m_pair.second;
+
+      u64 offset = 0;
+      {
+        auto iter = iface_methods.find(minfo.signature);
+        if (iter == iface_methods.end()) {
+          continue;
+        }
+        offset = iter->second;
+      }
+
+      {
+        auto iter = method_out->insert({minfo.mid, {offset, TypeKind::INTERFACE}});
+        CHECK(iter.second);
+      }
+    }
+  }
+
+  // Pass 4: we build an itable for each class.
+  for (const TypeInfo& tinfo : types) {
+    if (tinfo.kind != TypeKind::CLASS) {
+      continue;
+    }
+    OffsetTable::Itable itable;
+    for (const auto& m_pair : tinfo.methods.GetMethodMap()) {
+      const MethodInfo& minfo = m_pair.second;
+      auto iter = iface_methods.find(minfo.signature);
+      if (iter == iface_methods.end()) {
+        continue;
+      }
+      itable.emplace_back(make_tuple(iter->second, minfo.class_type, minfo.mid));
+    }
+
+    std::sort(itable.begin(), itable.end(), itable_cmp);
+    {
+      auto iter = itable_out->insert({tinfo.type, itable});
+      CHECK(iter.second);
+    }
   }
 }
 
@@ -218,14 +310,18 @@ OffsetTable OffsetTable::Build(const TypeInfoMap& tinfo_map, u8 ptr_size) {
   TypeMap type_sizes;
   BuildTypeSizesAndFieldOffsets(types, ptr_size, &type_sizes, &field_offsets);
 
-  MethodMap method_offsets;
-  VtableMap vtables;
-  BuildMethodOffsets(types, ptr_size, &method_offsets, &vtables);
-
   StaticFieldMap statics;
   BuildStaticFieldMap(types, &statics);
 
-  return OffsetTable(type_sizes, field_offsets, method_offsets, vtables, statics, ptr_size);
+  MethodMap method_offsets;
+
+  VtableMap vtables;
+  BuildClassMethodOffsets(types, ptr_size, &method_offsets, &vtables);
+
+  ItableMap itables;
+  BuildIfaceMethodOffsets(types, ptr_size, &method_offsets, &itables);
+
+  return OffsetTable(type_sizes, field_offsets, method_offsets, vtables, itables, statics, ptr_size);
 }
 
 } // namespace common
