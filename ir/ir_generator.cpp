@@ -491,10 +491,21 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(InstanceOfExpr, expr,) {
-    Mem lhs = builder_.AllocLocal(SizeClass::PTR);
+    Mem lhs = builder_.AllocTemp(SizeClass::PTR);
     WithResultIn(lhs, false).Visit(expr.LhsPtr());
 
-    //builder_.GetTypeInfo();
+    {
+      Mem type_info = builder_.AllocTemp(SizeClass::PTR);
+      builder_.GetTypeInfo(type_info, lhs);
+
+      {
+        Mem ancestor = builder_.AllocTemp(SizeClass::INT);
+        // TODO: Arrays.
+        builder_.ConstInt32(ancestor, expr.GetType().GetTypeId().base);
+        ast::TypeId::Base rt_type_info_instanceof_method = 16;
+        builder_.DynamicCall(res_, type_info, rt_type_info_instanceof_method, {ancestor});
+      }
+    }
 
     return VisitResult::SKIP;
   }

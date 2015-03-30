@@ -703,8 +703,11 @@ struct FuncWriter final {
     // pointer at the start of the vtable.
     w.Col1("; Getting type id.");
     w.Col1("mov eax, %v", StackOffset(src_e.offset));
+    // Get vtable pointer from this.
     w.Col1("mov eax, [eax]");
-    w.Col1("mov %v, [eax + 0]", StackOffset(dst_e.offset));
+    // Get typeinfo pointer from vtable.
+    w.Col1("mov eax, [eax + 0]");
+    w.Col1("mov %v, eax", StackOffset(dst_e.offset));
   }
 
   void SetTypeInfo(ArgIter begin, ArgIter end) {
