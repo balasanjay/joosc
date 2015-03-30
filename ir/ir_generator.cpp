@@ -490,6 +490,15 @@ class MethodIRGenerator final : public ast::Visitor {
     return VisitResult::SKIP;
   }
 
+  VISIT_DECL(InstanceOfExpr, expr,) {
+    Mem lhs = builder_.AllocLocal(SizeClass::PTR);
+    WithResultIn(lhs, false).Visit(expr.LhsPtr());
+
+    //builder_.Mov
+
+    return VisitResult::SKIP;
+  }
+
   // Location result of the computation should be stored.
   Mem res_;
   bool lvalue_ = false;
@@ -575,6 +584,7 @@ class ProgramIRGenerator final : public ast::Visitor {
             }
 
             // Write the TypeInfo to the special static field on this class.
+            /*
             {
               Mem field = t_builder.AllocTemp(SizeClass::PTR);
               {
@@ -583,6 +593,8 @@ class ProgramIRGenerator final : public ast::Visitor {
               }
               t_builder.MovToAddr(field, rt_type_info);
             }
+            */
+            //t_builder.SetTypeInfo(tid.base, rt_type_info);
           }
         }
       }
