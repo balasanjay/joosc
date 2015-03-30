@@ -61,8 +61,9 @@ const LocalVarId kVarFirst = 100;
 using MethodId = u64;
 const MethodId kUnassignedMethodId = 0;
 const MethodId kErrorMethodId = 1;
-const MethodId kInitMethodId = 2;
-const MethodId kFirstMethodId = 3;
+const MethodId kInstanceInitMethodId = 2;
+const MethodId kStaticInitMethodId = 3;
+const MethodId kFirstMethodId = 4;
 
 using FieldId = u64;
 const FieldId kErrorFieldId = 0;

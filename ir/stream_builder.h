@@ -54,12 +54,14 @@ class StreamBuilder {
   // Emit **dst = *src.
   void MovToAddr(Mem dst, Mem src);
 
-  // Return in dst the value of field fid in src. If src points to null, an
-  // exception will be generated.
-  void Field(Mem dst, Mem src, ast::FieldId fid, base::PosRange pos);
+  // Return in dst the value of field fid in src. If src is kInvalidMemId, then
+  // this will be a static field dereference. If src is not kInvalidMemId and
+  // points to null, an exception will be generated.
+  void FieldDeref(Mem dst, Mem src, ast::FieldId fid, base::PosRange pos);
 
-  // Return in dst a pointer to fid in src. If src points to null, an exception
-  // will be generated.
+  // Return in dst a pointer to field fid in src. If src is kInvalidMemId, then
+  // this will be a pointer to a static field. If src is not kInvalidMemId and
+  // points to null, an exception will be generated.
   void FieldAddr(Mem dst, Mem src, ast::FieldId fid, base::PosRange pos);
 
   // Return in dst the value of array[index]. If array is null, or index is out

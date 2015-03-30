@@ -26,7 +26,8 @@ using ast::StaticRefExpr;
 using ast::TypeId;
 using ast::TypeKind;
 using ast::VisitResult;
-using ast::kInitMethodId;
+using ast::kInstanceInitMethodId;
+using ast::kStaticInitMethodId;
 using ast::kVarImplicitThis;
 using base::PosRange;
 using types::TypeIdList;
@@ -69,7 +70,7 @@ class MethodIRGenerator final : public ast::Visitor {
     // Constructors call the init method, passing ``this'' as the only
     // argument.
     if (decl.TypePtr() == nullptr) {
-      builder_.StaticCall(res_, tid_.base, kInitMethodId, {param_mems[0]});
+      builder_.StaticCall(res_, tid_.base, kInstanceInitMethodId, {param_mems[0]});
     }
 
     // Add params to local map.
@@ -237,22 +238,25 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(FieldDerefExpr, expr,) {
-    // TODO: handle static fields.
+    bool is_static = false;
     {
       auto static_base = dynamic_cast<const StaticRefExpr*>(expr.BasePtr().get());
       if (static_base != nullptr) {
-        return VisitResult::SKIP;
+        is_static = true;
       }
     }
 
-    Mem tmp = builder_.AllocTemp(SizeClass::PTR);
-    // We want an rvalue of the pointer, so set lvalue to false.
-    WithResultIn(tmp, false).Visit(expr.BasePtr());
+    Mem tmp = builder_.AllocDummy();
+    if (!is_static) {
+      tmp = builder_.AllocTemp(SizeClass::PTR);
+      // We want an rvalue of the pointer, so set lvalue to false.
+      WithResultIn(tmp, false).Visit(expr.BasePtr());
+    }
 
     if (lvalue_) {
       builder_.FieldAddr(res_, tmp, expr.GetFieldId(), expr.GetToken().pos);
     } else {
-      builder_.Field(res_, tmp, expr.GetFieldId(), expr.GetToken().pos);
+      builder_.FieldDeref(res_, tmp, expr.GetFieldId(), expr.GetToken().pos);
     }
 
     return VisitResult::SKIP;
@@ -519,7 +523,7 @@ class ProgramIRGenerator final : public ast::Visitor {
     Type type{tid.base, {}};
 
     // Only store fields with initialisers.
-    vector<tuple<TypeId, FieldId, sptr<const Expr>>> fields;
+    vector<sptr<const FieldDecl>> fields;
 
     for (int i = 0; i < decl.Members().Size(); ++i) {
       sptr<const MemberDecl> member = decl.Members().At(i);
@@ -532,8 +536,9 @@ class ProgramIRGenerator final : public ast::Visitor {
       auto field = dynamic_pointer_cast<const FieldDecl, const MemberDecl>(member);
       CHECK(field != nullptr);
 
-      if (field->Mods().HasModifier(lexer::STATIC)) {
-        // TODO: deal with static fields.
+      // TODO: stdlib has casts in field initializers. Remove this when we
+      // support casts.
+      if (tid.base != 16 && tid.base != 17) {
         continue;
       }
 
@@ -541,14 +546,25 @@ class ProgramIRGenerator final : public ast::Visitor {
         continue;
       }
 
-      fields.push_back(make_tuple(field->GetType().GetTypeId(), field->GetFieldId(), field->ValPtr()));
+      fields.push_back(field);
     }
 
     {
-      StreamBuilder builder;
+      StreamBuilder i_builder;
+      StreamBuilder s_builder;
 
-      vector<Mem> mem_out;
-      builder.AllocParams({SizeClass::PTR}, &mem_out);
+      // Get the `this' ptr.
+      Mem i_this_ptr = i_builder.AllocDummy();
+      {
+        vector<Mem> mem_out;
+        i_builder.AllocParams({SizeClass::PTR}, &mem_out);
+        i_this_ptr = mem_out.at(0);
+      }
+
+      {
+        vector<Mem> mem_out;
+        s_builder.AllocParams({}, &mem_out);
+      }
 
       const TypeInfo& tinfo = tinfo_map_.LookupTypeInfo(tid);
 
@@ -561,26 +577,39 @@ class ProgramIRGenerator final : public ast::Visitor {
           .LookupMethod({true, pinfo.name, TypeIdList({})})
           .mid;
 
-        Mem dummy = builder.AllocDummy();
+        Mem dummy = i_builder.AllocDummy();
 
-        builder.StaticCall(dummy, ptid.base, mid, {mem_out[0]});
+        i_builder.StaticCall(dummy, ptid.base, mid, {i_this_ptr});
       }
 
-      vector<ast::LocalVarId> empty_locals{kVarImplicitThis};
-      map<ast::LocalVarId, Mem> locals_map{{kVarImplicitThis, mem_out[0]}};
-      for (auto tup : fields) {
-        Mem field = builder.AllocTemp(SizeClass::PTR);
-        Mem val = builder.AllocTemp(SizeClassFrom(get<0>(tup)));
+      for (auto field : fields) {
+        StreamBuilder* builder = nullptr;
+        vector<ast::LocalVarId> empty_locals;
+        map<ast::LocalVarId, Mem> locals_map;
+        Mem this_ptr = i_this_ptr;
 
-        builder.FieldAddr(field, mem_out[0], get<1>(tup), PosRange(-1, -1, -1));
+        if (field->Mods().HasModifier(lexer::STATIC)) {
+          builder = &s_builder;
+          this_ptr = s_builder.AllocDummy();
+        } else {
+          builder = &i_builder;
+          empty_locals.push_back(kVarImplicitThis);
+          locals_map.insert({kVarImplicitThis, i_this_ptr});
+        }
 
-        MethodIRGenerator gen(val, false, &builder, &empty_locals, &locals_map, tid);
-        gen.Visit(get<2>(tup));
+        Mem f_mem = builder->AllocTemp(SizeClass::PTR);
+        Mem val = builder->AllocTemp(SizeClassFrom(field->GetType().GetTypeId()));
 
-        builder.MovToAddr(field, val);
+        builder->FieldAddr(f_mem, this_ptr, field->GetFieldId(), PosRange(-1, -1, -1));
+
+        MethodIRGenerator gen(val, false, builder, &empty_locals, &locals_map, tid);
+        gen.Visit(field->ValPtr());
+
+        builder->MovToAddr(f_mem, val);
       }
 
-      type.streams.push_back(builder.Build(false, tid.base, kInitMethodId));
+      type.streams.push_back(i_builder.Build(false, tid.base, kInstanceInitMethodId));
+      type.streams.push_back(s_builder.Build(false, tid.base, kStaticInitMethodId));
     }
 
     current_unit_.types.push_back(type);
@@ -595,7 +624,7 @@ class ProgramIRGenerator final : public ast::Visitor {
     map<ast::LocalVarId, Mem> locals_map;
     bool is_entry_point = false;
     // TODO: don't hardcode to test and 16.
-    if (decl->Name() == "test" || out->tid == 16) {
+    if (decl->Name() == "test" || out->tid == 16 || out->tid == 17) {
       Mem ret = builder.AllocDummy();
 
       // Entry point is a static method called "test" with no params.
