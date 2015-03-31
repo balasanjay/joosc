@@ -33,6 +33,7 @@ using ir::Stream;
 using ir::Type;
 using ir::kInvalidMemId;
 using types::ConstStringMap;
+using types::StringId;
 
 #define EXPECT_NARGS(n) CHECK((end - begin) == n)
 
@@ -234,6 +235,19 @@ struct FuncWriter final {
 
     w.Col1("; t%v = %v.", memid, value);
     w.Col1("mov %v %v, %v", mov_size, StackOffset(entry.offset), value);
+  }
+
+  void ConstStr(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(2);
+
+    MemId memid = begin[0];
+    StringId strid = begin[1];
+
+    const StackEntry& entry = stack_map.at(memid);
+    CHECK(entry.size == SizeClass::PTR);
+
+    w.Col1("; t%v = static string %v", memid, strid);
+    w.Col1("mov dword %v, string%v", StackOffset(entry.offset), strid);
   }
 
   void MovImpl(ArgIter begin, ArgIter end, bool addr) {
@@ -847,6 +861,9 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
           TypeId::Base tid = method_stream.args[op.begin + 2];
           FieldId fid = method_stream.args[op.begin + 3];
           externs.insert(Sprintf(kStaticNameFmt, tid, fid));
+        } else if (op.type == OpType::CONST_STR) {
+          StringId strid = method_stream.args[op.begin + 1];
+          externs.insert(Sprintf("string%v", strid));
         }
       }
     }
@@ -914,6 +931,9 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         break;
       case OpType::CONST:
         writer.Const(begin, end);
+        break;
+      case OpType::CONST_STR:
+        writer.ConstStr(begin, end);
         break;
       case OpType::MOV:
         writer.Mov(begin, end);
@@ -1187,7 +1207,7 @@ void Writer::WriteConstStrings(const ConstStringMap& string_map, ostream* out) c
     w.Col0("");
 
     // Next, lay out the String object itself.
-    w.Col0("string_%v:", str_pair.second);
+    w.Col0("string%v:", str_pair.second);
     w.Col1("dd vtable_t%v", rt_ids_.string_tid);
     w.Col1("dd string_array%v", str_pair.second);
     w.Col0("\n");

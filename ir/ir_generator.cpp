@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <tuple>
 
+#include "ast/print_visitor.h"
 #include "ast/ast.h"
 #include "ast/extent.h"
 #include "ast/visitor.h"
@@ -32,6 +33,7 @@ using ast::kStaticInitMethodId;
 using ast::kTypeInitMethodId;
 using ast::kVarImplicitThis;
 using base::PosRange;
+using types::ConstStringMap;
 using types::TypeChecker;
 using types::TypeIdList;
 using types::TypeInfo;
@@ -44,14 +46,14 @@ namespace {
 
 class MethodIRGenerator final : public ast::Visitor {
  public:
-  MethodIRGenerator(Mem res, bool lvalue, StreamBuilder* builder, vector<ast::LocalVarId>* locals, map<ast::LocalVarId, Mem>* locals_map, TypeId tid, const RuntimeLinkIds& rt_ids): res_(res), lvalue_(lvalue), builder_(*builder), locals_(*locals), locals_map_(*locals_map), tid_(tid), rt_ids_(rt_ids) {}
+  MethodIRGenerator(Mem res, bool lvalue, StreamBuilder* builder, vector<ast::LocalVarId>* locals, map<ast::LocalVarId, Mem>* locals_map, TypeId tid, const ConstStringMap& string_map, const RuntimeLinkIds& rt_ids): res_(res), lvalue_(lvalue), builder_(*builder), locals_(*locals), locals_map_(*locals_map), tid_(tid), string_map_(string_map), rt_ids_(rt_ids) {}
 
   MethodIRGenerator WithResultIn(Mem res, bool lvalue=false) {
-    return MethodIRGenerator(res, lvalue, &builder_, &locals_, &locals_map_, tid_, rt_ids_);
+    return MethodIRGenerator(res, lvalue, &builder_, &locals_, &locals_map_, tid_, string_map_, rt_ids_);
   }
 
   MethodIRGenerator WithLocals(vector<ast::LocalVarId>& locals) {
-    return MethodIRGenerator(res_, lvalue_, &builder_, &locals, &locals_map_, tid_, rt_ids_);
+    return MethodIRGenerator(res_, lvalue_, &builder_, &locals, &locals_map_, tid_, string_map_, rt_ids_);
   }
 
   VISIT_DECL(MethodDecl, decl,) {
@@ -125,9 +127,9 @@ class MethodIRGenerator final : public ast::Visitor {
     Mem tmp = builder_.AllocTemp(fromsize);
     WithResultIn(tmp).Visit(expr.GetExprPtr());
 
-    // TODO: handle reference types.
+    // TODO: we need to crash if not instanceof.
     if (TypeChecker::IsReference(from) || TypeChecker::IsReference(to)) {
-      return VisitResult::SKIP;
+      return VisitResult::RECURSE;
     }
 
     if (TypeChecker::IsPrimitiveWidening(to, from)) {
@@ -258,6 +260,11 @@ class MethodIRGenerator final : public ast::Visitor {
 
   VISIT_DECL(NullLitExpr,,) {
     builder_.ConstNull(res_);
+    return VisitResult::SKIP;
+  }
+
+  VISIT_DECL(StringLitExpr, expr,) {
+    builder_.ConstString(res_, string_map_.at(expr.Str()));
     return VisitResult::SKIP;
   }
 
@@ -550,12 +557,13 @@ class MethodIRGenerator final : public ast::Visitor {
   vector<ast::LocalVarId>& locals_;
   map<ast::LocalVarId, Mem>& locals_map_;
   TypeId tid_;
+  const ConstStringMap& string_map_;
   const RuntimeLinkIds& rt_ids_;
 };
 
 class ProgramIRGenerator final : public ast::Visitor {
  public:
-  ProgramIRGenerator(const TypeInfoMap& tinfo_map, const RuntimeLinkIds& rt_ids) : tinfo_map_(tinfo_map), rt_ids_(rt_ids) {}
+  ProgramIRGenerator(const TypeInfoMap& tinfo_map, const ConstStringMap& string_map, const RuntimeLinkIds& rt_ids) : tinfo_map_(tinfo_map), string_map_(string_map), rt_ids_(rt_ids) {}
   VISIT_DECL(CompUnit, unit, ) {
     stringstream ss;
     ss << 'f' << unit.FileId() << ".s";
@@ -732,7 +740,7 @@ class ProgramIRGenerator final : public ast::Visitor {
 
         builder->FieldAddr(f_mem, this_ptr, tid.base, field->GetFieldId(), PosRange(-1, -1, -1));
 
-        MethodIRGenerator gen(val, false, builder, &empty_locals, &locals_map, tid, rt_ids_);
+        MethodIRGenerator gen(val, false, builder, &empty_locals, &locals_map, tid, string_map_, rt_ids_);
         gen.Visit(field->ValPtr());
 
         builder->MovToAddr(f_mem, val);
@@ -763,7 +771,7 @@ class ProgramIRGenerator final : public ast::Visitor {
          && decl->Mods().HasModifier(lexer::Modifier::STATIC)
          && decl->Params().Params().Size() == 0);
 
-      MethodIRGenerator gen(ret, false, &builder, &empty_locals, &locals_map, {out->tid, 0}, rt_ids_);
+      MethodIRGenerator gen(ret, false, &builder, &empty_locals, &locals_map, {out->tid, 0}, string_map_, rt_ids_);
       gen.Visit(decl);
     } else {
       // TODO: Dirty hack to get stdlib generating empty methods.
@@ -780,6 +788,7 @@ class ProgramIRGenerator final : public ast::Visitor {
  private:
   CompUnit current_unit_;
   const TypeInfoMap& tinfo_map_;
+  const ConstStringMap& string_map_;
   const RuntimeLinkIds& rt_ids_;
 };
 
@@ -834,9 +843,9 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
 
 } // namespace
 
-Program GenerateIR(sptr<const ast::Program> program, const TypeSet& typeset, const TypeInfoMap& tinfo_map) {
+Program GenerateIR(sptr<const ast::Program> program, const TypeSet& typeset, const TypeInfoMap& tinfo_map, const ConstStringMap& string_map) {
   RuntimeLinkIds rt_ids = LookupRuntimeIds(typeset, tinfo_map);
-  ProgramIRGenerator gen(tinfo_map, rt_ids);
+  ProgramIRGenerator gen(tinfo_map, string_map, rt_ids);
   gen.Visit(program);
   gen.prog.rt_ids = rt_ids;
   return gen.prog;

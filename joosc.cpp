@@ -92,7 +92,7 @@ sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, Typ
 }
 
 bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, const TypeSet& typeset, const TypeInfoMap& tinfo_map, const ConstStringMap& string_map, std::ostream* err) {
-  ir::Program ir_prog = ir::GenerateIR(prog, typeset, tinfo_map);
+  ir::Program ir_prog = ir::GenerateIR(prog, typeset, tinfo_map, string_map);
   if (stage == CompilerStage::GEN_IR) {
     return true;
   }

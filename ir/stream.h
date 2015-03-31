@@ -37,6 +37,9 @@ enum class OpType {
   // (Mem, SizeClass, Value).
   CONST,
 
+  // (Mem, StringId).
+  CONST_STR,
+
   // (Mem, Mem).
   MOV,
 

@@ -5,6 +5,7 @@
 #include "base/file.h"
 #include "ir/mem.h"
 #include "ir/stream.h"
+#include "types/types.h"
 
 namespace ir {
 
@@ -44,6 +45,9 @@ class StreamBuilder {
 
   // Writes null to the given Mem.
   void ConstNull(Mem);
+
+  // Writes to *dst a pointer to the constant string with id id.
+  void ConstString(Mem dst, types::StringId id);
 
   // Emit *dst = *src.
   void Mov(Mem dst, Mem src);
