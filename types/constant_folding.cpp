@@ -29,7 +29,6 @@ public:
   // literals, or just a literal, into its string
   // representation.
   jstring Stringify(sptr<const Expr> expr) {
-    // TODO: Null literals.
     sptr<const Expr> inside_const = expr;
     auto const_expr = dynamic_cast<const ast::ConstExpr*>(expr.get());
     if (const_expr != nullptr) {
@@ -106,6 +105,8 @@ public:
     AddString(expr.Str());
     return make_shared<ConstExpr>(exprptr, exprptr);
   }
+
+  // NOTE: NullLitExprs are not supposed to be constant folded.
 
   REWRITE_DECL(BinExpr, Expr, expr, exprptr) {
     sptr<const Expr> lhs = Rewrite(expr.LhsPtr());
