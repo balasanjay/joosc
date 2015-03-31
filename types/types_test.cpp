@@ -39,8 +39,9 @@ namespace types {
     }
     CHECK(fs_builder.Build(fs, out));
 
+    TypeSet typeset = TypeSet::Empty();
     TypeInfoMap tinfo_map = TypeInfoMap::Empty();
-    return CompilerFrontend(CompilerStage::TYPE_CHECK, *fs, &tinfo_map, out);
+    return CompilerFrontend(CompilerStage::TYPE_CHECK, *fs, &typeset, &tinfo_map, out);
   }
 
 } // namespace types
