@@ -291,6 +291,29 @@ void BuildStaticFieldMap(const vector<TypeInfo>& types,
     CHECK(iter.second);
   }
 }
+void BuildNatives(const vector<TypeInfo>& types,
+    OffsetTable::NativeMap* out) {
+  for (const auto& type : types) {
+    for (const auto& m_pair : type.methods.GetMethodMap()) {
+      const MethodInfo& minfo = m_pair.second;
+
+      // Ignore non-native methods.
+      if (!minfo.mods.HasModifier(lexer::NATIVE)) {
+        continue;
+      }
+
+      // Ignore inherited native methods.
+      if (minfo.class_type != type.type) {
+        continue;
+      }
+
+      stringstream ss;
+      ss << "NATIVE" << type.package << "." << type.name << "." << minfo.signature.name;
+      auto iter = out->insert({minfo.mid, ss.str()});
+      CHECK(iter.second);
+    }
+  }
+}
 
 } // namespace
 
@@ -324,7 +347,10 @@ OffsetTable OffsetTable::Build(const TypeInfoMap& tinfo_map, u8 ptr_size) {
   ItableMap itables;
   BuildIfaceMethodOffsets(types, ptr_size, &method_offsets, &itables);
 
-  return OffsetTable(type_sizes, field_offsets, method_offsets, vtables, itables, statics, ptr_size);
+  NativeMap natives;
+  BuildNatives(types, &natives);
+
+  return OffsetTable(type_sizes, field_offsets, method_offsets, vtables, itables, statics, natives, ptr_size);
 }
 
 } // namespace common

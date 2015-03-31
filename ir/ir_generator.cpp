@@ -118,7 +118,6 @@ class MethodIRGenerator final : public ast::Visitor {
     TypeId to = expr.GetTypeId();
 
     SizeClass fromsize = SizeClassFrom(from);
-    SizeClass tosize = SizeClassFrom(to);
 
     if (from == to) {
       return VisitResult::RECURSE;
@@ -156,7 +155,7 @@ class MethodIRGenerator final : public ast::Visitor {
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(BinExpr, expr, exprptr) {
+  VISIT_DECL(BinExpr, expr,) {
     SizeClass lhs_size = SizeClassFrom(expr.Lhs().GetTypeId());
     SizeClass rhs_size = SizeClassFrom(expr.Rhs().GetTypeId());
 
@@ -296,14 +295,17 @@ class MethodIRGenerator final : public ast::Visitor {
 
   VISIT_DECL(FieldDerefExpr, expr,) {
     bool is_static = false;
+    TypeId::Base base_tid = expr.Base().GetTypeId().base;
     {
       auto static_base = dynamic_cast<const StaticRefExpr*>(expr.BasePtr().get());
       if (static_base != nullptr) {
         is_static = true;
+        base_tid = static_base->GetRefType().GetTypeId().base;
       }
     }
 
     Mem tmp = builder_.AllocDummy();
+
     if (!is_static) {
       tmp = builder_.AllocTemp(SizeClass::PTR);
       // We want an rvalue of the pointer, so set lvalue to false.
@@ -311,9 +313,9 @@ class MethodIRGenerator final : public ast::Visitor {
     }
 
     if (lvalue_) {
-      builder_.FieldAddr(res_, tmp, tid_.base, expr.GetFieldId(), expr.GetToken().pos);
+      builder_.FieldAddr(res_, tmp, base_tid, expr.GetFieldId(), expr.GetToken().pos);
     } else {
-      builder_.FieldDeref(res_, tmp, tid_.base, expr.GetFieldId(), expr.GetToken().pos);
+      builder_.FieldDeref(res_, tmp, base_tid, expr.GetFieldId(), expr.GetToken().pos);
     }
 
     return VisitResult::SKIP;
@@ -694,12 +696,6 @@ class ProgramIRGenerator final : public ast::Visitor {
       auto field = dynamic_pointer_cast<const FieldDecl, const MemberDecl>(member);
       CHECK(field != nullptr);
 
-      // TODO: stdlib has casts in field initializers. Remove this when we
-      // support casts.
-      if (tid.base != 16 && tid.base != 17 && tid.base != 18) {
-        continue;
-      }
-
       if (field->ValPtr() == nullptr) {
         continue;
       }
@@ -780,8 +776,7 @@ class ProgramIRGenerator final : public ast::Visitor {
     vector<ast::LocalVarId> empty_locals;
     map<ast::LocalVarId, Mem> locals_map;
     bool is_entry_point = false;
-    // TODO: don't hardcode to test and 16.
-    if (decl->Name() == "test" || out->tid == 16 || out->tid == 17 || out->tid == 18) {
+    {
       Mem ret = builder.AllocDummy();
 
       // Entry point is a static method called "test" with no params.
@@ -792,13 +787,10 @@ class ProgramIRGenerator final : public ast::Visitor {
 
       MethodIRGenerator gen(ret, false, &builder, &empty_locals, &locals_map, {out->tid, 0}, string_map_, rt_ids_);
       gen.Visit(decl);
-    } else {
-      // TODO: Dirty hack to get stdlib generating empty methods.
-      vector<Mem> nothing;
-      builder.AllocParams({}, &nothing);
     }
-    // Return mem must be deallocated before Build is called.
 
+
+    // Return mem must be deallocated before Build is called.
     out->streams.push_back(builder.Build(is_entry_point, out->tid, decl->GetMethodId()));
   }
 

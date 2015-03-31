@@ -19,6 +19,7 @@ public:
   using ItableMap = map<ast::TypeId, Itable>;
   using StaticFields = vector<pair<ast::FieldId, ir::SizeClass>>;
   using StaticFieldMap = map<ast::TypeId, StaticFields>;
+  using NativeMap = map<ast::MethodId, string>;
 
   static OffsetTable Build(const types::TypeInfoMap& tinfo_map, u8 ptr_size);
 
@@ -53,8 +54,16 @@ public:
     return statics_.at(tid);
   }
 
+  pair<string, bool> NativeCall(ast::MethodId mid) const {
+    auto iter = natives_.find(mid);
+    if (iter == natives_.end()) {
+      return make_pair("", false);
+    }
+    return make_pair(iter->second, true);
+  }
+
 private:
-  OffsetTable(const TypeMap& type_sizes, const FieldMap& field_offsets, const MethodMap& method_offsets, const VtableMap& vtables, const ItableMap& itables, const StaticFieldMap& statics, u8 ptr_size) : type_sizes_(type_sizes), field_offsets_(field_offsets), method_offsets_(method_offsets), vtables_(vtables), itables_(itables), statics_(statics), ptr_size_(ptr_size) {}
+  OffsetTable(const TypeMap& type_sizes, const FieldMap& field_offsets, const MethodMap& method_offsets, const VtableMap& vtables, const ItableMap& itables, const StaticFieldMap& statics, const NativeMap& natives, u8 ptr_size) : type_sizes_(type_sizes), field_offsets_(field_offsets), method_offsets_(method_offsets), vtables_(vtables), itables_(itables), statics_(statics), natives_(natives), ptr_size_(ptr_size) {}
 
   u64 ObjectOverhead() const {
     u64 vtable_ptr_size = (u64)ptr_size_;
@@ -67,6 +76,7 @@ private:
   VtableMap vtables_;
   ItableMap itables_;
   StaticFieldMap statics_;
+  NativeMap natives_;
   u8 ptr_size_;
 };
 
