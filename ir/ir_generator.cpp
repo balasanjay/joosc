@@ -128,7 +128,6 @@ class MethodIRGenerator final : public ast::Visitor {
       return VisitResult::SKIP;
     }
 
-    // TODO: potentially have to call Truncate instead.
     if (TypeChecker::IsPrimitiveWidening(to, from)) {
       builder_.Extend(res_, tmp);
     } else {
