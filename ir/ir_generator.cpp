@@ -118,7 +118,6 @@ class MethodIRGenerator final : public ast::Visitor {
     TypeId to = expr.GetTypeId();
 
     SizeClass fromsize = SizeClassFrom(from);
-    SizeClass tosize = SizeClassFrom(to);
 
     if (from == to) {
       return VisitResult::RECURSE;
@@ -157,12 +156,13 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(BinExpr, expr,) {
-    SizeClass size = SizeClassFrom(expr.Lhs().GetTypeId());
+    SizeClass lhs_size = SizeClassFrom(expr.Lhs().GetTypeId());
+    SizeClass rhs_size = SizeClassFrom(expr.Rhs().GetTypeId());
 
     // Special code for short-circuiting boolean and or.
     if (expr.Op().type == lexer::AND) {
-      Mem lhs = builder_.AllocLocal(size);
-      Mem rhs = builder_.AllocTemp(size);
+      Mem lhs = builder_.AllocLocal(lhs_size);
+      Mem rhs = builder_.AllocTemp(rhs_size);
       WithResultIn(lhs).Visit(expr.LhsPtr());
 
       LabelId short_circuit = builder_.AllocLabel();
@@ -184,8 +184,8 @@ class MethodIRGenerator final : public ast::Visitor {
       return VisitResult::SKIP;
 
     } else if (expr.Op().type == lexer::OR) {
-      Mem lhs = builder_.AllocLocal(size);
-      Mem rhs = builder_.AllocTemp(size);
+      Mem lhs = builder_.AllocLocal(lhs_size);
+      Mem rhs = builder_.AllocTemp(rhs_size);
       WithResultIn(lhs).Visit(expr.LhsPtr());
 
       // Short circuit 'or' with a true result if lhs is true.
@@ -208,9 +208,13 @@ class MethodIRGenerator final : public ast::Visitor {
       is_assg = true;
     }
 
-    Mem lhs = builder_.AllocTemp(is_assg ? SizeClass::PTR : size);
+    Mem lhs_old = builder_.AllocTemp(is_assg ? SizeClass::PTR : lhs_size);
+    Mem rhs_old = builder_.AllocTemp(rhs_size);
+
+    Mem lhs = lhs_old;
+    Mem rhs = rhs_old;
+
     WithResultIn(lhs, is_assg).Visit(expr.LhsPtr());
-    Mem rhs = builder_.AllocTemp(size);
     WithResultIn(rhs).Visit(expr.RhsPtr());
 
     if (is_assg) {
@@ -223,6 +227,16 @@ class MethodIRGenerator final : public ast::Visitor {
       }
       return VisitResult::SKIP;
     }
+
+    // Only perform binary numeric promotion if we are performing operations on
+    // numeric types.
+    if (lhs.Size() != SizeClass::PTR) {
+      lhs = builder_.PromoteToInt(lhs);
+    }
+    if (rhs.Size() != SizeClass::PTR) {
+      rhs = builder_.PromoteToInt(rhs);
+    }
+
 
 #define C(fn) builder_.fn(res_, lhs, rhs); break;
     switch (expr.Op().type) {
@@ -248,8 +262,12 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(IntLitExpr, expr,) {
-    // TODO: Ensure no overflow.
-    builder_.ConstInt32(res_, expr.Value());
+    builder_.ConstNumeric(res_, expr.Value());
+    return VisitResult::SKIP;
+  }
+
+  VISIT_DECL(CharLitExpr, expr,) {
+    builder_.ConstNumeric(res_, expr.Char());
     return VisitResult::SKIP;
   }
 
@@ -277,14 +295,17 @@ class MethodIRGenerator final : public ast::Visitor {
 
   VISIT_DECL(FieldDerefExpr, expr,) {
     bool is_static = false;
+    TypeId::Base base_tid = expr.Base().GetTypeId().base;
     {
       auto static_base = dynamic_cast<const StaticRefExpr*>(expr.BasePtr().get());
       if (static_base != nullptr) {
         is_static = true;
+        base_tid = static_base->GetRefType().GetTypeId().base;
       }
     }
 
     Mem tmp = builder_.AllocDummy();
+
     if (!is_static) {
       tmp = builder_.AllocTemp(SizeClass::PTR);
       // We want an rvalue of the pointer, so set lvalue to false.
@@ -292,9 +313,9 @@ class MethodIRGenerator final : public ast::Visitor {
     }
 
     if (lvalue_) {
-      builder_.FieldAddr(res_, tmp, tid_.base, expr.GetFieldId(), expr.GetToken().pos);
+      builder_.FieldAddr(res_, tmp, base_tid, expr.GetFieldId(), expr.GetToken().pos);
     } else {
-      builder_.FieldDeref(res_, tmp, tid_.base, expr.GetFieldId(), expr.GetToken().pos);
+      builder_.FieldDeref(res_, tmp, base_tid, expr.GetFieldId(), expr.GetToken().pos);
     }
 
     return VisitResult::SKIP;
@@ -597,7 +618,7 @@ class ProgramIRGenerator final : public ast::Visitor {
 
       {
         Mem size = t_builder.AllocTemp(SizeClass::INT);
-        t_builder.ConstInt32(size, num_parents);
+        t_builder.ConstNumeric(size, num_parents);
         {
           Mem array = t_builder.AllocArray(SizeClass::PTR, size);
           auto write_parent = [&](i32 i, ast::TypeId::Base p_tid) {
@@ -610,7 +631,7 @@ class ProgramIRGenerator final : public ast::Visitor {
               t_builder.FieldDeref(parent, dummy, p_tid, ast::kStaticTypeInfoId, base::PosRange(-1, -1, -1));
             }
             Mem idx = t_builder.AllocTemp(SizeClass::INT);
-            t_builder.ConstInt32(idx, i);
+            t_builder.ConstNumeric(idx, i);
 
             Mem array_slot = t_builder.AllocLocal(SizeClass::PTR);
             t_builder.ArrayAddr(array_slot, array, idx, SizeClass::PTR, base::PosRange(-1, -1, -1));
@@ -635,7 +656,7 @@ class ProgramIRGenerator final : public ast::Visitor {
             arg_mems.push_back(rt_type_info);
             {
               Mem tid_mem = t_builder.AllocTemp(SizeClass::INT);
-              t_builder.ConstInt32(tid_mem, tid.base);
+              t_builder.ConstNumeric(tid_mem, tid.base);
               arg_mems.push_back(tid_mem);
             }
             arg_mems.push_back(array);
@@ -674,12 +695,6 @@ class ProgramIRGenerator final : public ast::Visitor {
 
       auto field = dynamic_pointer_cast<const FieldDecl, const MemberDecl>(member);
       CHECK(field != nullptr);
-
-      // TODO: stdlib has casts in field initializers. Remove this when we
-      // support casts.
-      if (tid.base != 16 && tid.base != 17 && tid.base != 18) {
-        continue;
-      }
 
       if (field->ValPtr() == nullptr) {
         continue;
@@ -761,8 +776,7 @@ class ProgramIRGenerator final : public ast::Visitor {
     vector<ast::LocalVarId> empty_locals;
     map<ast::LocalVarId, Mem> locals_map;
     bool is_entry_point = false;
-    // TODO: don't hardcode to test and 16.
-    if (decl->Name() == "test" || out->tid == 16 || out->tid == 17 || out->tid == 18) {
+    {
       Mem ret = builder.AllocDummy();
 
       // Entry point is a static method called "test" with no params.
@@ -773,13 +787,10 @@ class ProgramIRGenerator final : public ast::Visitor {
 
       MethodIRGenerator gen(ret, false, &builder, &empty_locals, &locals_map, {out->tid, 0}, string_map_, rt_ids_);
       gen.Visit(decl);
-    } else {
-      // TODO: Dirty hack to get stdlib generating empty methods.
-      vector<Mem> nothing;
-      builder.AllocParams({}, &nothing);
     }
-    // Return mem must be deallocated before Build is called.
 
+
+    // Return mem must be deallocated before Build is called.
     out->streams.push_back(builder.Build(is_entry_point, out->tid, decl->GetMethodId()));
   }
 

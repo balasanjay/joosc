@@ -668,8 +668,31 @@ struct FuncWriter final {
 
     CHECK(((u64)(end-begin) - 4) == nargs);
 
-
     i64 stack_used = cur_offset;
+
+    {
+      auto label_ok = offsets.NativeCall(mid);
+      if (label_ok.second) {
+        CHECK(nargs == 1);
+
+        MemId src = begin[4];
+
+        const StackEntry& src_e = stack_map.at(src);
+
+        w.Col1("; Performing native call.");
+        w.Col1("mov eax, %v", StackOffset(src_e.offset));
+        w.Col1("sub esp, %v", stack_used);
+        w.Col1("call %v", label_ok.first);
+        w.Col1("add esp, %v", stack_used);
+
+        if (dst != kInvalidMemId) {
+          const StackEntry& dst_e = stack_map.at(dst);
+          w.Col1("mov %v, eax", StackOffset(dst_e.offset));
+        }
+
+        return;
+      }
+    }
 
     w.Col1("; Pushing %v arguments onto stack for call.", nargs);
 
@@ -694,7 +717,7 @@ struct FuncWriter final {
     if (dst != kInvalidMemId) {
       const StackEntry& dst_e = stack_map.at(dst);
       string dst_reg = Sized(dst_e.size, "al", "ax", "eax");
-      w.Col1("mov %v, %v", StackOffset(stack_map.at(dst).offset), dst_reg);
+      w.Col1("mov %v, %v", StackOffset(dst_e.offset), dst_reg);
     }
   }
 
@@ -852,7 +875,13 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
         if (op.type == OpType::STATIC_CALL) {
           TypeId::Base tid = method_stream.args[op.begin + 1];
           MethodId mid = method_stream.args[op.begin + 2];
-          externs.insert(Sprintf(kMethodNameFmt, tid, mid));
+
+          auto label_ok = offsets_.NativeCall(mid);
+          if (label_ok.second) {
+            externs.insert(label_ok.first);
+          } else {
+            externs.insert(Sprintf(kMethodNameFmt, tid, mid));
+          }
         } else if (op.type == OpType::ALLOC_HEAP) {
           TypeId::Base tid = method_stream.args[op.begin + 1];
           externs.insert(Sprintf(kVtableNameFmt, tid));

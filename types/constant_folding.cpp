@@ -6,8 +6,9 @@
 #include "types/type_info_map.h"
 #include "types/typechecker.h"
 
-using ast::Expr;
+using ast::BinExpr;
 using ast::ConstExpr;
+using ast::Expr;
 
 namespace types {
 
@@ -114,7 +115,10 @@ public:
     auto lhs_const = dynamic_cast<const ConstExpr*>(lhs.get());
     auto rhs_const = dynamic_cast<const ConstExpr*>(rhs.get());
     if (lhs_const == nullptr || rhs_const == nullptr) {
-      return exprptr;
+      if (lhs == expr.LhsPtr() && rhs == expr.RhsPtr()) {
+        return exprptr;
+      }
+      return make_shared<BinExpr>(lhs, expr.Op(), rhs, expr.GetTypeId());
     }
 
     ast::TypeId lhs_type = lhs_const->Constant().GetTypeId();
