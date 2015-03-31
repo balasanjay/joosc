@@ -5,6 +5,7 @@
 #include "base/errorlist.h"
 #include "base/fileset.h"
 #include "ir/ir_generator.h"
+#include "types/types.h"
 
 namespace types {
 
@@ -33,8 +34,8 @@ enum class CompilerStage {
 bool CompilerMain(CompilerStage stage, const vector<string>& files,
     std::ostream* out, std::ostream* err);
 
-sptr<const ast::Program> CompilerFrontend(CompilerStage stage, const base::FileSet* fs, types::TypeSet* typeset_out, types::TypeInfoMap* tinfo_out, base::ErrorList* err_out);
+sptr<const ast::Program> CompilerFrontend(CompilerStage stage, const base::FileSet* fs, types::TypeSet* typeset_out, types::TypeInfoMap* tinfo_out, types::ConstStringMap* string_map_out, base::ErrorList* err_out);
 
-bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, const types::TypeInfoMap& tinfo_map, std::ostream* err);
+bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, const types::TypeInfoMap& tinfo_map, const types::ConstStringMap& string_map, std::ostream* err);
 
 #endif

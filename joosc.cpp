@@ -34,6 +34,7 @@ using lexer::LexJoosFiles;
 using lexer::StripSkippableTokens;
 using lexer::Token;
 using parser::Parse;
+using types::ConstStringMap;
 using types::TypeInfoMap;
 using types::TypeSet;
 using types::TypecheckProgram;
@@ -50,7 +51,7 @@ bool PrintErrors(const ErrorList& errors, ostream* err, const FileSet* fs) {
 
 }
 
-sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, TypeSet* typeset_out, TypeInfoMap* tinfo_out, ErrorList* err_out) {
+sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, TypeSet* typeset_out, TypeInfoMap* tinfo_out, ConstStringMap* string_map_out, ErrorList* err_out) {
   // Lex files.
   vector<vector<Token>> tokens;
   LexJoosFiles(fs, &tokens, err_out);
@@ -81,7 +82,7 @@ sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, Typ
   }
 
   // Type-checking.
-  program = TypecheckProgram(program, typeset_out, tinfo_out, err_out);
+  program = TypecheckProgram(program, typeset_out, tinfo_out, string_map_out, err_out);
   if (err_out->IsFatal() || stage == CompilerStage::TYPE_CHECK) {
     return program;
   }
@@ -90,7 +91,7 @@ sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, Typ
   return program;
 }
 
-bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, const TypeSet& typeset, const TypeInfoMap& tinfo_map, std::ostream* err) {
+bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, const TypeSet& typeset, const TypeInfoMap& tinfo_map, const ConstStringMap& string_map, std::ostream* err) {
   ir::Program ir_prog = ir::GenerateIR(prog, typeset, tinfo_map);
   if (stage == CompilerStage::GEN_IR) {
     return true;
@@ -101,7 +102,7 @@ bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const s
   OffsetTable offset_table = OffsetTable::Build(tinfo_map, 4);
 
   bool success = true;
-  backend::i386::Writer writer(offset_table);
+  backend::i386::Writer writer(offset_table, ir_prog.rt_ids);
   for (const ir::CompUnit& comp_unit : ir_prog.units) {
     string fname = dir + "/" + comp_unit.filename;
 
@@ -119,20 +120,38 @@ bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const s
   }
 
   do {
-    string fname = dir + "/main.s";
-    ofstream out(fname);
-    if (!out) {
-      // TODO: make error pretty.
-      *err << "Could not open output file: " << fname << "\n";
-      success = false;
-      break;
+    {
+      string fname = dir + "/strings.s";
+      ofstream out(fname);
+      if (!out) {
+        // TODO: make error pretty.
+        *err << "Could not open output file: " << fname << "\n";
+        success = false;
+        break;
+      }
+
+      writer.WriteConstStrings(string_map, &out);
+      out << std::flush;
     }
 
-    writer.WriteMain(&out);
-    writer.WriteStaticInit(ir_prog, tinfo_map, &out);
-    out << std::flush;
+    {
+      string fname = dir + "/main.s";
+      ofstream out(fname);
+      if (!out) {
+        // TODO: make error pretty.
+        *err << "Could not open output file: " << fname << "\n";
+        success = false;
+        break;
+      }
+
+      writer.WriteMain(&out);
+      writer.WriteStaticInit(ir_prog, tinfo_map, &out);
+      out << std::flush;
+    }
 
   } while (false);
+
+
 
   return success;
 }
@@ -164,7 +183,8 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream*, os
   ErrorList errors;
   TypeInfoMap tinfo_map = TypeInfoMap::Empty();
   TypeSet typeset = TypeSet::Empty();
-  sptr<const Program> program = CompilerFrontend(stage, fs, &typeset, &tinfo_map, &errors);
+  ConstStringMap string_map;
+  sptr<const Program> program = CompilerFrontend(stage, fs, &typeset, &tinfo_map, &string_map, &errors);
   if (PrintErrors(errors, err, fs)) {
     return false;
   }
@@ -172,5 +192,5 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream*, os
     return true;
   }
 
-  return CompilerBackend(stage, program, "output", typeset, tinfo_map, err);
+  return CompilerBackend(stage, program, "output", typeset, tinfo_map, string_map, err);
 }

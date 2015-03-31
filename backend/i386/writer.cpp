@@ -27,10 +27,12 @@ using ir::MemId;
 using ir::Op;
 using ir::OpType;
 using ir::Program;
+using ir::RuntimeLinkIds;
 using ir::SizeClass;
 using ir::Stream;
 using ir::Type;
 using ir::kInvalidMemId;
+using types::ConstStringMap;
 
 #define EXPECT_NARGS(n) CHECK((end - begin) == n)
 
@@ -74,7 +76,7 @@ string StackOffset(i64 offset) {
 }
 
 struct FuncWriter final {
-  FuncWriter(const OffsetTable& offsets, ostream* out) : offsets(offsets), w(out) {}
+  FuncWriter(const OffsetTable& offsets, const RuntimeLinkIds& rt_ids, ostream* out) : offsets(offsets), rt_ids(rt_ids), w(out) {}
 
   void WritePrologue(const Stream& stream) {
     w.Col0("; Starting method.");
@@ -155,11 +157,14 @@ struct FuncWriter final {
     w.Col1("mov eax, %v", StackOffset(len_e.offset));
     w.Col1("mov ebx, %v", elem_size);
     w.Col1("imul ebx");
-    w.Col1("add eax, 8"); // Add space for vptr and length.
+    w.Col1("add eax, 12"); // Add space for vptr, length, and elem-type ptr.
     w.Col1("sub esp, %v", stack_used);
     w.Col1("call _joos_malloc");
     w.Col1("add esp, %v", stack_used);
     w.Col1("mov %v, eax", StackOffset(dst_e.offset));
+
+    // Set the vptr to be object's vptr.
+    w.Col1("mov dword [eax], vtable_t%v", rt_ids.object_tid);
 
     // Set the length field.
     w.Col1("mov ebx, %v", StackOffset(len_e.offset));
@@ -351,7 +356,7 @@ struct FuncWriter final {
     w.Col1("mov eax, %v", StackOffset(idx_e.offset));
     w.Col1("mov ebx, %v", ByteSizeFrom(elemsize, 4));
     w.Col1("imul ebx");
-    w.Col1("add eax, 8"); // Move past the vptr and the length field.
+    w.Col1("add eax, 12"); // Move past the vptr, the length field, and the elem type ptr.
     w.Col1("mov ebx, %v", StackOffset(src_e.offset));
     w.Col1("%v %v, [ebx+eax]", instr, sized_reg);
     w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
@@ -803,6 +808,8 @@ struct FuncWriter final {
   // TODO: do more optimal stack management for non-int-sized things.
 
   const OffsetTable& offsets;
+  const RuntimeLinkIds& rt_ids;
+
   AsmWriter w;
 };
 
@@ -815,7 +822,7 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
   static string kItableNameFmt = "itable_t%v";
   static string kStaticNameFmt = "static_t%v_f%v";
 
-  set<string> externs{"_joos_malloc"};
+  set<string> externs{"_joos_malloc", Sprintf("vtable_t%v", rt_ids_.object_tid)};
   set<string> globals;
   for (const Type& type : comp_unit.types) {
     globals.insert(Sprintf(kVtableNameFmt, type.tid));
@@ -879,7 +886,7 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
 }
 
 void Writer::WriteFunc(const Stream& stream, ostream* out) const {
-  FuncWriter writer{offsets_, out};
+  FuncWriter writer{offsets_, rt_ids_, out};
 
   writer.WritePrologue(stream);
 
@@ -1143,6 +1150,48 @@ void Writer::WriteStaticInit(const Program& prog, const types::TypeInfoMap& tinf
   w.Col1("pop ebp");
   w.Col1("ret");
   w.Col0("\n");
+}
+
+void Writer::WriteConstStrings(const ConstStringMap& string_map, ostream* out) const {
+  AsmWriter w(out);
+
+  // Step 0: extern all required labels.
+  w.Col0("extern vtable_t%v", rt_ids_.object_tid);
+  w.Col0("extern vtable_t%v", rt_ids_.string_tid);
+
+  // Step 1: declare all strings.
+  for (const auto& str_pair : string_map) {
+    w.Col0("global string%v", str_pair.second);
+  }
+
+  // Step 2: declare local arrays backing strings.
+  w.Col0("section .rodata");
+  for (const auto& str_pair : string_map) {
+    // First, layout array for this string.
+    w.Col0("string_array%v:", str_pair.second);
+
+    const jstring& str = str_pair.first;
+
+    w.Col1("dd vtable_t%v", rt_ids_.object_tid);
+    w.Col1("dd %v", str.size());
+    w.Col1("dd 0"); // TODO: populate the elem type ptr for character.
+    for (auto jch : str) {
+      if (isprint(jch)) {
+        w.Col1<int, char>("dw %v \t; '%v'", jch, jch);
+      } else {
+        w.Col1("dw %v", jch);
+      }
+    }
+
+    // Newline.
+    w.Col0("");
+
+    // Next, lay out the String object itself.
+    w.Col0("string_%v:", str_pair.second);
+    w.Col1("dd vtable_t%v", rt_ids_.string_tid);
+    w.Col1("dd string_array%v", str_pair.second);
+    w.Col0("\n");
+  }
 }
 
 } // namespace i386

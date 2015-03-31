@@ -787,6 +787,12 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
   TypeId rt_tinfo_id = typeset.TryGet("__joos_internal__.TypeInfo");
   CHECK(rt_tinfo_id.IsValid());
 
+  TypeId object_tid = typeset.TryGet("java.lang.Object");
+  CHECK(object_tid.IsValid());
+
+  TypeId string_tid = typeset.TryGet("java.lang.String");
+  CHECK(object_tid.IsValid());
+
   TypeInfo rt_tinfo = tinfo_map.LookupTypeInfo(rt_tinfo_id);
   base::ErrorList throwaway;
   MethodId rt_tinfo_constructor = rt_tinfo.methods.ResolveCall(
@@ -821,6 +827,7 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
   CHECK(rt_tinfo_num_types != ast::kErrorFieldId);
 
   return RuntimeLinkIds{
+    object_tid.base, string_tid.base,
     rt_tinfo_id.base, rt_tinfo_constructor,
     rt_tinfo_instanceof, rt_tinfo_num_types};
 }
