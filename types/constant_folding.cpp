@@ -52,7 +52,7 @@ public:
       auto inner_const_int = dynamic_cast<const ast::IntLitExpr*>(inside_const.get());
       CHECK(inner_const_int != nullptr);
 
-      i64 value = inner_const_int->Value();
+      i32 value = inner_const_int->Value();
       stringstream ss;
       ss << value;
       string s = ss.str();
@@ -236,7 +236,7 @@ public:
       auto int_lit = dynamic_cast<const ast::IntLitExpr*>(rhs_const->ConstantPtr().get());
       CHECK(int_lit != nullptr);
 
-      i64 new_int_value = -int_lit->Value();
+      i32 new_int_value = -int_lit->Value();
       auto new_int_lit = make_shared<ast::IntLitExpr>(
           lexer::Token(lexer::INTEGER, ExtentOf(exprptr)), new_int_value, ast::TypeId::kInt);
       return make_shared<ConstExpr>(new_int_lit, exprptr);
@@ -281,8 +281,7 @@ public:
       auto inner_const_int = dynamic_cast<const ast::IntLitExpr*>(inner_const->ConstantPtr().get());
       CHECK(inner_const_int != nullptr);
 
-      i64 value = inner_const_int->Value();
-      u32 usigned = (u32)value;
+      u32 usigned = (u32)inner_const_int->Value();
       switch (cast_type.base) {
         case ast::TypeId::kIntBase:
           break;
@@ -296,7 +295,7 @@ public:
         default:
           UNREACHABLE();
       }
-      i64 new_value = (i64)usigned;
+      i32 new_value = (i32)usigned;
 
       auto new_int_lit = make_shared<ast::IntLitExpr>(
           lexer::Token(lexer::INTEGER, ExtentOf(exprptr)),
