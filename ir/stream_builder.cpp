@@ -164,17 +164,17 @@ void StreamBuilder::MovToAddr(Mem dst, Mem src) {
   // TODO: We're not sure exactly how to represent what's assigned.
 }
 
-void StreamBuilder::FieldDeref(Mem dst, Mem src, FieldId fid, PosRange) {
+void StreamBuilder::FieldDeref(Mem dst, Mem src, TypeId::Base tid, FieldId fid, PosRange) {
   AssertAssigned({src});
   // TODO: Pass the PosRange.
-  AppendOp(OpType::FIELD_DEREF, {dst.Id(), src.Id(), fid});
+  AppendOp(OpType::FIELD_DEREF, {dst.Id(), src.Id(), tid, fid});
   SetAssigned({dst});
 }
 
-void StreamBuilder::FieldAddr(Mem dst, Mem src, FieldId fid, PosRange) {
+void StreamBuilder::FieldAddr(Mem dst, Mem src, TypeId::Base tid, FieldId fid, PosRange) {
   AssertAssigned({src});
   // TODO: Pass the PosRange.
-  AppendOp(OpType::FIELD_ADDR, {dst.Id(), src.Id(), fid});
+  AppendOp(OpType::FIELD_ADDR, {dst.Id(), src.Id(), tid, fid});
   SetAssigned({dst});
 }
 
@@ -314,6 +314,15 @@ void StreamBuilder::DynamicCall(Mem dst, Mem this_ptr, ast::MethodId mid, const 
   if (dst.IsValid()) {
     SetAssigned({dst});
   }
+}
+
+void StreamBuilder::GetTypeInfo(Mem dst, Mem src) {
+  AssertAssigned({src});
+  size_t begin = args_.size();
+  args_.push_back(dst.Id());
+  args_.push_back(src.Id());
+  ops_.push_back({OpType::GET_TYPEINFO, begin, args_.size()});
+  SetAssigned({dst});
 }
 
 void StreamBuilder::Ret() {

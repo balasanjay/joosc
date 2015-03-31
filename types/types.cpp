@@ -84,7 +84,7 @@ TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, sptr<const Program> prog,
 
 }  // namespace
 
-sptr<const Program> TypecheckProgram(sptr<const Program> prog, TypeInfoMap* tinfo_out, ErrorList* errors) {
+sptr<const Program> TypecheckProgram(sptr<const Program> prog, TypeSet* typeset_out, TypeInfoMap* tinfo_out, ErrorList* errors) {
   // Phase 1: Build a typeset.
   TypeSet typeSet = BuildTypeSet(*prog, errors);
   if (!VerifyTypeSet(typeSet, errors)) {
@@ -120,6 +120,7 @@ sptr<const Program> TypecheckProgram(sptr<const Program> prog, TypeInfoMap* tinf
   }
 
   *tinfo_out = typeInfo;
+  *typeset_out = typeSet;
 
   return prog;
 }

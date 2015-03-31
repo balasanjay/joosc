@@ -15,6 +15,8 @@ using ast::MethodId;
 using ast::TypeId;
 using ast::TypeKind;
 using ast::kStaticInitMethodId;
+using ast::kStaticTypeInfoId;
+using ast::kTypeInitMethodId;
 using backend::common::AsmWriter;
 using backend::common::OffsetTable;
 using base::Fprintf;
@@ -282,11 +284,12 @@ struct FuncWriter final {
 
   void FieldImpl(ArgIter begin, ArgIter end, bool addr) {
     // TODO: Handle PosRange and NPEs.
-    EXPECT_NARGS(3);
+    EXPECT_NARGS(4);
 
     MemId dst = begin[0];
     MemId src = begin[1];
-    FieldId fid = begin[2];
+    TypeId::Base tid = begin[2];
+    FieldId fid = begin[3];
 
     const StackEntry& dst_e = stack_map.at(dst);
     if (addr) {
@@ -298,8 +301,8 @@ struct FuncWriter final {
     string instr = addr ? "lea" : "mov";
 
     if (src == kInvalidMemId) {
-      w.Col1("; t%v = %vstatic.f%v", dst_e.id, src_prefix, fid);
-      w.Col1("%v %v, [static_f%v]", instr, sized_reg, fid);
+      w.Col1("; t%v = %vstatic_t%v_f%v", dst_e.id, src_prefix, tid, fid);
+      w.Col1("%v %v, [static_t%v_f%v]", instr, sized_reg, tid, fid);
       w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
     } else {
       const StackEntry& src_e = stack_map.at(src);
@@ -707,6 +710,29 @@ struct FuncWriter final {
     }
   }
 
+  void GetTypeInfo(ArgIter begin, ArgIter end) {
+    CHECK((end-begin) == 2);
+
+    MemId dst = begin[0];
+    MemId src = begin[1];
+    const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& src_e = stack_map.at(src);
+    CHECK(dst_e.size == SizeClass::PTR);
+    CHECK(src_e.size == SizeClass::PTR);
+
+    // Simply dereference the pointer to get the TypeInfo
+    // pointer at the start of the vtable.
+    w.Col1("; Getting type id.");
+    w.Col1("mov eax, %v", StackOffset(src_e.offset));
+    // Get vtable pointer from this.
+    w.Col1("mov eax, [eax]");
+    // Get field pointer from vtable.
+    w.Col1("mov eax, [eax]");
+    // Get typeinfo pointer from field.
+    w.Col1("mov eax, [eax]");
+    w.Col1("mov %v, eax", StackOffset(dst_e.offset));
+  }
+
   void Ret(ArgIter begin, ArgIter end) {
     CHECK((end-begin) <= 1);
 
@@ -749,8 +775,7 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
 
   static string kVtableNameFmt = "vtable_t%v";
   static string kItableNameFmt = "itable_t%v";
-
-  static string kStaticNameFmt = "static_f%v";
+  static string kStaticNameFmt = "static_t%v_f%v";
 
   set<string> externs{"_joos_malloc"};
   set<string> globals;
@@ -774,8 +799,9 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
           externs.insert(Sprintf(kVtableNameFmt, tid));
           externs.insert(Sprintf(kItableNameFmt, tid));
         } else if (op.type == OpType::FIELD_DEREF || op.type == OpType::FIELD_ADDR) {
-          FieldId fid = method_stream.args[op.begin + 2];
-          externs.insert(Sprintf(kStaticNameFmt, fid));
+          TypeId::Base tid = method_stream.args[op.begin + 2];
+          FieldId fid = method_stream.args[op.begin + 3];
+          externs.insert(Sprintf(kStaticNameFmt, tid, fid));
         }
       }
     }
@@ -785,7 +811,7 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
     }
 
     for (const auto& s_pair : offsets_.StaticFieldsOf({type.tid, 0})) {
-      globals.insert(Sprintf(kStaticNameFmt, s_pair.first));
+      globals.insert(Sprintf(kStaticNameFmt, type.tid, s_pair.first));
     }
   }
 
@@ -916,6 +942,9 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
       case OpType::DYNAMIC_CALL:
         writer.DynamicCall(begin, end);
         break;
+      case OpType::GET_TYPEINFO:
+        writer.GetTypeInfo(begin, end);
+        break;
       case OpType::RET:
         writer.Ret(begin, end);
         break;
@@ -935,7 +964,7 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
 void Writer::WriteVtable(const Type& type, ostream* out) const {
   AsmWriter w(out);
   w.Col0("vtable_t%v:", type.tid);
-  w.Col1("dd 0"); // Type info ptr.
+  w.Col1("dd static_t%v_f%v", type.tid, kStaticTypeInfoId); // Type info ptr.
   w.Col1("dd itable_t%v", type.tid);
 
   for (const auto& v_pair : offsets_.VtableOf({type.tid, 0})) {
@@ -969,7 +998,7 @@ void Writer::WriteStatics(const Type& type, ostream* out) const {
   AsmWriter w(out);
 
   for (const auto& f_pair : offsets_.StaticFieldsOf({type.tid, 0})) {
-    w.Col0("static_f%v:", f_pair.first);
+    w.Col0("static_t%v_f%v:", type.tid, f_pair.first);
     w.Col1("%v 0", Sized(f_pair.second, "db", "dw", "dd"));
   }
 }
@@ -1020,7 +1049,7 @@ void Writer::WriteMain(ostream* out) const {
   w.Col1("ret");
 }
 
-void Writer::WriteStaticInit(const Program& prog, ostream* out) const {
+void Writer::WriteStaticInit(const Program& prog, const types::TypeInfoMap& tinfo_map, ostream* out) const {
   AsmWriter w(out);
 
   w.Col0("; Run all static initialisers.");
@@ -1030,7 +1059,39 @@ void Writer::WriteStaticInit(const Program& prog, ostream* out) const {
   w.Col1("mov ebp, esp\n");
 
   // Body.
-  for (const CompUnit& comp_unit : prog.units) {
+  // Write global number of types.
+  w.Col1("; Initializing number of types.");
+  string num_types_label = Sprintf(
+      "static_t%v_f%v",
+      prog.rt_ids.type_info_type,
+      prog.rt_ids.type_info_num_types);
+  w.Col1("extern %v", num_types_label);
+  w.Col1("mov dword [%v], %v",
+      num_types_label,
+      tinfo_map.GetTypeMap().size());
+
+  // Initialize type's static type info.
+  auto units = prog.units;
+  auto t_cmp = [&tinfo_map](CompUnit lhs, CompUnit rhs) {
+    if (lhs.types.size() == 0) {
+      return false;
+    } else if (rhs.types.size() == 0) {
+      return true;
+    }
+    return tinfo_map.GetTypeMap().at({lhs.types[0].tid, 0}).top_sort_index < tinfo_map.GetTypeMap().at({rhs.types[0].tid, 0}).top_sort_index;
+  };
+  stable_sort(units.begin(), units.end(), t_cmp);
+
+  for (const CompUnit& comp_unit : units) {
+    for (const Type& type : comp_unit.types) {
+      string type_init = Sprintf("_t%v_m%v", type.tid, kTypeInitMethodId);
+      w.Col1("extern %v", type_init);
+      w.Col1("call %v", type_init);
+    }
+  }
+
+  // Initialize type's statics.
+  for (const CompUnit& comp_unit : units) {
     for (const Type& type : comp_unit.types) {
       string init = Sprintf("_t%v_m%v", type.tid, kStaticInitMethodId);
       w.Col1("extern %v", init);
