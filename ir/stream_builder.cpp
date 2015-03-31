@@ -8,6 +8,7 @@ using ast::FieldId;
 using ast::MethodId;
 using ast::TypeId;
 using base::PosRange;
+using types::StringId;
 
 namespace ir {
 
@@ -144,6 +145,12 @@ void StreamBuilder::ConstBool(Mem mem, bool b) {
 void StreamBuilder::ConstNull(Mem mem) {
   CHECK(mem.Size() == SizeClass::PTR);
   Const(mem, 0);
+}
+
+void StreamBuilder::ConstString(Mem dst, StringId id) {
+  CHECK(dst.Size() == SizeClass::PTR);
+  AppendOp(OpType::CONST_STR, {dst.Id(), id});
+  SetAssigned({dst});
 }
 
 void StreamBuilder::Mov(Mem dst, Mem src) {

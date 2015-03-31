@@ -4,11 +4,9 @@
 #include "ast/ids.h"
 #include "ast/ast_fwd.h"
 #include "base/joos_types.h"
+#include "types/types.h"
 
 namespace types {
-
-using StringId = u64;
-using ConstStringMap = map<jstring, StringId>;
 
 extern StringId kFirstStringId;
 

@@ -41,7 +41,8 @@ namespace types {
 
     TypeSet typeset = TypeSet::Empty();
     TypeInfoMap tinfo_map = TypeInfoMap::Empty();
-    return CompilerFrontend(CompilerStage::TYPE_CHECK, *fs, &typeset, &tinfo_map, out);
+    ConstStringMap string_map;
+    return CompilerFrontend(CompilerStage::TYPE_CHECK, *fs, &typeset, &tinfo_map, &string_map, out);
   }
 
 } // namespace types

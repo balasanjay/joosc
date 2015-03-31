@@ -84,7 +84,7 @@ TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, sptr<const Program> prog,
 
 }  // namespace
 
-sptr<const Program> TypecheckProgram(sptr<const Program> prog, TypeSet* typeset_out, TypeInfoMap* tinfo_out, ErrorList* errors) {
+sptr<const Program> TypecheckProgram(sptr<const Program> prog, TypeSet* typeset_out, TypeInfoMap* tinfo_out, ConstStringMap* string_map_out, ErrorList* errors) {
   // Phase 1: Build a typeset.
   TypeSet typeSet = BuildTypeSet(*prog, errors);
   if (!VerifyTypeSet(typeSet, errors)) {
@@ -114,8 +114,7 @@ sptr<const Program> TypecheckProgram(sptr<const Program> prog, TypeSet* typeset_
 
   // Phase 4: Dataflow Analysis.
   {
-    ConstStringMap string_map;
-    prog = ConstantFold(prog, string_type, &string_map);
+    prog = ConstantFold(prog, string_type, string_map_out);
     DataflowVisitor(typeInfo, errors).Visit(prog);
   }
 
