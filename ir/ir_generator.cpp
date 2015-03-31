@@ -563,7 +563,7 @@ class ProgramIRGenerator final : public ast::Visitor {
         t_builder.ConstInt32(size, num_parents);
         {
           Mem array = t_builder.AllocArray(SizeClass::PTR, size);
-          auto write_parent = [&](u32 i, ast::TypeId::Base p_tid) -> void {
+          auto write_parent = [&](i32 i, ast::TypeId::Base p_tid) {
             // Get parent pointer from parent type's static field.
             // Guaranteed to be filled because of static type
             // initialization being done in topsort order.
@@ -580,12 +580,12 @@ class ProgramIRGenerator final : public ast::Visitor {
             t_builder.MovToAddr(array_slot, parent);
           };
 
-          u32 parent_idx = 0;
-          for (u32 i = 0; i < (u32)tinfo.extends.Size(); ++i) {
+          i32 parent_idx = 0;
+          for (i32 i = 0; i < tinfo.extends.Size(); ++i) {
             write_parent(parent_idx, tinfo.extends.At(i).base);
             ++parent_idx;
           }
-          for (u32 i = 0; i < (u32)tinfo.implements.Size(); ++i) {
+          for (i32 i = 0; i < tinfo.implements.Size(); ++i) {
             write_parent(parent_idx, tinfo.implements.At(i).base);
             ++parent_idx;
           }

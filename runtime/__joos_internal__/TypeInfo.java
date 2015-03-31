@@ -2,11 +2,13 @@ R"(
 package __joos_internal__;
 
 public class TypeInfo {
+  protected int tid = 0;
+  protected TypeInfo[] parents = null;
+
   // 0 -> Unset
   // 1 -> Yes
   // -1 -> No
-  protected int tid = 0;
-  protected TypeInfo[] parents = null;
+  // TODO: Make this byte[].
   protected int[] ancestor_map = null;
 
   // When false, this class hasn't been initialized yet.
