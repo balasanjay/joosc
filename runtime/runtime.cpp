@@ -21,18 +21,17 @@ public class TypeInfo {
 
   public TypeInfo(int tid, TypeInfo[] parents) {
     this.tid = tid;
-    //this.parents = parents;
+    this.parents = parents;
   }
 
   public boolean InstanceOf(TypeInfo ancestor) {
-    /*
-    if (ancestor != null) {
-      return ancestor.tid == 18;
-    }
-    */
     if (!TypeInfo.initialized) {
       return true;
     }
+    if (this == ancestor) {
+      return true;
+    }
+
     if (ancestor_map == null) {
       // TODO: Fix size based off of first ref type base, and maybe use the offset.
       ancestor_map = new int[50];
@@ -48,12 +47,8 @@ public class TypeInfo {
     for (int i = 0; lookup == 0 && i < parents.length; i = i + 1) {
       // If parent is ancestor, return true immediately.
       TypeInfo parent = parents[i];
-      if (parent == ancestor) {
+      if (parent == ancestor || parent.InstanceOf(ancestor)) {
         lookup = 1; // True.
-      } else {
-        if (parent.InstanceOf(ancestor)) {
-          lookup = 1;
-        }
       }
     }
     if (lookup == 0) {

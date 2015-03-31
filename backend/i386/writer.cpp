@@ -299,7 +299,7 @@ struct FuncWriter final {
     string instr = addr ? "lea" : "mov";
 
     if (src == kInvalidMemId) {
-      w.Col1("; t%v = %vstatic.f%v", dst_e.id, src_prefix, fid);
+      w.Col1("; t%v = %vstatic_t%v_f%v", dst_e.id, src_prefix, tid, fid);
       w.Col1("%v %v, [static_t%v_f%v]", instr, sized_reg, tid, fid);
       w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
     } else {
@@ -1042,7 +1042,7 @@ void Writer::WriteStaticInit(const Program& prog, const types::TypeInfoMap& tinf
   };
   stable_sort(units.begin(), units.end(), t_cmp);
 
-  for (const CompUnit& comp_unit : prog.units) {
+  for (const CompUnit& comp_unit : units) {
     for (const Type& type : comp_unit.types) {
       string type_init = Sprintf("_t%v_m%v", type.tid, kTypeInitMethodId);
       w.Col1("extern %v", type_init);
@@ -1051,7 +1051,7 @@ void Writer::WriteStaticInit(const Program& prog, const types::TypeInfoMap& tinf
   }
 
   // Initialize type's statics.
-  for (const CompUnit& comp_unit : prog.units) {
+  for (const CompUnit& comp_unit : units) {
     for (const Type& type : comp_unit.types) {
       string init = Sprintf("_t%v_m%v", type.tid, kStaticInitMethodId);
       w.Col1("extern %v", init);

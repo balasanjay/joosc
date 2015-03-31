@@ -575,7 +575,7 @@ class ProgramIRGenerator final : public ast::Visitor {
             t_builder.ConstInt32(idx, i);
 
             Mem array_slot = t_builder.AllocLocal(SizeClass::PTR);
-            t_builder.ArrayAddr(array_slot, array, idx, SizeClass::INT, base::PosRange(-1, -1, -1));
+            t_builder.ArrayAddr(array_slot, array, idx, SizeClass::PTR, base::PosRange(-1, -1, -1));
             t_builder.MovToAddr(array_slot, parent);
           };
 
@@ -621,7 +621,6 @@ class ProgramIRGenerator final : public ast::Visitor {
               }
               t_builder.MovToAddr(field, rt_type_info);
             }
-            //t_builder.SetTypeInfo(tid.base, rt_type_info);
           }
         }
       }
