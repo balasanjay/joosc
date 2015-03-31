@@ -63,10 +63,12 @@ const MethodId kUnassignedMethodId = 0;
 const MethodId kErrorMethodId = 1;
 const MethodId kInstanceInitMethodId = 2;
 const MethodId kStaticInitMethodId = 3;
-const MethodId kFirstMethodId = 4;
+const MethodId kTypeInitMethodId = 4;
+const MethodId kFirstMethodId = 10;
 
 using FieldId = u64;
 const FieldId kErrorFieldId = 0;
+const FieldId kStaticTypeInfoId = 1;
 const FieldId kFirstFieldId = 10;
 
 } // namespace ast
