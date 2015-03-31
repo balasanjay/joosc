@@ -507,7 +507,7 @@ class MethodIRGenerator final : public ast::Visitor {
           Mem dummy = builder_.AllocDummy();
           builder_.FieldDeref(ancestor, dummy, expr.GetType().GetTypeId().base, ast::kStaticTypeInfoId, base::PosRange(-1, -1, -1));
         }
-        builder_.DynamicCall(res_, type_info, rt_ids_.type_info_instanceof, {ancestor});
+        builder_.StaticCall(res_, rt_ids_.type_info_type, rt_ids_.type_info_instanceof, {type_info, ancestor});
       }
     }
 
@@ -773,9 +773,9 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
   MethodId rt_tinfo_instanceof = rt_tinfo.methods.ResolveCall(
       tinfo_map,
       rt_tinfo_id,
-      types::CallContext::INSTANCE,
+      types::CallContext::STATIC,
       rt_tinfo_id,
-      TypeIdList({rt_tinfo_id}),
+      TypeIdList({rt_tinfo_id, rt_tinfo_id}),
       "InstanceOf", base::PosRange(-1, -1, -1), &throwaway);
   CHECK(!throwaway.IsFatal());
   CHECK(rt_tinfo_constructor != ast::kErrorMethodId);

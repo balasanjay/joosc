@@ -4,12 +4,17 @@
 # All binaries.
 /joosc
 /test
+/output
+/a.out
 
 # Stuff.
 /tags
 
 # Submission archive.
 /submit.zip
+
+# Runtime java classes.
+/runtime/*/*.class
 
 # Bazel dirs.
 /bazel-bin

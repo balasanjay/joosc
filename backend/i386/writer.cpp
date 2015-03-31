@@ -709,7 +709,7 @@ struct FuncWriter final {
     // Get vtable pointer from this.
     w.Col1("mov eax, [eax]");
     // Get field pointer from vtable.
-    w.Col1("mov eax, [eax + 0]");
+    w.Col1("mov eax, [eax]");
     // Get typeinfo pointer from field.
     w.Col1("mov eax, [eax]");
     w.Col1("mov %v, eax", StackOffset(dst_e.offset));

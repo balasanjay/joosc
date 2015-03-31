@@ -33,8 +33,8 @@ public class TypeInfoTest {
      *      |
      *      0
      */
-    int num_types = 5;
-    TypeInfo[] types = new TypeInfo[num_types];
+    TypeInfo.num_types = 5;
+    TypeInfo[] types = new TypeInfo[TypeInfo.num_types];
     // 3.
     {
       TypeInfo[] parents = new TypeInfo[0];
@@ -65,14 +65,14 @@ public class TypeInfoTest {
       types[0] = new TypeInfo(0, parents);
     }
 
-    ExpectEq(true,  types[0].InstanceOf(types[1]));
-    ExpectEq(true,  types[0].InstanceOf(types[3]));
-    ExpectEq(true,  types[0].InstanceOf(types[4]));
-    ExpectEq(true,  types[1].InstanceOf(types[4]));
-    ExpectEq(true,  types[0].InstanceOf(types[0]));
-    ExpectEq(false, types[2].InstanceOf(types[4]));
-    ExpectEq(false, types[2].InstanceOf(types[0]));
-    ExpectEq(false, types[4].InstanceOf(types[3]));
+    ExpectEq(true,  TypeInfo.InstanceOf(types[0], types[1]));
+    ExpectEq(true,  TypeInfo.InstanceOf(types[0], types[3]));
+    ExpectEq(true,  TypeInfo.InstanceOf(types[0], types[4]));
+    ExpectEq(true,  TypeInfo.InstanceOf(types[1], types[4]));
+    ExpectEq(true,  TypeInfo.InstanceOf(types[0], types[0]));
+    ExpectEq(false, TypeInfo.InstanceOf(types[2], types[4]));
+    ExpectEq(false, TypeInfo.InstanceOf(types[2], types[0]));
+    ExpectEq(false, TypeInfo.InstanceOf(types[4], types[3]));
   }
 
   public static void main(String[] args) {

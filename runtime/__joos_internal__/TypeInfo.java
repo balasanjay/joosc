@@ -13,36 +13,36 @@ public class TypeInfo {
   // This will occur while setting up all of the TypeInfos.
   // Allow all instanceof checks to pass during this initialization.
   protected static boolean initialized = true;
-  protected static int num_types;
+  public static int num_types;
 
   public TypeInfo(int tid, TypeInfo[] parents) {
     this.tid = tid;
     this.parents = parents;
   }
 
-  public boolean InstanceOf(TypeInfo ancestor) {
+  public static boolean InstanceOf(TypeInfo child, TypeInfo ancestor) {
     if (!TypeInfo.initialized) {
       return true;
     }
-    if (this == ancestor) {
+    if (child == ancestor) {
       return true;
     }
 
-    if (ancestor_map == null) {
-      ancestor_map = new int[TypeInfo.num_types];
+    if (child.ancestor_map == null) {
+      child.ancestor_map = new int[TypeInfo.num_types];
       // Initialized to 0 -> Unset.
     }
 
-    int lookup = ancestor_map[ancestor.tid];
+    int lookup = child.ancestor_map[ancestor.tid];
     // Already checked this - return cached value.
     if (lookup != 0) {
       return lookup == 1;
     }
 
-    for (int i = 0; lookup == 0 && i < parents.length; i = i + 1) {
+    for (int i = 0; lookup == 0 && i < child.parents.length; i = i + 1) {
       // If parent is ancestor, return true immediately.
-      TypeInfo parent = parents[i];
-      if (parent == ancestor || parent.InstanceOf(ancestor)) {
+      TypeInfo parent = child.parents[i];
+      if (parent == ancestor || TypeInfo.InstanceOf(parent, ancestor)) {
         lookup = 1; // True.
       }
     }
@@ -50,7 +50,7 @@ public class TypeInfo {
       lookup = -1;
     }
 
-    ancestor_map[ancestor.tid] = lookup;
+    child.ancestor_map[ancestor.tid] = lookup;
     return lookup == 1;
   }
 }
