@@ -715,18 +715,6 @@ struct FuncWriter final {
     w.Col1("mov %v, eax", StackOffset(dst_e.offset));
   }
 
-  void SetTypeInfo(ArgIter begin, ArgIter end) {
-    CHECK((end-begin) == 2);
-    TypeId::Base tid = begin[0];
-    MemId val = begin[1];
-    const StackEntry& val_e = stack_map.at(val);
-    CHECK(val_e.size == SizeClass::PTR);
-
-    w.Col1("; Setting type id.");
-    w.Col1("mov eax, %v", StackOffset(val_e.offset));
-    w.Col1("mov dword [vtable_t%v], eax", tid);
-  }
-
   void Ret(ArgIter begin, ArgIter end) {
     CHECK((end-begin) <= 1);
 
@@ -933,9 +921,6 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         break;
       case OpType::GET_TYPEINFO:
         writer.GetTypeInfo(begin, end);
-        break;
-      case OpType::SET_TYPEINFO:
-        writer.SetTypeInfo(begin, end);
         break;
       case OpType::RET:
         writer.Ret(begin, end);

@@ -137,8 +137,8 @@ class StreamBuilder {
   // stored in dst.
   void DynamicCall(Mem dst, Mem this_ptr, ast::MethodId mid, const vector<Mem>& args);
 
+  // Lookup the TypeInfo runtime object stored on the object in src and prite it to dst.
   void GetTypeInfo(Mem dst, Mem src);
-  void SetTypeInfo(ast::TypeId::Base tid, Mem val);
 
   // Return with no value.
   void Ret();

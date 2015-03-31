@@ -325,14 +325,6 @@ void StreamBuilder::GetTypeInfo(Mem dst, Mem src) {
   SetAssigned({dst});
 }
 
-void StreamBuilder::SetTypeInfo(TypeId::Base tid, Mem val) {
-  AssertAssigned({val});
-  size_t begin = args_.size();
-  args_.push_back(tid);
-  args_.push_back(val.Id());
-  ops_.push_back({OpType::SET_TYPEINFO, begin, args_.size()});
-}
-
 void StreamBuilder::Ret() {
   AppendOp(OpType::RET, {});
 }

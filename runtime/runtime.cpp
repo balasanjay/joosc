@@ -10,9 +10,9 @@ public class TypeInfo {
   // 0 -> Unset
   // 1 -> Yes
   // -1 -> No
+  public int tid = 0;
   public TypeInfo[] parents = null;
   public int[] ancestor_map = null;
-  public int tid = 0;
 
   // When false, this class hasn't been initialized yet.
   // This will occur while setting up all of the TypeInfos.

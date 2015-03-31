@@ -109,11 +109,8 @@ enum class OpType {
   // (Mem, Mem, MethodId, int nargs, Mem[]).
   DYNAMIC_CALL,
 
-  // (Mem).
+  // (Mem, Mem).
   GET_TYPEINFO,
-
-  // (Mem).
-  SET_TYPEINFO,
 
   // ([Mem]).
   RET,
