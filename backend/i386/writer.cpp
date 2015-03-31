@@ -612,7 +612,7 @@ struct FuncWriter final {
 
     string instr = src_e.size == SizeClass::CHAR ? "movzx" : "movsx";
 
-    w.Col1("; t%v = trunc(t%v)", dst, src);
+    w.Col1("; t%v = extend(t%v)", dst, src);
     w.Col1("mov %v, %v", src_sized_reg, StackOffset(src_e.offset));
     w.Col1("%v %v, %v", instr, dst_sized_reg, src_sized_reg);
     w.Col1("mov %v, %v", StackOffset(dst_e.offset), dst_sized_reg);
@@ -630,7 +630,7 @@ struct FuncWriter final {
     string src_sized_reg = Sized(src_e.size, "al", "ax", "eax");
     string dst_sized_reg = Sized(dst_e.size, "al", "ax", "eax");
 
-    w.Col1("; t%v = trunc(t%v)", dst, src);
+    w.Col1("; t%v = truncate(t%v)", dst, src);
     w.Col1("mov %v, %v", src_sized_reg, StackOffset(src_e.offset));
     w.Col1("mov %v, %v", StackOffset(dst_e.offset), dst_sized_reg);
   }
