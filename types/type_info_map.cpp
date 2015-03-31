@@ -406,7 +406,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
         mminfo.return_type,
         mminfo.pos,
         mminfo.signature,
-        pinfo.kind == TypeKind::CLASS ? pminfo.mid : kUnassignedMethodId,
+        pinfo.kind == TypeKind::CLASS ? pminfo.mid : mminfo.parent_mid,
       };
 
       msig_pair->second = final_mminfo;

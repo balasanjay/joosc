@@ -1,5 +1,7 @@
 #include "weeder/int_range_visitor.h"
 
+#include <limits>
+
 #include "ast/ast.h"
 #include "base/macros.h"
 #include "parser/parser.h"
@@ -21,9 +23,7 @@ Error* MakeInvalidIntRangeError(Token token) {
       "Ints must be between -2^-31 and 2^31 - 1 inclusive.");
 }
 
-pair<i64, bool> ConvertInt(const string& str_val, Token token, bool is_negated, base::ErrorList* errors) {
-  const i64 INT_32_MIN = -(1L << 31L);
-  const i64 INT_32_MAX = (1L << 31L) - 1L;
+pair<i32, bool> ConvertInt(const string& str_val, Token token, bool is_negated, base::ErrorList* errors) {
   i64 intVal = 0;
 
   stringstream ss(str_val);
@@ -33,11 +33,11 @@ pair<i64, bool> ConvertInt(const string& str_val, Token token, bool is_negated, 
     intVal *= -1;
   }
 
-  if (intVal < INT_32_MIN || intVal > INT_32_MAX || !ss) {
+  if (intVal < std::numeric_limits<i32>::min() || intVal > std::numeric_limits<i32>::max() || !ss) {
     errors->Append(MakeInvalidIntRangeError(token));
     return {0, false};
   }
-  return {intVal, true};
+  return {(i32)intVal, true};
 }
 
 

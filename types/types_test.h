@@ -1,6 +1,8 @@
 #ifndef TYPES_TYPES_TEST
 #define TYPES_TYPES_TEST
 
+#include <limits>
+
 #include "ast/ast_fwd.h"
 #include "base/errorlist.h"
 #include "base/fileset.h"
