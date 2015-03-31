@@ -216,7 +216,7 @@ class MethodIRGenerator final : public ast::Visitor {
 
   VISIT_DECL(IntLitExpr, expr,) {
     // TODO: Ensure no overflow.
-    builder_.ConstInt32(res_, (i32)expr.Value());
+    builder_.ConstInt32(res_, expr.Value());
     return VisitResult::SKIP;
   }
 
