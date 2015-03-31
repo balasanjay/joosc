@@ -142,6 +142,17 @@ class StreamBuilder {
   // SizeClasses of the two.
   void Truncate(Mem dst, Mem src);
 
+  // Sets *dst to true iff src is of the type static_dst_type. static_src_type
+  // must be the static type of src.
+  void InstanceOf(Mem dst, Mem src, ast::TypeId static_dst_type, ast::TypeId static_src_type);
+
+  // Throws a ClassCastException from pos if cond is false.
+  void CastExceptionIfFalse(Mem cond, base::PosRange pos);
+
+  // Throw an ArrayStoreException if the dynamic type of elem is not assignable
+  // to the element type of array_rvalue.
+  void CheckArrayStore(Mem array_rvalue, Mem elem, base::PosRange pos);
+
   // Emit a static call to method mid in Type tid, passing args. All args
   // must have been initialized. The result of calling the method will be
   // stored in dst.
