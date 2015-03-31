@@ -1015,6 +1015,17 @@ void Writer::WriteStaticInit(const Program& prog, const types::TypeInfoMap& tinf
   w.Col1("mov ebp, esp\n");
 
   // Body.
+  // Write global number of types.
+  w.Col1("; Initializing number of types.");
+  string num_types_label = Sprintf(
+      "static_t%v_f%v",
+      prog.rt_ids.type_info_type,
+      prog.rt_ids.type_info_num_types);
+  w.Col1("extern %v", num_types_label);
+  w.Col1("mov dword [%v], %v",
+      num_types_label,
+      tinfo_map.GetTypeMap().size());
+
   // Initialize type's static type info.
   auto units = prog.units;
   auto t_cmp = [&tinfo_map](CompUnit lhs, CompUnit rhs) {

@@ -7,9 +7,10 @@
 namespace ir {
 
 struct RuntimeLinkIds {
-  ast::TypeId::Base type_info_type;// = 16;
-  ast::MethodId type_info_constructor;// = 17;
-  ast::TypeId::Base type_info_instanceof;// = 16;
+  ast::TypeId::Base type_info_type;
+  ast::MethodId type_info_constructor;
+  ast::TypeId::Base type_info_instanceof;
+  ast::FieldId type_info_num_types;
 };
 
 // Numbered labels local to a function.
@@ -154,6 +155,7 @@ struct CompUnit {
 
 struct Program {
   vector<CompUnit> units;
+  RuntimeLinkIds rt_ids;
 };
 
 } // namespace ir

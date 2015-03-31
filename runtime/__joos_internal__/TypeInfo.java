@@ -5,14 +5,15 @@ public class TypeInfo {
   // 0 -> Unset
   // 1 -> Yes
   // -1 -> No
-  public int tid = 0;
-  public TypeInfo[] parents = null;
-  public int[] ancestor_map = null;
+  protected int tid = 0;
+  protected TypeInfo[] parents = null;
+  protected int[] ancestor_map = null;
 
   // When false, this class hasn't been initialized yet.
   // This will occur while setting up all of the TypeInfos.
   // Allow all instanceof checks to pass during this initialization.
-  public static boolean initialized = true;
+  protected static boolean initialized = true;
+  protected static int num_types;
 
   public TypeInfo(int tid, TypeInfo[] parents) {
     this.tid = tid;
@@ -28,8 +29,7 @@ public class TypeInfo {
     }
 
     if (ancestor_map == null) {
-      // TODO: Fix size based off of first ref type base, and maybe use the offset.
-      ancestor_map = new int[50];
+      ancestor_map = new int[TypeInfo.num_types];
       // Initialized to 0 -> Unset.
     }
 

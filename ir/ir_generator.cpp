@@ -780,8 +780,20 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
   CHECK(!throwaway.IsFatal());
   CHECK(rt_tinfo_constructor != ast::kErrorMethodId);
 
+  FieldId rt_tinfo_num_types = rt_tinfo.fields.ResolveAccess(
+      tinfo_map,
+      rt_tinfo_id,
+      types::CallContext::STATIC,
+      rt_tinfo_id,
+      "num_types",
+      base::PosRange(-1, -1, -1),
+      &throwaway);
+  CHECK(!throwaway.IsFatal());
+  CHECK(rt_tinfo_num_types != ast::kErrorFieldId);
+
   return RuntimeLinkIds{
-    rt_tinfo_id.base, rt_tinfo_constructor, rt_tinfo_instanceof};
+    rt_tinfo_id.base, rt_tinfo_constructor,
+    rt_tinfo_instanceof, rt_tinfo_num_types};
 }
 
 } // namespace
@@ -790,6 +802,7 @@ Program GenerateIR(sptr<const ast::Program> program, const TypeSet& typeset, con
   RuntimeLinkIds rt_ids = LookupRuntimeIds(typeset, tinfo_map);
   ProgramIRGenerator gen(tinfo_map, rt_ids);
   gen.Visit(program);
+  gen.prog.rt_ids = rt_ids;
   return gen.prog;
 }
 
