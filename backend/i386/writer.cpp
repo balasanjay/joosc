@@ -8,10 +8,12 @@
 #include "ir/stream.h"
 
 using std::ostream;
+using std::get;
 
 using ast::FieldId;
 using ast::MethodId;
 using ast::TypeId;
+using ast::TypeKind;
 using ast::kStaticInitMethodId;
 using backend::common::AsmWriter;
 using backend::common::OffsetTable;
@@ -672,14 +674,30 @@ struct FuncWriter final {
 
     w.Col1("; Performing call.");
 
-    u64 offset = offsets.OffsetOfMethod(mid);
+    u64 offset = 0;
+    TypeKind kind = TypeKind::CLASS;
+
+    std::tie(offset, kind) = offsets.OffsetOfMethod(mid);
 
     w.Col1("sub esp, %v", stack_used);
     // Dereference the `this' ptr to get the vtable ptr.
     w.Col1("mov eax, [eax]");
-    // Dereference the vtable ptr plus the offset to give us the method and
-    // call it.
-    w.Col1("call [eax + %v]", offset);
+
+    if (kind == TypeKind::CLASS) {
+      // Dereference the vtable ptr plus the offset to give us the method and
+      // call it.
+      w.Col1("call [eax + %v]", offset);
+    } else {
+      CHECK(kind == TypeKind::INTERFACE);
+      // Dereference the vtable ptr plus 4 to get the itable ptr.
+      w.Col1("mov eax, [eax + 4]");
+
+      // Dereference the itable ptr plus the offset to give us the method and
+      // call it.
+      w.Col1("call [eax + %v]", offset);
+    }
+
+
     w.Col1("add esp, %v", stack_used);
 
     if (dst != kInvalidMemId) {
@@ -728,13 +746,17 @@ struct FuncWriter final {
 
 void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
   static string kMethodNameFmt = "_t%v_m%v";
+
   static string kVtableNameFmt = "vtable_t%v";
+  static string kItableNameFmt = "itable_t%v";
+
   static string kStaticNameFmt = "static_f%v";
 
   set<string> externs{"_joos_malloc"};
   set<string> globals;
   for (const Type& type : comp_unit.types) {
     globals.insert(Sprintf(kVtableNameFmt, type.tid));
+    globals.insert(Sprintf(kItableNameFmt, type.tid));
     for (const Stream& method_stream : type.streams) {
       if (method_stream.is_entry_point) {
         globals.insert("_entry");
@@ -750,6 +772,7 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
         } else if (op.type == OpType::ALLOC_HEAP) {
           TypeId::Base tid = method_stream.args[op.begin + 1];
           externs.insert(Sprintf(kVtableNameFmt, tid));
+          externs.insert(Sprintf(kItableNameFmt, tid));
         } else if (op.type == OpType::FIELD_DEREF || op.type == OpType::FIELD_ADDR) {
           FieldId fid = method_stream.args[op.begin + 2];
           externs.insert(Sprintf(kStaticNameFmt, fid));
@@ -785,6 +808,7 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
     }
     Fprintf(out, "section .rodata\n");
     WriteVtable(type, out);
+    WriteItable(type, out);
     Fprintf(out, "section .data\n");
     WriteStatics(type, out);
   }
@@ -912,13 +936,34 @@ void Writer::WriteVtable(const Type& type, ostream* out) const {
   AsmWriter w(out);
   w.Col0("vtable_t%v:", type.tid);
   w.Col1("dd 0"); // Type info ptr.
-  w.Col1("dd 0"); // Selector index.
+  w.Col1("dd itable_t%v", type.tid);
 
   for (const auto& v_pair : offsets_.VtableOf({type.tid, 0})) {
     w.Col1("dd _t%v_m%v", v_pair.first.base, v_pair.second);
   }
   w.Col0("\n");
 }
+
+void Writer::WriteItable(const Type& type, ostream* out) const {
+  AsmWriter w(out);
+  w.Col0("itable_t%v:", type.tid);
+
+  u64 cur_offset = 0;
+  for (const auto& i_tup : offsets_.ItableOf({type.tid, 0})) {
+    u64 entry_offset = get<0>(i_tup);
+
+    // We pad all empty intermediate offsets with 0.
+    if (cur_offset != entry_offset) {
+      w.Col1("times %v dd 0", (entry_offset - cur_offset) / 4);
+      cur_offset = entry_offset;
+    }
+
+    w.Col1("dd _t%v_m%v", get<1>(i_tup).base, get<2>(i_tup));
+    cur_offset += 4;
+  }
+  w.Col0("\n");
+}
+
 
 void Writer::WriteStatics(const Type& type, ostream* out) const {
   AsmWriter w(out);
