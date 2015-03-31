@@ -992,12 +992,14 @@ void Writer::WriteItable(const Type& type, ostream* out) const {
   for (const auto& i_tup : offsets_.ItableOf({type.tid, 0})) {
     u64 entry_offset = get<0>(i_tup);
 
+    // We pad all empty intermediate offsets with 0.
     if (cur_offset != entry_offset) {
       w.Col1("times %v dd 0", (entry_offset - cur_offset) / 4);
+      cur_offset = entry_offset;
     }
 
     w.Col1("dd _t%v_m%v", get<1>(i_tup).base, get<2>(i_tup));
-    cur_offset = entry_offset + 4;
+    cur_offset += 4;
   }
   w.Col0("\n");
 }
