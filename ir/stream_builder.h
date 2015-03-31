@@ -30,6 +30,9 @@ class StreamBuilder {
 
   void AllocParams(const vector<SizeClass>& sizes, vector<Mem>* out);
 
+  // Promote src to an INT-sized Mem. Is a no-op if src is already INT.
+  Mem PromoteToInt(Mem src);
+
   // Allocate a label id; the Builder guarantees that the returned id will be
   // unique for this stream.
   LabelId AllocLabel();
@@ -37,8 +40,8 @@ class StreamBuilder {
   // Emit a label as the next instruction.
   void EmitLabel(LabelId);
 
-  // Writes a constant i32 value to the given Mem.
-  void ConstInt32(Mem, i32);
+  // Writes a constant numeric value to the given Mem.
+  void ConstNumeric(Mem, i32);
 
   // Writes a constant bool value to the given Mem.
   void ConstBool(Mem, bool);

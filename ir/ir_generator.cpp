@@ -156,13 +156,14 @@ class MethodIRGenerator final : public ast::Visitor {
     return VisitResult::SKIP;
   }
 
-  VISIT_DECL(BinExpr, expr,) {
-    SizeClass size = SizeClassFrom(expr.Lhs().GetTypeId());
+  VISIT_DECL(BinExpr, expr, exprptr) {
+    SizeClass lhs_size = SizeClassFrom(expr.Lhs().GetTypeId());
+    SizeClass rhs_size = SizeClassFrom(expr.Rhs().GetTypeId());
 
     // Special code for short-circuiting boolean and or.
     if (expr.Op().type == lexer::AND) {
-      Mem lhs = builder_.AllocLocal(size);
-      Mem rhs = builder_.AllocTemp(size);
+      Mem lhs = builder_.AllocLocal(lhs_size);
+      Mem rhs = builder_.AllocTemp(rhs_size);
       WithResultIn(lhs).Visit(expr.LhsPtr());
 
       LabelId short_circuit = builder_.AllocLabel();
@@ -184,8 +185,8 @@ class MethodIRGenerator final : public ast::Visitor {
       return VisitResult::SKIP;
 
     } else if (expr.Op().type == lexer::OR) {
-      Mem lhs = builder_.AllocLocal(size);
-      Mem rhs = builder_.AllocTemp(size);
+      Mem lhs = builder_.AllocLocal(lhs_size);
+      Mem rhs = builder_.AllocTemp(rhs_size);
       WithResultIn(lhs).Visit(expr.LhsPtr());
 
       // Short circuit 'or' with a true result if lhs is true.
@@ -208,9 +209,13 @@ class MethodIRGenerator final : public ast::Visitor {
       is_assg = true;
     }
 
-    Mem lhs = builder_.AllocTemp(is_assg ? SizeClass::PTR : size);
+    Mem lhs_old = builder_.AllocTemp(is_assg ? SizeClass::PTR : lhs_size);
+    Mem rhs_old = builder_.AllocTemp(rhs_size);
+
+    Mem lhs = lhs_old;
+    Mem rhs = rhs_old;
+
     WithResultIn(lhs, is_assg).Visit(expr.LhsPtr());
-    Mem rhs = builder_.AllocTemp(size);
     WithResultIn(rhs).Visit(expr.RhsPtr());
 
     if (is_assg) {
@@ -223,6 +228,16 @@ class MethodIRGenerator final : public ast::Visitor {
       }
       return VisitResult::SKIP;
     }
+
+    // Only perform binary numeric promotion if we are performing operations on
+    // numeric types.
+    if (lhs.Size() != SizeClass::PTR) {
+      lhs = builder_.PromoteToInt(lhs);
+    }
+    if (rhs.Size() != SizeClass::PTR) {
+      rhs = builder_.PromoteToInt(rhs);
+    }
+
 
 #define C(fn) builder_.fn(res_, lhs, rhs); break;
     switch (expr.Op().type) {
@@ -248,8 +263,12 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(IntLitExpr, expr,) {
-    // TODO: Ensure no overflow.
-    builder_.ConstInt32(res_, expr.Value());
+    builder_.ConstNumeric(res_, expr.Value());
+    return VisitResult::SKIP;
+  }
+
+  VISIT_DECL(CharLitExpr, expr,) {
+    builder_.ConstNumeric(res_, expr.Char());
     return VisitResult::SKIP;
   }
 
@@ -597,7 +616,7 @@ class ProgramIRGenerator final : public ast::Visitor {
 
       {
         Mem size = t_builder.AllocTemp(SizeClass::INT);
-        t_builder.ConstInt32(size, num_parents);
+        t_builder.ConstNumeric(size, num_parents);
         {
           Mem array = t_builder.AllocArray(SizeClass::PTR, size);
           auto write_parent = [&](i32 i, ast::TypeId::Base p_tid) {
@@ -610,7 +629,7 @@ class ProgramIRGenerator final : public ast::Visitor {
               t_builder.FieldDeref(parent, dummy, p_tid, ast::kStaticTypeInfoId, base::PosRange(-1, -1, -1));
             }
             Mem idx = t_builder.AllocTemp(SizeClass::INT);
-            t_builder.ConstInt32(idx, i);
+            t_builder.ConstNumeric(idx, i);
 
             Mem array_slot = t_builder.AllocLocal(SizeClass::PTR);
             t_builder.ArrayAddr(array_slot, array, idx, SizeClass::PTR, base::PosRange(-1, -1, -1));
@@ -635,7 +654,7 @@ class ProgramIRGenerator final : public ast::Visitor {
             arg_mems.push_back(rt_type_info);
             {
               Mem tid_mem = t_builder.AllocTemp(SizeClass::INT);
-              t_builder.ConstInt32(tid_mem, tid.base);
+              t_builder.ConstNumeric(tid_mem, tid.base);
               arg_mems.push_back(tid_mem);
             }
             arg_mems.push_back(array);

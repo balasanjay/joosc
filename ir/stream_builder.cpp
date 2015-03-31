@@ -43,6 +43,16 @@ void StreamBuilder::SetAssigned(const std::initializer_list<Mem>& mems) {
   }
 }
 
+Mem StreamBuilder::PromoteToInt(Mem src) {
+  CHECK(src.Size() != SizeClass::PTR);
+  if (src.Size() == SizeClass::INT) {
+    return src;
+  }
+  Mem tmp = AllocTemp(SizeClass::INT);
+  Extend(tmp, src);
+  return tmp;
+}
+
 Mem StreamBuilder::AllocHeap(TypeId tid) {
   CHECK(tid.ndims == 0);
   Mem tmp = AllocTemp(SizeClass::PTR);
@@ -132,8 +142,7 @@ void StreamBuilder::Const(Mem mem, u64 val) {
   SetAssigned({mem});
 }
 
-void StreamBuilder::ConstInt32(Mem mem, i32 val) {
-  CHECK(mem.Size() == SizeClass::INT);
+void StreamBuilder::ConstNumeric(Mem mem, i32 val) {
   Const(mem, (u64)(i64)val);
 }
 
