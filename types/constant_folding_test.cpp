@@ -120,4 +120,8 @@ TEST_F(ConstantFoldingTest, StringifyChars) {
   ShouldBeTrue("", "'a' + \"foo\" + 'b' == \"afoob\"");
 }
 
+TEST_F(ConstantFoldingTest, NoStringifyNull) {
+  ShouldBeUnknown("", "null + \"y\" == \"nully\"");
+}
+
 } // namespace types

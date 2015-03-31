@@ -57,12 +57,12 @@ class StreamBuilder {
   // Return in dst the value of field fid in src. If src is kInvalidMemId, then
   // this will be a static field dereference. If src is not kInvalidMemId and
   // points to null, an exception will be generated.
-  void FieldDeref(Mem dst, Mem src, ast::FieldId fid, base::PosRange pos);
+  void FieldDeref(Mem dst, Mem src, ast::TypeId::Base tid, ast::FieldId fid, base::PosRange pos);
 
   // Return in dst a pointer to field fid in src. If src is kInvalidMemId, then
   // this will be a pointer to a static field. If src is not kInvalidMemId and
   // points to null, an exception will be generated.
-  void FieldAddr(Mem dst, Mem src, ast::FieldId fid, base::PosRange pos);
+  void FieldAddr(Mem dst, Mem src, ast::TypeId::Base tid, ast::FieldId fid, base::PosRange pos);
 
   // Return in dst the value of array[index]. If array is null, or index is out
   // of range, an exception will be generated.
@@ -144,6 +144,9 @@ class StreamBuilder {
   // must have been initialized. The result of calling the method will be
   // stored in dst.
   void DynamicCall(Mem dst, Mem this_ptr, ast::MethodId mid, const vector<Mem>& args);
+
+  // Lookup the TypeInfo runtime object stored on the object in src and prite it to dst.
+  void GetTypeInfo(Mem dst, Mem src);
 
   // Return with no value.
   void Ret();

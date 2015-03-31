@@ -7,7 +7,7 @@
 
 namespace ir {
 
-Program GenerateIR(sptr<const ast::Program> program, const types::TypeInfoMap& tinfo_map);
+Program GenerateIR(sptr<const ast::Program> program, const types::TypeSet& typeset, const types::TypeInfoMap& tinfo_map);
 
 } // namespace ir
 

@@ -33,7 +33,7 @@ enum class CompilerStage {
 bool CompilerMain(CompilerStage stage, const vector<string>& files,
     std::ostream* out, std::ostream* err);
 
-sptr<const ast::Program> CompilerFrontend(CompilerStage stage, const base::FileSet* fs, types::TypeInfoMap* tinfo_out, base::ErrorList* err_out);
+sptr<const ast::Program> CompilerFrontend(CompilerStage stage, const base::FileSet* fs, types::TypeSet* typeset_out, types::TypeInfoMap* tinfo_out, base::ErrorList* err_out);
 
 bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, const types::TypeInfoMap& tinfo_map, std::ostream* err);
 
