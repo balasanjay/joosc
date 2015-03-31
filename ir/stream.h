@@ -6,6 +6,12 @@
 
 namespace ir {
 
+struct RuntimeLinkIds {
+  ast::TypeId::Base type_info_type;// = 16;
+  ast::MethodId type_info_constructor;// = 17;
+  ast::TypeId::Base type_info_instanceof;// = 16;
+};
+
 // Numbered labels local to a function.
 using LabelId = u64;
 

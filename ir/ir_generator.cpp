@@ -34,6 +34,7 @@ using base::PosRange;
 using types::TypeIdList;
 using types::TypeInfo;
 using types::TypeInfoMap;
+using types::TypeSet;
 
 namespace ir {
 
@@ -41,14 +42,14 @@ namespace {
 
 class MethodIRGenerator final : public ast::Visitor {
  public:
-  MethodIRGenerator(Mem res, bool lvalue, StreamBuilder* builder, vector<ast::LocalVarId>* locals, map<ast::LocalVarId, Mem>* locals_map, TypeId tid): res_(res), lvalue_(lvalue), builder_(*builder), locals_(*locals), locals_map_(*locals_map), tid_(tid) {}
+  MethodIRGenerator(Mem res, bool lvalue, StreamBuilder* builder, vector<ast::LocalVarId>* locals, map<ast::LocalVarId, Mem>* locals_map, TypeId tid, const RuntimeLinkIds& rt_ids): res_(res), lvalue_(lvalue), builder_(*builder), locals_(*locals), locals_map_(*locals_map), tid_(tid), rt_ids_(rt_ids) {}
 
   MethodIRGenerator WithResultIn(Mem res, bool lvalue=false) {
-    return MethodIRGenerator(res, lvalue, &builder_, &locals_, &locals_map_, tid_);
+    return MethodIRGenerator(res, lvalue, &builder_, &locals_, &locals_map_, tid_, rt_ids_);
   }
 
   MethodIRGenerator WithLocals(vector<ast::LocalVarId>& locals) {
-    return MethodIRGenerator(res_, lvalue_, &builder_, &locals, &locals_map_, tid_);
+    return MethodIRGenerator(res_, lvalue_, &builder_, &locals, &locals_map_, tid_, rt_ids_);
   }
 
   VISIT_DECL(MethodDecl, decl,) {
@@ -506,8 +507,7 @@ class MethodIRGenerator final : public ast::Visitor {
           Mem dummy = builder_.AllocDummy();
           builder_.FieldDeref(ancestor, dummy, expr.GetType().GetTypeId().base, ast::kStaticTypeInfoId, base::PosRange(-1, -1, -1));
         }
-        ast::TypeId::Base rt_type_info_instanceof_method = 16;
-        builder_.DynamicCall(res_, type_info, rt_type_info_instanceof_method, {ancestor});
+        builder_.DynamicCall(res_, type_info, rt_ids_.type_info_instanceof, {ancestor});
       }
     }
 
@@ -521,11 +521,12 @@ class MethodIRGenerator final : public ast::Visitor {
   vector<ast::LocalVarId>& locals_;
   map<ast::LocalVarId, Mem>& locals_map_;
   TypeId tid_;
+  const RuntimeLinkIds& rt_ids_;
 };
 
 class ProgramIRGenerator final : public ast::Visitor {
  public:
-  ProgramIRGenerator(const TypeInfoMap& tinfo_map) : tinfo_map_(tinfo_map) {}
+  ProgramIRGenerator(const TypeInfoMap& tinfo_map, const RuntimeLinkIds& rt_ids) : tinfo_map_(tinfo_map), rt_ids_(rt_ids) {}
   VISIT_DECL(CompUnit, unit, ) {
     stringstream ss;
     ss << 'f' << unit.FileId() << ".s";
@@ -589,13 +590,9 @@ class ProgramIRGenerator final : public ast::Visitor {
             ++parent_idx;
           }
 
-          // TODO.
-          ast::TypeId::Base rt_type_info_type = 16;
-          ast::MethodId rt_type_info_constructor = 17;
-
           // Construct the TypeInfo.
           {
-            Mem rt_type_info = t_builder.AllocHeap(ast::TypeId{rt_type_info_type, 0});
+            Mem rt_type_info = t_builder.AllocHeap(ast::TypeId{rt_ids_.type_info_type, 0});
 
             vector<Mem> arg_mems;
             arg_mems.push_back(rt_type_info);
@@ -609,7 +606,7 @@ class ProgramIRGenerator final : public ast::Visitor {
             // Perform constructor call.
             {
               Mem tmp = t_builder.AllocDummy();
-              t_builder.StaticCall(tmp, rt_type_info_type, rt_type_info_constructor, arg_mems);
+              t_builder.StaticCall(tmp, rt_ids_.type_info_type, rt_ids_.type_info_constructor, arg_mems);
             }
 
             // Write the TypeInfo to the special static field on this class.
@@ -706,7 +703,7 @@ class ProgramIRGenerator final : public ast::Visitor {
 
         builder->FieldAddr(f_mem, this_ptr, tid.base, field->GetFieldId(), PosRange(-1, -1, -1));
 
-        MethodIRGenerator gen(val, false, builder, &empty_locals, &locals_map, tid);
+        MethodIRGenerator gen(val, false, builder, &empty_locals, &locals_map, tid, rt_ids_);
         gen.Visit(field->ValPtr());
 
         builder->MovToAddr(f_mem, val);
@@ -737,7 +734,7 @@ class ProgramIRGenerator final : public ast::Visitor {
          && decl->Mods().HasModifier(lexer::Modifier::STATIC)
          && decl->Params().Params().Size() == 0);
 
-      MethodIRGenerator gen(ret, false, &builder, &empty_locals, &locals_map, {out->tid, 0});
+      MethodIRGenerator gen(ret, false, &builder, &empty_locals, &locals_map, {out->tid, 0}, rt_ids_);
       gen.Visit(decl);
     } else {
       // TODO: Dirty hack to get stdlib generating empty methods.
@@ -752,14 +749,46 @@ class ProgramIRGenerator final : public ast::Visitor {
   ir::Program prog;
 
  private:
-  ir::CompUnit current_unit_;
+  CompUnit current_unit_;
   const TypeInfoMap& tinfo_map_;
+  const RuntimeLinkIds& rt_ids_;
 };
+
+RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo_map) {
+  TypeId rt_tinfo_id = typeset.TryGet("__joos_internal__.TypeInfo");
+  CHECK(rt_tinfo_id.IsValid());
+
+  TypeInfo rt_tinfo = tinfo_map.LookupTypeInfo(rt_tinfo_id);
+  base::ErrorList throwaway;
+  MethodId rt_tinfo_constructor = rt_tinfo.methods.ResolveCall(
+      tinfo_map,
+      rt_tinfo_id,
+      types::CallContext::CONSTRUCTOR,
+      rt_tinfo_id,
+      TypeIdList({TypeId::kInt, {rt_tinfo_id.base, 1}}),
+      "TypeInfo", base::PosRange(-1, -1, -1), &throwaway);
+  CHECK(!throwaway.IsFatal());
+  CHECK(rt_tinfo_constructor != ast::kErrorMethodId);
+
+  MethodId rt_tinfo_instanceof = rt_tinfo.methods.ResolveCall(
+      tinfo_map,
+      rt_tinfo_id,
+      types::CallContext::INSTANCE,
+      rt_tinfo_id,
+      TypeIdList({rt_tinfo_id}),
+      "InstanceOf", base::PosRange(-1, -1, -1), &throwaway);
+  CHECK(!throwaway.IsFatal());
+  CHECK(rt_tinfo_constructor != ast::kErrorMethodId);
+
+  return RuntimeLinkIds{
+    rt_tinfo_id.base, rt_tinfo_constructor, rt_tinfo_instanceof};
+}
 
 } // namespace
 
-Program GenerateIR(sptr<const ast::Program> program, const TypeInfoMap& tinfo_map) {
-  ProgramIRGenerator gen(tinfo_map);
+Program GenerateIR(sptr<const ast::Program> program, const TypeSet& typeset, const TypeInfoMap& tinfo_map) {
+  RuntimeLinkIds rt_ids = LookupRuntimeIds(typeset, tinfo_map);
+  ProgramIRGenerator gen(tinfo_map, rt_ids);
   gen.Visit(program);
   return gen.prog;
 }
