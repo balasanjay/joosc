@@ -10,6 +10,7 @@
 #include "ir/stream_builder.h"
 #include "lexer/lexer.h"
 #include "types/type_info_map.h"
+#include "types/typechecker.h"
 
 using std::dynamic_pointer_cast;
 using std::get;
@@ -31,6 +32,7 @@ using ast::kStaticInitMethodId;
 using ast::kTypeInitMethodId;
 using ast::kVarImplicitThis;
 using base::PosRange;
+using types::TypeChecker;
 using types::TypeIdList;
 using types::TypeInfo;
 using types::TypeInfoMap;
@@ -106,6 +108,33 @@ class MethodIRGenerator final : public ast::Visitor {
       locals_map_.erase(vid);
     }
 
+    return VisitResult::SKIP;
+  }
+
+  VISIT_DECL(CastExpr, expr,) {
+    TypeId from = expr.GetExpr().GetTypeId();
+    TypeId to = expr.GetTypeId();
+
+    SizeClass fromsize = SizeClassFrom(from);
+    SizeClass tosize = SizeClassFrom(to);
+
+    if (from == to) {
+      return VisitResult::RECURSE;
+    }
+
+    Mem tmp = builder_.AllocTemp(fromsize);
+    WithResultIn(tmp).Visit(expr.GetExprPtr());
+
+    // TODO: handle reference types.
+    if (TypeChecker::IsReference(from) || TypeChecker::IsReference(to)) {
+      return VisitResult::SKIP;
+    }
+
+    if (TypeChecker::IsPrimitiveWidening(to, from)) {
+      builder_.Extend(res_, tmp);
+    } else {
+      builder_.Truncate(res_, tmp);
+    }
     return VisitResult::SKIP;
   }
 

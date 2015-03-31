@@ -127,6 +127,14 @@ class StreamBuilder {
   // Emit *dst = *lhs ^ *rhs. They must all have SizeClass BOOL.
   void Xor(Mem dst, Mem lhs, Mem rhs);
 
+  // Emits either *dst = sign_extend(*src) or *dst = zero_extend(*src),
+  // depending on the SizeClass of the src.
+  void Extend(Mem dst, Mem src);
+
+  // Emits *dst = truncate(*src). The bit-size is determined from the
+  // SizeClasses of the two.
+  void Truncate(Mem dst, Mem src);
+
   // Emit a static call to method mid in Type tid, passing args. All args
   // must have been initialized. The result of calling the method will be
   // stored in dst.

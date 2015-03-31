@@ -102,12 +102,9 @@ enum class OpType {
   XOR,
 
   // (Mem, Mem).
-  SIGN_EXTEND,
+  EXTEND,
 
   // (Mem, Mem).
-  ZERO_EXTEND,
-
-  // (Mem, Mem, SizeClass).
   TRUNCATE,
 
   // (Mem, TypeId::Base, MethodId, int nargs, Mem[]).
