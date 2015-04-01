@@ -112,6 +112,15 @@ enum class OpType {
   // (Mem, Mem).
   TRUNCATE,
 
+  // (Mem, Mem, TypeId::Base, TypeId::Ndims, TypeId::Base, TypeId::Ndims).
+  INSTANCE_OF,
+
+  // (Mem).
+  CAST_EXCEPTION_IF_FALSE,
+
+  // (Mem, Mem).
+  CHECK_ARRAY_STORE,
+
   // (Mem, TypeId::Base, MethodId, int nargs, Mem[]).
   STATIC_CALL,
 
