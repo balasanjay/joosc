@@ -86,7 +86,7 @@ string StackOffset(i64 offset) {
 }
 
 struct FuncWriter final {
-  FuncWriter(const OffsetTable& offsets, const RuntimeLinkIds& rt_ids, vector<StackFrame>* stack_frames, StackFrame frame, ostream* out) : offsets(offsets), rt_ids(rt_ids), stack_frames(*stack_frames), frame(frame), w(out) {}
+  FuncWriter(const OffsetTable& offsets, const File* file, const RuntimeLinkIds& rt_ids, vector<StackFrame>* stack_frames, StackFrame frame, ostream* out) : offsets(offsets), file(file), rt_ids(rt_ids), stack_frames(*stack_frames), frame(frame), w(out) {}
 
   void WritePrologue(const Stream& stream) {
     w.Col0("; Starting method.");
@@ -719,7 +719,7 @@ struct FuncWriter final {
     }
 
     StackFrame new_frame = frame;
-    // TODO: put proper line number.
+    new_frame.line = OffsetToLine(file_offset);
     stack_frames.emplace_back(new_frame);
 
     w.Col1("; Performing call.");
@@ -779,7 +779,7 @@ struct FuncWriter final {
     std::tie(offset, kind) = offsets.OffsetOfMethod(mid);
 
     StackFrame new_frame = frame;
-    // TODO: put proper line number.
+    new_frame.line = OffsetToLine(file_offset);
     stack_frames.emplace_back(new_frame);
 
 
@@ -860,6 +860,13 @@ struct FuncWriter final {
     MemId id;
   };
 
+  int OffsetToLine(int offset) {
+    int line = -1;
+    int col = -1;
+    file->IndexToLineCol(offset, &line, &col);
+    return line + 1;
+  }
+
   map<MemId, StackEntry> stack_map;
   i64 cur_offset = 0;
   vector<StackEntry> stack;
@@ -867,6 +874,7 @@ struct FuncWriter final {
   // TODO: do more optimal stack management for non-int-sized things.
 
   const OffsetTable& offsets;
+  const File* file;
   const RuntimeLinkIds& rt_ids;
   vector<StackFrame>& stack_frames;
   StackFrame frame;
@@ -952,11 +960,12 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
   }
 
   vector<StackFrame> stack;
+  const File* file = fs_.Get(comp_unit.fileid);
   for (const Type& type : comp_unit.types) {
     Fprintf(out, "section .text\n\n");
     for (const Stream& method_stream : type.streams) {
       StackFrame frame = {comp_unit.fileid, type.tid, method_stream.mid, 0};
-      WriteFunc(method_stream, frame, &stack, out);
+      WriteFunc(method_stream, file, frame, &stack, out);
     }
     Fprintf(out, "section .rodata\n");
     WriteVtable(type, out);
@@ -967,8 +976,8 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
   WriteStackFrames(stack, out);
 }
 
-void Writer::WriteFunc(const Stream& stream, StackFrame frame, vector<StackFrame>* stack_out, ostream* out) const {
-  FuncWriter writer{offsets_, rt_ids_, stack_out, frame, out};
+void Writer::WriteFunc(const Stream& stream, const File* file, StackFrame frame, vector<StackFrame>* stack_out, ostream* out) const {
+  FuncWriter writer{offsets_, file, rt_ids_, stack_out, frame, out};
 
   writer.WritePrologue(stream);
 

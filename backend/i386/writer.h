@@ -31,7 +31,7 @@ public:
   void WriteFileNames(std::ostream* out) const;
   void WriteMethods(const types::TypeInfoMap& tinfo_map, std::ostream* out) const;
 private:
-  void WriteFunc(const ir::Stream& stream, StackFrame frame, vector<StackFrame>* stack_out, std::ostream* out) const;
+  void WriteFunc(const ir::Stream& stream, const base::File* file, StackFrame frame, vector<StackFrame>* stack_out, std::ostream* out) const;
   void WriteVtable(const ir::Type& type, std::ostream* out) const;
   void WriteItable(const ir::Type& type, std::ostream* out) const;
   void WriteStatics(const ir::Type& type, std::ostream* out) const;
