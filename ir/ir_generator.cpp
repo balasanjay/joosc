@@ -76,7 +76,7 @@ class MethodIRGenerator final : public ast::Visitor {
     // Constructors call the init method, passing ``this'' as the only
     // argument.
     if (decl.TypePtr() == nullptr) {
-      builder_.StaticCall(res_, tid_.base, kInstanceInitMethodId, {param_mems[0]});
+      builder_.StaticCall(res_, tid_.base, kInstanceInitMethodId, {param_mems[0]}, decl.NameToken().pos);
     }
 
     // Add params to local map.
@@ -236,21 +236,21 @@ class MethodIRGenerator final : public ast::Visitor {
 
       Mem lhs_str = builder_.AllocTemp(SizeClass::PTR);
       if (lhs.Size() == SizeClass::PTR) {
-        builder_.StaticCall(lhs_str, rt_ids_.stringops_type.base, rt_ids_.stringops_str, {lhs});
+        builder_.StaticCall(lhs_str, rt_ids_.stringops_type.base, rt_ids_.stringops_str, {lhs}, expr.Op().pos);
       } else {
         CHECK(types::TypeChecker::IsPrimitive(lhs_tid));
-        builder_.StaticCall(lhs_str, rt_ids_.string_tid.base, rt_ids_.string_valueof.at(lhs_tid.base), {lhs});
+        builder_.StaticCall(lhs_str, rt_ids_.string_tid.base, rt_ids_.string_valueof.at(lhs_tid.base), {lhs}, expr.Op().pos);
       }
 
       Mem rhs_str = builder_.AllocTemp(SizeClass::PTR);
       if (rhs.Size() == SizeClass::PTR) {
-        builder_.StaticCall(rhs_str, rt_ids_.stringops_type.base, rt_ids_.stringops_str, {rhs});
+        builder_.StaticCall(rhs_str, rt_ids_.stringops_type.base, rt_ids_.stringops_str, {rhs}, expr.Op().pos);
       } else {
         CHECK(types::TypeChecker::IsPrimitive(rhs_tid));
-        builder_.StaticCall(rhs_str, rt_ids_.string_tid.base, rt_ids_.string_valueof.at(rhs_tid.base), {rhs});
+        builder_.StaticCall(rhs_str, rt_ids_.string_tid.base, rt_ids_.string_valueof.at(rhs_tid.base), {rhs}, expr.Op().pos);
       }
 
-      builder_.DynamicCall(res_, lhs_str, rt_ids_.string_concat, {rhs_str});
+      builder_.DynamicCall(res_, lhs_str, rt_ids_.string_concat, {rhs_str}, expr.Op().pos);
 
       return VisitResult::SKIP;
     }
@@ -515,10 +515,10 @@ class MethodIRGenerator final : public ast::Visitor {
       Mem this_ptr = builder_.AllocTemp(SizeClass::PTR);
       WithResultIn(this_ptr).Visit(expr.BasePtr());
 
-      builder_.DynamicCall(res_, this_ptr, expr.GetMethodId(), arg_mems);
+      builder_.DynamicCall(res_, this_ptr, expr.GetMethodId(), arg_mems, expr.Lparen().pos);
     } else {
       TypeId tid = static_base->GetRefType().GetTypeId();
-      builder_.StaticCall(res_, tid.base, expr.GetMethodId(), arg_mems);
+      builder_.StaticCall(res_, tid.base, expr.GetMethodId(), arg_mems, expr.Lparen().pos);
     }
 
     // Deallocate arg mems.
@@ -561,7 +561,7 @@ class MethodIRGenerator final : public ast::Visitor {
     // Perform constructor call.
     {
       Mem tmp = builder_.AllocDummy();
-      builder_.StaticCall(tmp, expr.GetTypeId().base, expr.GetMethodId(), arg_mems);
+      builder_.StaticCall(tmp, expr.GetTypeId().base, expr.GetMethodId(), arg_mems, expr.Lparen().pos);
     }
 
     // Deallocate arg mems.
@@ -590,7 +590,7 @@ class MethodIRGenerator final : public ast::Visitor {
           Mem dummy = builder_.AllocDummy();
           builder_.FieldDeref(ancestor, dummy, expr.GetType().GetTypeId().base, ast::kStaticTypeInfoId, base::PosRange(-1, -1, -1));
         }
-        builder_.StaticCall(res_, rt_ids_.type_info_tid.base, rt_ids_.type_info_instanceof, {type_info, ancestor});
+        builder_.StaticCall(res_, rt_ids_.type_info_tid.base, rt_ids_.type_info_instanceof, {type_info, ancestor}, expr.InstanceOf().pos);
       }
     }
 
@@ -615,6 +615,7 @@ class ProgramIRGenerator final : public ast::Visitor {
     stringstream ss;
     ss << 'f' << unit.FileId() << ".s";
     current_unit_.filename = ss.str();
+    current_unit_.fileid = unit.FileId();
 
     for (int i = 0; i < unit.Types().Size(); ++i) {
       Visit(unit.Types().At(i));
@@ -690,7 +691,7 @@ class ProgramIRGenerator final : public ast::Visitor {
             // Perform constructor call.
             {
               Mem tmp = t_builder.AllocDummy();
-              t_builder.StaticCall(tmp, rt_ids_.type_info_tid.base, rt_ids_.type_info_constructor, arg_mems);
+              t_builder.StaticCall(tmp, rt_ids_.type_info_tid.base, rt_ids_.type_info_constructor, arg_mems, decl.NameToken().pos);
             }
 
             // Write the TypeInfo to the special static field on this class.
@@ -758,7 +759,7 @@ class ProgramIRGenerator final : public ast::Visitor {
 
         Mem dummy = i_builder.AllocDummy();
 
-        i_builder.StaticCall(dummy, ptid.base, mid, {i_this_ptr});
+        i_builder.StaticCall(dummy, ptid.base, mid, {i_this_ptr}, decl.NameToken().pos);
       }
 
       for (auto field : fields) {
@@ -905,7 +906,7 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
   CHECK(rt_ids.type_info_num_types != ast::kErrorFieldId);
 
   rt_ids.stringops_type = typeset.TryGet("__joos_internal__.StringOps");
-  CHECK(rt_ids.type_info_tid.IsValid());
+  CHECK(rt_ids.stringops_type.IsValid());
 
   TypeInfo stringops_tinfo = tinfo_map.LookupTypeInfo(rt_ids.stringops_type);
   rt_ids.stringops_str = stringops_tinfo.methods.ResolveCall(
@@ -917,6 +918,19 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
       "Str", base::PosRange(-1, -1, -1), &throwaway);
   CHECK(!throwaway.IsFatal());
   CHECK(rt_ids.stringops_str != ast::kErrorMethodId);
+
+  rt_ids.stackframe_type = typeset.TryGet("__joos_internal__.StackFrame");
+  CHECK(rt_ids.type_info_tid.IsValid());
+  TypeInfo stackframe_tinfo = tinfo_map.LookupTypeInfo(rt_ids.stackframe_type);
+  rt_ids.stackframe_print = stackframe_tinfo.methods.ResolveCall(
+      tinfo_map,
+      rt_ids.stackframe_type,
+      types::CallContext::INSTANCE,
+      rt_ids.stackframe_type,
+      TypeIdList({}),
+      "Print", base::PosRange(-1, -1, -1), &throwaway);
+  CHECK(!throwaway.IsFatal());
+  CHECK(rt_ids.stackframe_print != ast::kErrorMethodId);
 
   return rt_ids;
 }

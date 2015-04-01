@@ -20,6 +20,9 @@ struct RuntimeLinkIds {
 
   ast::TypeId stringops_type;
   ast::MethodId stringops_str;
+
+  ast::TypeId stackframe_type;
+  ast::MethodId stackframe_print;
 };
 
 // Numbered labels local to a function.
@@ -128,10 +131,10 @@ enum class OpType {
   // (Mem, Mem).
   CHECK_ARRAY_STORE,
 
-  // (Mem, TypeId::Base, MethodId, int nargs, Mem[]).
+  // (Mem, TypeId::Base, MethodId, int file_offset, int nargs, Mem[]).
   STATIC_CALL,
 
-  // (Mem, Mem, MethodId, int nargs, Mem[]).
+  // (Mem, Mem, MethodId, int file_offset, int nargs, Mem[]).
   DYNAMIC_CALL,
 
   // (Mem, Mem).
@@ -169,6 +172,7 @@ struct Type {
 struct CompUnit {
   string filename;
   vector<Type> types;
+  int fileid;
 };
 
 struct Program {

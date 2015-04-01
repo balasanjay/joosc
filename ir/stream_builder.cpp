@@ -303,12 +303,13 @@ void StreamBuilder::Truncate(Mem dst, Mem src) {
   UnOp(dst, src, OpType::TRUNCATE);
 }
 
-void StreamBuilder::StaticCall(Mem dst, TypeId::Base tid, MethodId mid, const vector<Mem>& args) {
+void StreamBuilder::StaticCall(Mem dst, TypeId::Base tid, MethodId mid, const vector<Mem>& args, PosRange pos) {
   size_t begin = args_.size();
 
   args_.push_back(dst.Id());
   args_.push_back(tid);
   args_.push_back(mid);
+  args_.push_back(pos.begin);
   args_.push_back(args.size());
   for (auto val : args) {
     AssertAssigned({val});
@@ -321,13 +322,14 @@ void StreamBuilder::StaticCall(Mem dst, TypeId::Base tid, MethodId mid, const ve
   }
 }
 
-void StreamBuilder::DynamicCall(Mem dst, Mem this_ptr, ast::MethodId mid, const vector<Mem>& args) {
+void StreamBuilder::DynamicCall(Mem dst, Mem this_ptr, ast::MethodId mid, const vector<Mem>& args, PosRange pos) {
   AssertAssigned({this_ptr});
   size_t begin = args_.size();
 
   args_.push_back(dst.Id());
   args_.push_back(this_ptr.Id());
   args_.push_back(mid);
+  args_.push_back(pos.begin);
   args_.push_back(args.size());
   for (auto val : args) {
     AssertAssigned({val});

@@ -14,6 +14,7 @@ using ast::FieldId;
 using ast::MethodId;
 using ast::TypeId;
 using ast::TypeKind;
+using ast::kInstanceInitMethodId;
 using ast::kStaticInitMethodId;
 using ast::kStaticTypeInfoId;
 using ast::kTypeInitMethodId;
@@ -54,6 +55,10 @@ namespace {
 
 using ArgIter = vector<u64>::const_iterator;
 
+jstring Jstr(const string& str) {
+  return jstring(str.begin(), str.end());
+}
+
 string Sized(SizeClass size, const string& b1, const string& b2, const string& b4) {
   switch(size) {
     case SizeClass::BOOL: // Fall through.
@@ -81,7 +86,7 @@ string StackOffset(i64 offset) {
 }
 
 struct FuncWriter final {
-  FuncWriter(const OffsetTable& offsets, const RuntimeLinkIds& rt_ids, ostream* out) : offsets(offsets), rt_ids(rt_ids), w(out) {}
+  FuncWriter(const OffsetTable& offsets, const RuntimeLinkIds& rt_ids, vector<StackFrame>* stack_frames, StackFrame frame, ostream* out) : offsets(offsets), rt_ids(rt_ids), stack_frames(*stack_frames), frame(frame), w(out) {}
 
   void WritePrologue(const Stream& stream) {
     w.Col0("; Starting method.");
@@ -663,14 +668,15 @@ struct FuncWriter final {
 
 
   void StaticCall(ArgIter begin, ArgIter end) {
-    CHECK((end-begin) >= 4);
+    CHECK((end-begin) >= 5);
 
     MemId dst = begin[0];
     TypeId::Base tid = begin[1];
     MethodId mid = begin[2];
-    u64 nargs = begin[3];
+    u64 file_offset = begin[3];
+    u64 nargs = begin[4];
 
-    CHECK(((u64)(end-begin) - 4) == nargs);
+    CHECK(((u64)(end-begin) - 5) == nargs);
 
     i64 stack_used = cur_offset;
 
@@ -679,7 +685,7 @@ struct FuncWriter final {
       if (label_ok.second) {
         CHECK(nargs == 1);
 
-        MemId src = begin[4];
+        MemId src = begin[5];
 
         const StackEntry& src_e = stack_map.at(src);
 
@@ -701,7 +707,7 @@ struct FuncWriter final {
     w.Col1("; Pushing %v arguments onto stack for call.", nargs);
 
     // Push args onto stack in reverse order.
-    for (ArgIter cur = end; cur != (begin + 4); --cur) {
+    for (ArgIter cur = end; cur != (begin + 5); --cur) {
       MemId arg = *(cur - 1);
       const StackEntry& arg_e = stack_map.at(arg);
 
@@ -712,9 +718,14 @@ struct FuncWriter final {
       stack_used += 4;
     }
 
+    StackFrame new_frame = frame;
+    // TODO: put proper line number.
+    stack_frames.emplace_back(new_frame);
+
     w.Col1("; Performing call.");
 
     w.Col1("sub esp, %v", stack_used);
+    // TODO: push stack frame label
     w.Col1("call _t%v_m%v", tid, mid);
     w.Col1("add esp, %v", stack_used);
 
@@ -726,14 +737,15 @@ struct FuncWriter final {
   }
 
   void DynamicCall(ArgIter begin, ArgIter end) {
-    CHECK((end-begin) >= 4);
+    CHECK((end-begin) >= 5);
 
     MemId dst = begin[0];
     MemId this_ptr = begin[1];
     MethodId mid = begin[2];
-    u64 nargs = begin[3];
+    u64 file_offset = begin[3];
+    u64 nargs = begin[4];
 
-    CHECK(((u64)(end-begin) - 4) == nargs);
+    CHECK(((u64)(end-begin) - 5) == nargs);
 
     const StackEntry& this_e = stack_map.at(this_ptr);
 
@@ -742,7 +754,7 @@ struct FuncWriter final {
     w.Col1("; Pushing %v arguments onto stack for call.", nargs);
 
     // Push args onto stack in reverse order.
-    for (ArgIter cur = end; cur != (begin + 4); --cur) {
+    for (ArgIter cur = end; cur != (begin + 5); --cur) {
       MemId arg = *(cur - 1);
       const StackEntry& arg_e = stack_map.at(arg);
 
@@ -766,7 +778,13 @@ struct FuncWriter final {
 
     std::tie(offset, kind) = offsets.OffsetOfMethod(mid);
 
+    StackFrame new_frame = frame;
+    // TODO: put proper line number.
+    stack_frames.emplace_back(new_frame);
+
+
     w.Col1("sub esp, %v", stack_used);
+    // TODO: push stack frame.
     // Dereference the `this' ptr to get the vtable ptr.
     w.Col1("mov eax, [eax]");
 
@@ -850,6 +868,8 @@ struct FuncWriter final {
 
   const OffsetTable& offsets;
   const RuntimeLinkIds& rt_ids;
+  vector<StackFrame>& stack_frames;
+  StackFrame frame;
 
   AsmWriter w;
 };
@@ -863,17 +883,26 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
   static string kItableNameFmt = "itable_t%v";
   static string kStaticNameFmt = "static_t%v_f%v";
 
-  set<string> externs{"_joos_malloc", Sprintf("vtable_t%v", rt_ids_.object_tid.base)};
+  set<string> externs{
+    "_joos_malloc",
+    Sprintf("vtable_t%v", rt_ids_.object_tid.base),
+    Sprintf("vtable_t%v", rt_ids_.stackframe_type.base),
+    Sprintf("src_file%v", comp_unit.fileid),
+  };
   set<string> globals;
   for (const Type& type : comp_unit.types) {
     globals.insert(Sprintf(kVtableNameFmt, type.tid));
     globals.insert(Sprintf(kItableNameFmt, type.tid));
+
+    externs.insert(Sprintf("types%v", type.tid));
     for (const Stream& method_stream : type.streams) {
       if (method_stream.is_entry_point) {
         globals.insert("_entry");
       }
 
       globals.insert(Sprintf(kMethodNameFmt, method_stream.tid, method_stream.mid));
+
+      externs.insert(Sprintf("methods%v", method_stream.mid));
 
       for (const Op& op : method_stream.ops) {
         if (op.type == OpType::STATIC_CALL) {
@@ -922,10 +951,12 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
     Fprintf(out, "extern %v\n", ext);
   }
 
+  vector<StackFrame> stack;
   for (const Type& type : comp_unit.types) {
     Fprintf(out, "section .text\n\n");
     for (const Stream& method_stream : type.streams) {
-      WriteFunc(method_stream, out);
+      StackFrame frame = {comp_unit.fileid, type.tid, method_stream.mid, 0};
+      WriteFunc(method_stream, frame, &stack, out);
     }
     Fprintf(out, "section .rodata\n");
     WriteVtable(type, out);
@@ -933,10 +964,11 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
     Fprintf(out, "section .data\n");
     WriteStatics(type, out);
   }
+  WriteStackFrames(stack, out);
 }
 
-void Writer::WriteFunc(const Stream& stream, ostream* out) const {
-  FuncWriter writer{offsets_, rt_ids_, out};
+void Writer::WriteFunc(const Stream& stream, StackFrame frame, vector<StackFrame>* stack_out, ostream* out) const {
+  FuncWriter writer{offsets_, rt_ids_, stack_out, frame, out};
 
   writer.WritePrologue(stream);
 
@@ -1150,6 +1182,21 @@ void Writer::WriteConstStringsImpl(const string& prefix, const vector<pair<jstri
   }
 }
 
+void Writer::WriteStackFrames(const vector<StackFrame>& stack_frames, ostream* out) const {
+  AsmWriter w(out);
+  w.Col0("\n");
+  w.Col0("section .rodata");
+  for (size_t i = 0; i < stack_frames.size(); ++i) {
+    const StackFrame& frame = stack_frames.at(i);
+    w.Col0("stackframe_%v:", i);
+    w.Col1("dd vtable_t%v", rt_ids_.stackframe_type.base);
+    w.Col1("dd src_file%v", frame.fid);
+    w.Col1("dd types%v", frame.tid);
+    w.Col1("dd methods%v", frame.mid);
+    w.Col1("dd %v", frame.line);
+  }
+}
+
 void Writer::WriteMain(ostream* out) const {
   AsmWriter w(out);
 
@@ -1267,9 +1314,7 @@ void Writer::WriteFileNames(ostream* out) const {
       filename = dirname + "/" + filename;
     }
 
-    jstring jstr(filename.begin(), filename.end());
-
-    strings.emplace_back(make_pair(jstr, i));
+    strings.emplace_back(make_pair(Jstr(filename), i));
   }
 
   WriteConstStringsImpl("src_file", strings, out);
@@ -1297,8 +1342,7 @@ void Writer::WriteMethods(const TypeInfoMap& tinfo_map, ostream* out) const {
       if (tinfo.package != "") {
         name = tinfo.package + "." + name;
       }
-      jstring jstr(name.begin(), name.end());
-      type_strings.emplace_back(make_pair(jstr, tinfo.type.base));
+      type_strings.emplace_back(make_pair(Jstr(name), tinfo.type.base));
     }
 
     for (const auto& m_pair : tinfo.methods.GetMethodMap()) {
@@ -1309,12 +1353,13 @@ void Writer::WriteMethods(const TypeInfoMap& tinfo_map, ostream* out) const {
         continue;
       }
 
-      string name = minfo.signature.name;
-
-      jstring jstr(name.begin(), name.end());
-      method_strings.emplace_back(make_pair(jstr, minfo.mid));
+      method_strings.emplace_back(make_pair(Jstr(minfo.signature.name), minfo.mid));
     }
   }
+
+  method_strings.emplace_back(make_pair(Jstr("<init>"), kInstanceInitMethodId));
+  method_strings.emplace_back(make_pair(Jstr("<static_init>"), kStaticInitMethodId));
+  method_strings.emplace_back(make_pair(Jstr("<runtime_init>"), kTypeInitMethodId));
 
   WriteConstStringsImpl("types", type_strings, out);
   WriteConstStringsImpl("methods", method_strings, out);

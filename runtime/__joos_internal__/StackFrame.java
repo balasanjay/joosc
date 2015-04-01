@@ -9,13 +9,13 @@ public final class StackFrame {
   protected int line;
 
   public final void Print() {
-    print(file);
-    print(":");
-    print(line);
-    print(" ");
-    print(type);
-    print(".");
-    println(method);
+    System.out.print(file);
+    System.out.print(":");
+    System.out.print(line);
+    System.out.print(" ");
+    System.out.print(type);
+    System.out.print(".");
+    System.out.println(method);
   }
 }
 )"
