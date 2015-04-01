@@ -112,8 +112,9 @@ struct FuncWriter final {
   }
 
   void SetupParams(const Stream& stream) {
-    // [ebp-0] is the old ebp, [ebp-4] is the esp, so we start at [ebp-8].
-    i64 param_offset = -8;
+    // [ebp-0] is the old ebp, [ebp-4] is the esp, [ebp-8] is the stack frame
+    // pointer, so we start at [ebp-12].
+    i64 param_offset = -12;
     for (size_t i = 0; i < stream.params.size(); ++i) {
       i64 cur = param_offset;
       param_offset -= 4;
@@ -720,13 +721,15 @@ struct FuncWriter final {
 
     StackFrame new_frame = frame;
     new_frame.line = OffsetToLine(file_offset);
+    size_t frame_idx = stack_frames.size();
     stack_frames.emplace_back(new_frame);
 
     w.Col1("; Performing call.");
 
     w.Col1("sub esp, %v", stack_used);
-    // TODO: push stack frame label
+    w.Col1("push stackframe_%v", frame_idx);
     w.Col1("call _t%v_m%v", tid, mid);
+    w.Col1("pop ecx");
     w.Col1("add esp, %v", stack_used);
 
     if (dst != kInvalidMemId) {
@@ -780,11 +783,12 @@ struct FuncWriter final {
 
     StackFrame new_frame = frame;
     new_frame.line = OffsetToLine(file_offset);
+    size_t frame_idx = stack_frames.size();
     stack_frames.emplace_back(new_frame);
 
 
     w.Col1("sub esp, %v", stack_used);
-    // TODO: push stack frame.
+    w.Col1("push stackframe_%v", frame_idx);
     // Dereference the `this' ptr to get the vtable ptr.
     w.Col1("mov eax, [eax]");
 
@@ -802,7 +806,7 @@ struct FuncWriter final {
       w.Col1("call [eax + %v]", offset);
     }
 
-
+    w.Col1("pop ecx");
     w.Col1("add esp, %v", stack_used);
 
     if (dst != kInvalidMemId) {
