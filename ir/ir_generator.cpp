@@ -564,7 +564,7 @@ class MethodIRGenerator final : public ast::Visitor {
           Mem dummy = builder_.AllocDummy();
           builder_.FieldDeref(ancestor, dummy, expr.GetType().GetTypeId().base, ast::kStaticTypeInfoId, base::PosRange(-1, -1, -1));
         }
-        builder_.StaticCall(res_, rt_ids_.type_info_type, rt_ids_.type_info_instanceof, {type_info, ancestor});
+        builder_.StaticCall(res_, rt_ids_.type_info_tid.base, rt_ids_.type_info_instanceof, {type_info, ancestor});
       }
     }
 
@@ -650,7 +650,7 @@ class ProgramIRGenerator final : public ast::Visitor {
 
           // Construct the TypeInfo.
           {
-            Mem rt_type_info = t_builder.AllocHeap(ast::TypeId{rt_ids_.type_info_type, 0});
+            Mem rt_type_info = t_builder.AllocHeap(rt_ids_.type_info_tid);
 
             vector<Mem> arg_mems;
             arg_mems.push_back(rt_type_info);
@@ -664,7 +664,7 @@ class ProgramIRGenerator final : public ast::Visitor {
             // Perform constructor call.
             {
               Mem tmp = t_builder.AllocDummy();
-              t_builder.StaticCall(tmp, rt_ids_.type_info_type, rt_ids_.type_info_constructor, arg_mems);
+              t_builder.StaticCall(tmp, rt_ids_.type_info_tid.base, rt_ids_.type_info_constructor, arg_mems);
             }
 
             // Write the TypeInfo to the special static field on this class.
@@ -804,52 +804,65 @@ class ProgramIRGenerator final : public ast::Visitor {
 };
 
 RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo_map) {
-  TypeId rt_tinfo_id = typeset.TryGet("__joos_internal__.TypeInfo");
-  CHECK(rt_tinfo_id.IsValid());
+  RuntimeLinkIds rt_ids;
 
-  TypeId object_tid = typeset.TryGet("java.lang.Object");
-  CHECK(object_tid.IsValid());
+  rt_ids.object_tid = typeset.TryGet("java.lang.Object");
+  CHECK(rt_ids.object_tid.IsValid());
 
-  TypeId string_tid = typeset.TryGet("java.lang.String");
-  CHECK(object_tid.IsValid());
+  rt_ids.string_tid = typeset.TryGet("java.lang.String");
+  CHECK(rt_ids.string_tid.IsValid());
 
-  TypeInfo rt_tinfo = tinfo_map.LookupTypeInfo(rt_tinfo_id);
+  rt_ids.type_info_tid = typeset.TryGet("__joos_internal__.TypeInfo");
+  CHECK(rt_ids.type_info_tid.IsValid());
+
+  TypeInfo type_info_tinfo = tinfo_map.LookupTypeInfo(rt_ids.type_info_tid);
   base::ErrorList throwaway;
-  MethodId rt_tinfo_constructor = rt_tinfo.methods.ResolveCall(
+  rt_ids.type_info_constructor = type_info_tinfo.methods.ResolveCall(
       tinfo_map,
-      rt_tinfo_id,
+      rt_ids.type_info_tid,
       types::CallContext::CONSTRUCTOR,
-      rt_tinfo_id,
-      TypeIdList({TypeId::kInt, {rt_tinfo_id.base, 1}}),
+      rt_ids.type_info_tid,
+      TypeIdList({TypeId::kInt, {rt_ids.type_info_tid.base, 1}}),
       "TypeInfo", base::PosRange(-1, -1, -1), &throwaway);
   CHECK(!throwaway.IsFatal());
-  CHECK(rt_tinfo_constructor != ast::kErrorMethodId);
+  CHECK(rt_ids.type_info_constructor != ast::kErrorMethodId);
 
-  MethodId rt_tinfo_instanceof = rt_tinfo.methods.ResolveCall(
+  rt_ids.type_info_instanceof = type_info_tinfo.methods.ResolveCall(
       tinfo_map,
-      rt_tinfo_id,
+      rt_ids.type_info_tid,
       types::CallContext::STATIC,
-      rt_tinfo_id,
-      TypeIdList({rt_tinfo_id, rt_tinfo_id}),
+      rt_ids.type_info_tid,
+      TypeIdList({rt_ids.type_info_tid, rt_ids.type_info_tid}),
       "InstanceOf", base::PosRange(-1, -1, -1), &throwaway);
   CHECK(!throwaway.IsFatal());
-  CHECK(rt_tinfo_constructor != ast::kErrorMethodId);
+  CHECK(rt_ids.type_info_instanceof != ast::kErrorMethodId);
 
-  FieldId rt_tinfo_num_types = rt_tinfo.fields.ResolveAccess(
+  rt_ids.type_info_num_types = type_info_tinfo.fields.ResolveAccess(
       tinfo_map,
-      rt_tinfo_id,
+      rt_ids.type_info_tid,
       types::CallContext::STATIC,
-      rt_tinfo_id,
+      rt_ids.type_info_tid,
       "num_types",
       base::PosRange(-1, -1, -1),
       &throwaway);
   CHECK(!throwaway.IsFatal());
-  CHECK(rt_tinfo_num_types != ast::kErrorFieldId);
+  CHECK(rt_ids.type_info_num_types != ast::kErrorFieldId);
 
-  return RuntimeLinkIds{
-    object_tid.base, string_tid.base,
-    rt_tinfo_id.base, rt_tinfo_constructor,
-    rt_tinfo_instanceof, rt_tinfo_num_types};
+  rt_ids.stringops_type = typeset.TryGet("__joos_internal__.StringOps");
+  CHECK(rt_ids.type_info_tid.IsValid());
+
+  TypeInfo stringops_tinfo = tinfo_map.LookupTypeInfo(rt_ids.stringops_type);
+  rt_ids.stringops_str = stringops_tinfo.methods.ResolveCall(
+      tinfo_map,
+      rt_ids.stringops_type,
+      types::CallContext::STATIC,
+      rt_ids.stringops_type,
+      TypeIdList({rt_ids.object_tid}),
+      "Str", base::PosRange(-1, -1, -1), &throwaway);
+  CHECK(!throwaway.IsFatal());
+  CHECK(rt_ids.stringops_str != ast::kErrorMethodId);
+
+  return rt_ids;
 }
 
 } // namespace
