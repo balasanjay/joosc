@@ -19,6 +19,7 @@ using ast::kStaticTypeInfoId;
 using ast::kTypeInitMethodId;
 using backend::common::AsmWriter;
 using backend::common::OffsetTable;
+using base::File;
 using base::Fprintf;
 using base::Sprintf;
 using ir::CompUnit;
@@ -33,7 +34,10 @@ using ir::Stream;
 using ir::Type;
 using ir::kInvalidMemId;
 using types::ConstStringMap;
+using types::MethodInfo;
 using types::StringId;
+using types::TypeInfo;
+using types::TypeInfoMap;
 
 #define EXPECT_NARGS(n) CHECK((end - begin) == n)
 
@@ -1049,8 +1053,13 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         writer.Ret(begin, end);
         break;
 
+      UNIMPLEMENTED_OP(INSTANCE_OF);
+      UNIMPLEMENTED_OP(CAST_EXCEPTION_IF_FALSE);
+      UNIMPLEMENTED_OP(CHECK_ARRAY_STORE);
+
       default:
         UNREACHABLE();
+
     }
   }
 
@@ -1096,6 +1105,48 @@ void Writer::WriteStatics(const Type& type, ostream* out) const {
   for (const auto& f_pair : offsets_.StaticFieldsOf({type.tid, 0})) {
     w.Col0("static_t%v_f%v:", type.tid, f_pair.first);
     w.Col1("%v 0", Sized(f_pair.second, "db", "dw", "dd"));
+  }
+}
+
+void Writer::WriteConstStringsImpl(const string& prefix, const vector<pair<jstring, u64>>& strings, ostream* out) const {
+  AsmWriter w(out);
+
+  // Step 0: extern all required labels.
+  w.Col0("extern vtable_t%v", rt_ids_.object_tid.base);
+  w.Col0("extern vtable_t%v", rt_ids_.string_tid.base);
+
+  // Step 1: declare all strings.
+  for (const auto& str_pair : strings) {
+    w.Col0("global %v%v", prefix, str_pair.second);
+  }
+
+  // Step 2: declare local arrays backing strings.
+  w.Col0("section .rodata");
+  for (const auto& str_pair : strings) {
+    // First, layout array for this string.
+    w.Col0("%v_array%v:", prefix, str_pair.second);
+
+    const jstring& str = str_pair.first;
+
+    w.Col1("dd vtable_t%v", rt_ids_.object_tid.base);
+    w.Col1("dd %v", str.size());
+    w.Col1("dd 0"); // TODO: populate the elem type ptr for character.
+    for (auto jch : str) {
+      if (isprint(jch)) {
+        w.Col1<int, char>("dw %v \t; '%v'", jch, jch);
+      } else {
+        w.Col1("dw %v", jch);
+      }
+    }
+
+    // Newline.
+    w.Col0("");
+
+    // Next, lay out the String object itself.
+    w.Col0("%v%v:", prefix, str_pair.second);
+    w.Col1("dd vtable_t%v", rt_ids_.string_tid.base);
+    w.Col1("dd %v_array%v", prefix, str_pair.second);
+    w.Col0("\n");
   }
 }
 
@@ -1145,7 +1196,7 @@ void Writer::WriteMain(ostream* out) const {
   w.Col1("ret");
 }
 
-void Writer::WriteStaticInit(const Program& prog, const types::TypeInfoMap& tinfo_map, ostream* out) const {
+void Writer::WriteStaticInit(const Program& prog, const TypeInfoMap& tinfo_map, ostream* out) const {
   AsmWriter w(out);
 
   w.Col0("; Run all static initialisers.");
@@ -1202,45 +1253,71 @@ void Writer::WriteStaticInit(const Program& prog, const types::TypeInfoMap& tinf
 }
 
 void Writer::WriteConstStrings(const ConstStringMap& string_map, ostream* out) const {
-  AsmWriter w(out);
+  vector<pair<jstring, u64>> strings(string_map.begin(), string_map.end());
+  WriteConstStringsImpl("string", strings, out);
+}
 
-  // Step 0: extern all required labels.
-  w.Col0("extern vtable_t%v", rt_ids_.object_tid.base);
-  w.Col0("extern vtable_t%v", rt_ids_.string_tid.base);
-
-  // Step 1: declare all strings.
-  for (const auto& str_pair : string_map) {
-    w.Col0("global string%v", str_pair.second);
-  }
-
-  // Step 2: declare local arrays backing strings.
-  w.Col0("section .rodata");
-  for (const auto& str_pair : string_map) {
-    // First, layout array for this string.
-    w.Col0("string_array%v:", str_pair.second);
-
-    const jstring& str = str_pair.first;
-
-    w.Col1("dd vtable_t%v", rt_ids_.object_tid.base);
-    w.Col1("dd %v", str.size());
-    w.Col1("dd 0"); // TODO: populate the elem type ptr for character.
-    for (auto jch : str) {
-      if (isprint(jch)) {
-        w.Col1<int, char>("dw %v \t; '%v'", jch, jch);
-      } else {
-        w.Col1("dw %v", jch);
-      }
+void Writer::WriteFileNames(ostream* out) const {
+  vector<pair<jstring, u64>> strings;
+  for (int i = 0; i < fs_.Size(); ++i) {
+    File* f = fs_.Get(i);
+    const string& dirname = f->Dirname();
+    string filename = f->Basename();
+    if (dirname != "") {
+      filename = dirname + "/" + filename;
     }
 
-    // Newline.
-    w.Col0("");
+    jstring jstr(filename.begin(), filename.end());
 
-    // Next, lay out the String object itself.
-    w.Col0("string%v:", str_pair.second);
-    w.Col1("dd vtable_t%v", rt_ids_.string_tid.base);
-    w.Col1("dd string_array%v", str_pair.second);
-    w.Col0("\n");
+    strings.emplace_back(make_pair(jstr, i));
   }
+
+  WriteConstStringsImpl("src_file", strings, out);
+}
+
+void Writer::WriteMethods(const TypeInfoMap& tinfo_map, ostream* out) const {
+  vector<pair<jstring, u64>> type_strings;
+  vector<pair<jstring, u64>> method_strings;
+
+  for (const auto& t_pair : tinfo_map.GetTypeMap()) {
+    const TypeInfo& tinfo = t_pair.second;
+
+    // We will never execute a method of an interface directly.
+    if (tinfo.kind == TypeKind::INTERFACE) {
+      continue;
+    }
+
+    // Skip the array type.
+    if (tinfo.type.ndims > 0) {
+      continue;
+    }
+
+    {
+      string name = tinfo.name;
+      if (tinfo.package != "") {
+        name = tinfo.package + "." + name;
+      }
+      jstring jstr(name.begin(), name.end());
+      type_strings.emplace_back(make_pair(jstr, tinfo.type.base));
+    }
+
+    for (const auto& m_pair : tinfo.methods.GetMethodMap()) {
+      const MethodInfo& minfo = m_pair.second;
+
+      // Skip inherited methods.
+      if (minfo.class_type != tinfo.type) {
+        continue;
+      }
+
+      string name = minfo.signature.name;
+
+      jstring jstr(name.begin(), name.end());
+      method_strings.emplace_back(make_pair(jstr, minfo.mid));
+    }
+  }
+
+  WriteConstStringsImpl("types", type_strings, out);
+  WriteConstStringsImpl("methods", method_strings, out);
 }
 
 } // namespace i386

@@ -36,6 +36,6 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files,
 
 sptr<const ast::Program> CompilerFrontend(CompilerStage stage, const base::FileSet* fs, types::TypeSet* typeset_out, types::TypeInfoMap* tinfo_out, types::ConstStringMap* string_map_out, base::ErrorList* err_out);
 
-bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, const types::TypeInfoMap& tinfo_map, const types::ConstStringMap& string_map, std::ostream* err);
+bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, const types::TypeInfoMap& tinfo_map, const types::ConstStringMap& string_map, const base::FileSet& fs, std::ostream* err);
 
 #endif

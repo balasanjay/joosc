@@ -22,6 +22,7 @@
 using std::cerr;
 using std::cout;
 using std::endl;
+using std::function;
 using std::ofstream;
 using std::ostream;
 
@@ -91,7 +92,7 @@ sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, Typ
   return program;
 }
 
-bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, const TypeSet& typeset, const TypeInfoMap& tinfo_map, const ConstStringMap& string_map, std::ostream* err) {
+bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, const TypeSet& typeset, const TypeInfoMap& tinfo_map, const ConstStringMap& string_map, const FileSet& fs, std::ostream* err) {
   ir::Program ir_prog = ir::GenerateIR(prog, typeset, tinfo_map, string_map);
   if (stage == CompilerStage::GEN_IR) {
     return true;
@@ -102,7 +103,7 @@ bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const s
   OffsetTable offset_table = OffsetTable::Build(tinfo_map, 4);
 
   bool success = true;
-  backend::i386::Writer writer(offset_table, ir_prog.rt_ids);
+  backend::i386::Writer writer(offset_table, ir_prog.rt_ids, fs);
   for (const ir::CompUnit& comp_unit : ir_prog.units) {
     string fname = dir + "/" + comp_unit.filename;
 
@@ -119,39 +120,40 @@ bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const s
     out << std::flush;
   }
 
-  do {
-    {
-      string fname = dir + "/strings.s";
-      ofstream out(fname);
-      if (!out) {
-        // TODO: make error pretty.
-        *err << "Could not open output file: " << fname << "\n";
-        success = false;
-        break;
-      }
+  vector<pair<string, function<void(ostream*)>>> writers;
 
-      writer.WriteConstStrings(string_map, &out);
-      out << std::flush;
+  writers.emplace_back(make_pair("strings.s", [&](ostream* out) {
+    writer.WriteConstStrings(string_map, out);
+  }));
+
+  writers.emplace_back(make_pair("main.s", [&](ostream* out) {
+    writer.WriteMain(out);
+    writer.WriteStaticInit(ir_prog, tinfo_map, out);
+  }));
+
+  writers.emplace_back(make_pair("traces.s", [&](ostream* out) {
+    writer.WriteFileNames(out);
+    writer.WriteMethods(tinfo_map, out);
+  }));
+
+  for (auto& p : writers) {
+    string fname = dir + "/" + p.first;
+    ofstream out(fname);
+    if (!out) {
+      // TODO: make error pretty.
+      *err << "Could not open output file: " << fname << "\n";
+      success = false;
+      break;
     }
 
-    {
-      string fname = dir + "/main.s";
-      ofstream out(fname);
-      if (!out) {
-        // TODO: make error pretty.
-        *err << "Could not open output file: " << fname << "\n";
-        success = false;
-        break;
-      }
-
-      writer.WriteMain(&out);
-      writer.WriteStaticInit(ir_prog, tinfo_map, &out);
-      out << std::flush;
+    p.second(&out);
+    if (!(out << std::flush)) {
+      // TODO: make error pretty.
+      *err << "Could not write to output file: " << fname << "\n";
+      success = false;
+      break;
     }
-
-  } while (false);
-
-
+  }
 
   return success;
 }
@@ -193,5 +195,5 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream*, os
     return true;
   }
 
-  return CompilerBackend(stage, program, "output", typeset, tinfo_map, string_map, err);
+  return CompilerBackend(stage, program, "output", typeset, tinfo_map, string_map, *fs, err);
 }
