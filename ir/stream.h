@@ -11,6 +11,7 @@ struct RuntimeLinkIds {
 
   ast::TypeId string_tid;
   ast::MethodId string_concat;
+  map<ast::TypeId::Base, ast::MethodId> string_valueof;
 
   ast::TypeId type_info_tid;
   ast::MethodId type_info_constructor;

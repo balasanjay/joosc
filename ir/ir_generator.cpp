@@ -156,8 +156,10 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(BinExpr, expr,) {
-    SizeClass lhs_size = SizeClassFrom(expr.Lhs().GetTypeId());
-    SizeClass rhs_size = SizeClassFrom(expr.Rhs().GetTypeId());
+    TypeId lhs_tid = expr.Lhs().GetTypeId();
+    TypeId rhs_tid = expr.Rhs().GetTypeId();
+    SizeClass lhs_size = SizeClassFrom(lhs_tid);
+    SizeClass rhs_size = SizeClassFrom(rhs_tid);
 
     // Special code for short-circuiting boolean and or.
     if (expr.Op().type == lexer::AND) {
@@ -233,10 +235,20 @@ class MethodIRGenerator final : public ast::Visitor {
       CHECK(expr.Op().type == lexer::ADD);
 
       Mem lhs_str = builder_.AllocTemp(SizeClass::PTR);
-      builder_.StaticCall(lhs_str, rt_ids_.stringops_type.base, rt_ids_.stringops_str, {lhs});
+      if (lhs.Size() == SizeClass::PTR) {
+        builder_.StaticCall(lhs_str, rt_ids_.stringops_type.base, rt_ids_.stringops_str, {lhs});
+      } else {
+        CHECK(types::TypeChecker::IsPrimitive(lhs_tid));
+        builder_.StaticCall(lhs_str, rt_ids_.string_tid.base, rt_ids_.string_valueof.at(lhs_tid.base), {lhs});
+      }
 
       Mem rhs_str = builder_.AllocTemp(SizeClass::PTR);
-      builder_.StaticCall(rhs_str, rt_ids_.stringops_type.base, rt_ids_.stringops_str, {rhs});
+      if (rhs.Size() == SizeClass::PTR) {
+        builder_.StaticCall(rhs_str, rt_ids_.stringops_type.base, rt_ids_.stringops_str, {rhs});
+      } else {
+        CHECK(types::TypeChecker::IsPrimitive(rhs_tid));
+        builder_.StaticCall(rhs_str, rt_ids_.string_tid.base, rt_ids_.string_valueof.at(rhs_tid.base), {rhs});
+      }
 
       builder_.DynamicCall(res_, lhs_str, rt_ids_.string_concat, {rhs_str});
 
@@ -837,6 +849,25 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
       "concat", base::PosRange(-1, -1, -1), &throwaway);
   CHECK(!throwaway.IsFatal());
   CHECK(rt_ids.string_concat != ast::kErrorMethodId);
+
+  auto valueof_method = [&](ast::TypeId tid) {
+    ast::MethodId mid = string_tinfo.methods.ResolveCall(
+        tinfo_map,
+        rt_ids.string_tid,
+        types::CallContext::STATIC,
+        rt_ids.string_tid,
+        TypeIdList({tid}),
+        "valueOf", base::PosRange(-1, -1, -1), &throwaway);
+    CHECK(!throwaway.IsFatal());
+    CHECK(mid != ast::kErrorMethodId);
+    rt_ids.string_valueof.insert({tid.base, mid});
+  };
+
+  valueof_method(ast::TypeId::kInt);
+  valueof_method(ast::TypeId::kShort);
+  valueof_method(ast::TypeId::kChar);
+  valueof_method(ast::TypeId::kByte);
+  valueof_method(ast::TypeId::kBool);
 
   rt_ids.type_info_tid = typeset.TryGet("__joos_internal__.TypeInfo");
   CHECK(rt_ids.type_info_tid.IsValid());
