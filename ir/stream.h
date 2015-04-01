@@ -8,7 +8,9 @@ namespace ir {
 
 struct RuntimeLinkIds {
   ast::TypeId object_tid;
+
   ast::TypeId string_tid;
+  ast::MethodId string_concat;
 
   ast::TypeId type_info_tid;
   ast::MethodId type_info_constructor;

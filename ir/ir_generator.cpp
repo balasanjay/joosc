@@ -228,6 +228,21 @@ class MethodIRGenerator final : public ast::Visitor {
       return VisitResult::SKIP;
     }
 
+    // If we are adding strings.
+    if (expr.GetTypeId() == rt_ids_.string_tid) {
+      CHECK(expr.Op().type == lexer::ADD);
+
+      Mem lhs_str = builder_.AllocTemp(SizeClass::PTR);
+      builder_.StaticCall(lhs_str, rt_ids_.stringops_type.base, rt_ids_.stringops_str, {lhs});
+
+      Mem rhs_str = builder_.AllocTemp(SizeClass::PTR);
+      builder_.StaticCall(rhs_str, rt_ids_.stringops_type.base, rt_ids_.stringops_str, {rhs});
+
+      builder_.DynamicCall(res_, lhs_str, rt_ids_.string_concat, {rhs_str});
+
+      return VisitResult::SKIP;
+    }
+
     // Only perform binary numeric promotion if we are performing operations on
     // numeric types.
     if (lhs.Size() != SizeClass::PTR) {
@@ -236,7 +251,6 @@ class MethodIRGenerator final : public ast::Visitor {
     if (rhs.Size() != SizeClass::PTR) {
       rhs = builder_.PromoteToInt(rhs);
     }
-
 
 #define C(fn) builder_.fn(res_, lhs, rhs); break;
     switch (expr.Op().type) {
@@ -805,18 +819,29 @@ class ProgramIRGenerator final : public ast::Visitor {
 
 RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo_map) {
   RuntimeLinkIds rt_ids;
+  base::ErrorList throwaway;
 
   rt_ids.object_tid = typeset.TryGet("java.lang.Object");
   CHECK(rt_ids.object_tid.IsValid());
 
   rt_ids.string_tid = typeset.TryGet("java.lang.String");
   CHECK(rt_ids.string_tid.IsValid());
+  TypeInfo string_tinfo = tinfo_map.LookupTypeInfo(rt_ids.string_tid);
+
+  rt_ids.string_concat = string_tinfo.methods.ResolveCall(
+      tinfo_map,
+      rt_ids.string_tid,
+      types::CallContext::INSTANCE,
+      rt_ids.string_tid,
+      TypeIdList({rt_ids.string_tid}),
+      "concat", base::PosRange(-1, -1, -1), &throwaway);
+  CHECK(!throwaway.IsFatal());
+  CHECK(rt_ids.string_concat != ast::kErrorMethodId);
 
   rt_ids.type_info_tid = typeset.TryGet("__joos_internal__.TypeInfo");
   CHECK(rt_ids.type_info_tid.IsValid());
-
   TypeInfo type_info_tinfo = tinfo_map.LookupTypeInfo(rt_ids.type_info_tid);
-  base::ErrorList throwaway;
+
   rt_ids.type_info_constructor = type_info_tinfo.methods.ResolveCall(
       tinfo_map,
       rt_ids.type_info_tid,
