@@ -1,13 +1,9 @@
-
 from __future__ import print_function
 import subprocess
 import os
+import shutil
 
-'TEST_SHARD_INDEX'
-'TEST_TOTAL_SHARDS'
-'TEST_SHARD_STATUS_FILE'
-
-stdlib_filenames = [
+stdlib_files = [
     'third_party/cs444/stdlib/5.0/java/util/Arrays.java',
     'third_party/cs444/stdlib/5.0/java/io/PrintStream.java',
     'third_party/cs444/stdlib/5.0/java/io/Serializable.java',
@@ -27,18 +23,19 @@ stdlib_filenames = [
 
 
 def do_test(test_name, test_files):
-    subprocess.call(['rm', '-r', 'output'])
-    subprocess.call(['mkdir', '-p', 'output'])
-    subprocess.call(['cp', 'third_party/cs444/stdlib/5.0/runtime.s', 'output/runtime.s'])
+    shutil.rmtree('output', True)
+    os.mkdir('output')
+    shutil.copyfile('../third_party/cs444/stdlib/5.0/runtime.s', 'output/runtime.s')
 
-    joosc_args = ['bazel-bin/joosc'] + test_files + stdlib_filenames
+    joosc_args = ['bazel-bin/joosc'] + test_files + stdlib_files
+    joosc_args = [os.path.join('..', a) for a in joosc_args]
     joosc_proc = subprocess.Popen(joosc_args)
     joosc_proc.wait()
     if joosc_proc.returncode != 0:
         print('\nFailed to compile {}! Ret={}.'.format(test_name, joosc_proc.returncode))
         return False
 
-    asm_proc = subprocess.Popen('./asm.sh')
+    asm_proc = subprocess.Popen('../asm.sh')
     asm_proc.wait()
     if asm_proc.returncode != 0:
         print('\nFailed to assemble {}! Ret={}.'.format(test_name, asm_proc.returncode))
@@ -79,15 +76,41 @@ def do_tests():
         for subdir in subdirs:
             subdir_to_dir[os.path.join(dir_name, subdir)] = key_dir
 
-    num_tests = len(dir_to_tests)
+    tests = [(name, files) for name, files in dir_to_tests.items()]
+    sorted(tests, key=lambda t: t[0])
+
+    shard = int(os.getenv('TEST_SHARD_INDEX', 0))
+    num_shards = int(os.getenv('TEST_TOTAL_SHARDS', 1))
+    shard_file = os.getenv('TEST_SHARD_STATUS_FILE', None)
+
+    if shard_file is not None:
+        with open(shard_file, 'w') as sf:
+            sf.write('')
+
+    total_tests = len(tests)
+    running_tests = total_tests / num_shards + 1
     num_passed = 0
-    for dir_name, files in dir_to_tests.items():
-        if do_test(dir_name, files):
+    d = '.tmp_test_dir_{}'.format(shard)
+    i = shard
+
+    shutil.rmtree(d, True)
+    os.mkdir(d)
+    os.chdir(d)
+    print("Doing {}/{} tests in directory {}".format(running_tests, total_tests, d))
+
+    while i < total_tests:
+        if do_test(*tests[i]):
             num_passed += 1
-    print("\nPassed {}/{} tests.".format(num_passed, num_tests))
+        i += num_shards
+
+    shutil.rmtree(d, True)
+
+    print("\nPassed {}/{} tests.".format(num_passed, running_tests))
+    return num_passed == running_tests
 
 if __name__ == '__main__':
-    do_tests()
-    print('')
+    success = do_tests()
+    if not success:
+        exit(1)
 
 
