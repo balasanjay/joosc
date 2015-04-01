@@ -7,12 +7,19 @@
 namespace ir {
 
 struct RuntimeLinkIds {
-  ast::TypeId::Base object_tid;
-  ast::TypeId::Base string_tid;
-  ast::TypeId::Base type_info_type;
+  ast::TypeId object_tid;
+
+  ast::TypeId string_tid;
+  ast::MethodId string_concat;
+  map<ast::TypeId::Base, ast::MethodId> string_valueof;
+
+  ast::TypeId type_info_tid;
   ast::MethodId type_info_constructor;
-  ast::TypeId::Base type_info_instanceof;
+  ast::MethodId type_info_instanceof;
   ast::FieldId type_info_num_types;
+
+  ast::TypeId stringops_type;
+  ast::MethodId stringops_str;
 };
 
 // Numbered labels local to a function.

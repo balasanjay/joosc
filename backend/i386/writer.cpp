@@ -165,7 +165,7 @@ struct FuncWriter final {
     w.Col1("mov %v, eax", StackOffset(dst_e.offset));
 
     // Set the vptr to be object's vptr.
-    w.Col1("mov dword [eax], vtable_t%v", rt_ids.object_tid);
+    w.Col1("mov dword [eax], vtable_t%v", rt_ids.object_tid.base);
 
     // Set the length field.
     w.Col1("mov ebx, %v", StackOffset(len_e.offset));
@@ -859,7 +859,7 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
   static string kItableNameFmt = "itable_t%v";
   static string kStaticNameFmt = "static_t%v_f%v";
 
-  set<string> externs{"_joos_malloc", Sprintf("vtable_t%v", rt_ids_.object_tid)};
+  set<string> externs{"_joos_malloc", Sprintf("vtable_t%v", rt_ids_.object_tid.base)};
   set<string> globals;
   for (const Type& type : comp_unit.types) {
     globals.insert(Sprintf(kVtableNameFmt, type.tid));
@@ -1159,7 +1159,7 @@ void Writer::WriteStaticInit(const Program& prog, const types::TypeInfoMap& tinf
   w.Col1("; Initializing number of types.");
   string num_types_label = Sprintf(
       "static_t%v_f%v",
-      prog.rt_ids.type_info_type,
+      prog.rt_ids.type_info_tid.base,
       prog.rt_ids.type_info_num_types);
   w.Col1("extern %v", num_types_label);
   w.Col1("mov dword [%v], %v",
@@ -1205,8 +1205,8 @@ void Writer::WriteConstStrings(const ConstStringMap& string_map, ostream* out) c
   AsmWriter w(out);
 
   // Step 0: extern all required labels.
-  w.Col0("extern vtable_t%v", rt_ids_.object_tid);
-  w.Col0("extern vtable_t%v", rt_ids_.string_tid);
+  w.Col0("extern vtable_t%v", rt_ids_.object_tid.base);
+  w.Col0("extern vtable_t%v", rt_ids_.string_tid.base);
 
   // Step 1: declare all strings.
   for (const auto& str_pair : string_map) {
@@ -1221,7 +1221,7 @@ void Writer::WriteConstStrings(const ConstStringMap& string_map, ostream* out) c
 
     const jstring& str = str_pair.first;
 
-    w.Col1("dd vtable_t%v", rt_ids_.object_tid);
+    w.Col1("dd vtable_t%v", rt_ids_.object_tid.base);
     w.Col1("dd %v", str.size());
     w.Col1("dd 0"); // TODO: populate the elem type ptr for character.
     for (auto jch : str) {
@@ -1237,7 +1237,7 @@ void Writer::WriteConstStrings(const ConstStringMap& string_map, ostream* out) c
 
     // Next, lay out the String object itself.
     w.Col0("string%v:", str_pair.second);
-    w.Col1("dd vtable_t%v", rt_ids_.string_tid);
+    w.Col1("dd vtable_t%v", rt_ids_.string_tid.base);
     w.Col1("dd string_array%v", str_pair.second);
     w.Col0("\n");
   }
