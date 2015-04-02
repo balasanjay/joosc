@@ -88,6 +88,7 @@ string StackOffset(i64 offset) {
 enum class ExceptionType {
   ARITHMETIC,
   NPE,
+  OOBE,
 };
 
 struct FuncWriter final {
@@ -363,6 +364,7 @@ struct FuncWriter final {
       // Handle NPE.
       size_t exception_id = exceptions.size();
       exceptions.push_back({ExceptionType::NPE, MakeStackFrame(file_offset)});
+      w.Col1("; Checking for NPE.");
       w.Col1("test ebx, ebx");
       w.Col1("jz .e%v", exception_id);
 
@@ -403,22 +405,37 @@ struct FuncWriter final {
     string src_prefix = addr ? "&" : "";
     string instr = addr ? "lea" : "mov";
 
-    // TODO: check the array access is in range.
-
     w.Col1("; t%v = %vt%v[t%v]", dst, src_prefix, src, idx);
+    w.Col1("mov ecx, %v", StackOffset(src_e.offset));
+
+    // Handle NPE.
+    {
+      size_t exception_id = exceptions.size();
+      exceptions.push_back({ExceptionType::NPE, MakeStackFrame(file_offset)});
+      w.Col1("; Checking for NPE.");
+      w.Col1("test ecx, ecx");
+      w.Col1("jz .e%v", exception_id);
+    }
+
     w.Col1("mov eax, %v", StackOffset(idx_e.offset));
+    w.Col1("mov ebx, [ecx+4]");
+
+    // Handle out of bounds exception.
+    {
+      size_t exception_id = exceptions.size();
+      exceptions.push_back({ExceptionType::OOBE, MakeStackFrame(file_offset)});
+      w.Col1("; Checking bounds for array access.");
+      w.Col1("cmp eax, 0");
+      w.Col1("jl .e%v", exception_id);
+      w.Col1("cmp eax, ebx");
+      w.Col1("jge .e%v", exception_id);
+    }
+
     w.Col1("mov ebx, %v", ByteSizeFrom(elemsize, 4));
     w.Col1("imul ebx");
     w.Col1("add eax, 12"); // Move past the vptr, the length field, and the elem type ptr.
-    w.Col1("mov ebx, %v", StackOffset(src_e.offset));
 
-    // Handle NPE.
-    size_t exception_id = exceptions.size();
-    exceptions.push_back({ExceptionType::NPE, MakeStackFrame(file_offset)});
-    w.Col1("test ebx, ebx");
-    w.Col1("jz .e%v", exception_id);
-
-    w.Col1("%v %v, [ebx+eax]", instr, sized_reg);
+    w.Col1("%v %v, [ecx+eax]", instr, sized_reg);
     w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
   }
 
@@ -511,6 +528,7 @@ struct FuncWriter final {
     // Handle div-by-zero.
     size_t exception_id = exceptions.size();
     exceptions.push_back({ExceptionType::ARITHMETIC, MakeStackFrame(file_offset)});
+    w.Col1("; Checking for div-by-zero.");
     w.Col1("test ebx, ebx");
     w.Col1("jz .e%v", exception_id);
 
@@ -815,6 +833,7 @@ struct FuncWriter final {
     // Handle NPE.
     size_t exception_id = exceptions.size();
     exceptions.push_back({ExceptionType::NPE, MakeStackFrame(file_offset)});
+    w.Col1("; Checking for NPE.");
     w.Col1("test eax, eax");
     w.Col1("jz .e%v", exception_id);
 
