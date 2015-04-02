@@ -257,10 +257,10 @@ class MethodIRGenerator final : public ast::Visitor {
 
     // Only perform binary numeric promotion if we are performing operations on
     // numeric types.
-    if (lhs.Size() != SizeClass::PTR) {
+    if (lhs.Size() != SizeClass::PTR && lhs.Size() != SizeClass::BOOL) {
       lhs = builder_.PromoteToInt(lhs);
     }
-    if (rhs.Size() != SizeClass::PTR) {
+    if (rhs.Size() != SizeClass::PTR && rhs.Size() != SizeClass::BOOL) {
       rhs = builder_.PromoteToInt(rhs);
     }
 
