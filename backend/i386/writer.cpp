@@ -333,7 +333,6 @@ struct FuncWriter final {
   }
 
   void FieldImpl(ArgIter begin, ArgIter end, bool addr) {
-    // TODO: Handle PosRange and NPEs.
     EXPECT_NARGS(5);
 
     MemId dst = begin[0];
@@ -804,6 +803,13 @@ struct FuncWriter final {
 
     w.Col1("; Pushing `this' onto stack for call.");
     w.Col1("mov eax, %v", StackOffset(this_e.offset));
+
+    // Handle NPE.
+    size_t exception_id = exceptions.size();
+    exceptions.push_back({ExceptionType::NPE, MakeStackFrame(file_offset)});
+    w.Col1("test eax, eax");
+    w.Col1("jz .e%v", exception_id);
+
     w.Col1("mov %v, eax", StackOffset(stack_used));
 
     stack_used += 4;
