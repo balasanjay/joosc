@@ -264,13 +264,19 @@ class MethodIRGenerator final : public ast::Visitor {
       rhs = builder_.PromoteToInt(rhs);
     }
 
+    if (expr.Op().type == lexer::DIV) {
+      builder_.Div(res_, lhs, rhs, expr.Op().pos);
+    }
+
+    if (expr.Op().type == lexer::MOD) {
+      builder_.Mod(res_, lhs, rhs, expr.Op().pos);
+    }
+
 #define C(fn) builder_.fn(res_, lhs, rhs); break;
     switch (expr.Op().type) {
       case lexer::ADD:  C(Add);
       case lexer::SUB:  C(Sub);
       case lexer::MUL:  C(Mul);
-      case lexer::DIV:  C(Div);
-      case lexer::MOD:  C(Mod);
       case lexer::EQ:   C(Eq);
       case lexer::NEQ:  C(Neq);
       case lexer::LT:   C(Lt);
@@ -929,8 +935,16 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
       rt_ids.stackframe_type,
       TypeIdList({}),
       "Print", base::PosRange(-1, -1, -1), &throwaway);
+  rt_ids.stackframe_print_ex = stackframe_tinfo.methods.ResolveCall(
+      tinfo_map,
+      rt_ids.stackframe_type,
+      types::CallContext::STATIC,
+      rt_ids.stackframe_type,
+      TypeIdList({TypeId::kInt}),
+      "PrintException", base::PosRange(-1, -1, -1), &throwaway);
   CHECK(!throwaway.IsFatal());
   CHECK(rt_ids.stackframe_print != ast::kErrorMethodId);
+  CHECK(rt_ids.stackframe_print_ex != ast::kErrorMethodId);
 
   return rt_ids;
 }

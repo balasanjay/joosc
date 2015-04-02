@@ -232,12 +232,16 @@ void StreamBuilder::Mul(Mem dst, Mem lhs, Mem rhs) {
   BinOp(dst, lhs, rhs, OpType::MUL);
 }
 
-void StreamBuilder::Div(Mem dst, Mem lhs, Mem rhs) {
-  BinOp(dst, lhs, rhs, OpType::DIV);
+void StreamBuilder::Div(Mem dst, Mem lhs, Mem rhs, PosRange pos) {
+  AssertAssigned({lhs, rhs});
+  AppendOp(OpType::DIV, {dst.Id(), lhs.Id(), rhs.Id(), (u64)pos.begin});
+  SetAssigned({dst});
 }
 
-void StreamBuilder::Mod(Mem dst, Mem lhs, Mem rhs) {
-  BinOp(dst, lhs, rhs, OpType::MOD);
+void StreamBuilder::Mod(Mem dst, Mem lhs, Mem rhs, PosRange pos) {
+  AssertAssigned({lhs, rhs});
+  AppendOp(OpType::MOD, {dst.Id(), lhs.Id(), rhs.Id(), (u64)pos.begin});
+  SetAssigned({dst});
 }
 
 void StreamBuilder::Jmp(LabelId lid) {

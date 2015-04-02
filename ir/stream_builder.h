@@ -89,10 +89,10 @@ class StreamBuilder {
   void Mul(Mem dst, Mem lhs, Mem rhs);
 
   // Emit *dst = *lhs / *rhs.
-  void Div(Mem dst, Mem lhs, Mem rhs);
+  void Div(Mem dst, Mem lhs, Mem rhs, base::PosRange pos);
 
   // Emit *dst = *lhs % *rhs.
-  void Mod(Mem dst, Mem lhs, Mem rhs);
+  void Mod(Mem dst, Mem lhs, Mem rhs, base::PosRange pos);
 
   // Emit an unconditional jump to the label lid.
   // Building the Stream will validate that the referenced label exists.

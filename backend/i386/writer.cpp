@@ -85,8 +85,20 @@ string StackOffset(i64 offset) {
   return Sprintf("[ebp+%v]", -offset);
 }
 
+enum class ExceptionType {
+  ARITHMETIC,
+};
+
 struct FuncWriter final {
   FuncWriter(const OffsetTable& offsets, const File* file, const RuntimeLinkIds& rt_ids, vector<StackFrame>* stack_frames, StackFrame frame, ostream* out) : offsets(offsets), file(file), rt_ids(rt_ids), stack_frames(*stack_frames), frame(frame), w(out) {}
+
+  size_t MakeStackFrame(int file_offset) {
+    StackFrame new_frame = frame;
+    new_frame.line = OffsetToLine(file_offset);
+    size_t frame_idx = stack_frames.size();
+    stack_frames.emplace_back(new_frame);
+    return frame_idx;
+  }
 
   void WritePrologue(const Stream& stream) {
     w.Col0("; Starting method.");
@@ -107,7 +119,15 @@ struct FuncWriter final {
   void WriteEpilogue() {
     w.Col0(".epilogue:");
     w.Col1("pop ebp");
-    w.Col1("ret");
+    w.Col1("ret\n");
+
+    for (size_t i = 0; i < exceptions.size(); ++i) {
+      const ExceptionSite& e = exceptions.at(i);
+      w.Col0(".e%v:", i);
+      w.Col1("mov eax, %v", (u64)e.type);
+      w.Col1("mov ebx, stackframe_%v", e.stack_frame_id);
+      w.Col1("jmp _joos_throw");
+    }
     w.Col0("\n");
   }
 
@@ -449,11 +469,12 @@ struct FuncWriter final {
   }
 
   void DivMod(ArgIter begin, ArgIter end, bool div) {
-    EXPECT_NARGS(3);
+    EXPECT_NARGS(4);
 
     MemId dst = begin[0];
     MemId lhs = begin[1];
     MemId rhs = begin[2];
+    u64 file_offset = begin[3];
 
     const StackEntry& dst_e = stack_map.at(dst);
     const StackEntry& lhs_e = stack_map.at(lhs);
@@ -472,9 +493,10 @@ struct FuncWriter final {
     w.Col1("mov ebx, %v", StackOffset(rhs_e.offset));
 
     // Handle div-by-zero.
-    // TODO: write actual exception.
+    size_t exception_id = exceptions.size();
+    exceptions.push_back({ExceptionType::ARITHMETIC, MakeStackFrame(file_offset)});
     w.Col1("test ebx, ebx");
-    w.Col1("jz _joos_throw");
+    w.Col1("jz .e%v", exception_id);
 
     w.Col1("idiv ebx");
     w.Col1("mov %v, %v", StackOffset(dst_e.offset), res_reg);
@@ -725,15 +747,12 @@ struct FuncWriter final {
       stack_used += 4;
     }
 
-    StackFrame new_frame = frame;
-    new_frame.line = OffsetToLine(file_offset);
-    size_t frame_idx = stack_frames.size();
-    stack_frames.emplace_back(new_frame);
+    size_t frame_idx = MakeStackFrame(file_offset);
 
     w.Col1("; Performing call.");
 
     w.Col1("sub esp, %v", stack_used);
-    w.Col1("push stackframe_f%v_%v", new_frame.fid, frame_idx);
+    w.Col1("push stackframe_%v", frame_idx);
     w.Col1("call _t%v_m%v", tid, mid);
     w.Col1("pop ecx");
     w.Col1("add esp, %v", stack_used);
@@ -787,14 +806,10 @@ struct FuncWriter final {
 
     std::tie(offset, kind) = offsets.OffsetOfMethod(mid);
 
-    StackFrame new_frame = frame;
-    new_frame.line = OffsetToLine(file_offset);
-    size_t frame_idx = stack_frames.size();
-    stack_frames.emplace_back(new_frame);
-
+    size_t frame_idx = MakeStackFrame(file_offset);
 
     w.Col1("sub esp, %v", stack_used);
-    w.Col1("push stackframe_f%v_%v", new_frame.fid, frame_idx);
+    w.Col1("push stackframe_%v", frame_idx);
     // Dereference the `this' ptr to get the vtable ptr.
     w.Col1("mov eax, [eax]");
 
@@ -870,6 +885,11 @@ struct FuncWriter final {
     MemId id;
   };
 
+  struct ExceptionSite final {
+    ExceptionType type;
+    u64 stack_frame_id;
+  };
+
   int OffsetToLine(int offset) {
     int line = -1;
     int col = -1;
@@ -882,6 +902,8 @@ struct FuncWriter final {
   vector<StackEntry> stack;
 
   // TODO: do more optimal stack management for non-int-sized things.
+
+  vector<ExceptionSite> exceptions;
 
   const OffsetTable& offsets;
   const File* file;
@@ -1208,7 +1230,7 @@ void Writer::WriteStackFrames(const vector<StackFrame>& stack_frames, ostream* o
   w.Col0("section .rodata");
   for (size_t i = 0; i < stack_frames.size(); ++i) {
     const StackFrame& frame = stack_frames.at(i);
-    w.Col0("stackframe_f%v_%v:", frame.fid, i);
+    w.Col0("stackframe_%v:", i);
     w.Col1("dd vtable_t%v", rt_ids_.stackframe_type.base);
     w.Col1("dd src_file%v", frame.fid);
     w.Col1("dd types%v", frame.tid);
@@ -1221,12 +1243,15 @@ void Writer::WriteMain(ostream* out) const {
   AsmWriter w(out);
   string print_stack = Sprintf("_t%v_m%v", rt_ids_.stackframe_type.base,
     rt_ids_.stackframe_print);
+  string print_ex = Sprintf("_t%v_m%v", rt_ids_.stackframe_type.base,
+    rt_ids_.stackframe_print_ex);
 
   // Externs and globals.
   w.Col0("extern __exception");
   w.Col0("extern __malloc");
   w.Col0("extern _entry");
   w.Col0("extern %v", print_stack);
+  w.Col0("extern %v", print_ex);
   w.Col0("global _joos_malloc");
   w.Col0("global _joos_throw");
   w.Col0("global _start");
@@ -1274,6 +1299,25 @@ void Writer::WriteMain(ostream* out) const {
   // Prologue.
   w.Col1("push ebp");
   w.Col1("mov ebp, esp");
+
+  // Save the zero-th stack frame.
+  w.Col1("mov [ebp-4], ebx");
+
+  // Call StackFrame::PrintException, passing eax.
+  w.Col1("mov [ebp-8], eax");
+  w.Col1("sub esp, 8");
+  w.Col1("push 0");
+  w.Col1("call %v", print_ex);
+  w.Col1("pop ecx");
+  w.Col1("add esp, 8");
+
+  // Call StackFrame::Print, passing ebx (which is already in the right place).
+  w.Col1("sub esp, 4");
+  w.Col1("push 0");
+  w.Col1("call %v", print_stack);
+  w.Col1("pop ecx");
+  w.Col1("add esp, 4");
+
   // eax contains the ebp of the first user function.
   w.Col1("mov eax, [ebp]");
   w.Col0(".loop_start:");
@@ -1414,7 +1458,9 @@ void Writer::WriteMethods(const TypeInfoMap& tinfo_map, ostream* out) const {
         continue;
       }
 
-      method_strings.emplace_back(make_pair(Jstr(minfo.signature.name), minfo.mid));
+      stringstream ss;
+      PrintMethodSignatureTo(&ss, tinfo_map, minfo.signature);
+      method_strings.emplace_back(make_pair(Jstr(ss.str()), minfo.mid));
     }
   }
 

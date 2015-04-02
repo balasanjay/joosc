@@ -8,6 +8,13 @@ public final class StackFrame {
   protected String method;
   protected int line;
 
+  public static void PrintException(int type) {
+    System.out.println();
+    if (type == 0) {
+      System.out.println("java.lang.ArithmeticException");
+    }
+  }
+
   public final void Print() {
     System.out.print(file);
     System.out.print(":");

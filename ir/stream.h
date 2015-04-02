@@ -23,6 +23,7 @@ struct RuntimeLinkIds {
 
   ast::TypeId stackframe_type;
   ast::MethodId stackframe_print;
+  ast::MethodId stackframe_print_ex;
 };
 
 // Numbered labels local to a function.
@@ -80,10 +81,10 @@ enum class OpType {
   // (Mem, Mem, Mem).
   MUL,
 
-  // (Mem, Mem, Mem).
+  // (Mem, Mem, Mem, int file_offset).
   DIV,
 
-  // (Mem, Mem, Mem).
+  // (Mem, Mem, Mem, int file_offset).
   MOD,
 
   // (LabelId).
