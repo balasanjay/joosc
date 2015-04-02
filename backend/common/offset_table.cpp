@@ -214,6 +214,11 @@ void BuildIfaceMethodOffsets(const vector<TypeInfo>& types, u8 ptr_size,
     for (const auto& m_pair : tinfo.methods.GetMethodMap()) {
       const MethodInfo& minfo = m_pair.second;
 
+      // Ignore inherited methods.
+      if (tinfo.type != minfo.class_type) {
+        continue;
+      }
+
       u64 offset = 0;
       {
         auto iter = iface_methods.find(minfo.signature);
@@ -225,7 +230,9 @@ void BuildIfaceMethodOffsets(const vector<TypeInfo>& types, u8 ptr_size,
 
       {
         auto iter = method_out->insert({minfo.mid, {offset, TypeKind::INTERFACE}});
-        CHECK(iter.second);
+        // Either there wasn't an entry with this key, or there was. Either
+        // way, check that it got the offset we computed.
+        CHECK(iter.first->second.first == offset);
       }
     }
   }

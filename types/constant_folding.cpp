@@ -185,7 +185,7 @@ public:
           if (rhs_value == 0) {
             return exprptr;
           }
-          result = lhs_value % rhs_value;
+          result = (i32)lhs_value % (i32)rhs_value;
           break;
         default: break;
       }
