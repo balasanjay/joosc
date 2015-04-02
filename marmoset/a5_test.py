@@ -21,21 +21,22 @@ stdlib_files = [
     'third_party/cs444/stdlib/5.0/java/lang/Object.java'
 ]
 
+test_dir = os.getenv('TEST_SRCDIR', '.')
 
 def do_test(test_name, test_files):
     shutil.rmtree('output', True)
     os.mkdir('output')
-    shutil.copyfile('../third_party/cs444/stdlib/5.0/runtime.s', 'output/runtime.s')
+    shutil.copyfile(test_dir + '/third_party/cs444/stdlib/5.0/runtime.s', 'output/runtime.s')
 
-    joosc_args = ['bazel-bin/joosc'] + test_files + stdlib_files
-    joosc_args = [os.path.join('..', a) for a in joosc_args]
+    joosc_args = ['joosc'] + test_files + stdlib_files
+    joosc_args = [os.path.join(test_dir, a) for a in joosc_args]
     joosc_proc = subprocess.Popen(joosc_args)
     joosc_proc.wait()
     if joosc_proc.returncode != 0:
         print('\nFailed to compile {}! Ret={}.'.format(test_name, joosc_proc.returncode))
         return False
 
-    asm_proc = subprocess.Popen('../asm.sh')
+    asm_proc = subprocess.Popen(test_dir + '/asm.sh', shell=True)
     asm_proc.wait()
     if asm_proc.returncode != 0:
         print('\nFailed to assemble {}! Ret={}.'.format(test_name, asm_proc.returncode))

@@ -90,10 +90,11 @@ sh_test(
     deps = [
     ],
     data = [
+        "//:asm.sh",
         "//:joosc",
-        "//marmoset:a5_test.py",
-        "//third_party/cs444/stdlib:5",
         "//third_party/cs444/assignment_testcases:5",
+        "//third_party/cs444/stdlib:5",
+        ":a5_test.py",
     ],
     size = "small",
     shard_count = 4,
