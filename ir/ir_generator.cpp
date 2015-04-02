@@ -630,10 +630,6 @@ class ProgramIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(TypeDecl, decl,) {
-    if (decl.Kind() == TypeKind::INTERFACE) {
-      return VisitResult::SKIP;
-    }
-
     TypeId tid = decl.GetTypeId();
     Type type{tid.base, {}};
     const TypeInfo& tinfo = tinfo_map_.LookupTypeInfo(tid);
@@ -711,6 +707,11 @@ class ProgramIRGenerator final : public ast::Visitor {
         }
       }
       type.streams.push_back(t_builder.Build(false, tid.base, kTypeInitMethodId));
+    }
+
+    if (decl.Kind() == TypeKind::INTERFACE) {
+      current_unit_.types.push_back(type);
+      return VisitResult::SKIP;
     }
 
     // Only store fields with initialisers.

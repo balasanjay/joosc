@@ -69,6 +69,7 @@ const MethodId kFirstMethodId = 10;
 using FieldId = u64;
 const FieldId kErrorFieldId = 0;
 const FieldId kStaticTypeInfoId = 1;
+const FieldId kArrayLengthFieldId = 2;
 const FieldId kFirstFieldId = 10;
 
 } // namespace ast

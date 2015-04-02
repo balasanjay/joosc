@@ -14,6 +14,7 @@ using ast::FieldId;
 using ast::MethodId;
 using ast::TypeId;
 using ast::TypeKind;
+using ast::kArrayLengthFieldId;
 using ast::kInstanceInitMethodId;
 using ast::kStaticInitMethodId;
 using ast::kStaticTypeInfoId;
@@ -35,6 +36,7 @@ using ir::Stream;
 using ir::Type;
 using ir::kInvalidMemId;
 using types::ConstStringMap;
+using types::FieldInfo;
 using types::MethodInfo;
 using types::StringId;
 using types::TypeInfo;
@@ -75,6 +77,21 @@ string Sized(SizeClass size, const string& b1, const string& b2, const string& b
   }
 }
 
+TypeId ResolveFieldOwner(const TypeInfoMap& tinfo_map, TypeId tid, FieldId fid) {
+  // Special-case the type info ID; it is not in the field tables.
+  if (fid == kStaticTypeInfoId) {
+    return tid;
+  }
+
+  // Special-case the array length field id; it is not in the usual field table.
+  if (fid == kArrayLengthFieldId) {
+    return tid;
+  }
+
+  const FieldInfo& finfo = tinfo_map.LookupTypeInfo(tid).fields.LookupField(fid);
+  return finfo.class_type;
+}
+
 // Convert our internal stack offset to an "[ebp-x]"-style string.
 string StackOffset(i64 offset) {
   if (offset >= 0) {
@@ -93,7 +110,7 @@ enum class ExceptionType {
 };
 
 struct FuncWriter final {
-  FuncWriter(const OffsetTable& offsets, const File* file, const RuntimeLinkIds& rt_ids, vector<StackFrame>* stack_frames, StackFrame frame, ostream* out) : offsets(offsets), file(file), rt_ids(rt_ids), stack_frames(*stack_frames), frame(frame), w(out) {}
+  FuncWriter(const TypeInfoMap& tinfo_map, const OffsetTable& offsets, const File* file, const RuntimeLinkIds& rt_ids, vector<StackFrame>* stack_frames, StackFrame frame, ostream* out) : tinfo_map(tinfo_map), offsets(offsets), file(file), rt_ids(rt_ids), stack_frames(*stack_frames), frame(frame), w(out) {}
 
   size_t MakeStackFrame(int file_offset) {
     StackFrame new_frame = frame;
@@ -353,7 +370,7 @@ struct FuncWriter final {
 
     MemId dst = begin[0];
     MemId src = begin[1];
-    TypeId::Base tid = begin[2];
+    TypeId::Base child_tid = begin[2];
     FieldId fid = begin[3];
     u64 file_offset = begin[4];
 
@@ -367,8 +384,10 @@ struct FuncWriter final {
     string instr = addr ? "lea" : "mov";
 
     if (src == kInvalidMemId) {
-      w.Col1("; t%v = %vstatic_t%v_f%v", dst_e.id, src_prefix, tid, fid);
-      w.Col1("%v %v, [static_t%v_f%v]", instr, sized_reg, tid, fid);
+      TypeId parent_tid = ResolveFieldOwner(tinfo_map, TypeId{child_tid, 0}, fid);
+
+      w.Col1("; t%v = %vstatic_t%v_f%v", dst_e.id, src_prefix, parent_tid.base, fid);
+      w.Col1("%v %v, [static_t%v_f%v]", instr, sized_reg, parent_tid.base, fid);
       w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
     } else {
       const StackEntry& src_e = stack_map.at(src);
@@ -956,6 +975,7 @@ struct FuncWriter final {
 
   vector<ExceptionSite> exceptions;
 
+  const TypeInfoMap& tinfo_map;
   const OffsetTable& offsets;
   const File* file;
   const RuntimeLinkIds& rt_ids;
@@ -985,6 +1005,7 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
   for (const Type& type : comp_unit.types) {
     globals.insert(Sprintf(kVtableNameFmt, type.tid));
     globals.insert(Sprintf(kItableNameFmt, type.tid));
+    globals.insert(Sprintf(kStaticNameFmt, type.tid, kStaticTypeInfoId));
 
     externs.insert(Sprintf("types%v", type.tid));
     for (const Stream& method_stream : type.streams) {
@@ -1012,9 +1033,10 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
           externs.insert(Sprintf(kVtableNameFmt, tid));
           externs.insert(Sprintf(kItableNameFmt, tid));
         } else if (op.type == OpType::FIELD_DEREF || op.type == OpType::FIELD_ADDR) {
-          TypeId::Base tid = method_stream.args[op.begin + 2];
+          TypeId::Base child_tid = method_stream.args[op.begin + 2];
           FieldId fid = method_stream.args[op.begin + 3];
-          externs.insert(Sprintf(kStaticNameFmt, tid, fid));
+          TypeId parent_tid = ResolveFieldOwner(tinfo_map_, TypeId{child_tid, 0}, fid);
+          externs.insert(Sprintf(kStaticNameFmt, parent_tid.base, fid));
         } else if (op.type == OpType::CONST_STR) {
           StringId strid = method_stream.args[op.begin + 1];
           externs.insert(Sprintf("string%v", strid));
@@ -1022,12 +1044,15 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
       }
     }
 
-    for (const auto& v_pair : offsets_.VtableOf({type.tid, 0})) {
-      externs.insert(Sprintf(kMethodNameFmt, v_pair.first.base, v_pair.second));
-    }
+    const TypeInfo& tinfo = tinfo_map_.LookupTypeInfo({type.tid, 0});
+    if (tinfo.kind == TypeKind::CLASS) {
+      for (const auto& v_pair : offsets_.VtableOf({type.tid, 0})) {
+        externs.insert(Sprintf(kMethodNameFmt, v_pair.first.base, v_pair.second));
+      }
 
-    for (const auto& s_pair : offsets_.StaticFieldsOf({type.tid, 0})) {
-      globals.insert(Sprintf(kStaticNameFmt, type.tid, s_pair.first));
+      for (const auto& s_pair : offsets_.StaticFieldsOf({type.tid, 0})) {
+        globals.insert(Sprintf(kStaticNameFmt, type.tid, s_pair.first));
+      }
     }
   }
 
@@ -1061,7 +1086,7 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
 }
 
 void Writer::WriteFunc(const Stream& stream, const File* file, StackFrame frame, vector<StackFrame>* stack_out, ostream* out) const {
-  FuncWriter writer{offsets_, file, rt_ids_, stack_out, frame, out};
+  FuncWriter writer{tinfo_map_, offsets_, file, rt_ids_, stack_out, frame, out};
 
   writer.WritePrologue(stream);
 
@@ -1192,6 +1217,11 @@ void Writer::WriteFunc(const Stream& stream, const File* file, StackFrame frame,
 }
 
 void Writer::WriteVtable(const Type& type, ostream* out) const {
+  const TypeInfo& tinfo = tinfo_map_.LookupTypeInfo({type.tid, 0});
+  if (tinfo.kind == TypeKind::INTERFACE) {
+    return;
+  }
+
   AsmWriter w(out);
   w.Col0("vtable_t%v:", type.tid);
   w.Col1("dd static_t%v_f%v", type.tid, kStaticTypeInfoId); // Type info ptr.
@@ -1204,6 +1234,11 @@ void Writer::WriteVtable(const Type& type, ostream* out) const {
 }
 
 void Writer::WriteItable(const Type& type, ostream* out) const {
+  const TypeInfo& tinfo = tinfo_map_.LookupTypeInfo({type.tid, 0});
+  if (tinfo.kind == TypeKind::INTERFACE) {
+    return;
+  }
+
   AsmWriter w(out);
   w.Col0("itable_t%v:", type.tid);
 
@@ -1226,6 +1261,13 @@ void Writer::WriteItable(const Type& type, ostream* out) const {
 
 void Writer::WriteStatics(const Type& type, ostream* out) const {
   AsmWriter w(out);
+
+  const TypeInfo& tinfo = tinfo_map_.LookupTypeInfo({type.tid, 0});
+  if (tinfo.kind == TypeKind::INTERFACE) {
+    w.Col0("static_t%v_f%v:", type.tid, kStaticTypeInfoId);
+    w.Col1("dd 0");
+    return;
+  }
 
   for (const auto& f_pair : offsets_.StaticFieldsOf({type.tid, 0})) {
     w.Col0("static_t%v_f%v:", type.tid, f_pair.first);
@@ -1449,6 +1491,11 @@ void Writer::WriteStaticInit(const Program& prog, ostream* out) const {
   // Initialize type's statics.
   for (const CompUnit& comp_unit : units) {
     for (const Type& type : comp_unit.types) {
+      const TypeInfo& tinfo = tinfo_map_.LookupTypeInfo({type.tid, 0});
+      if (tinfo.kind == TypeKind::INTERFACE) {
+        continue;
+      }
+
       string init = Sprintf("_t%v_m%v", type.tid, kStaticInitMethodId);
       w.Col1("extern %v", init);
       w.Col1("call %v", init);
@@ -1489,11 +1536,6 @@ void Writer::WriteMethods(ostream* out) const {
   for (const auto& t_pair : tinfo_map_.GetTypeMap()) {
     const TypeInfo& tinfo = t_pair.second;
 
-    // We will never execute a method of an interface directly.
-    if (tinfo.kind == TypeKind::INTERFACE) {
-      continue;
-    }
-
     // Skip the array type.
     if (tinfo.type.ndims > 0) {
       continue;
@@ -1505,6 +1547,11 @@ void Writer::WriteMethods(ostream* out) const {
         name = tinfo.package + "." + name;
       }
       type_strings.emplace_back(make_pair(Jstr(name), tinfo.type.base));
+    }
+
+    // We will never execute a method of an interface directly.
+    if (tinfo.kind == TypeKind::INTERFACE) {
+      continue;
     }
 
     for (const auto& m_pair : tinfo.methods.GetMethodMap()) {

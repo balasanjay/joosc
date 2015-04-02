@@ -15,6 +15,7 @@ using ast::MethodId;
 using ast::ModifierList;
 using ast::TypeId;
 using ast::TypeKind;
+using ast::kArrayLengthFieldId;
 using ast::kErrorFieldId;
 using ast::kErrorMethodId;
 using ast::kFirstFieldId;
@@ -172,7 +173,7 @@ TypeInfoMapBuilder::TypeInfoMapBuilder(TypeId object_tid, TypeId serializable_ti
   PutField(
       array_tid_,
       FieldInfo{
-        kErrorFieldId,
+        kArrayLengthFieldId,
         array_tid_,
         MakeModifierList(false, false, false),
         TypeId::kInt,
@@ -503,6 +504,12 @@ void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeIn
 void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInfo* tinfo, FieldId* cur_fid, const map<TypeId, TypeInfo>& sofar, ErrorList* out) {
   // Assign field ids in source-code order.
   for (auto cur = begin; cur != end; ++cur) {
+    // If we've already assigned a field id to this field, then don't overwrite
+    // that assignment.
+    if (cur->fid != kErrorFieldId) {
+      continue;
+    }
+
     cur->fid = *cur_fid;
     ++(*cur_fid);
   }
