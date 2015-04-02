@@ -1,6 +1,9 @@
 package(default_visibility = ["//visibility:public"])
 
-exports_files(["std.h"]);
+exports_files([
+    "asm.sh",
+    "std.h",
+]);
 
 cc_binary(
     name = "joosc",
@@ -43,6 +46,7 @@ test_suite(
         "//marmoset:a2",
         "//marmoset:a3",
         "//marmoset:a4",
+        "//marmoset:a5",
         "//parser:parser_test",
         "//types:types_test",
         "//weeder:weeder_test",
