@@ -192,17 +192,15 @@ void StreamBuilder::FieldAddr(Mem dst, Mem src, TypeId::Base tid, FieldId fid, P
   SetAssigned({dst});
 }
 
-void StreamBuilder::ArrayDeref(Mem dst, Mem array, Mem index, SizeClass elemsize, PosRange) {
+void StreamBuilder::ArrayDeref(Mem dst, Mem array, Mem index, SizeClass elemsize, PosRange pos) {
   AssertAssigned({array, index});
-  // TODO: Pass the PosRange.
-  AppendOp(OpType::ARRAY_DEREF, {dst.Id(), array.Id(), index.Id(), (u64)elemsize});
+  AppendOp(OpType::ARRAY_DEREF, {dst.Id(), array.Id(), index.Id(), (u64)elemsize, (u64)pos.begin});
   SetAssigned({dst});
 }
 
-void StreamBuilder::ArrayAddr(Mem dst, Mem array, Mem index, SizeClass elemsize, PosRange) {
+void StreamBuilder::ArrayAddr(Mem dst, Mem array, Mem index, SizeClass elemsize, PosRange pos) {
   AssertAssigned({array, index});
-  // TODO: Pass the PosRange.
-  AppendOp(OpType::ARRAY_ADDR, {dst.Id(), array.Id(), index.Id(), (u64)elemsize});
+  AppendOp(OpType::ARRAY_ADDR, {dst.Id(), array.Id(), index.Id(), (u64)elemsize, (u64)pos.begin});
   SetAssigned({dst});
 }
 

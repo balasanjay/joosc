@@ -380,13 +380,14 @@ struct FuncWriter final {
   }
 
   void ArrayAccessImpl(ArgIter begin, ArgIter end, bool addr) {
-    // TODO: Handle PosRange, NPEs, and out-of-range exceptions.
-    EXPECT_NARGS(4);
+    // TODO: Handle out-of-range exceptions.
+    EXPECT_NARGS(5);
 
     MemId dst = begin[0];
     MemId src = begin[1];
     MemId idx = begin[2];
     SizeClass elemsize = (SizeClass)begin[3];
+    u64 file_offset = begin[4];
 
     const StackEntry& dst_e = stack_map.at(dst);
     const StackEntry& src_e = stack_map.at(src);
@@ -410,6 +411,13 @@ struct FuncWriter final {
     w.Col1("imul ebx");
     w.Col1("add eax, 12"); // Move past the vptr, the length field, and the elem type ptr.
     w.Col1("mov ebx, %v", StackOffset(src_e.offset));
+
+    // Handle NPE.
+    size_t exception_id = exceptions.size();
+    exceptions.push_back({ExceptionType::NPE, MakeStackFrame(file_offset)});
+    w.Col1("test ebx, ebx");
+    w.Col1("jz .e%v", exception_id);
+
     w.Col1("%v %v, [ebx+eax]", instr, sized_reg);
     w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
   }

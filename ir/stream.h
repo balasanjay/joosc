@@ -66,10 +66,10 @@ enum class OpType {
   // (Mem, Mem, TypeId::Base, FieldId, int file_offset).
   FIELD_ADDR,
 
-  // (Mem, Mem, Mem, SizeClass).
+  // (Mem, Mem, Mem, SizeClass, int file_offset).
   ARRAY_DEREF,
 
-  // (Mem, Mem, Mem, SizeClass).
+  // (Mem, Mem, Mem, SizeClass, int file_offset).
   ARRAY_ADDR,
 
   // (Mem, Mem, Mem).
