@@ -27,5 +27,6 @@ filegroup(
     name = "5",
     srcs = glob([
         "5.0/**/*.java",
+        "5.0/runtime.s",
     ]),
 )
