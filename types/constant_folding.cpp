@@ -74,11 +74,11 @@ public:
   }
 
   // Get integer value from an int or character literal.
-  i64 GetIntValue(sptr<const Expr> expr) {
+  i32 GetIntValue(sptr<const Expr> expr) {
     if (expr->GetTypeId() == TypeId::kChar) {
       auto char_expr = dynamic_cast<const ast::CharLitExpr*>(expr.get());
       CHECK(char_expr != nullptr);
-      return (u64)char_expr->Char();
+      return (i32)(u32)char_expr->Char();
     }
 
     auto int_expr = dynamic_cast<const ast::IntLitExpr*>(expr.get());
@@ -240,10 +240,8 @@ public:
     }
 
     if (expr.Op().type == lexer::SUB) {
-      auto int_lit = dynamic_cast<const ast::IntLitExpr*>(rhs_const->ConstantPtr().get());
-      CHECK(int_lit != nullptr);
-
-      i32 new_int_value = -int_lit->Value();
+      i32 value = GetIntValue(rhs_const->ConstantPtr());
+      i32 new_int_value = -value;
       auto new_int_lit = make_shared<ast::IntLitExpr>(
           lexer::Token(lexer::INTEGER, ExtentOf(exprptr)), new_int_value, TypeId::kInt);
       return make_shared<ConstExpr>(new_int_lit, exprptr);
