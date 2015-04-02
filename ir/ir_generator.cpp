@@ -569,7 +569,11 @@ class MethodIRGenerator final : public ast::Visitor {
       arg_mems.pop_back();
     }
 
-    builder_.Mov(res_, this_mem);
+    // New-expressions can be at top-level, so we might not have a result value
+    // to write to.
+    if (res_.Id() != kInvalidMemId) {
+      builder_.Mov(res_, this_mem);
+    }
 
     return VisitResult::SKIP;
   }
