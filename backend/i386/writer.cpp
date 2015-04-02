@@ -470,6 +470,12 @@ struct FuncWriter final {
     w.Col1("mov eax, %v", StackOffset(lhs_e.offset));
     w.Col1("cdq"); // Sign-extend EAX through to EDX.
     w.Col1("mov ebx, %v", StackOffset(rhs_e.offset));
+
+    // Handle div-by-zero.
+    // TODO: write actual exception.
+    w.Col1("test ebx, ebx");
+    w.Col1("jz _joos_throw");
+
     w.Col1("idiv ebx");
     w.Col1("mov %v, %v", StackOffset(dst_e.offset), res_reg);
   }
@@ -727,7 +733,7 @@ struct FuncWriter final {
     w.Col1("; Performing call.");
 
     w.Col1("sub esp, %v", stack_used);
-    w.Col1("push stackframe_%v", frame_idx);
+    w.Col1("push stackframe_f%v_%v", new_frame.fid, frame_idx);
     w.Col1("call _t%v_m%v", tid, mid);
     w.Col1("pop ecx");
     w.Col1("add esp, %v", stack_used);
@@ -788,7 +794,7 @@ struct FuncWriter final {
 
 
     w.Col1("sub esp, %v", stack_used);
-    w.Col1("push stackframe_%v", frame_idx);
+    w.Col1("push stackframe_f%v_%v", new_frame.fid, frame_idx);
     // Dereference the `this' ptr to get the vtable ptr.
     w.Col1("mov eax, [eax]");
 
@@ -897,6 +903,7 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
 
   set<string> externs{
     "_joos_malloc",
+    "_joos_throw",
     Sprintf("vtable_t%v", rt_ids_.object_tid.base),
     Sprintf("vtable_t%v", rt_ids_.stackframe_type.base),
     Sprintf("src_file%v", comp_unit.fileid),
@@ -1201,7 +1208,7 @@ void Writer::WriteStackFrames(const vector<StackFrame>& stack_frames, ostream* o
   w.Col0("section .rodata");
   for (size_t i = 0; i < stack_frames.size(); ++i) {
     const StackFrame& frame = stack_frames.at(i);
-    w.Col0("stackframe_%v:", i);
+    w.Col0("stackframe_f%v_%v:", frame.fid, i);
     w.Col1("dd vtable_t%v", rt_ids_.stackframe_type.base);
     w.Col1("dd src_file%v", frame.fid);
     w.Col1("dd types%v", frame.tid);
@@ -1212,18 +1219,23 @@ void Writer::WriteStackFrames(const vector<StackFrame>& stack_frames, ostream* o
 
 void Writer::WriteMain(ostream* out) const {
   AsmWriter w(out);
+  string print_stack = Sprintf("_t%v_m%v", rt_ids_.stackframe_type.base,
+    rt_ids_.stackframe_print);
 
   // Externs and globals.
+  w.Col0("extern __exception");
   w.Col0("extern __malloc");
   w.Col0("extern _entry");
+  w.Col0("extern %v", print_stack);
   w.Col0("global _joos_malloc");
+  w.Col0("global _joos_throw");
   w.Col0("global _start");
   w.Col0("\n");
 
   // Entry point.
   w.Col0("_start:");
   // Prologue.
-  w.Col1("push ebp");
+  w.Col1("push 0");
   w.Col1("mov ebp, esp");
   // Body.
   w.Col1("; Call static init.");
@@ -1242,7 +1254,7 @@ void Writer::WriteMain(ostream* out) const {
   w.Col1("push eax"); // Save number of bytes.
   w.Col1("push ebp");
   w.Col1("mov ebp, esp");
-  w.Col1("call __malloc"); // TODO: use native call.
+  w.Col1("call __malloc");
   w.Col1("pop ebp");
   w.Col1("pop ebx");
   w.Col1("mov ecx, 0");
@@ -1254,6 +1266,42 @@ void Writer::WriteMain(ostream* out) const {
   w.Col1("jmp .before");
   w.Col0(".after:");
   w.Col1("ret");
+  w.Col0("\n");
+
+  // Exception wrapper.
+  w.Col0("; Exception handler.");
+  w.Col0("_joos_throw:");
+  // Prologue.
+  w.Col1("push ebp");
+  w.Col1("mov ebp, esp");
+  // eax contains the ebp of the first user function.
+  w.Col1("mov eax, [ebp]");
+  w.Col0(".loop_start:");
+  // Compute a pointer to the stack frame corresponding to eax.
+  w.Col1("mov ebx, eax");
+  w.Col1("add ebx, 8");
+  w.Col1("mov ebx, [ebx]");
+  // If it's null, we've hit the root, so exit.
+  w.Col1("test ebx, ebx");
+  w.Col1("jz .loop_end");
+  // Save eax (our current ebp).
+  w.Col1("mov [ebp-4], eax");
+  // Push our argument onto the stack.
+  w.Col1("mov [ebp-8], ebx");
+  w.Col1("sub esp, 8");
+  // This would've been the stack frame for this call.
+  w.Col1("push 0");
+  w.Col1("call %v", print_stack);
+  // Pop what would've been the stack frame.
+  w.Col1("pop ecx");
+  w.Col1("add esp, 8");
+  // Restore eax.
+  w.Col1("mov eax, [ebp-4]");
+  // Traverse one node in the ebp linked list.
+  w.Col1("mov eax, [eax]");
+  w.Col1("jmp .loop_start");
+  w.Col0(".loop_end:");
+  w.Col1("jmp __exception");
 }
 
 void Writer::WriteStaticInit(const Program& prog, const TypeInfoMap& tinfo_map, ostream* out) const {
