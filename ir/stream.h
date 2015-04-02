@@ -60,10 +60,10 @@ enum class OpType {
   // (Mem, Mem).
   MOV_TO_ADDR,
 
-  // (Mem, Mem, TypeId::Base, FieldId).
+  // (Mem, Mem, TypeId::Base, FieldId, int file_offset).
   FIELD_DEREF,
 
-  // (Mem, Mem, TypeId::Base, FieldId).
+  // (Mem, Mem, TypeId::Base, FieldId, int file_offset).
   FIELD_ADDR,
 
   // (Mem, Mem, Mem, SizeClass).

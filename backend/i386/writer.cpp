@@ -87,6 +87,7 @@ string StackOffset(i64 offset) {
 
 enum class ExceptionType {
   ARITHMETIC,
+  NPE,
 };
 
 struct FuncWriter final {
@@ -333,12 +334,13 @@ struct FuncWriter final {
 
   void FieldImpl(ArgIter begin, ArgIter end, bool addr) {
     // TODO: Handle PosRange and NPEs.
-    EXPECT_NARGS(4);
+    EXPECT_NARGS(5);
 
     MemId dst = begin[0];
     MemId src = begin[1];
     TypeId::Base tid = begin[2];
     FieldId fid = begin[3];
+    u64 file_offset = begin[4];
 
     const StackEntry& dst_e = stack_map.at(dst);
     if (addr) {
@@ -358,6 +360,13 @@ struct FuncWriter final {
       u64 field_offset = offsets.OffsetOfField(fid);
       w.Col1("; t%v = %vt%v.f%v.", dst_e.id, src_prefix, src_e.id, fid);
       w.Col1("mov ebx, %v", StackOffset(src_e.offset));
+
+      // Handle NPE.
+      size_t exception_id = exceptions.size();
+      exceptions.push_back({ExceptionType::NPE, MakeStackFrame(file_offset)});
+      w.Col1("test ebx, ebx");
+      w.Col1("jz .e%v", exception_id);
+
       w.Col1("%v %v, [ebx+%v]", instr, sized_reg, field_offset);
       w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
     }

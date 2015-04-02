@@ -594,7 +594,7 @@ class MethodIRGenerator final : public ast::Visitor {
         Mem ancestor = builder_.AllocTemp(SizeClass::PTR);
         {
           Mem dummy = builder_.AllocDummy();
-          builder_.FieldDeref(ancestor, dummy, expr.GetType().GetTypeId().base, ast::kStaticTypeInfoId, base::PosRange(-1, -1, -1));
+          builder_.FieldDeref(ancestor, dummy, expr.GetType().GetTypeId().base, ast::kStaticTypeInfoId, base::PosRange(0, 0, 0));
         }
         builder_.StaticCall(res_, rt_ids_.type_info_tid.base, rt_ids_.type_info_instanceof, {type_info, ancestor}, expr.InstanceOf().pos);
       }
@@ -661,13 +661,13 @@ class ProgramIRGenerator final : public ast::Visitor {
             Mem parent = t_builder.AllocTemp(SizeClass::PTR);
             {
               Mem dummy = t_builder.AllocDummy();
-              t_builder.FieldDeref(parent, dummy, p_tid, ast::kStaticTypeInfoId, base::PosRange(-1, -1, -1));
+              t_builder.FieldDeref(parent, dummy, p_tid, ast::kStaticTypeInfoId, base::PosRange(0, 0, 0));
             }
             Mem idx = t_builder.AllocTemp(SizeClass::INT);
             t_builder.ConstNumeric(idx, i);
 
             Mem array_slot = t_builder.AllocLocal(SizeClass::PTR);
-            t_builder.ArrayAddr(array_slot, array, idx, SizeClass::PTR, base::PosRange(-1, -1, -1));
+            t_builder.ArrayAddr(array_slot, array, idx, SizeClass::PTR, base::PosRange(0, 0, 0));
             t_builder.MovToAddr(array_slot, parent);
           };
 
@@ -705,7 +705,7 @@ class ProgramIRGenerator final : public ast::Visitor {
               Mem field = t_builder.AllocTemp(SizeClass::PTR);
               {
                 Mem dummy_src = t_builder.AllocDummy();
-                t_builder.FieldAddr(field, dummy_src, tid.base, ast::kStaticTypeInfoId, base::PosRange(-1, -1, -1));
+                t_builder.FieldAddr(field, dummy_src, tid.base, ast::kStaticTypeInfoId, base::PosRange(0, 0, 0));
               }
               t_builder.MovToAddr(field, rt_type_info);
             }
@@ -786,7 +786,7 @@ class ProgramIRGenerator final : public ast::Visitor {
         Mem f_mem = builder->AllocTemp(SizeClass::PTR);
         Mem val = builder->AllocTemp(SizeClassFrom(field->GetType().GetTypeId()));
 
-        builder->FieldAddr(f_mem, this_ptr, tid.base, field->GetFieldId(), PosRange(-1, -1, -1));
+        builder->FieldAddr(f_mem, this_ptr, tid.base, field->GetFieldId(), PosRange(0, 0, 0));
 
         MethodIRGenerator gen(val, false, builder, &empty_locals, &locals_map, tid, string_map_, rt_ids_);
         gen.Visit(field->ValPtr());
