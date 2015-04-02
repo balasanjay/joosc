@@ -23,13 +23,13 @@ struct StackFrame {
 
 class Writer {
 public:
-  Writer(const backend::common::OffsetTable& offsets, const ir::RuntimeLinkIds& rt_ids, const base::FileSet& fs) : offsets_(offsets), rt_ids_(rt_ids), fs_(fs) {}
+  Writer(const types::TypeInfoMap& tinfo_map, const backend::common::OffsetTable& offsets, const ir::RuntimeLinkIds& rt_ids, const base::FileSet& fs) : tinfo_map_(tinfo_map), offsets_(offsets), rt_ids_(rt_ids), fs_(fs) {}
   void WriteCompUnit(const ir::CompUnit& comp_unit, std::ostream* out) const;
   void WriteMain(std::ostream* out) const;
-  void WriteStaticInit(const ir::Program& prog, const types::TypeInfoMap& tinfo_map, std::ostream* out) const;
+  void WriteStaticInit(const ir::Program& prog, std::ostream* out) const;
   void WriteConstStrings(const types::ConstStringMap&, std::ostream* out) const;
   void WriteFileNames(std::ostream* out) const;
-  void WriteMethods(const types::TypeInfoMap& tinfo_map, std::ostream* out) const;
+  void WriteMethods(std::ostream* out) const;
 private:
   void WriteFunc(const ir::Stream& stream, const base::File* file, StackFrame frame, vector<StackFrame>* stack_out, std::ostream* out) const;
   void WriteVtable(const ir::Type& type, std::ostream* out) const;
@@ -38,6 +38,7 @@ private:
   void WriteConstStringsImpl(const string& prefix, const vector<pair<jstring, u64>>& strings, std::ostream* out) const;
   void WriteStackFrames(const vector<StackFrame>& stack, std::ostream* out) const;
 
+  const types::TypeInfoMap& tinfo_map_;
   const backend::common::OffsetTable& offsets_;
   const ir::RuntimeLinkIds& rt_ids_;
   const base::FileSet& fs_;

@@ -1399,7 +1399,7 @@ void Writer::WriteMain(ostream* out) const {
   w.Col1("jmp __exception");
 }
 
-void Writer::WriteStaticInit(const Program& prog, const TypeInfoMap& tinfo_map, ostream* out) const {
+void Writer::WriteStaticInit(const Program& prog, ostream* out) const {
   AsmWriter w(out);
 
   w.Col0("; Run all static initialisers.");
@@ -1418,19 +1418,25 @@ void Writer::WriteStaticInit(const Program& prog, const TypeInfoMap& tinfo_map, 
   w.Col1("extern %v", num_types_label);
   w.Col1("mov dword [%v], %v",
       num_types_label,
-      tinfo_map.GetTypeMap().size());
+      tinfo_map_.GetTypeMap().size());
 
   // Initialize type's static type info.
   auto units = prog.units;
-  auto t_cmp = [&tinfo_map](CompUnit lhs, CompUnit rhs) {
-    if (lhs.types.size() == 0) {
-      return false;
-    } else if (rhs.types.size() == 0) {
-      return true;
-    }
-    return tinfo_map.GetTypeMap().at({lhs.types[0].tid, 0}).top_sort_index < tinfo_map.GetTypeMap().at({rhs.types[0].tid, 0}).top_sort_index;
-  };
-  stable_sort(units.begin(), units.end(), t_cmp);
+
+  {
+    auto t_cmp = [&](CompUnit lhs, CompUnit rhs) {
+      if (lhs.types.size() == 0) {
+        return false;
+      } else if (rhs.types.size() == 0) {
+        return true;
+      }
+
+      u64 lhs_top = tinfo_map_.GetTypeMap().at({lhs.types[0].tid, 0}).top_sort_index;
+      u64 rhs_top = tinfo_map_.GetTypeMap().at({rhs.types[0].tid, 0}).top_sort_index;
+      return lhs_top < rhs_top;
+    };
+    stable_sort(units.begin(), units.end(), t_cmp);
+  }
 
   for (const CompUnit& comp_unit : units) {
     for (const Type& type : comp_unit.types) {
@@ -1476,11 +1482,11 @@ void Writer::WriteFileNames(ostream* out) const {
   WriteConstStringsImpl("src_file", strings, out);
 }
 
-void Writer::WriteMethods(const TypeInfoMap& tinfo_map, ostream* out) const {
+void Writer::WriteMethods(ostream* out) const {
   vector<pair<jstring, u64>> type_strings;
   vector<pair<jstring, u64>> method_strings;
 
-  for (const auto& t_pair : tinfo_map.GetTypeMap()) {
+  for (const auto& t_pair : tinfo_map_.GetTypeMap()) {
     const TypeInfo& tinfo = t_pair.second;
 
     // We will never execute a method of an interface directly.
@@ -1510,7 +1516,7 @@ void Writer::WriteMethods(const TypeInfoMap& tinfo_map, ostream* out) const {
       }
 
       stringstream ss;
-      PrintMethodSignatureTo(&ss, tinfo_map, minfo.signature);
+      PrintMethodSignatureTo(&ss, tinfo_map_, minfo.signature);
       method_strings.emplace_back(make_pair(Jstr(ss.str()), minfo.mid));
     }
   }
