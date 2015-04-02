@@ -48,7 +48,7 @@ bool VerifyTypeSet(const TypeSet& typeset, ErrorList* out) {
   };
   bool ok = true;
   for (const string& name : stdlib_types) {
-    if (typeset.TryGet(name) == TypeId::kUnassigned) {
+    if (!typeset.TryGet(name).IsValid()) {
       out->Append(MakeMissingPredefError("class " + name));
       ok = false;
     }
