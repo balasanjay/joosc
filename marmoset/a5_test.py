@@ -1,7 +1,8 @@
 from __future__ import print_function
-import subprocess
 import os
 import shutil
+import subprocess
+import sys
 
 stdlib_files = [
     'third_party/cs444/stdlib/5.0/java/util/Arrays.java',
@@ -28,24 +29,25 @@ def do_test(test_name, test_files):
     os.mkdir('output')
     shutil.copyfile(test_dir + '/third_party/cs444/stdlib/5.0/runtime.s', 'output/runtime.s')
 
+    is_error = "J1e" in test_name
     joosc_args = ['joosc'] + test_files + stdlib_files
     joosc_args = [os.path.join(test_dir, a) for a in joosc_args]
-    joosc_proc = subprocess.Popen(joosc_args)
+    joosc_proc = subprocess.Popen(joosc_args, stderr=subprocess.STDOUT)
     joosc_proc.wait()
     if joosc_proc.returncode != 0:
         print('\nFailed to compile {}! Ret={}.'.format(test_name, joosc_proc.returncode))
         return False
 
-    asm_proc = subprocess.Popen(test_dir + '/asm.sh', shell=True)
+    asm_proc = subprocess.Popen([test_dir + '/asm.sh'], shell=True, stderr=subprocess.STDOUT)
     asm_proc.wait()
     if asm_proc.returncode != 0:
         print('\nFailed to assemble {}! Ret={}.'.format(test_name, asm_proc.returncode))
         return False
 
-    prog_proc = subprocess.Popen(['./a.out'], stdout=subprocess.PIPE)
+    prog_proc = subprocess.Popen(['./a.out'], shell=True, stderr=subprocess.STDOUT)
     prog_proc.wait()
     ret = prog_proc.returncode
-    if ret == 123:
+    if (is_error and ret == 13) or (not is_error and ret == 123):
         print('.', end='')
         return True
     print('\nTest {} failed! Ret={}.'.format(test_name, ret))
@@ -89,7 +91,9 @@ def do_tests():
             sf.write('')
 
     total_tests = len(tests)
-    running_tests = total_tests / num_shards + 1
+    running_tests = total_tests / num_shards
+    if total_tests % num_shards != 0:
+        running_tests += 1
     num_passed = 0
     d = '.tmp_test_dir_{}'.format(shard)
     i = shard
@@ -102,6 +106,8 @@ def do_tests():
     while i < total_tests:
         if do_test(*tests[i]):
             num_passed += 1
+        else:
+            print('./joosc.sh {}'.format(' '.join(tests[i][1])))
         i += num_shards
 
     shutil.rmtree(d, True)
