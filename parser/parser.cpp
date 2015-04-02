@@ -156,7 +156,13 @@ sptr<const Expr> FixPrecedence(const SharedPtrVector<const Expr>& owned_exprs,
     outstack.pop_back();
     opstack.pop_back();
 
-    outstack.push_back(make_shared<BinExpr>(lhs, nextop, rhs));
+    if (nextop.type == lexer::K_INSTANCEOF) {
+      auto instance_of_expr = dynamic_cast<const InstanceOfExpr*>(rhs.get());
+      CHECK(instance_of_expr != nullptr);
+      outstack.push_back(make_shared<InstanceOfExpr>(lhs, nextop, instance_of_expr->GetTypePtr()));
+    } else {
+      outstack.push_back(make_shared<BinExpr>(lhs, nextop, rhs));
+    }
   }
 
   CHECK(outstack.size() == 1);
@@ -402,9 +408,10 @@ Parser Parser::ParseExpression(Result<Expr>* out) const {
         instanceOfType.ReleaseErrors(&errors);
         return Fail(move(errors), out);
       }
-      sptr<const Expr> instanceOfLhs = exprs.PopBack();
-      exprs.Append(make_shared<InstanceOfExpr>(instanceOfLhs, *binOp.Get(),
-                                      instanceOfType.Get()));
+
+      // Wrap type in partially-completed InstanceOfExpr.
+      operators.push_back(*binOp.Get());
+      exprs.Append(make_shared<InstanceOfExpr>(nullptr, *binOp.Get(), instanceOfType.Get()));
     } else {
       next = next.ParseUnaryExpression(&nextExpr);
       if (!next) {
