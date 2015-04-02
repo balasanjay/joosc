@@ -103,6 +103,12 @@ struct FuncWriter final {
     return frame_idx;
   }
 
+  size_t MakeException(ExceptionType type, int file_offset) {
+    size_t exception_id = exceptions.size();
+    exceptions.push_back({type, MakeStackFrame(file_offset)});
+    return exception_id;
+  }
+
   void WritePrologue(const Stream& stream) {
     w.Col0("; Starting method.");
 
@@ -192,8 +198,7 @@ struct FuncWriter final {
     w.Col1("mov eax, %v", StackOffset(len_e.offset));
     // Handle negative array length.
     {
-      size_t exception_id = exceptions.size();
-      exceptions.push_back({ExceptionType::NASE, MakeStackFrame(file_offset)});
+      size_t exception_id = MakeException(ExceptionType::NASE, file_offset);
       w.Col1("; Checking for negative array length.");
       w.Col1("cmp eax, 0");
       w.Col1("jl .e%v", exception_id);
@@ -372,8 +377,7 @@ struct FuncWriter final {
       w.Col1("mov ebx, %v", StackOffset(src_e.offset));
 
       // Handle NPE.
-      size_t exception_id = exceptions.size();
-      exceptions.push_back({ExceptionType::NPE, MakeStackFrame(file_offset)});
+      size_t exception_id = MakeException(ExceptionType::NPE, file_offset);
       w.Col1("; Checking for NPE.");
       w.Col1("test ebx, ebx");
       w.Col1("jz .e%v", exception_id);
@@ -392,7 +396,6 @@ struct FuncWriter final {
   }
 
   void ArrayAccessImpl(ArgIter begin, ArgIter end, bool addr) {
-    // TODO: Handle out-of-range exceptions.
     EXPECT_NARGS(5);
 
     MemId dst = begin[0];
@@ -420,8 +423,7 @@ struct FuncWriter final {
 
     // Handle NPE.
     {
-      size_t exception_id = exceptions.size();
-      exceptions.push_back({ExceptionType::NPE, MakeStackFrame(file_offset)});
+      size_t exception_id = MakeException(ExceptionType::NPE, file_offset);
       w.Col1("; Checking for NPE.");
       w.Col1("test ecx, ecx");
       w.Col1("jz .e%v", exception_id);
@@ -432,8 +434,7 @@ struct FuncWriter final {
 
     // Handle out of bounds exception.
     {
-      size_t exception_id = exceptions.size();
-      exceptions.push_back({ExceptionType::OOBE, MakeStackFrame(file_offset)});
+      size_t exception_id = MakeException(ExceptionType::OOBE, file_offset);
       w.Col1("; Checking bounds for array access.");
       w.Col1("cmp eax, 0");
       w.Col1("jl .e%v", exception_id);
@@ -536,8 +537,7 @@ struct FuncWriter final {
     w.Col1("mov ebx, %v", StackOffset(rhs_e.offset));
 
     // Handle div-by-zero.
-    size_t exception_id = exceptions.size();
-    exceptions.push_back({ExceptionType::ARITHMETIC, MakeStackFrame(file_offset)});
+    size_t exception_id = MakeException(ExceptionType::ARITHMETIC, file_offset);
     w.Col1("; Checking for div-by-zero.");
     w.Col1("test ebx, ebx");
     w.Col1("jz .e%v", exception_id);
@@ -841,8 +841,7 @@ struct FuncWriter final {
     w.Col1("mov eax, %v", StackOffset(this_e.offset));
 
     // Handle NPE.
-    size_t exception_id = exceptions.size();
-    exceptions.push_back({ExceptionType::NPE, MakeStackFrame(file_offset)});
+    size_t exception_id = MakeException(ExceptionType::NPE, file_offset);
     w.Col1("; Checking for NPE.");
     w.Col1("test eax, eax");
     w.Col1("jz .e%v", exception_id);

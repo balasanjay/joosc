@@ -264,19 +264,13 @@ class MethodIRGenerator final : public ast::Visitor {
       rhs = builder_.PromoteToInt(rhs);
     }
 
-    if (expr.Op().type == lexer::DIV) {
-      builder_.Div(res_, lhs, rhs, expr.Op().pos);
-    }
-
-    if (expr.Op().type == lexer::MOD) {
-      builder_.Mod(res_, lhs, rhs, expr.Op().pos);
-    }
-
 #define C(fn) builder_.fn(res_, lhs, rhs); break;
     switch (expr.Op().type) {
       case lexer::ADD:  C(Add);
       case lexer::SUB:  C(Sub);
       case lexer::MUL:  C(Mul);
+      case lexer::DIV:  builder_.Div(res_, lhs, rhs, expr.Op().pos); break;
+      case lexer::MOD:  builder_.Mod(res_, lhs, rhs, expr.Op().pos); break;
       case lexer::EQ:   C(Eq);
       case lexer::NEQ:  C(Neq);
       case lexer::LT:   C(Lt);
