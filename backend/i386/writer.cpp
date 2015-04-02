@@ -229,7 +229,7 @@ struct FuncWriter final {
     w.Col1("mov %v, eax", StackOffset(dst_e.offset));
 
     // Set the vptr to be object's vptr.
-    w.Col1("mov dword [eax], vtable_t%v", rt_ids.object_tid.base);
+    w.Col1("mov dword [eax], array_vtable_t%v", rt_ids.object_tid.base);
 
     // Set the length field.
     w.Col1("mov ebx, %v", StackOffset(len_e.offset));
@@ -806,7 +806,7 @@ struct FuncWriter final {
     }
 
     // Write return value.
-    w.Col1("mov %v, eax", StackOffset(dst_e.offset));
+    w.Col1("mov %v, al", StackOffset(dst_e.offset));
   }
 
   void StaticCall(ArgIter begin, ArgIter end) {
@@ -1035,6 +1035,10 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
     globals.insert(Sprintf(kItableNameFmt, type.tid));
     globals.insert(Sprintf(kStaticNameFmt, type.tid, kStaticTypeInfoId));
 
+    if (type.tid != rt_ids_.object_tid.base) {
+      externs.insert(Sprintf("array_vtable_t%v", rt_ids_.object_tid.base));
+    }
+
     externs.insert(Sprintf("types%v", type.tid));
     for (const Stream& method_stream : type.streams) {
       if (method_stream.is_entry_point) {
@@ -1246,21 +1250,32 @@ void Writer::WriteFunc(const Stream& stream, const File* file, StackFrame frame,
   writer.WriteEpilogue();
 }
 
+void Writer::WriteVtableImpl(const string& prefix, const TypeInfo& tinfo, ostream* out) const {
+  AsmWriter w(out);
+  w.Col0("global %vvtable_t%v", prefix, tinfo.type.base);
+  w.Col0("%vvtable_t%v:", prefix, tinfo.type.base);
+  w.Col1("dd static_t%v_f%v", tinfo.type.base, kStaticTypeInfoId); // Type info ptr.
+  w.Col1("dd itable_t%v", tinfo.type.base);
+
+  for (const auto& v_pair : offsets_.VtableOf(tinfo.type)) {
+    w.Col1("dd _t%v_m%v", v_pair.first.base, v_pair.second);
+  }
+  w.Col0("\n");
+}
+
 void Writer::WriteVtable(const Type& type, ostream* out) const {
   const TypeInfo& tinfo = tinfo_map_.LookupTypeInfo({type.tid, 0});
   if (tinfo.kind == TypeKind::INTERFACE) {
     return;
   }
 
-  AsmWriter w(out);
-  w.Col0("vtable_t%v:", type.tid);
-  w.Col1("dd static_t%v_f%v", type.tid, kStaticTypeInfoId); // Type info ptr.
-  w.Col1("dd itable_t%v", type.tid);
+  WriteVtableImpl("", tinfo, out);
 
-  for (const auto& v_pair : offsets_.VtableOf({type.tid, 0})) {
-    w.Col1("dd _t%v_m%v", v_pair.first.base, v_pair.second);
+  // Write an additional distinct vtable for arrays.
+  TypeId::Base object_tid = rt_ids_.object_tid.base;
+  if (type.tid == object_tid) {
+    WriteVtableImpl("array_", tinfo_map_.LookupTypeInfo({object_tid, 1}), out);
   }
-  w.Col0("\n");
 }
 
 void Writer::WriteItable(const Type& type, ostream* out) const {
