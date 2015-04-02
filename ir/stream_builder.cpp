@@ -61,10 +61,10 @@ Mem StreamBuilder::AllocHeap(TypeId tid) {
   return tmp;
 }
 
-Mem StreamBuilder::AllocArray(SizeClass elemtype, Mem len) {
+Mem StreamBuilder::AllocArray(SizeClass elemtype, Mem len, PosRange pos) {
   AssertAssigned({len});
   Mem tmp = AllocTemp(SizeClass::PTR);
-  AppendOp(OpType::ALLOC_ARRAY, {tmp.Id(), (u64)elemtype, len.Id()});
+  AppendOp(OpType::ALLOC_ARRAY, {tmp.Id(), (u64)elemtype, len.Id(), (u64)pos.begin});
   SetAssigned({tmp});
   return tmp;
 }

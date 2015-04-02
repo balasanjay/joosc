@@ -20,7 +20,7 @@ class StreamBuilder {
 
   // Return a Mem of SizeClass::PTR that holds an array of elements, each of
   // size elemtype. Space for n elements will be allocated.
-  Mem AllocArray(SizeClass elemtype, Mem n);
+  Mem AllocArray(SizeClass elemtype, Mem n, base::PosRange pos);
 
   Mem AllocTemp(SizeClass);
 

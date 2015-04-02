@@ -89,6 +89,7 @@ enum class ExceptionType {
   ARITHMETIC,
   NPE,
   OOBE,
+  NASE,
 };
 
 struct FuncWriter final {
@@ -171,11 +172,12 @@ struct FuncWriter final {
   }
 
   void AllocArray(ArgIter begin, ArgIter end) {
-    EXPECT_NARGS(3);
+    EXPECT_NARGS(4);
 
     MemId dst = begin[0];
     SizeClass elem_size_class = (SizeClass)begin[1];
     MemId len = begin[2];
+    u64 file_offset = begin[3];
 
     const StackEntry& dst_e = stack_map.at(dst);
     const StackEntry& len_e = stack_map.at(len);
@@ -188,6 +190,14 @@ struct FuncWriter final {
 
     w.Col1("; t%v = new[t%v]", dst, len);
     w.Col1("mov eax, %v", StackOffset(len_e.offset));
+    // Handle negative array length.
+    {
+      size_t exception_id = exceptions.size();
+      exceptions.push_back({ExceptionType::NASE, MakeStackFrame(file_offset)});
+      w.Col1("; Checking for negative array length.");
+      w.Col1("cmp eax, 0");
+      w.Col1("jl .e%v", exception_id);
+    }
     w.Col1("mov ebx, %v", elem_size);
     w.Col1("imul ebx");
     w.Col1("add eax, 12"); // Add space for vptr, length, and elem-type ptr.

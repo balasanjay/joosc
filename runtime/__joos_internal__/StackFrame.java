@@ -16,6 +16,8 @@ public final class StackFrame {
       System.out.println("java.lang.NullPointerException");
     } else if (type == 2) {
       System.out.println("java.lang.ArrayIndexOutOfBoundsException");
+    } else if (type == 3) {
+      System.out.println("java.lang.NegativeArraySizeException");
     }
   }
 
