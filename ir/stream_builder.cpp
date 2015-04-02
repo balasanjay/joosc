@@ -61,10 +61,10 @@ Mem StreamBuilder::AllocHeap(TypeId tid) {
   return tmp;
 }
 
-Mem StreamBuilder::AllocArray(SizeClass elemtype, Mem len) {
+Mem StreamBuilder::AllocArray(SizeClass elemtype, Mem len, PosRange pos) {
   AssertAssigned({len});
   Mem tmp = AllocTemp(SizeClass::PTR);
-  AppendOp(OpType::ALLOC_ARRAY, {tmp.Id(), (u64)elemtype, len.Id()});
+  AppendOp(OpType::ALLOC_ARRAY, {tmp.Id(), (u64)elemtype, len.Id(), (u64)pos.begin});
   SetAssigned({tmp});
   return tmp;
 }
@@ -180,31 +180,27 @@ void StreamBuilder::MovToAddr(Mem dst, Mem src) {
   // TODO: We're not sure exactly how to represent what's assigned.
 }
 
-void StreamBuilder::FieldDeref(Mem dst, Mem src, TypeId::Base tid, FieldId fid, PosRange) {
+void StreamBuilder::FieldDeref(Mem dst, Mem src, TypeId::Base tid, FieldId fid, PosRange pos) {
   AssertAssigned({src});
-  // TODO: Pass the PosRange.
-  AppendOp(OpType::FIELD_DEREF, {dst.Id(), src.Id(), tid, fid});
+  AppendOp(OpType::FIELD_DEREF, {dst.Id(), src.Id(), tid, fid, (u64)pos.begin});
   SetAssigned({dst});
 }
 
-void StreamBuilder::FieldAddr(Mem dst, Mem src, TypeId::Base tid, FieldId fid, PosRange) {
+void StreamBuilder::FieldAddr(Mem dst, Mem src, TypeId::Base tid, FieldId fid, PosRange pos) {
   AssertAssigned({src});
-  // TODO: Pass the PosRange.
-  AppendOp(OpType::FIELD_ADDR, {dst.Id(), src.Id(), tid, fid});
+  AppendOp(OpType::FIELD_ADDR, {dst.Id(), src.Id(), tid, fid, (u64)pos.begin});
   SetAssigned({dst});
 }
 
-void StreamBuilder::ArrayDeref(Mem dst, Mem array, Mem index, SizeClass elemsize, PosRange) {
+void StreamBuilder::ArrayDeref(Mem dst, Mem array, Mem index, SizeClass elemsize, PosRange pos) {
   AssertAssigned({array, index});
-  // TODO: Pass the PosRange.
-  AppendOp(OpType::ARRAY_DEREF, {dst.Id(), array.Id(), index.Id(), (u64)elemsize});
+  AppendOp(OpType::ARRAY_DEREF, {dst.Id(), array.Id(), index.Id(), (u64)elemsize, (u64)pos.begin});
   SetAssigned({dst});
 }
 
-void StreamBuilder::ArrayAddr(Mem dst, Mem array, Mem index, SizeClass elemsize, PosRange) {
+void StreamBuilder::ArrayAddr(Mem dst, Mem array, Mem index, SizeClass elemsize, PosRange pos) {
   AssertAssigned({array, index});
-  // TODO: Pass the PosRange.
-  AppendOp(OpType::ARRAY_ADDR, {dst.Id(), array.Id(), index.Id(), (u64)elemsize});
+  AppendOp(OpType::ARRAY_ADDR, {dst.Id(), array.Id(), index.Id(), (u64)elemsize, (u64)pos.begin});
   SetAssigned({dst});
 }
 
@@ -232,12 +228,16 @@ void StreamBuilder::Mul(Mem dst, Mem lhs, Mem rhs) {
   BinOp(dst, lhs, rhs, OpType::MUL);
 }
 
-void StreamBuilder::Div(Mem dst, Mem lhs, Mem rhs) {
-  BinOp(dst, lhs, rhs, OpType::DIV);
+void StreamBuilder::Div(Mem dst, Mem lhs, Mem rhs, PosRange pos) {
+  AssertAssigned({lhs, rhs});
+  AppendOp(OpType::DIV, {dst.Id(), lhs.Id(), rhs.Id(), (u64)pos.begin});
+  SetAssigned({dst});
 }
 
-void StreamBuilder::Mod(Mem dst, Mem lhs, Mem rhs) {
-  BinOp(dst, lhs, rhs, OpType::MOD);
+void StreamBuilder::Mod(Mem dst, Mem lhs, Mem rhs, PosRange pos) {
+  AssertAssigned({lhs, rhs});
+  AppendOp(OpType::MOD, {dst.Id(), lhs.Id(), rhs.Id(), (u64)pos.begin});
+  SetAssigned({dst});
 }
 
 void StreamBuilder::Jmp(LabelId lid) {
@@ -303,12 +303,13 @@ void StreamBuilder::Truncate(Mem dst, Mem src) {
   UnOp(dst, src, OpType::TRUNCATE);
 }
 
-void StreamBuilder::StaticCall(Mem dst, TypeId::Base tid, MethodId mid, const vector<Mem>& args) {
+void StreamBuilder::StaticCall(Mem dst, TypeId::Base tid, MethodId mid, const vector<Mem>& args, PosRange pos) {
   size_t begin = args_.size();
 
   args_.push_back(dst.Id());
   args_.push_back(tid);
   args_.push_back(mid);
+  args_.push_back(pos.begin);
   args_.push_back(args.size());
   for (auto val : args) {
     AssertAssigned({val});
@@ -321,13 +322,14 @@ void StreamBuilder::StaticCall(Mem dst, TypeId::Base tid, MethodId mid, const ve
   }
 }
 
-void StreamBuilder::DynamicCall(Mem dst, Mem this_ptr, ast::MethodId mid, const vector<Mem>& args) {
+void StreamBuilder::DynamicCall(Mem dst, Mem this_ptr, ast::MethodId mid, const vector<Mem>& args, PosRange pos) {
   AssertAssigned({this_ptr});
   size_t begin = args_.size();
 
   args_.push_back(dst.Id());
   args_.push_back(this_ptr.Id());
   args_.push_back(mid);
+  args_.push_back(pos.begin);
   args_.push_back(args.size());
   for (auto val : args) {
     AssertAssigned({val});

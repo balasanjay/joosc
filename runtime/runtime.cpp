@@ -11,5 +11,9 @@ const string StringOpsFile =
 #include "runtime/__joos_internal__/StringOps.java"
 ;
 
+const string StackFrameFile =
+#include "runtime/__joos_internal__/StackFrame.java"
+;
+
 } // namespace runtime
 

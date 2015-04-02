@@ -14,11 +14,13 @@ using ast::FieldId;
 using ast::MethodId;
 using ast::TypeId;
 using ast::TypeKind;
+using ast::kInstanceInitMethodId;
 using ast::kStaticInitMethodId;
 using ast::kStaticTypeInfoId;
 using ast::kTypeInitMethodId;
 using backend::common::AsmWriter;
 using backend::common::OffsetTable;
+using base::File;
 using base::Fprintf;
 using base::Sprintf;
 using ir::CompUnit;
@@ -33,7 +35,10 @@ using ir::Stream;
 using ir::Type;
 using ir::kInvalidMemId;
 using types::ConstStringMap;
+using types::MethodInfo;
 using types::StringId;
+using types::TypeInfo;
+using types::TypeInfoMap;
 
 #define EXPECT_NARGS(n) CHECK((end - begin) == n)
 
@@ -49,6 +54,10 @@ namespace i386 {
 namespace {
 
 using ArgIter = vector<u64>::const_iterator;
+
+jstring Jstr(const string& str) {
+  return jstring(str.begin(), str.end());
+}
 
 string Sized(SizeClass size, const string& b1, const string& b2, const string& b4) {
   switch(size) {
@@ -76,8 +85,29 @@ string StackOffset(i64 offset) {
   return Sprintf("[ebp+%v]", -offset);
 }
 
+enum class ExceptionType {
+  ARITHMETIC,
+  NPE,
+  OOBE,
+  NASE,
+};
+
 struct FuncWriter final {
-  FuncWriter(const OffsetTable& offsets, const RuntimeLinkIds& rt_ids, ostream* out) : offsets(offsets), rt_ids(rt_ids), w(out) {}
+  FuncWriter(const OffsetTable& offsets, const File* file, const RuntimeLinkIds& rt_ids, vector<StackFrame>* stack_frames, StackFrame frame, ostream* out) : offsets(offsets), file(file), rt_ids(rt_ids), stack_frames(*stack_frames), frame(frame), w(out) {}
+
+  size_t MakeStackFrame(int file_offset) {
+    StackFrame new_frame = frame;
+    new_frame.line = OffsetToLine(file_offset);
+    size_t frame_idx = stack_frames.size();
+    stack_frames.emplace_back(new_frame);
+    return frame_idx;
+  }
+
+  size_t MakeException(ExceptionType type, int file_offset) {
+    size_t exception_id = exceptions.size();
+    exceptions.push_back({type, MakeStackFrame(file_offset)});
+    return exception_id;
+  }
 
   void WritePrologue(const Stream& stream) {
     w.Col0("; Starting method.");
@@ -98,13 +128,22 @@ struct FuncWriter final {
   void WriteEpilogue() {
     w.Col0(".epilogue:");
     w.Col1("pop ebp");
-    w.Col1("ret");
+    w.Col1("ret\n");
+
+    for (size_t i = 0; i < exceptions.size(); ++i) {
+      const ExceptionSite& e = exceptions.at(i);
+      w.Col0(".e%v:", i);
+      w.Col1("mov eax, %v", (u64)e.type);
+      w.Col1("mov ebx, stackframe_%v", e.stack_frame_id);
+      w.Col1("jmp _joos_throw");
+    }
     w.Col0("\n");
   }
 
   void SetupParams(const Stream& stream) {
-    // [ebp-0] is the old ebp, [ebp-4] is the esp, so we start at [ebp-8].
-    i64 param_offset = -8;
+    // [ebp-0] is the old ebp, [ebp-4] is the esp, [ebp-8] is the stack frame
+    // pointer, so we start at [ebp-12].
+    i64 param_offset = -12;
     for (size_t i = 0; i < stream.params.size(); ++i) {
       i64 cur = param_offset;
       param_offset -= 4;
@@ -139,11 +178,12 @@ struct FuncWriter final {
   }
 
   void AllocArray(ArgIter begin, ArgIter end) {
-    EXPECT_NARGS(3);
+    EXPECT_NARGS(4);
 
     MemId dst = begin[0];
     SizeClass elem_size_class = (SizeClass)begin[1];
     MemId len = begin[2];
+    u64 file_offset = begin[3];
 
     const StackEntry& dst_e = stack_map.at(dst);
     const StackEntry& len_e = stack_map.at(len);
@@ -156,6 +196,13 @@ struct FuncWriter final {
 
     w.Col1("; t%v = new[t%v]", dst, len);
     w.Col1("mov eax, %v", StackOffset(len_e.offset));
+    // Handle negative array length.
+    {
+      size_t exception_id = MakeException(ExceptionType::NASE, file_offset);
+      w.Col1("; Checking for negative array length.");
+      w.Col1("cmp eax, 0");
+      w.Col1("jl .e%v", exception_id);
+    }
     w.Col1("mov ebx, %v", elem_size);
     w.Col1("imul ebx");
     w.Col1("add eax, 12"); // Add space for vptr, length, and elem-type ptr.
@@ -302,13 +349,13 @@ struct FuncWriter final {
   }
 
   void FieldImpl(ArgIter begin, ArgIter end, bool addr) {
-    // TODO: Handle PosRange and NPEs.
-    EXPECT_NARGS(4);
+    EXPECT_NARGS(5);
 
     MemId dst = begin[0];
     MemId src = begin[1];
     TypeId::Base tid = begin[2];
     FieldId fid = begin[3];
+    u64 file_offset = begin[4];
 
     const StackEntry& dst_e = stack_map.at(dst);
     if (addr) {
@@ -328,6 +375,13 @@ struct FuncWriter final {
       u64 field_offset = offsets.OffsetOfField(fid);
       w.Col1("; t%v = %vt%v.f%v.", dst_e.id, src_prefix, src_e.id, fid);
       w.Col1("mov ebx, %v", StackOffset(src_e.offset));
+
+      // Handle NPE.
+      size_t exception_id = MakeException(ExceptionType::NPE, file_offset);
+      w.Col1("; Checking for NPE.");
+      w.Col1("test ebx, ebx");
+      w.Col1("jz .e%v", exception_id);
+
       w.Col1("%v %v, [ebx+%v]", instr, sized_reg, field_offset);
       w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
     }
@@ -342,13 +396,13 @@ struct FuncWriter final {
   }
 
   void ArrayAccessImpl(ArgIter begin, ArgIter end, bool addr) {
-    // TODO: Handle PosRange, NPEs, and out-of-range exceptions.
-    EXPECT_NARGS(4);
+    EXPECT_NARGS(5);
 
     MemId dst = begin[0];
     MemId src = begin[1];
     MemId idx = begin[2];
     SizeClass elemsize = (SizeClass)begin[3];
+    u64 file_offset = begin[4];
 
     const StackEntry& dst_e = stack_map.at(dst);
     const StackEntry& src_e = stack_map.at(src);
@@ -364,15 +418,35 @@ struct FuncWriter final {
     string src_prefix = addr ? "&" : "";
     string instr = addr ? "lea" : "mov";
 
-    // TODO: check the array access is in range.
-
     w.Col1("; t%v = %vt%v[t%v]", dst, src_prefix, src, idx);
+    w.Col1("mov ecx, %v", StackOffset(src_e.offset));
+
+    // Handle NPE.
+    {
+      size_t exception_id = MakeException(ExceptionType::NPE, file_offset);
+      w.Col1("; Checking for NPE.");
+      w.Col1("test ecx, ecx");
+      w.Col1("jz .e%v", exception_id);
+    }
+
     w.Col1("mov eax, %v", StackOffset(idx_e.offset));
+    w.Col1("mov ebx, [ecx+4]");
+
+    // Handle out of bounds exception.
+    {
+      size_t exception_id = MakeException(ExceptionType::OOBE, file_offset);
+      w.Col1("; Checking bounds for array access.");
+      w.Col1("cmp eax, 0");
+      w.Col1("jl .e%v", exception_id);
+      w.Col1("cmp eax, ebx");
+      w.Col1("jge .e%v", exception_id);
+    }
+
     w.Col1("mov ebx, %v", ByteSizeFrom(elemsize, 4));
     w.Col1("imul ebx");
     w.Col1("add eax, 12"); // Move past the vptr, the length field, and the elem type ptr.
-    w.Col1("mov ebx, %v", StackOffset(src_e.offset));
-    w.Col1("%v %v, [ebx+eax]", instr, sized_reg);
+
+    w.Col1("%v %v, [ecx+eax]", instr, sized_reg);
     w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
   }
 
@@ -439,11 +513,12 @@ struct FuncWriter final {
   }
 
   void DivMod(ArgIter begin, ArgIter end, bool div) {
-    EXPECT_NARGS(3);
+    EXPECT_NARGS(4);
 
     MemId dst = begin[0];
     MemId lhs = begin[1];
     MemId rhs = begin[2];
+    u64 file_offset = begin[3];
 
     const StackEntry& dst_e = stack_map.at(dst);
     const StackEntry& lhs_e = stack_map.at(lhs);
@@ -460,6 +535,13 @@ struct FuncWriter final {
     w.Col1("mov eax, %v", StackOffset(lhs_e.offset));
     w.Col1("cdq"); // Sign-extend EAX through to EDX.
     w.Col1("mov ebx, %v", StackOffset(rhs_e.offset));
+
+    // Handle div-by-zero.
+    size_t exception_id = MakeException(ExceptionType::ARITHMETIC, file_offset);
+    w.Col1("; Checking for div-by-zero.");
+    w.Col1("test ebx, ebx");
+    w.Col1("jz .e%v", exception_id);
+
     w.Col1("idiv ebx");
     w.Col1("mov %v, %v", StackOffset(dst_e.offset), res_reg);
   }
@@ -659,14 +741,15 @@ struct FuncWriter final {
 
 
   void StaticCall(ArgIter begin, ArgIter end) {
-    CHECK((end-begin) >= 4);
+    CHECK((end-begin) >= 5);
 
     MemId dst = begin[0];
     TypeId::Base tid = begin[1];
     MethodId mid = begin[2];
-    u64 nargs = begin[3];
+    u64 file_offset = begin[3];
+    u64 nargs = begin[4];
 
-    CHECK(((u64)(end-begin) - 4) == nargs);
+    CHECK(((u64)(end-begin) - 5) == nargs);
 
     i64 stack_used = cur_offset;
 
@@ -675,7 +758,7 @@ struct FuncWriter final {
       if (label_ok.second) {
         CHECK(nargs == 1);
 
-        MemId src = begin[4];
+        MemId src = begin[5];
 
         const StackEntry& src_e = stack_map.at(src);
 
@@ -697,7 +780,7 @@ struct FuncWriter final {
     w.Col1("; Pushing %v arguments onto stack for call.", nargs);
 
     // Push args onto stack in reverse order.
-    for (ArgIter cur = end; cur != (begin + 4); --cur) {
+    for (ArgIter cur = end; cur != (begin + 5); --cur) {
       MemId arg = *(cur - 1);
       const StackEntry& arg_e = stack_map.at(arg);
 
@@ -708,10 +791,14 @@ struct FuncWriter final {
       stack_used += 4;
     }
 
+    size_t frame_idx = MakeStackFrame(file_offset);
+
     w.Col1("; Performing call.");
 
     w.Col1("sub esp, %v", stack_used);
+    w.Col1("push stackframe_%v", frame_idx);
     w.Col1("call _t%v_m%v", tid, mid);
+    w.Col1("pop ecx");
     w.Col1("add esp, %v", stack_used);
 
     if (dst != kInvalidMemId) {
@@ -722,14 +809,15 @@ struct FuncWriter final {
   }
 
   void DynamicCall(ArgIter begin, ArgIter end) {
-    CHECK((end-begin) >= 4);
+    CHECK((end-begin) >= 5);
 
     MemId dst = begin[0];
     MemId this_ptr = begin[1];
     MethodId mid = begin[2];
-    u64 nargs = begin[3];
+    u64 file_offset = begin[3];
+    u64 nargs = begin[4];
 
-    CHECK(((u64)(end-begin) - 4) == nargs);
+    CHECK(((u64)(end-begin) - 5) == nargs);
 
     const StackEntry& this_e = stack_map.at(this_ptr);
 
@@ -738,7 +826,7 @@ struct FuncWriter final {
     w.Col1("; Pushing %v arguments onto stack for call.", nargs);
 
     // Push args onto stack in reverse order.
-    for (ArgIter cur = end; cur != (begin + 4); --cur) {
+    for (ArgIter cur = end; cur != (begin + 5); --cur) {
       MemId arg = *(cur - 1);
       const StackEntry& arg_e = stack_map.at(arg);
 
@@ -751,6 +839,13 @@ struct FuncWriter final {
 
     w.Col1("; Pushing `this' onto stack for call.");
     w.Col1("mov eax, %v", StackOffset(this_e.offset));
+
+    // Handle NPE.
+    size_t exception_id = MakeException(ExceptionType::NPE, file_offset);
+    w.Col1("; Checking for NPE.");
+    w.Col1("test eax, eax");
+    w.Col1("jz .e%v", exception_id);
+
     w.Col1("mov %v, eax", StackOffset(stack_used));
 
     stack_used += 4;
@@ -762,7 +857,10 @@ struct FuncWriter final {
 
     std::tie(offset, kind) = offsets.OffsetOfMethod(mid);
 
+    size_t frame_idx = MakeStackFrame(file_offset);
+
     w.Col1("sub esp, %v", stack_used);
+    w.Col1("push stackframe_%v", frame_idx);
     // Dereference the `this' ptr to get the vtable ptr.
     w.Col1("mov eax, [eax]");
 
@@ -780,7 +878,7 @@ struct FuncWriter final {
       w.Col1("call [eax + %v]", offset);
     }
 
-
+    w.Col1("pop ecx");
     w.Col1("add esp, %v", stack_used);
 
     if (dst != kInvalidMemId) {
@@ -838,14 +936,31 @@ struct FuncWriter final {
     MemId id;
   };
 
+  struct ExceptionSite final {
+    ExceptionType type;
+    u64 stack_frame_id;
+  };
+
+  int OffsetToLine(int offset) {
+    int line = -1;
+    int col = -1;
+    file->IndexToLineCol(offset, &line, &col);
+    return line + 1;
+  }
+
   map<MemId, StackEntry> stack_map;
   i64 cur_offset = 0;
   vector<StackEntry> stack;
 
   // TODO: do more optimal stack management for non-int-sized things.
 
+  vector<ExceptionSite> exceptions;
+
   const OffsetTable& offsets;
+  const File* file;
   const RuntimeLinkIds& rt_ids;
+  vector<StackFrame>& stack_frames;
+  StackFrame frame;
 
   AsmWriter w;
 };
@@ -859,17 +974,27 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
   static string kItableNameFmt = "itable_t%v";
   static string kStaticNameFmt = "static_t%v_f%v";
 
-  set<string> externs{"_joos_malloc", Sprintf("vtable_t%v", rt_ids_.object_tid.base)};
+  set<string> externs{
+    "_joos_malloc",
+    "_joos_throw",
+    Sprintf("vtable_t%v", rt_ids_.object_tid.base),
+    Sprintf("vtable_t%v", rt_ids_.stackframe_type.base),
+    Sprintf("src_file%v", comp_unit.fileid),
+  };
   set<string> globals;
   for (const Type& type : comp_unit.types) {
     globals.insert(Sprintf(kVtableNameFmt, type.tid));
     globals.insert(Sprintf(kItableNameFmt, type.tid));
+
+    externs.insert(Sprintf("types%v", type.tid));
     for (const Stream& method_stream : type.streams) {
       if (method_stream.is_entry_point) {
         globals.insert("_entry");
       }
 
       globals.insert(Sprintf(kMethodNameFmt, method_stream.tid, method_stream.mid));
+
+      externs.insert(Sprintf("methods%v", method_stream.mid));
 
       for (const Op& op : method_stream.ops) {
         if (op.type == OpType::STATIC_CALL) {
@@ -918,10 +1043,13 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
     Fprintf(out, "extern %v\n", ext);
   }
 
+  vector<StackFrame> stack;
+  const File* file = fs_.Get(comp_unit.fileid);
   for (const Type& type : comp_unit.types) {
     Fprintf(out, "section .text\n\n");
     for (const Stream& method_stream : type.streams) {
-      WriteFunc(method_stream, out);
+      StackFrame frame = {comp_unit.fileid, type.tid, method_stream.mid, 0};
+      WriteFunc(method_stream, file, frame, &stack, out);
     }
     Fprintf(out, "section .rodata\n");
     WriteVtable(type, out);
@@ -929,10 +1057,11 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
     Fprintf(out, "section .data\n");
     WriteStatics(type, out);
   }
+  WriteStackFrames(stack, out);
 }
 
-void Writer::WriteFunc(const Stream& stream, ostream* out) const {
-  FuncWriter writer{offsets_, rt_ids_, out};
+void Writer::WriteFunc(const Stream& stream, const File* file, StackFrame frame, vector<StackFrame>* stack_out, ostream* out) const {
+  FuncWriter writer{offsets_, file, rt_ids_, stack_out, frame, out};
 
   writer.WritePrologue(stream);
 
@@ -1049,8 +1178,13 @@ void Writer::WriteFunc(const Stream& stream, ostream* out) const {
         writer.Ret(begin, end);
         break;
 
+      UNIMPLEMENTED_OP(INSTANCE_OF);
+      UNIMPLEMENTED_OP(CAST_EXCEPTION_IF_FALSE);
+      UNIMPLEMENTED_OP(CHECK_ARRAY_STORE);
+
       default:
         UNREACHABLE();
+
     }
   }
 
@@ -1099,20 +1233,85 @@ void Writer::WriteStatics(const Type& type, ostream* out) const {
   }
 }
 
-void Writer::WriteMain(ostream* out) const {
+void Writer::WriteConstStringsImpl(const string& prefix, const vector<pair<jstring, u64>>& strings, ostream* out) const {
   AsmWriter w(out);
 
+  // Step 0: extern all required labels.
+  w.Col0("extern vtable_t%v", rt_ids_.object_tid.base);
+  w.Col0("extern vtable_t%v", rt_ids_.string_tid.base);
+
+  // Step 1: declare all strings.
+  for (const auto& str_pair : strings) {
+    w.Col0("global %v%v", prefix, str_pair.second);
+  }
+
+  // Step 2: declare local arrays backing strings.
+  w.Col0("section .rodata");
+  for (const auto& str_pair : strings) {
+    // First, layout array for this string.
+    w.Col0("%v_array%v:", prefix, str_pair.second);
+
+    const jstring& str = str_pair.first;
+
+    w.Col1("dd vtable_t%v", rt_ids_.object_tid.base);
+    w.Col1("dd %v", str.size());
+    w.Col1("dd 0"); // TODO: populate the elem type ptr for character.
+    for (auto jch : str) {
+      if (isprint(jch)) {
+        w.Col1<int, char>("dw %v \t; '%v'", jch, jch);
+      } else {
+        w.Col1("dw %v", jch);
+      }
+    }
+
+    // Newline.
+    w.Col0("");
+
+    // Next, lay out the String object itself.
+    w.Col0("%v%v:", prefix, str_pair.second);
+    w.Col1("dd vtable_t%v", rt_ids_.string_tid.base);
+    w.Col1("dd %v_array%v", prefix, str_pair.second);
+    w.Col0("\n");
+  }
+}
+
+void Writer::WriteStackFrames(const vector<StackFrame>& stack_frames, ostream* out) const {
+  AsmWriter w(out);
+  w.Col0("\n");
+  w.Col0("section .rodata");
+  for (size_t i = 0; i < stack_frames.size(); ++i) {
+    const StackFrame& frame = stack_frames.at(i);
+    w.Col0("stackframe_%v:", i);
+    w.Col1("dd vtable_t%v", rt_ids_.stackframe_type.base);
+    w.Col1("dd src_file%v", frame.fid);
+    w.Col1("dd types%v", frame.tid);
+    w.Col1("dd methods%v", frame.mid);
+    w.Col1("dd %v", frame.line);
+  }
+}
+
+void Writer::WriteMain(ostream* out) const {
+  AsmWriter w(out);
+  string print_stack = Sprintf("_t%v_m%v", rt_ids_.stackframe_type.base,
+    rt_ids_.stackframe_print);
+  string print_ex = Sprintf("_t%v_m%v", rt_ids_.stackframe_type.base,
+    rt_ids_.stackframe_print_ex);
+
   // Externs and globals.
+  w.Col0("extern __exception");
   w.Col0("extern __malloc");
   w.Col0("extern _entry");
+  w.Col0("extern %v", print_stack);
+  w.Col0("extern %v", print_ex);
   w.Col0("global _joos_malloc");
+  w.Col0("global _joos_throw");
   w.Col0("global _start");
   w.Col0("\n");
 
   // Entry point.
   w.Col0("_start:");
   // Prologue.
-  w.Col1("push ebp");
+  w.Col1("push 0");
   w.Col1("mov ebp, esp");
   // Body.
   w.Col1("; Call static init.");
@@ -1131,7 +1330,7 @@ void Writer::WriteMain(ostream* out) const {
   w.Col1("push eax"); // Save number of bytes.
   w.Col1("push ebp");
   w.Col1("mov ebp, esp");
-  w.Col1("call __malloc"); // TODO: use native call.
+  w.Col1("call __malloc");
   w.Col1("pop ebp");
   w.Col1("pop ebx");
   w.Col1("mov ecx, 0");
@@ -1143,9 +1342,64 @@ void Writer::WriteMain(ostream* out) const {
   w.Col1("jmp .before");
   w.Col0(".after:");
   w.Col1("ret");
+  w.Col0("\n");
+
+  // Exception wrapper.
+  w.Col0("; Exception handler.");
+  w.Col0("_joos_throw:");
+  // Prologue.
+  w.Col1("push ebp");
+  w.Col1("mov ebp, esp");
+
+  // Save the zero-th stack frame.
+  w.Col1("mov [ebp-4], ebx");
+
+  // Call StackFrame::PrintException, passing eax.
+  w.Col1("mov [ebp-8], eax");
+  w.Col1("sub esp, 8");
+  w.Col1("push 0");
+  w.Col1("call %v", print_ex);
+  w.Col1("pop ecx");
+  w.Col1("add esp, 8");
+
+  // Call StackFrame::Print, passing ebx (which is already in the right place).
+  w.Col1("sub esp, 4");
+  w.Col1("push 0");
+  w.Col1("call %v", print_stack);
+  w.Col1("pop ecx");
+  w.Col1("add esp, 4");
+
+  // eax contains the ebp of the first user function.
+  w.Col1("mov eax, [ebp]");
+  w.Col0(".loop_start:");
+  // Compute a pointer to the stack frame corresponding to eax.
+  w.Col1("mov ebx, eax");
+  w.Col1("add ebx, 8");
+  w.Col1("mov ebx, [ebx]");
+  // If it's null, we've hit the root, so exit.
+  w.Col1("test ebx, ebx");
+  w.Col1("jz .loop_end");
+  // Save eax (our current ebp).
+  w.Col1("mov [ebp-4], eax");
+  // Push our argument onto the stack.
+  w.Col1("mov [ebp-8], ebx");
+  w.Col1("sub esp, 8");
+  // This would've been the stack frame for this call.
+  w.Col1("push 0");
+  w.Col1("call %v", print_stack);
+  // Pop what would've been the stack frame.
+  w.Col1("pop ecx");
+  w.Col1("add esp, 8");
+  // Restore eax.
+  w.Col1("mov eax, [ebp-4]");
+  // Traverse one node in the ebp linked list.
+  w.Col1("mov eax, [eax]");
+  w.Col1("jmp .loop_start");
+  w.Col0(".loop_end:");
+  w.Col1("jmp __exception");
 }
 
-void Writer::WriteStaticInit(const Program& prog, const types::TypeInfoMap& tinfo_map, ostream* out) const {
+void Writer::WriteStaticInit(const Program& prog, const TypeInfoMap& tinfo_map, ostream* out) const {
   AsmWriter w(out);
 
   w.Col0("; Run all static initialisers.");
@@ -1202,45 +1456,71 @@ void Writer::WriteStaticInit(const Program& prog, const types::TypeInfoMap& tinf
 }
 
 void Writer::WriteConstStrings(const ConstStringMap& string_map, ostream* out) const {
-  AsmWriter w(out);
+  vector<pair<jstring, u64>> strings(string_map.begin(), string_map.end());
+  WriteConstStringsImpl("string", strings, out);
+}
 
-  // Step 0: extern all required labels.
-  w.Col0("extern vtable_t%v", rt_ids_.object_tid.base);
-  w.Col0("extern vtable_t%v", rt_ids_.string_tid.base);
-
-  // Step 1: declare all strings.
-  for (const auto& str_pair : string_map) {
-    w.Col0("global string%v", str_pair.second);
-  }
-
-  // Step 2: declare local arrays backing strings.
-  w.Col0("section .rodata");
-  for (const auto& str_pair : string_map) {
-    // First, layout array for this string.
-    w.Col0("string_array%v:", str_pair.second);
-
-    const jstring& str = str_pair.first;
-
-    w.Col1("dd vtable_t%v", rt_ids_.object_tid.base);
-    w.Col1("dd %v", str.size());
-    w.Col1("dd 0"); // TODO: populate the elem type ptr for character.
-    for (auto jch : str) {
-      if (isprint(jch)) {
-        w.Col1<int, char>("dw %v \t; '%v'", jch, jch);
-      } else {
-        w.Col1("dw %v", jch);
-      }
+void Writer::WriteFileNames(ostream* out) const {
+  vector<pair<jstring, u64>> strings;
+  for (int i = 0; i < fs_.Size(); ++i) {
+    File* f = fs_.Get(i);
+    const string& dirname = f->Dirname();
+    string filename = f->Basename();
+    if (dirname != "") {
+      filename = dirname + "/" + filename;
     }
 
-    // Newline.
-    w.Col0("");
-
-    // Next, lay out the String object itself.
-    w.Col0("string%v:", str_pair.second);
-    w.Col1("dd vtable_t%v", rt_ids_.string_tid.base);
-    w.Col1("dd string_array%v", str_pair.second);
-    w.Col0("\n");
+    strings.emplace_back(make_pair(Jstr(filename), i));
   }
+
+  WriteConstStringsImpl("src_file", strings, out);
+}
+
+void Writer::WriteMethods(const TypeInfoMap& tinfo_map, ostream* out) const {
+  vector<pair<jstring, u64>> type_strings;
+  vector<pair<jstring, u64>> method_strings;
+
+  for (const auto& t_pair : tinfo_map.GetTypeMap()) {
+    const TypeInfo& tinfo = t_pair.second;
+
+    // We will never execute a method of an interface directly.
+    if (tinfo.kind == TypeKind::INTERFACE) {
+      continue;
+    }
+
+    // Skip the array type.
+    if (tinfo.type.ndims > 0) {
+      continue;
+    }
+
+    {
+      string name = tinfo.name;
+      if (tinfo.package != "") {
+        name = tinfo.package + "." + name;
+      }
+      type_strings.emplace_back(make_pair(Jstr(name), tinfo.type.base));
+    }
+
+    for (const auto& m_pair : tinfo.methods.GetMethodMap()) {
+      const MethodInfo& minfo = m_pair.second;
+
+      // Skip inherited methods.
+      if (minfo.class_type != tinfo.type) {
+        continue;
+      }
+
+      stringstream ss;
+      PrintMethodSignatureTo(&ss, tinfo_map, minfo.signature);
+      method_strings.emplace_back(make_pair(Jstr(ss.str()), minfo.mid));
+    }
+  }
+
+  method_strings.emplace_back(make_pair(Jstr("<init>"), kInstanceInitMethodId));
+  method_strings.emplace_back(make_pair(Jstr("<static_init>"), kStaticInitMethodId));
+  method_strings.emplace_back(make_pair(Jstr("<runtime_init>"), kTypeInitMethodId));
+
+  WriteConstStringsImpl("types", type_strings, out);
+  WriteConstStringsImpl("methods", method_strings, out);
 }
 
 } // namespace i386

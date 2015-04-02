@@ -72,6 +72,8 @@ struct MethodInfo {
 
 class TypeInfoMap;
 
+void PrintMethodSignatureTo(std::ostream* out, const TypeInfoMap& tinfo_map, const MethodSignature& m_sig);
+
 class MethodTable {
 public:
   ast::MethodId ResolveCall(const TypeInfoMap& type_info_map, ast::TypeId caller_type, CallContext ctx, ast::TypeId callee_type, const TypeIdList& params, const string& method_name, base::PosRange pos, base::ErrorList* out) const;

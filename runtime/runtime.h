@@ -5,6 +5,7 @@ namespace runtime {
 
 extern const string TypeInfoFile;
 extern const string StringOpsFile;
+extern const string StackFrameFile;
 
 } // namespace runtime
 

@@ -20,7 +20,7 @@ class StreamBuilder {
 
   // Return a Mem of SizeClass::PTR that holds an array of elements, each of
   // size elemtype. Space for n elements will be allocated.
-  Mem AllocArray(SizeClass elemtype, Mem n);
+  Mem AllocArray(SizeClass elemtype, Mem n, base::PosRange pos);
 
   Mem AllocTemp(SizeClass);
 
@@ -89,10 +89,10 @@ class StreamBuilder {
   void Mul(Mem dst, Mem lhs, Mem rhs);
 
   // Emit *dst = *lhs / *rhs.
-  void Div(Mem dst, Mem lhs, Mem rhs);
+  void Div(Mem dst, Mem lhs, Mem rhs, base::PosRange pos);
 
   // Emit *dst = *lhs % *rhs.
-  void Mod(Mem dst, Mem lhs, Mem rhs);
+  void Mod(Mem dst, Mem lhs, Mem rhs, base::PosRange pos);
 
   // Emit an unconditional jump to the label lid.
   // Building the Stream will validate that the referenced label exists.
@@ -156,12 +156,12 @@ class StreamBuilder {
   // Emit a static call to method mid in Type tid, passing args. All args
   // must have been initialized. The result of calling the method will be
   // stored in dst.
-  void StaticCall(Mem dst, ast::TypeId::Base tid, ast::MethodId mid, const vector<Mem>& args);
+  void StaticCall(Mem dst, ast::TypeId::Base tid, ast::MethodId mid, const vector<Mem>& args, base::PosRange pos);
 
   // Emit a dynamic call to method mid on this_ptr, passing args. All args
   // must have been initialized. The result of calling the method will be
   // stored in dst.
-  void DynamicCall(Mem dst, Mem this_ptr, ast::MethodId mid, const vector<Mem>& args);
+  void DynamicCall(Mem dst, Mem this_ptr, ast::MethodId mid, const vector<Mem>& args, base::PosRange pos);
 
   // Lookup the TypeInfo runtime object stored on the object in src and prite it to dst.
   void GetTypeInfo(Mem dst, Mem src);
