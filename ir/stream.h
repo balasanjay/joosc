@@ -123,7 +123,7 @@ enum class OpType {
   // (Mem, Mem).
   TRUNCATE,
 
-  // (Mem, Mem, TypeId::Base, TypeId::Ndims, TypeId::Base, TypeId::Ndims).
+  // (Mem, Mem, TypeId::Base, bool is_array, TypeId::Base, bool is_array).
   INSTANCE_OF,
 
   // (Mem).
@@ -137,9 +137,6 @@ enum class OpType {
 
   // (Mem, Mem, MethodId, int file_offset, int nargs, Mem[]).
   DYNAMIC_CALL,
-
-  // (Mem, Mem).
-  GET_TYPEINFO,
 
   // ([Mem]).
   RET,

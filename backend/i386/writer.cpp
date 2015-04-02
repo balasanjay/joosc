@@ -758,6 +758,56 @@ struct FuncWriter final {
     w.Col1("mov %v, %v", StackOffset(dst_e.offset), dst_sized_reg);
   }
 
+  void InstanceOf(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(6);
+
+    MemId dst = begin[0];
+    MemId src = begin[1];
+    TypeId dst_tid = TypeId{begin[2], begin[3]};
+    TypeId src_tid = TypeId{begin[4], begin[5]};
+
+    const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& src_e = stack_map.at(src);
+
+    CHECK(dst_e.size == SizeClass::BOOL);
+
+    // TODO: use tinfo_map_ to immediately allow "obvious" ancestor
+    // relationships; i.e. `"foo" instanceof Object'.
+
+    i64 stack_used = cur_offset;
+
+    // Push the dst type id onto stack.
+    {
+      w.Col1("mov eax, [static_t%v_f%v]", dst_tid.base, kStaticTypeInfoId);
+      w.Col1("mov %v, eax", StackOffset(stack_used));
+      stack_used += 4;
+    }
+
+    // Push the src type id onto stack
+    {
+      w.Col1("mov eax, %v", StackOffset(src_e.offset));
+      // Dereference `this'.
+      w.Col1("mov eax, [eax]");
+      // Dereference vptr.
+      w.Col1("mov eax, [eax]");
+      // Dereference the pointer to a type info ptr.
+      w.Col1("mov eax, [eax]");
+      w.Col1("mov %v, eax", StackOffset(stack_used));
+      stack_used += 4;
+    }
+
+    // Perform the call.
+    {
+      w.Col1("sub esp, %v", stack_used);
+      w.Col1("push 0"); // Stackframe would ordinarily go here.
+      w.Col1("call _t%v_m%v", rt_ids.type_info_tid.base, rt_ids.type_info_instanceof);
+      w.Col1("pop ecx");
+      w.Col1("add esp, %v", stack_used);
+    }
+
+    // Write return value.
+    w.Col1("mov %v, eax", StackOffset(dst_e.offset));
+  }
 
   void StaticCall(ArgIter begin, ArgIter end) {
     CHECK((end-begin) >= 5);
@@ -907,29 +957,6 @@ struct FuncWriter final {
     }
   }
 
-  void GetTypeInfo(ArgIter begin, ArgIter end) {
-    CHECK((end-begin) == 2);
-
-    MemId dst = begin[0];
-    MemId src = begin[1];
-    const StackEntry& dst_e = stack_map.at(dst);
-    const StackEntry& src_e = stack_map.at(src);
-    CHECK(dst_e.size == SizeClass::PTR);
-    CHECK(src_e.size == SizeClass::PTR);
-
-    // Simply dereference the pointer to get the TypeInfo
-    // pointer at the start of the vtable.
-    w.Col1("; Getting type id.");
-    w.Col1("mov eax, %v", StackOffset(src_e.offset));
-    // Get vtable pointer from this.
-    w.Col1("mov eax, [eax]");
-    // Get field pointer from vtable.
-    w.Col1("mov eax, [eax]");
-    // Get typeinfo pointer from field.
-    w.Col1("mov eax, [eax]");
-    w.Col1("mov %v, eax", StackOffset(dst_e.offset));
-  }
-
   void Ret(ArgIter begin, ArgIter end) {
     CHECK((end-begin) <= 1);
 
@@ -1000,6 +1027,7 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
     Sprintf("vtable_t%v", rt_ids_.object_tid.base),
     Sprintf("vtable_t%v", rt_ids_.stackframe_type.base),
     Sprintf("src_file%v", comp_unit.fileid),
+    Sprintf("_t%v_m%v", rt_ids_.type_info_tid.base, rt_ids_.type_info_instanceof),
   };
   set<string> globals;
   for (const Type& type : comp_unit.types) {
@@ -1040,6 +1068,9 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
         } else if (op.type == OpType::CONST_STR) {
           StringId strid = method_stream.args[op.begin + 1];
           externs.insert(Sprintf("string%v", strid));
+        } else if (op.type == OpType::INSTANCE_OF) {
+          TypeId::Base tid = method_stream.args[op.begin + 2];
+          externs.insert(Sprintf(kStaticNameFmt, tid, kStaticTypeInfoId));
         }
       }
     }
@@ -1190,20 +1221,19 @@ void Writer::WriteFunc(const Stream& stream, const File* file, StackFrame frame,
       case OpType::TRUNCATE:
         writer.Truncate(begin, end);
         break;
+      case OpType::INSTANCE_OF:
+        writer.InstanceOf(begin, end);
+        break;
       case OpType::STATIC_CALL:
         writer.StaticCall(begin, end);
         break;
       case OpType::DYNAMIC_CALL:
         writer.DynamicCall(begin, end);
         break;
-      case OpType::GET_TYPEINFO:
-        writer.GetTypeInfo(begin, end);
-        break;
       case OpType::RET:
         writer.Ret(begin, end);
         break;
 
-      UNIMPLEMENTED_OP(INSTANCE_OF);
       UNIMPLEMENTED_OP(CAST_EXCEPTION_IF_FALSE);
       UNIMPLEMENTED_OP(CHECK_ARRAY_STORE);
 
@@ -1452,6 +1482,11 @@ void Writer::WriteStaticInit(const Program& prog, ostream* out) const {
 
   // Body.
   // Write global number of types.
+  u64 max_tid = 0;
+  for (const auto& t_pair : tinfo_map_.GetTypeMap()) {
+    max_tid = std::max(t_pair.first.base, max_tid);
+  }
+
   w.Col1("; Initializing number of types.");
   string num_types_label = Sprintf(
       "static_t%v_f%v",
@@ -1460,7 +1495,7 @@ void Writer::WriteStaticInit(const Program& prog, ostream* out) const {
   w.Col1("extern %v", num_types_label);
   w.Col1("mov dword [%v], %v",
       num_types_label,
-      tinfo_map_.GetTypeMap().size());
+      max_tid + 1);
 
   // Initialize type's static type info.
   auto units = prog.units;

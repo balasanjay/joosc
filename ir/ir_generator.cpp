@@ -585,21 +585,28 @@ class MethodIRGenerator final : public ast::Visitor {
     Mem lhs = builder_.AllocTemp(SizeClass::PTR);
     WithResultIn(lhs, false).Visit(expr.LhsPtr());
 
-    // TODO: Gen code that checks if lhs is null, return false.
     // TODO: Arrays.
-    {
-      Mem type_info = builder_.AllocTemp(SizeClass::PTR);
-      builder_.GetTypeInfo(type_info, lhs);
+    Mem tmp = builder_.AllocLocal(SizeClass::BOOL);
 
-      {
-        Mem ancestor = builder_.AllocTemp(SizeClass::PTR);
-        {
-          Mem dummy = builder_.AllocDummy();
-          builder_.FieldDeref(ancestor, dummy, expr.GetType().GetTypeId().base, ast::kStaticTypeInfoId, base::PosRange(0, 0, 0));
-        }
-        builder_.StaticCall(res_, rt_ids_.type_info_tid.base, rt_ids_.type_info_instanceof, {type_info, ancestor}, expr.InstanceOf().pos);
-      }
+    // If lhs is null, then we short-circuit the INSTANCE_OF operation, and
+    // just immediately return false.
+    LabelId short_circuit = builder_.AllocLabel();
+    {
+      builder_.ConstBool(tmp, false);
+
+      Mem null_mem = builder_.AllocTemp(SizeClass::PTR);
+      builder_.ConstNull(null_mem);
+
+      Mem is_null = builder_.AllocTemp(SizeClass::BOOL);
+      builder_.Eq(is_null, null_mem, lhs);
+
+      builder_.JmpIf(short_circuit, is_null);
     }
+
+    builder_.InstanceOf(tmp, lhs, expr.GetType().GetTypeId(), expr.Lhs().GetTypeId());
+
+    builder_.EmitLabel(short_circuit);
+    builder_.Mov(res_, tmp);
 
     return VisitResult::SKIP;
   }
