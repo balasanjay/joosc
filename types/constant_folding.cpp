@@ -285,26 +285,34 @@ public:
       auto inner_const_int = dynamic_cast<const ast::IntLitExpr*>(inner_const->ConstantPtr().get());
       CHECK(inner_const_int != nullptr);
 
-      u32 usigned = (u32)inner_const_int->Value();
+      u32 new_value = (u32)inner_const_int->Value();
       switch (cast_type.base) {
         case ast::TypeId::kIntBase:
           break;
         case ast::TypeId::kCharBase:
         case ast::TypeId::kShortBase:
-          usigned = usigned & 0x0000FFFF;
+          new_value = new_value & 0x0000FFFF;
           break;
         case ast::TypeId::kByteBase:
-          usigned = usigned & 0x000000FF;
+          new_value = new_value & 0x000000FF;
           break;
         default:
           UNREACHABLE();
       }
-      i32 new_value = (i32)usigned;
 
-      auto new_int_lit = make_shared<ast::IntLitExpr>(
-          lexer::Token(lexer::INTEGER, ExtentOf(exprptr)),
-          new_value, cast_type);
-      return make_shared<ConstExpr>(new_int_lit, exprptr);
+      sptr<const Expr> new_lit_expr;
+
+      // Special case of casting to char - make it a char lit expr.
+      if (cast_type == ast::TypeId::kChar) {
+        new_lit_expr = make_shared<ast::CharLitExpr>(
+            lexer::Token(lexer::CHAR, ExtentOf(exprptr)),
+            (jchar)new_value, cast_type);
+      } else {
+        new_lit_expr = make_shared<ast::IntLitExpr>(
+            lexer::Token(lexer::INTEGER, ExtentOf(exprptr)),
+            (i32)new_value, cast_type);
+      }
+      return make_shared<ConstExpr>(new_lit_expr, exprptr);
     }
 
     // Cast to String (for a constant type).
