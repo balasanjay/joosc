@@ -18,12 +18,12 @@ TARGETS := ${patsubst %_main.cpp,%,${MAIN_SOURCES}}
 
 # DEFAULT_BUILD_TARGETS should specify which targets to build if make is run
 # with no arguments.
-DEFAULT_BUILD_TARGETS := joosc test
+DEFAULT_BUILD_TARGETS := joosc
 
 # CXX is the C++ compiler.
 CXX := /usr/local/clang-3.4/bin/clang++
 # CXXFLAGS are the flags passed to the C++ compiler.
-CXXFLAGS := -Wall -Wextra -std=c++11 -MMD -MP -g -pedantic -I ./ -include tools/cpp/std.h
+CXXFLAGS := -Wall -Wextra -std=c++11 -MMD -MP -g -pedantic -I ./ -include std.h
 # LDFLAGS are the flags passed to the C++ linker.
 LDFLAGS := -lpthread -B third_party/bin/
 
@@ -107,4 +107,4 @@ ${call TO_BUILD_DIR,${TARGETS}}: %: %_main.o ${NON_TEST_OBJECTS}
 ${call TO_BUILD_DIR,test}: ${CORE_OBJECTS}
 
 dist: clean
-	zip -r submit.zip . -x '*.git*' -x '*.build*' -x '*third_party/cs444*'
+	zip -r submit.zip . -x '*.git*' -x '*.build*' -x '*third_party/cs444*' -x '*bazel-*' -x '*tools*'

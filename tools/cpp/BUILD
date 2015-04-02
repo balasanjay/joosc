@@ -11,7 +11,7 @@ cc_library(
 cc_library(
     name = "stl",
     srcs = ["empty.cc"],
-    hdrs = ["std.h"],
+    hdrs = ["//:std.h"],
 )
 
 filegroup(

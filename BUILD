@@ -1,5 +1,7 @@
 package(default_visibility = ["//visibility:public"])
 
+exports_files(["std.h"]);
+
 cc_binary(
     name = "joosc",
     srcs = [
