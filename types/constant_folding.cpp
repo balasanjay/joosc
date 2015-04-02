@@ -1,8 +1,8 @@
 #include "types/constant_folding.h"
 
-#include "lexer/lexer.h"
 #include "ast/extent.h"
 #include "ast/visitor.h"
+#include "lexer/lexer.h"
 #include "types/type_info_map.h"
 #include "types/typechecker.h"
 
@@ -316,8 +316,11 @@ public:
     }
 
     // Cast to String (for a constant type).
-    // TODO: Is this even possible in the type system?
-    CHECK(cast_type == string_type_);
+    if (cast_type != string_type_) {
+      return new_cast_expr;
+    }
+
+    // Now casting a constant to some ref type (hopefully Object).
     jstring str = Stringify(inner_const->ConstantPtr());
     AddString(str);
 
