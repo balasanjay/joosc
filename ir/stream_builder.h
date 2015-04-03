@@ -19,8 +19,8 @@ class StreamBuilder {
   Mem AllocHeap(ast::TypeId t);
 
   // Return a Mem of SizeClass::PTR that holds an array of elements, each of
-  // size elemtype. Space for n elements will be allocated.
-  Mem AllocArray(SizeClass elemtype, Mem n, base::PosRange pos);
+  // type elemtype. Space for n elements will be allocated.
+  Mem AllocArray(ast::TypeId elemtype, Mem n, base::PosRange pos);
 
   Mem AllocTemp(SizeClass);
 

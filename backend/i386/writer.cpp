@@ -6,6 +6,7 @@
 #include "base/printf.h"
 #include "ir/mem.h"
 #include "ir/stream.h"
+#include "types/typechecker.h"
 
 using std::ostream;
 using std::get;
@@ -32,6 +33,7 @@ using ir::OpType;
 using ir::Program;
 using ir::RuntimeLinkIds;
 using ir::SizeClass;
+using ir::SizeClassFrom;
 using ir::Stream;
 using ir::Type;
 using ir::kInvalidMemId;
@@ -39,6 +41,7 @@ using types::ConstStringMap;
 using types::FieldInfo;
 using types::MethodInfo;
 using types::StringId;
+using types::TypeChecker;
 using types::TypeInfo;
 using types::TypeInfoMap;
 
@@ -198,7 +201,7 @@ struct FuncWriter final {
     EXPECT_NARGS(4);
 
     MemId dst = begin[0];
-    SizeClass elem_size_class = (SizeClass)begin[1];
+    TypeId::Base elemtype = begin[1];
     MemId len = begin[2];
     u64 file_offset = begin[3];
 
@@ -208,7 +211,7 @@ struct FuncWriter final {
     CHECK(dst_e.size == SizeClass::PTR);
     CHECK(len_e.size == SizeClass::INT);
 
-    u64 elem_size = ByteSizeFrom(elem_size_class, 4);
+    u64 elem_size = ByteSizeFrom(SizeClassFrom({elemtype, 0}), 4);
     i64 stack_used = cur_offset;
 
     w.Col1("; t%v = new[t%v]", dst, len);
@@ -233,7 +236,14 @@ struct FuncWriter final {
 
     // Set the length field.
     w.Col1("mov ebx, %v", StackOffset(len_e.offset));
-    w.Col1("mov [eax + 4], ebx");
+    w.Col1("mov [eax+4], ebx");
+
+    if (TypeChecker::IsPrimitive(TypeId{elemtype, 0})) {
+      // Leave the elem-type ptr null, it will never be needed.
+    } else {
+      w.Col1("mov ebx, [static_t%v_f%v]", elemtype, kStaticTypeInfoId);
+      w.Col1("mov [eax+8], ebx");
+    }
   }
 
   void AllocMem(ArgIter begin, ArgIter end) {
@@ -790,8 +800,10 @@ struct FuncWriter final {
 
     MemId dst = begin[0];
     MemId src = begin[1];
-    TypeId dst_tid = TypeId{begin[2], begin[3]};
-    TypeId src_tid = TypeId{begin[4], begin[5]};
+    TypeId::Base dst_tid = begin[2];
+    bool dst_array = (begin[3] == 1);
+    TypeId::Base src_tid = begin[4];
+    bool src_array = (begin[5] == 1);
 
     const StackEntry& dst_e = stack_map.at(dst);
     const StackEntry& src_e = stack_map.at(src);
@@ -801,24 +813,46 @@ struct FuncWriter final {
     // TODO: use tinfo_map_ to immediately allow "obvious" ancestor
     // relationships; i.e. `"foo" instanceof Object'.
 
-    // Dst type id.
-    w.Col1("mov eax, [static_t%v_f%v]", dst_tid.base, kStaticTypeInfoId);
+    // First, handle two non-arrays.
+    if (!dst_array && !src_array) {
+      // Dst type id.
+      w.Col1("mov eax, [static_t%v_f%v]", dst_tid, kStaticTypeInfoId);
 
-    // Src type id.
-    {
-      w.Col1("mov ebx, %v", StackOffset(src_e.offset));
-      // Dereference `this'.
-      w.Col1("mov ebx, [ebx]");
-      // Dereference vptr.
-      w.Col1("mov ebx, [ebx]");
-      // Dereference the pointer to a type info ptr.
-      w.Col1("mov ebx, [ebx]");
+      // Src type id.
+      {
+        w.Col1("mov ebx, %v", StackOffset(src_e.offset));
+        // Dereference `this'.
+        w.Col1("mov ebx, [ebx]");
+        // Dereference vptr.
+        w.Col1("mov ebx, [ebx]");
+        // Dereference the pointer to a type info ptr.
+        w.Col1("mov ebx, [ebx]");
+      }
+
+      InstanceOfImpl();
+
+      // Write return value.
+      w.Col1("mov %v, al", StackOffset(dst_e.offset));
+      return;
     }
 
-    InstanceOfImpl();
+    // Next, handle two arrays.
+    if (dst_array && src_array) {
+      // Dst type id.
+      w.Col1("mov eax, [static_t%v_f%v]", dst_tid, kStaticTypeInfoId);
 
-    // Write return value.
-    w.Col1("mov %v, al", StackOffset(dst_e.offset));
+      // Src type id.
+      {
+        w.Col1("mov ebx, %v", StackOffset(src_e.offset));
+        // Dereference array's elem-type-ptr.
+        w.Col1("mov ebx, [ebx+8]");
+      }
+
+      InstanceOfImpl();
+
+      w.Col1("mov %v, al", StackOffset(dst_e.offset));
+      return;
+    }
   }
 
   void StaticCall(ArgIter begin, ArgIter end) {
@@ -1075,7 +1109,9 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
         } else if (op.type == OpType::ALLOC_HEAP) {
           TypeId::Base tid = method_stream.args[op.begin + 1];
           externs.insert(Sprintf(kVtableNameFmt, tid));
-          externs.insert(Sprintf(kItableNameFmt, tid));
+        } else if (op.type == OpType::ALLOC_ARRAY) {
+          TypeId::Base tid = method_stream.args[op.begin + 1];
+          externs.insert(Sprintf(kStaticNameFmt, tid, kStaticTypeInfoId));
         } else if (op.type == OpType::FIELD_DEREF || op.type == OpType::FIELD_ADDR) {
           TypeId::Base child_tid = method_stream.args[op.begin + 2];
           FieldId fid = method_stream.args[op.begin + 3];

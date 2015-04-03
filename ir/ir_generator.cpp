@@ -541,7 +541,7 @@ class MethodIRGenerator final : public ast::Visitor {
     Mem size = builder_.AllocTemp(SizeClass::INT);
     WithResultIn(size).Visit(expr.GetExprPtr());
 
-    Mem array_mem = builder_.AllocArray(SizeClassFrom(expr.GetType().GetTypeId()), size, expr.NewToken().pos);
+    Mem array_mem = builder_.AllocArray(expr.GetType().GetTypeId(), size, expr.NewToken().pos);
     builder_.Mov(res_, array_mem);
 
     return VisitResult::SKIP;
@@ -657,7 +657,7 @@ class ProgramIRGenerator final : public ast::Visitor {
         Mem size = t_builder.AllocTemp(SizeClass::INT);
         t_builder.ConstNumeric(size, num_parents);
         {
-          Mem array = t_builder.AllocArray(SizeClass::PTR, size, base::PosRange(0, 0, 0));
+          Mem array = t_builder.AllocArray(rt_ids_.type_info_tid, size, base::PosRange(0, 0, 0));
           auto write_parent = [&](i32 i, ast::TypeId::Base p_tid) {
             // Get parent pointer from parent type's static field.
             // Guaranteed to be filled because of static type

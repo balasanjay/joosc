@@ -39,7 +39,7 @@ enum class OpType {
   // (Mem, TypeId::Base).
   ALLOC_HEAP,
 
-  // (Mem, SizeClass elemsize, Mem len, int file_offset).
+  // (Mem, TypeId::Base, Mem len, int file_offset).
   ALLOC_ARRAY,
 
   // (LabelId).
