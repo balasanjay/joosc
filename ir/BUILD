@@ -7,7 +7,6 @@ cc_library(
         "mem.cpp",
         "mem_impl.cpp",
         "size.cpp",
-        "stream.cpp",
         "stream_builder.cpp",
     ],
     hdrs = [
