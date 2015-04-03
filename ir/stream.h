@@ -131,7 +131,7 @@ enum class OpType {
   // (Mem).
   CAST_EXCEPTION_IF_FALSE,
 
-  // (Mem, Mem).
+  // (Mem, Mem, int file_offset).
   CHECK_ARRAY_STORE,
 
   // (Mem, TypeId::Base, MethodId, int file_offset, int nargs, Mem[]).

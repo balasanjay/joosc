@@ -17,6 +17,7 @@ using std::dynamic_pointer_cast;
 using std::get;
 using std::tuple;
 
+using ast::ArrayIndexExpr;
 using ast::Expr;
 using ast::ExtentOf;
 using ast::FieldDecl;
@@ -46,14 +47,22 @@ namespace {
 
 class MethodIRGenerator final : public ast::Visitor {
  public:
-  MethodIRGenerator(Mem res, bool lvalue, StreamBuilder* builder, vector<ast::LocalVarId>* locals, map<ast::LocalVarId, Mem>* locals_map, TypeId tid, const ConstStringMap& string_map, const RuntimeLinkIds& rt_ids): res_(res), lvalue_(lvalue), builder_(*builder), locals_(*locals), locals_map_(*locals_map), tid_(tid), string_map_(string_map), rt_ids_(rt_ids) {}
+  MethodIRGenerator(Mem res, Mem array_rvalue, bool lvalue, StreamBuilder* builder, vector<ast::LocalVarId>* locals, map<ast::LocalVarId, Mem>* locals_map, TypeId tid, const ConstStringMap& string_map, const RuntimeLinkIds& rt_ids): res_(res), array_rvalue_(array_rvalue), lvalue_(lvalue), builder_(*builder), locals_(*locals), locals_map_(*locals_map), tid_(tid), string_map_(string_map), rt_ids_(rt_ids) {}
 
-  MethodIRGenerator WithResultIn(Mem res, bool lvalue=false) {
-    return MethodIRGenerator(res, lvalue, &builder_, &locals_, &locals_map_, tid_, string_map_, rt_ids_);
+  MethodIRGenerator WithResultIn(Mem res, bool lvalue = false) {
+    return WithResultIn(res, builder_.AllocDummy(), lvalue);
+  }
+
+  MethodIRGenerator WithResultIn(Mem res, Mem array_rvalue) {
+    return WithResultIn(res, array_rvalue, true);
+  }
+
+  MethodIRGenerator WithResultIn(Mem res, Mem array_rvalue, bool lvalue) {
+    return MethodIRGenerator(res, array_rvalue, lvalue, &builder_, &locals_, &locals_map_, tid_, string_map_, rt_ids_);
   }
 
   MethodIRGenerator WithLocals(vector<ast::LocalVarId>& locals) {
-    return MethodIRGenerator(res_, lvalue_, &builder_, &locals, &locals_map_, tid_, string_map_, rt_ids_);
+    return MethodIRGenerator(res_, array_rvalue_, lvalue_, &builder_, &locals, &locals_map_, tid_, string_map_, rt_ids_);
   }
 
   VISIT_DECL(MethodDecl, decl,) {
@@ -234,13 +243,28 @@ class MethodIRGenerator final : public ast::Visitor {
     Mem lhs_old = builder_.AllocTemp(is_assg ? SizeClass::PTR : lhs_size);
     Mem rhs_old = builder_.AllocTemp(rhs_size);
 
+    Mem lhs_rvalue = builder_.AllocDummy();
+    if (dynamic_cast<const ArrayIndexExpr*>(expr.LhsPtr().get()) != nullptr && !TypeChecker::IsPrimitive(expr.GetTypeId())) {
+      lhs_rvalue = builder_.AllocTemp(SizeClass::PTR);
+    }
+
     Mem lhs = lhs_old;
     Mem rhs = rhs_old;
 
-    WithResultIn(lhs, is_assg).Visit(expr.LhsPtr());
+    if (is_assg) {
+      WithResultIn(lhs, lhs_rvalue).Visit(expr.LhsPtr());
+    } else {
+      WithResultIn(lhs).Visit(expr.LhsPtr());
+    }
+
     WithResultIn(rhs).Visit(expr.RhsPtr());
 
     if (is_assg) {
+      // If this was an array, check if the element type matches.
+      if (lhs_rvalue.IsValid()) {
+        builder_.CheckArrayStore(lhs_rvalue, rhs, expr.Op().pos);
+      }
+
       builder_.MovToAddr(lhs, rhs);
 
       // The result of an assignment expression is the rhs. We don't bother
@@ -380,6 +404,10 @@ class MethodIRGenerator final : public ast::Visitor {
     PosRange pos = ExtentOf(exprptr);
     SizeClass elemsize = SizeClassFrom(expr.GetTypeId());
     if (lvalue_) {
+      if (array_rvalue_.IsValid()) {
+        builder_.Mov(array_rvalue_, array);
+      }
+
       builder_.ArrayAddr(res_, array, index, elemsize, pos);
     } else {
       builder_.ArrayDeref(res_, array, index, elemsize, pos);
@@ -633,6 +661,7 @@ class MethodIRGenerator final : public ast::Visitor {
 
   // Location result of the computation should be stored.
   Mem res_;
+  Mem array_rvalue_;
   bool lvalue_ = false;
   StreamBuilder& builder_;
   vector<ast::LocalVarId>& locals_;
@@ -817,7 +846,7 @@ class ProgramIRGenerator final : public ast::Visitor {
 
         builder->FieldAddr(f_mem, this_ptr, tid.base, field->GetFieldId(), PosRange(0, 0, 0));
 
-        MethodIRGenerator gen(val, false, builder, &empty_locals, &locals_map, tid, string_map_, rt_ids_);
+        MethodIRGenerator gen(val, builder->AllocDummy(), false, builder, &empty_locals, &locals_map, tid, string_map_, rt_ids_);
         gen.Visit(field->ValPtr());
 
         builder->MovToAddr(f_mem, val);
@@ -847,7 +876,7 @@ class ProgramIRGenerator final : public ast::Visitor {
          && decl->Mods().HasModifier(lexer::Modifier::STATIC)
          && decl->Params().Params().Size() == 0);
 
-      MethodIRGenerator gen(ret, false, &builder, &empty_locals, &locals_map, {out->tid, 0}, string_map_, rt_ids_);
+      MethodIRGenerator gen(ret, builder.AllocDummy(), false, &builder, &empty_locals, &locals_map, {out->tid, 0}, string_map_, rt_ids_);
       gen.Visit(decl);
     }
 

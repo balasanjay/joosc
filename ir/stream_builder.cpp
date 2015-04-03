@@ -323,6 +323,11 @@ void StreamBuilder::CastExceptionIfFalse(Mem cond, PosRange pos) {
   AppendOp(OpType::CAST_EXCEPTION_IF_FALSE, {cond.Id(), (u64)pos.begin});
 }
 
+void StreamBuilder::CheckArrayStore(Mem array_rvalue, Mem elem, PosRange pos) {
+  AssertAssigned({array_rvalue, elem});
+  AppendOp(OpType::CHECK_ARRAY_STORE, {array_rvalue.Id(), elem.Id(), (u64)pos.begin});
+}
+
 void StreamBuilder::StaticCall(Mem dst, TypeId::Base tid, MethodId mid, const vector<Mem>& args, PosRange pos) {
   size_t begin = args_.size();
 

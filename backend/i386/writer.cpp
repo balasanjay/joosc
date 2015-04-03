@@ -111,6 +111,7 @@ enum class ExceptionType {
   OOBE,
   NASE,
   CCE,
+  ASE,
 };
 
 struct FuncWriter final {
@@ -918,6 +919,33 @@ struct FuncWriter final {
     w.Col1("jz .e%v", exception_id);
   }
 
+  void CheckArrayStore(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(3);
+
+    MemId array = begin[0];
+    MemId elem = begin[1];
+    u64 file_offset = begin[2];
+
+    const StackEntry& array_e = stack_map.at(array);
+    const StackEntry& elem_e = stack_map.at(elem);
+
+    CHECK(array_e.size == SizeClass::PTR);
+    CHECK(elem_e.size == SizeClass::PTR);
+
+    // Handle array-store-exception.
+    size_t exception_id = MakeException(ExceptionType::ASE, file_offset);
+    w.Col1("; Checking for invalid polymorphic array store.");
+    w.Col1("mov eax, %v", StackOffset(array_e.offset));
+    w.Col1("mov eax, [eax+8]");
+    w.Col1("mov ebx, %v", StackOffset(elem_e.offset));
+    w.Col1("mov ebx, [ebx]");
+    w.Col1("mov ebx, [ebx]");
+    w.Col1("mov ebx, [ebx]");
+    InstanceOfImpl();
+    w.Col1("test al, al");
+    w.Col1("jz .e%v", exception_id);
+  }
+
   void StaticCall(ArgIter begin, ArgIter end) {
     CHECK((end-begin) >= 5);
 
@@ -1350,6 +1378,9 @@ void Writer::WriteFunc(const Stream& stream, const File* file, StackFrame frame,
       case OpType::CAST_EXCEPTION_IF_FALSE:
         writer.CastExceptionIfFalse(begin, end);
         break;
+      case OpType::CHECK_ARRAY_STORE:
+        writer.CheckArrayStore(begin, end);
+        break;
       case OpType::STATIC_CALL:
         writer.StaticCall(begin, end);
         break;
@@ -1359,12 +1390,8 @@ void Writer::WriteFunc(const Stream& stream, const File* file, StackFrame frame,
       case OpType::RET:
         writer.Ret(begin, end);
         break;
-
-      UNIMPLEMENTED_OP(CHECK_ARRAY_STORE);
-
       default:
         UNREACHABLE();
-
     }
   }
 
