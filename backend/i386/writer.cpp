@@ -935,7 +935,6 @@ struct FuncWriter final {
 
     CHECK(cond_e.size == SizeClass::BOOL);
 
-    // Handle div-by-zero.
     size_t exception_id = MakeException(ExceptionType::CCE, file_offset);
     w.Col1("; Checking for invalid class cast.");
     w.Col1("mov al, %v", StackOffset(cond_e.offset));
