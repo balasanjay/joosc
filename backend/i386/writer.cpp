@@ -1670,6 +1670,8 @@ void Writer::WriteStaticInit(const Program& prog, ostream* out) const {
   // Prologue.
   w.Col1("push ebp");
   w.Col1("mov ebp, esp\n");
+  // Write an empty stack frame so the unwinding terminates here.
+  w.Col1("push 0");
 
   // Body.
   // Write global number of types.
@@ -1714,21 +1716,42 @@ void Writer::WriteStaticInit(const Program& prog, ostream* out) const {
     }
   }
 
-  // Initialize type's statics.
+  vector<Type> types;
   for (const CompUnit& comp_unit : units) {
     for (const Type& type : comp_unit.types) {
       const TypeInfo& tinfo = tinfo_map_.LookupTypeInfo({type.tid, 0});
       if (tinfo.kind == TypeKind::INTERFACE) {
         continue;
       }
-
-      string init = Sprintf("_t%v_m%v", type.tid, kStaticInitMethodId);
-      w.Col1("extern %v", init);
-      w.Col1("call %v", init);
+      types.emplace_back(type);
     }
   }
 
+  // We sort java.lang.System ahead of every other static initializer, so that
+  // we can print exceptions in static initializers without getting an NPE.
+  {
+    auto is_system = [&](const Type& type) {
+      const TypeInfo& tinfo = tinfo_map_.LookupTypeInfo({type.tid, 0});
+      if (tinfo.package == "java.lang" && tinfo.name == "System") {
+        return 0;
+      }
+      return 1;
+    };
+    auto cmp = [&](const Type& lhs, const Type& rhs) {
+      return is_system(lhs) < is_system(rhs);
+    };
+    stable_sort(types.begin(), types.end(), cmp);
+  }
+
+  // Initialize type's statics.
+  for (const Type& type : types) {
+    string init = Sprintf("_t%v_m%v", type.tid, kStaticInitMethodId);
+    w.Col1("extern %v", init);
+    w.Col1("call %v", init);
+  }
+
   // Epilogue.
+  w.Col1("pop ecx");
   w.Col1("pop ebp");
   w.Col1("ret");
   w.Col0("\n");
