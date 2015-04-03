@@ -1,5 +1,10 @@
 package(default_visibility = ["//visibility:public"])
 
+exports_files([
+    "asm.sh",
+    "std.h",
+]);
+
 cc_binary(
     name = "joosc",
     srcs = [
@@ -26,6 +31,7 @@ cc_library(
         "//ir",
         "//lexer",
         "//parser",
+        "//runtime",
         "//types",
         "//weeder",
     ],
@@ -40,6 +46,7 @@ test_suite(
         "//marmoset:a2",
         "//marmoset:a3",
         "//marmoset:a4",
+        "//marmoset:a5",
         "//parser:parser_test",
         "//types:types_test",
         "//weeder:weeder_test",

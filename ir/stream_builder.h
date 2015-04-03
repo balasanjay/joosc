@@ -5,6 +5,7 @@
 #include "base/file.h"
 #include "ir/mem.h"
 #include "ir/stream.h"
+#include "types/types.h"
 
 namespace ir {
 
@@ -18,8 +19,8 @@ class StreamBuilder {
   Mem AllocHeap(ast::TypeId t);
 
   // Return a Mem of SizeClass::PTR that holds an array of elements, each of
-  // size elemtype. Space for n elements will be allocated.
-  Mem AllocArray(SizeClass elemtype, Mem n);
+  // type elemtype. Space for n elements will be allocated.
+  Mem AllocArray(ast::TypeId elemtype, Mem n, base::PosRange pos);
 
   Mem AllocTemp(SizeClass);
 
@@ -29,6 +30,9 @@ class StreamBuilder {
 
   void AllocParams(const vector<SizeClass>& sizes, vector<Mem>* out);
 
+  // Promote src to an INT-sized Mem. Is a no-op if src is already INT.
+  Mem PromoteToInt(Mem src);
+
   // Allocate a label id; the Builder guarantees that the returned id will be
   // unique for this stream.
   LabelId AllocLabel();
@@ -36,14 +40,17 @@ class StreamBuilder {
   // Emit a label as the next instruction.
   void EmitLabel(LabelId);
 
-  // Writes a constant i32 value to the given Mem.
-  void ConstInt32(Mem, i32);
+  // Writes a constant numeric value to the given Mem.
+  void ConstNumeric(Mem, i32);
 
   // Writes a constant bool value to the given Mem.
   void ConstBool(Mem, bool);
 
   // Writes null to the given Mem.
   void ConstNull(Mem);
+
+  // Writes to *dst a pointer to the constant string with id id.
+  void ConstString(Mem dst, types::StringId id);
 
   // Emit *dst = *src.
   void Mov(Mem dst, Mem src);
@@ -52,17 +59,17 @@ class StreamBuilder {
   void MovAddr(Mem dst, Mem src);
 
   // Emit **dst = *src.
-  void MovToAddr(Mem dst, Mem src);
+  void MovToAddr(Mem dst, Mem src, base::PosRange pos);
 
   // Return in dst the value of field fid in src. If src is kInvalidMemId, then
   // this will be a static field dereference. If src is not kInvalidMemId and
   // points to null, an exception will be generated.
-  void FieldDeref(Mem dst, Mem src, ast::FieldId fid, base::PosRange pos);
+  void FieldDeref(Mem dst, Mem src, ast::TypeId::Base tid, ast::FieldId fid, base::PosRange pos);
 
   // Return in dst a pointer to field fid in src. If src is kInvalidMemId, then
   // this will be a pointer to a static field. If src is not kInvalidMemId and
   // points to null, an exception will be generated.
-  void FieldAddr(Mem dst, Mem src, ast::FieldId fid, base::PosRange pos);
+  void FieldAddr(Mem dst, Mem src, ast::TypeId::Base tid, ast::FieldId fid, base::PosRange pos);
 
   // Return in dst the value of array[index]. If array is null, or index is out
   // of range, an exception will be generated.
@@ -82,10 +89,10 @@ class StreamBuilder {
   void Mul(Mem dst, Mem lhs, Mem rhs);
 
   // Emit *dst = *lhs / *rhs.
-  void Div(Mem dst, Mem lhs, Mem rhs);
+  void Div(Mem dst, Mem lhs, Mem rhs, base::PosRange pos);
 
   // Emit *dst = *lhs % *rhs.
-  void Mod(Mem dst, Mem lhs, Mem rhs);
+  void Mod(Mem dst, Mem lhs, Mem rhs, base::PosRange pos);
 
   // Emit an unconditional jump to the label lid.
   // Building the Stream will validate that the referenced label exists.
@@ -127,15 +134,34 @@ class StreamBuilder {
   // Emit *dst = *lhs ^ *rhs. They must all have SizeClass BOOL.
   void Xor(Mem dst, Mem lhs, Mem rhs);
 
+  // Emits either *dst = sign_extend(*src) or *dst = zero_extend(*src),
+  // depending on the SizeClass of the src.
+  void Extend(Mem dst, Mem src);
+
+  // Emits *dst = truncate(*src). The bit-size is determined from the
+  // SizeClasses of the two.
+  void Truncate(Mem dst, Mem src);
+
+  // Sets *dst to true iff src is of the type static_dst_type. static_src_type
+  // must be the static type of src.
+  void InstanceOf(Mem dst, Mem src, ast::TypeId static_dst_type, ast::TypeId static_src_type);
+
+  // Throws a ClassCastException from pos if cond is false.
+  void CastExceptionIfFalse(Mem cond, base::PosRange pos);
+
+  // Throw an ArrayStoreException if the dynamic type of elem is not assignable
+  // to the element type of array_rvalue.
+  void CheckArrayStore(Mem array_rvalue, Mem elem, base::PosRange pos);
+
   // Emit a static call to method mid in Type tid, passing args. All args
   // must have been initialized. The result of calling the method will be
   // stored in dst.
-  void StaticCall(Mem dst, ast::TypeId::Base tid, ast::MethodId mid, const vector<Mem>& args);
+  void StaticCall(Mem dst, ast::TypeId::Base tid, ast::MethodId mid, const vector<Mem>& args, base::PosRange pos);
 
   // Emit a dynamic call to method mid on this_ptr, passing args. All args
   // must have been initialized. The result of calling the method will be
   // stored in dst.
-  void DynamicCall(Mem dst, Mem this_ptr, ast::MethodId mid, const vector<Mem>& args);
+  void DynamicCall(Mem dst, Mem this_ptr, ast::MethodId mid, const vector<Mem>& args, base::PosRange pos);
 
   // Return with no value.
   void Ret();

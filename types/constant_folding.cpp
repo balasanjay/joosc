@@ -1,13 +1,15 @@
 #include "types/constant_folding.h"
 
-#include "lexer/lexer.h"
 #include "ast/extent.h"
 #include "ast/visitor.h"
+#include "lexer/lexer.h"
 #include "types/type_info_map.h"
 #include "types/typechecker.h"
 
-using ast::Expr;
+using ast::BinExpr;
 using ast::ConstExpr;
+using ast::Expr;
+using ast::TypeId;
 
 namespace types {
 
@@ -15,7 +17,7 @@ StringId kFirstStringId = 0;
 
 class ConstantFoldingVisitor final : public ast::Visitor {
 public:
-  ConstantFoldingVisitor(ConstStringMap* strings, ast::TypeId string_type): strings_(*strings), string_type_(string_type) {
+  ConstantFoldingVisitor(ConstStringMap* strings, TypeId string_type): strings_(*strings), string_type_(string_type) {
   }
 
   void AddString(const jstring& s) {
@@ -29,7 +31,6 @@ public:
   // literals, or just a literal, into its string
   // representation.
   jstring Stringify(sptr<const Expr> expr) {
-    // TODO: Null literals.
     sptr<const Expr> inside_const = expr;
     auto const_expr = dynamic_cast<const ast::ConstExpr*>(expr.get());
     if (const_expr != nullptr) {
@@ -42,7 +43,7 @@ public:
       return inner_const_str->Str();
     }
 
-    if (inside_const->GetTypeId() == ast::TypeId::kChar) {
+    if (inside_const->GetTypeId() == TypeId::kChar) {
       auto inner_const_char = dynamic_cast<const ast::CharLitExpr*>(inside_const.get());
       CHECK(inner_const_char != nullptr);
 
@@ -53,7 +54,7 @@ public:
       auto inner_const_int = dynamic_cast<const ast::IntLitExpr*>(inside_const.get());
       CHECK(inner_const_int != nullptr);
 
-      i64 value = inner_const_int->Value();
+      i32 value = inner_const_int->Value();
       stringstream ss;
       ss << value;
       string s = ss.str();
@@ -62,7 +63,7 @@ public:
       return js;
     }
 
-    CHECK(inside_const->GetTypeId() == ast::TypeId::kBool);
+    CHECK(inside_const->GetTypeId() == TypeId::kBool);
 
     auto inner_const_bool = dynamic_cast<const ast::BoolLitExpr*>(inside_const.get());
     CHECK(inner_const_bool != nullptr);
@@ -73,11 +74,11 @@ public:
   }
 
   // Get integer value from an int or character literal.
-  i64 GetIntValue(sptr<const Expr> expr) {
-    if (expr->GetTypeId() == ast::TypeId::kChar) {
+  i32 GetIntValue(sptr<const Expr> expr) {
+    if (expr->GetTypeId() == TypeId::kChar) {
       auto char_expr = dynamic_cast<const ast::CharLitExpr*>(expr.get());
       CHECK(char_expr != nullptr);
-      return (u64)char_expr->Char();
+      return (i32)(u32)char_expr->Char();
     }
 
     auto int_expr = dynamic_cast<const ast::IntLitExpr*>(expr.get());
@@ -107,19 +108,24 @@ public:
     return make_shared<ConstExpr>(exprptr, exprptr);
   }
 
+  // NOTE: NullLitExprs are not supposed to be constant folded.
+
   REWRITE_DECL(BinExpr, Expr, expr, exprptr) {
     sptr<const Expr> lhs = Rewrite(expr.LhsPtr());
     sptr<const Expr> rhs = Rewrite(expr.RhsPtr());
     auto lhs_const = dynamic_cast<const ConstExpr*>(lhs.get());
     auto rhs_const = dynamic_cast<const ConstExpr*>(rhs.get());
     if (lhs_const == nullptr || rhs_const == nullptr) {
-      return exprptr;
+      if (lhs == expr.LhsPtr() && rhs == expr.RhsPtr()) {
+        return exprptr;
+      }
+      return make_shared<BinExpr>(lhs, expr.Op(), rhs, expr.GetTypeId());
     }
 
-    ast::TypeId lhs_type = lhs_const->Constant().GetTypeId();
-    ast::TypeId rhs_type = rhs_const->Constant().GetTypeId();
+    TypeId lhs_type = lhs_const->Constant().GetTypeId();
+    TypeId rhs_type = rhs_const->Constant().GetTypeId();
 
-    if (lexer::IsBoolOp(expr.Op().type)) {
+    if (lhs_type == TypeId::kBool && rhs_type == TypeId::kBool) {
       auto lhs = dynamic_cast<const ast::BoolLitExpr*>(
           lhs_const->ConstantPtr().get());
       auto rhs = dynamic_cast<const ast::BoolLitExpr*>(
@@ -133,11 +139,13 @@ public:
       switch (expr.Op().type) {
         case lexer::OR: result = (lhs_value || rhs_value); break;
         case lexer::AND: result = (lhs_value && rhs_value); break;
+        case lexer::EQ: result = (lhs_value == rhs_value); break;
+        case lexer::NEQ: result = (lhs_value != rhs_value); break;
         default: break;
       }
 
       auto new_bool_expr = make_shared<ast::BoolLitExpr>(
-          lexer::Token(result ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)), ast::TypeId::kBool);
+          lexer::Token(result ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)), TypeId::kBool);
       return make_shared<ConstExpr>(new_bool_expr, exprptr);
     }
 
@@ -177,13 +185,13 @@ public:
           if (rhs_value == 0) {
             return exprptr;
           }
-          result = lhs_value % rhs_value;
+          result = (i32)lhs_value % (i32)rhs_value;
           break;
         default: break;
       }
 
       auto new_int_expr = make_shared<ast::IntLitExpr>(
-          lexer::Token(lexer::INTEGER, ExtentOf(exprptr)), (i64)result, ast::TypeId::kInt);
+          lexer::Token(lexer::INTEGER, ExtentOf(exprptr)), (i64)result, TypeId::kInt);
       return make_shared<ConstExpr>(new_int_expr, exprptr);
 
     }
@@ -200,7 +208,7 @@ public:
       bool result = (eq && is_eq) || (!eq && !is_eq);
       auto new_bool_lit = make_shared<ast::BoolLitExpr>(
           lexer::Token(result ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)),
-          ast::TypeId::kBool);
+          TypeId::kBool);
       return make_shared<ConstExpr>(new_bool_lit, exprptr);
     }
 
@@ -220,7 +228,7 @@ public:
     }
 
     auto new_bool_expr = make_shared<ast::BoolLitExpr>(
-        lexer::Token(result ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)), ast::TypeId::kBool);
+        lexer::Token(result ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)), TypeId::kBool);
     return make_shared<ConstExpr>(new_bool_expr, exprptr);
   }
 
@@ -232,12 +240,10 @@ public:
     }
 
     if (expr.Op().type == lexer::SUB) {
-      auto int_lit = dynamic_cast<const ast::IntLitExpr*>(rhs_const->ConstantPtr().get());
-      CHECK(int_lit != nullptr);
-
-      i64 new_int_value = -int_lit->Value();
+      i32 value = GetIntValue(rhs_const->ConstantPtr());
+      i32 new_int_value = -value;
       auto new_int_lit = make_shared<ast::IntLitExpr>(
-          lexer::Token(lexer::INTEGER, ExtentOf(exprptr)), new_int_value, ast::TypeId::kInt);
+          lexer::Token(lexer::INTEGER, ExtentOf(exprptr)), new_int_value, TypeId::kInt);
       return make_shared<ConstExpr>(new_int_lit, exprptr);
     }
 
@@ -247,7 +253,7 @@ public:
 
       bool new_bool_value = !(bool_lit->GetToken().type == lexer::K_TRUE);
       auto new_bool_lit = make_shared<ast::BoolLitExpr>(
-          lexer::Token(new_bool_value ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)), ast::TypeId::kBool);
+          lexer::Token(new_bool_value ? lexer::K_TRUE : lexer::K_FALSE, ExtentOf(exprptr)), TypeId::kBool);
       return make_shared<ConstExpr>(new_bool_lit, exprptr);
     }
 
@@ -257,8 +263,8 @@ public:
   REWRITE_DECL(CastExpr, Expr, expr, exprptr) {
     sptr<const Expr> new_inner = Rewrite(expr.GetExprPtr());
 
-    ast::TypeId cast_type = expr.GetTypeId();
-    ast::TypeId rhs_type = new_inner->GetTypeId();
+    TypeId cast_type = expr.GetTypeId();
+    TypeId rhs_type = new_inner->GetTypeId();
 
     sptr<const Expr> new_cast_expr = make_shared<ast::CastExpr>(expr.Lparen(), expr.GetTypePtr(), expr.Rparen(), new_inner, cast_type);
 
@@ -280,32 +286,42 @@ public:
       auto inner_const_int = dynamic_cast<const ast::IntLitExpr*>(inner_const->ConstantPtr().get());
       CHECK(inner_const_int != nullptr);
 
-      i64 value = inner_const_int->Value();
-      u32 usigned = (u32)value;
+      u32 new_value = (u32)inner_const_int->Value();
       switch (cast_type.base) {
-        case ast::TypeId::kIntBase:
+        case TypeId::kIntBase:
           break;
-        case ast::TypeId::kCharBase:
-        case ast::TypeId::kShortBase:
-          usigned = usigned & 0x0000FFFF;
+        case TypeId::kCharBase:
+        case TypeId::kShortBase:
+          new_value = new_value & 0x0000FFFF;
           break;
-        case ast::TypeId::kByteBase:
-          usigned = usigned & 0x000000FF;
+        case TypeId::kByteBase:
+          new_value = new_value & 0x000000FF;
           break;
         default:
           UNREACHABLE();
       }
-      i64 new_value = (i64)usigned;
 
-      auto new_int_lit = make_shared<ast::IntLitExpr>(
-          lexer::Token(lexer::INTEGER, ExtentOf(exprptr)),
-          new_value, cast_type);
-      return make_shared<ConstExpr>(new_int_lit, exprptr);
+      sptr<const Expr> new_lit_expr;
+
+      // Special case of casting to char - make it a char lit expr.
+      if (cast_type == ast::TypeId::kChar) {
+        new_lit_expr = make_shared<ast::CharLitExpr>(
+            lexer::Token(lexer::CHAR, ExtentOf(exprptr)),
+            (jchar)new_value, cast_type);
+      } else {
+        new_lit_expr = make_shared<ast::IntLitExpr>(
+            lexer::Token(lexer::INTEGER, ExtentOf(exprptr)),
+            (i32)new_value, cast_type);
+      }
+      return make_shared<ConstExpr>(new_lit_expr, exprptr);
     }
 
     // Cast to String (for a constant type).
-    // TODO: Is this even possible in the type system?
-    CHECK(cast_type == string_type_);
+    if (cast_type != string_type_) {
+      return new_cast_expr;
+    }
+
+    // Now casting a constant to some ref type (hopefully Object).
     jstring str = Stringify(inner_const->ConstantPtr());
     AddString(str);
 
@@ -316,11 +332,11 @@ public:
   }
 
   ConstStringMap& strings_;
-  ast::TypeId string_type_;
+  TypeId string_type_;
   StringId next_string_id_ = kFirstStringId;
 };
 
-sptr<const ast::Program> ConstantFold(sptr<const ast::Program> prog, ast::TypeId string_type, ConstStringMap* out_strings) {
+sptr<const ast::Program> ConstantFold(sptr<const ast::Program> prog, TypeId string_type, ConstStringMap* out_strings) {
   ConstantFoldingVisitor v(out_strings, string_type);
   return v.Rewrite(prog);
 }

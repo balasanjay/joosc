@@ -12,13 +12,17 @@
 #include "base/fileset.h"
 #include "lexer/lexer.h"
 #include "parser/parser.h"
+#include "runtime/runtime.h"
+#include "types/type_info_map.h"
 #include "types/type_info_map.h"
 #include "types/types.h"
+#include "types/typeset.h"
 #include "weeder/weeder.h"
 
 using std::cerr;
 using std::cout;
 using std::endl;
+using std::function;
 using std::ofstream;
 using std::ostream;
 
@@ -31,7 +35,9 @@ using lexer::LexJoosFiles;
 using lexer::StripSkippableTokens;
 using lexer::Token;
 using parser::Parse;
+using types::ConstStringMap;
 using types::TypeInfoMap;
+using types::TypeSet;
 using types::TypecheckProgram;
 using weeder::WeedProgram;
 
@@ -46,7 +52,7 @@ bool PrintErrors(const ErrorList& errors, ostream* err, const FileSet* fs) {
 
 }
 
-sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, TypeInfoMap* tinfo_out, ErrorList* err_out) {
+sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, TypeSet* typeset_out, TypeInfoMap* tinfo_out, ConstStringMap* string_map_out, ErrorList* err_out) {
   // Lex files.
   vector<vector<Token>> tokens;
   LexJoosFiles(fs, &tokens, err_out);
@@ -77,7 +83,7 @@ sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, Typ
   }
 
   // Type-checking.
-  program = TypecheckProgram(program, tinfo_out, err_out);
+  program = TypecheckProgram(program, typeset_out, tinfo_out, string_map_out, err_out);
   if (err_out->IsFatal() || stage == CompilerStage::TYPE_CHECK) {
     return program;
   }
@@ -86,8 +92,8 @@ sptr<const Program> CompilerFrontend(CompilerStage stage, const FileSet* fs, Typ
   return program;
 }
 
-bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, const TypeInfoMap& tinfo_map, std::ostream* err) {
-  ir::Program ir_prog = ir::GenerateIR(prog, tinfo_map);
+bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const string& dir, const TypeSet& typeset, const TypeInfoMap& tinfo_map, const ConstStringMap& string_map, const FileSet& fs, std::ostream* err) {
+  ir::Program ir_prog = ir::GenerateIR(prog, typeset, tinfo_map, string_map);
   if (stage == CompilerStage::GEN_IR) {
     return true;
   }
@@ -97,7 +103,7 @@ bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const s
   OffsetTable offset_table = OffsetTable::Build(tinfo_map, 4);
 
   bool success = true;
-  backend::i386::Writer writer(offset_table);
+  backend::i386::Writer writer(tinfo_map, offset_table, ir_prog.rt_ids, fs);
   for (const ir::CompUnit& comp_unit : ir_prog.units) {
     string fname = dir + "/" + comp_unit.filename;
 
@@ -114,8 +120,24 @@ bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const s
     out << std::flush;
   }
 
-  do {
-    string fname = dir + "/main.s";
+  vector<pair<string, function<void(ostream*)>>> writers;
+
+  writers.emplace_back(make_pair("strings.s", [&](ostream* out) {
+    writer.WriteConstStrings(string_map, out);
+  }));
+
+  writers.emplace_back(make_pair("main.s", [&](ostream* out) {
+    writer.WriteMain(out);
+    writer.WriteStaticInit(ir_prog, out);
+  }));
+
+  writers.emplace_back(make_pair("traces.s", [&](ostream* out) {
+    writer.WriteFileNames(out);
+    writer.WriteMethods(out);
+  }));
+
+  for (auto& p : writers) {
+    string fname = dir + "/" + p.first;
     ofstream out(fname);
     if (!out) {
       // TODO: make error pretty.
@@ -124,11 +146,14 @@ bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const s
       break;
     }
 
-    writer.WriteMain(&out);
-    writer.WriteStaticInit(ir_prog, &out);
-    out << std::flush;
-
-  } while (false);
+    p.second(&out);
+    if (!(out << std::flush)) {
+      // TODO: make error pretty.
+      *err << "Could not write to output file: " << fname << "\n";
+      success = false;
+      break;
+    }
+  }
 
   return success;
 }
@@ -139,6 +164,12 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream*, os
   {
     ErrorList errors;
     FileSet::Builder builder;
+
+    // Runtime files.
+    builder.AddStringFile("__joos_internal__/TypeInfo.java", runtime::TypeInfoFile);
+    builder.AddStringFile("__joos_internal__/StringOps.java", runtime::StringOpsFile);
+    builder.AddStringFile("__joos_internal__/StackFrame.java", runtime::StackFrameFile);
+    builder.AddStringFile("__joos_internal__/Array.java", runtime::ArrayFile);
 
     for (const auto& file : files) {
       builder.AddDiskFile(file);
@@ -156,7 +187,9 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream*, os
 
   ErrorList errors;
   TypeInfoMap tinfo_map = TypeInfoMap::Empty();
-  sptr<const Program> program = CompilerFrontend(stage, fs, &tinfo_map, &errors);
+  TypeSet typeset = TypeSet::Empty();
+  ConstStringMap string_map;
+  sptr<const Program> program = CompilerFrontend(stage, fs, &typeset, &tinfo_map, &string_map, &errors);
   if (PrintErrors(errors, err, fs)) {
     return false;
   }
@@ -164,6 +197,5 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream*, os
     return true;
   }
 
-  // TODO.
-  return CompilerBackend(stage, program, "output", tinfo_map, err);
+  return CompilerBackend(stage, program, "output", typeset, tinfo_map, string_map, *fs, err);
 }

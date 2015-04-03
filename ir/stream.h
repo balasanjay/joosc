@@ -6,6 +6,28 @@
 
 namespace ir {
 
+struct RuntimeLinkIds {
+  ast::TypeId object_tid;
+
+  ast::TypeId string_tid;
+  ast::MethodId string_concat;
+  map<ast::TypeId::Base, ast::MethodId> string_valueof;
+
+  ast::TypeId type_info_tid;
+  ast::MethodId type_info_constructor;
+  ast::MethodId type_info_instanceof;
+  ast::FieldId type_info_num_types;
+
+  ast::TypeId stringops_type;
+  ast::MethodId stringops_str;
+
+  ast::TypeId stackframe_type;
+  ast::MethodId stackframe_print;
+  ast::MethodId stackframe_print_ex;
+
+  ast::TypeId array_runtime_type;
+};
+
 // Numbered labels local to a function.
 using LabelId = u64;
 
@@ -19,7 +41,7 @@ enum class OpType {
   // (Mem, TypeId::Base).
   ALLOC_HEAP,
 
-  // (Mem, SizeClass elemsize, Mem len).
+  // (Mem, TypeId::Base, Mem len, int file_offset).
   ALLOC_ARRAY,
 
   // (LabelId).
@@ -28,25 +50,28 @@ enum class OpType {
   // (Mem, SizeClass, Value).
   CONST,
 
+  // (Mem, StringId).
+  CONST_STR,
+
   // (Mem, Mem).
   MOV,
 
   // (Mem, Mem).
   MOV_ADDR,
 
-  // (Mem, Mem).
+  // (Mem, Mem, int file_offset).
   MOV_TO_ADDR,
 
-  // (Mem, Mem, FieldId).
+  // (Mem, Mem, TypeId::Base, FieldId, int file_offset).
   FIELD_DEREF,
 
-  // (Mem, Mem, FieldId).
+  // (Mem, Mem, TypeId::Base, FieldId, int file_offset).
   FIELD_ADDR,
 
-  // (Mem, Mem, Mem, SizeClass).
+  // (Mem, Mem, Mem, SizeClass, int file_offset).
   ARRAY_DEREF,
 
-  // (Mem, Mem, Mem, SizeClass).
+  // (Mem, Mem, Mem, SizeClass, int file_offset).
   ARRAY_ADDR,
 
   // (Mem, Mem, Mem).
@@ -58,10 +83,10 @@ enum class OpType {
   // (Mem, Mem, Mem).
   MUL,
 
-  // (Mem, Mem, Mem).
+  // (Mem, Mem, Mem, int file_offset).
   DIV,
 
-  // (Mem, Mem, Mem).
+  // (Mem, Mem, Mem, int file_offset).
   MOD,
 
   // (LabelId).
@@ -95,18 +120,24 @@ enum class OpType {
   XOR,
 
   // (Mem, Mem).
-  SIGN_EXTEND,
+  EXTEND,
 
   // (Mem, Mem).
-  ZERO_EXTEND,
-
-  // (Mem, Mem, SizeClass).
   TRUNCATE,
 
-  // (Mem, TypeId::Base, MethodId, int nargs, Mem[]).
+  // (Mem, Mem, TypeId::Base, bool is_array, TypeId::Base, bool is_array).
+  INSTANCE_OF,
+
+  // (Mem).
+  CAST_EXCEPTION_IF_FALSE,
+
+  // (Mem, Mem, int file_offset).
+  CHECK_ARRAY_STORE,
+
+  // (Mem, TypeId::Base, MethodId, int file_offset, int nargs, Mem[]).
   STATIC_CALL,
 
-  // (Mem, Mem, MethodId, int nargs, Mem[]).
+  // (Mem, Mem, MethodId, int file_offset, int nargs, Mem[]).
   DYNAMIC_CALL,
 
   // ([Mem]).
@@ -141,10 +172,12 @@ struct Type {
 struct CompUnit {
   string filename;
   vector<Type> types;
+  int fileid;
 };
 
 struct Program {
   vector<CompUnit> units;
+  RuntimeLinkIds rt_ids;
 };
 
 } // namespace ir

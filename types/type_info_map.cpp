@@ -15,6 +15,7 @@ using ast::MethodId;
 using ast::ModifierList;
 using ast::TypeId;
 using ast::TypeKind;
+using ast::kArrayLengthFieldId;
 using ast::kErrorFieldId;
 using ast::kErrorMethodId;
 using ast::kFirstFieldId;
@@ -135,17 +136,6 @@ Error* MakeResolveMethodTableError(const TypeInfo& mtinfo, const MethodInfo& mmi
   });
 }
 
-void PrintMethodSignatureTo(ostream* out, const TypeInfoMap& tinfo_map, const MethodSignature& m_sig) {
-  *out << '\'' <<  m_sig.name << '(';
-  for (int i = 0; i < m_sig.param_types.Size(); ++i) {
-    if (i > 0) {
-      *out << ", ";
-    }
-    *out << tinfo_map.LookupTypeName(m_sig.param_types.At(i));
-  }
-  *out << ")'";
-}
-
 } // namespace
 
 TypeInfoMap TypeInfoMap::kEmptyTypeInfoMap = TypeInfoMap{{}, TypeId::kError};
@@ -158,6 +148,17 @@ MethodInfo MethodTable::kErrorMethodInfo = MethodInfo{kErrorMethodId, TypeId::kE
 FieldTable FieldTable::kEmptyFieldTable = FieldTable({}, {});
 FieldTable FieldTable::kErrorFieldTable = FieldTable();
 FieldInfo FieldTable::kErrorFieldInfo = FieldInfo{kErrorFieldId, TypeId::kError, {}, TypeId::kError, kFakePos, ""};
+
+void PrintMethodSignatureTo(ostream* out, const TypeInfoMap& tinfo_map, const MethodSignature& m_sig) {
+  *out << m_sig.name << '(';
+  for (int i = 0; i < m_sig.param_types.Size(); ++i) {
+    if (i > 0) {
+      *out << ", ";
+    }
+    *out << tinfo_map.LookupTypeName(m_sig.param_types.At(i));
+  }
+  *out << ")";
+}
 
 TypeInfoMapBuilder::TypeInfoMapBuilder(TypeId object_tid, TypeId serializable_tid, TypeId cloneable_tid) : object_tid_(object_tid) {
   // Create array type.
@@ -172,7 +173,7 @@ TypeInfoMapBuilder::TypeInfoMapBuilder(TypeId object_tid, TypeId serializable_ti
   PutField(
       array_tid_,
       FieldInfo{
-        kErrorFieldId,
+        kArrayLengthFieldId,
         array_tid_,
         MakeModifierList(false, false, false),
         TypeId::kInt,
@@ -406,7 +407,7 @@ MethodTable TypeInfoMapBuilder::MakeResolvedMethodTable(TypeInfo* tinfo, const M
         mminfo.return_type,
         mminfo.pos,
         mminfo.signature,
-        pinfo.kind == TypeKind::CLASS ? pminfo.mid : kUnassignedMethodId,
+        pinfo.kind == TypeKind::CLASS ? pminfo.mid : mminfo.parent_mid,
       };
 
       msig_pair->second = final_mminfo;
@@ -503,6 +504,12 @@ void TypeInfoMapBuilder::BuildMethodTable(MInfoIter begin, MInfoIter end, TypeIn
 void TypeInfoMapBuilder::BuildFieldTable(FInfoIter begin, FInfoIter end, TypeInfo* tinfo, FieldId* cur_fid, const map<TypeId, TypeInfo>& sofar, ErrorList* out) {
   // Assign field ids in source-code order.
   for (auto cur = begin; cur != end; ++cur) {
+    // If we've already assigned a field id to this field, then don't overwrite
+    // that assignment.
+    if (cur->fid != kErrorFieldId) {
+      continue;
+    }
+
     cur->fid = *cur_fid;
     ++(*cur_fid);
   }
@@ -1024,8 +1031,9 @@ Error* MethodTable::MakeUndefinedMethodError(const TypeInfoMap& tinfo_map, const
       } else {
         ss << "method ";
       }
+      ss << '\'';
       PrintMethodSignatureTo(&ss, tinfo_map, sig);
-      ss << '.';
+      ss << "'.";
       PrintDiagnosticHeader(out, opt, fs, pos, DiagnosticClass::ERROR, ss.str());
       PrintRangePtr(out, opt, fs, pos);
     }
@@ -1040,8 +1048,9 @@ Error* MethodTable::MakeUndefinedMethodError(const TypeInfoMap& tinfo_map, const
       }
 
       stringstream ss;
+      ss << '\'';
       PrintMethodSignatureTo(&ss, tinfo_map, found_sig);
-      ss << " not viable: ";
+      ss << "' not viable: ";
       int found_num_params = found_sig.param_types.Size();
       if (num_params != found_num_params) {
         ss << "different number of arguments provided, got " << num_params;

@@ -81,3 +81,21 @@ cc_test(
     size = "small",
     shard_count = 4,
 )
+
+sh_test(
+    name = "a5",
+    srcs = [
+        "a5_test.sh",
+    ],
+    deps = [
+    ],
+    data = [
+        "//:asm.sh",
+        "//:joosc",
+        "//third_party/cs444/assignment_testcases:5",
+        "//third_party/cs444/stdlib:5",
+        ":a5_test.py",
+    ],
+    size = "small",
+    shard_count = 4,
+)

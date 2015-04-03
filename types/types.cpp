@@ -48,7 +48,7 @@ bool VerifyTypeSet(const TypeSet& typeset, ErrorList* out) {
   };
   bool ok = true;
   for (const string& name : stdlib_types) {
-    if (typeset.TryGet(name) == TypeId::kUnassigned) {
+    if (!typeset.TryGet(name).IsValid()) {
       out->Append(MakeMissingPredefError("class " + name));
       ok = false;
     }
@@ -84,7 +84,7 @@ TypeInfoMap BuildTypeInfoMap(const TypeSet& typeset, sptr<const Program> prog,
 
 }  // namespace
 
-sptr<const Program> TypecheckProgram(sptr<const Program> prog, TypeInfoMap* tinfo_out, ErrorList* errors) {
+sptr<const Program> TypecheckProgram(sptr<const Program> prog, TypeSet* typeset_out, TypeInfoMap* tinfo_out, ConstStringMap* string_map_out, ErrorList* errors) {
   // Phase 1: Build a typeset.
   TypeSet typeSet = BuildTypeSet(*prog, errors);
   if (!VerifyTypeSet(typeSet, errors)) {
@@ -114,12 +114,12 @@ sptr<const Program> TypecheckProgram(sptr<const Program> prog, TypeInfoMap* tinf
 
   // Phase 4: Dataflow Analysis.
   {
-    ConstStringMap string_map;
-    prog = ConstantFold(prog, string_type, &string_map);
+    prog = ConstantFold(prog, string_type, string_map_out);
     DataflowVisitor(typeInfo, errors).Visit(prog);
   }
 
   *tinfo_out = typeInfo;
+  *typeset_out = typeSet;
 
   return prog;
 }
