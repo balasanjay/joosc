@@ -21,6 +21,7 @@ cc_library(
     deps = [
         "//ast",
         "//base",
+        "//runtime",
         "//types",
     ],
 )

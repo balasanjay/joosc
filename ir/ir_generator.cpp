@@ -3,13 +3,14 @@
 #include <algorithm>
 #include <tuple>
 
-#include "ast/print_visitor.h"
 #include "ast/ast.h"
 #include "ast/extent.h"
+#include "ast/print_visitor.h"
 #include "ast/visitor.h"
 #include "ir/size.h"
 #include "ir/stream_builder.h"
 #include "lexer/lexer.h"
+#include "runtime/runtime.h"
 #include "types/type_info_map.h"
 #include "types/typechecker.h"
 
@@ -874,7 +875,10 @@ class ProgramIRGenerator final : public ast::Visitor {
       is_entry_point =
         (decl->Name() == "test"
          && decl->Mods().HasModifier(lexer::Modifier::STATIC)
-         && decl->Params().Params().Size() == 0);
+         && decl->Params().Params().Size() == 0
+         && decl->TypePtr() != nullptr
+         && decl->TypePtr()->GetTypeId() == TypeId::kInt
+         && current_unit_.fileid == runtime::kNumRuntimeFiles);
 
       MethodIRGenerator gen(ret, builder.AllocDummy(), false, &builder, &empty_locals, &locals_map, {out->tid, 0}, string_map_, rt_ids_);
       gen.Visit(decl);
