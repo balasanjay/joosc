@@ -2,7 +2,7 @@ def latex_pdf_impl(ctx):
   # Strip off the ".tex".
   input = ctx.file.src.path[:-4]
   output = ctx.outputs.output_pdf.path
-  output_dir = output[:output.rfind('/')]
+  output_dir = output + ".out"
 
   pdflatex_cmds = []
   pdflatex_cmd = "pdflatex -output-directory=%s %s.tex > %s/log.out" % (output_dir, input, output_dir)
@@ -10,8 +10,10 @@ def latex_pdf_impl(ctx):
     pdflatex_cmds += [pdflatex_cmd]
 
   command = (
+      "rm -rf %s && " % output_dir +
       "mkdir -p %s && " % output_dir +
-      " && ".join(pdflatex_cmds)
+      " && ".join(pdflatex_cmds) + " && " +
+      "cp %s %s" % (output_dir + input[input.rfind('/'):] + ".pdf", output)
   )
 
   ctx.action(
