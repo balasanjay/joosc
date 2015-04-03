@@ -829,7 +829,7 @@ struct FuncWriter final {
     MemId src = begin[1];
     TypeId::Base dst_tid = begin[2];
     bool dst_array = (begin[3] == 1);
-    TypeId::Base src_tid = begin[4];
+    // TypeId::Base src_tid = begin[4];
     bool src_array = (begin[5] == 1);
 
     const StackEntry& dst_e = stack_map.at(dst);
