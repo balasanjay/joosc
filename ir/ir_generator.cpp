@@ -583,11 +583,6 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(NewArrayExpr, expr,) {
-    // TODO: handle optional expr.
-    if (expr.GetExprPtr() == nullptr) {
-      return VisitResult::SKIP;
-    }
-
     Mem size = builder_.AllocTemp(SizeClass::INT);
     WithResultIn(size).Visit(expr.GetExprPtr());
 

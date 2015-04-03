@@ -448,7 +448,7 @@ class NewArrayExpr : public Expr {
   VAL_GETTER(lexer::Token, NewToken, newTok_);
   SPTR_GETTER(Type, GetType, type_);
   VAL_GETTER(lexer::Token, Lbrack, lbrack_);
-  VAL_GETTER(sptr<const Expr>, GetExprPtr, expr_);
+  SPTR_GETTER(Expr, GetExpr, expr_);
   VAL_GETTER(lexer::Token, Rbrack, rbrack_);
 
  private:
@@ -457,7 +457,7 @@ class NewArrayExpr : public Expr {
   lexer::Token newTok_;
   sptr<const Type> type_;
   lexer::Token lbrack_;
-  sptr<const Expr> expr_; // Can be nullptr.
+  sptr<const Expr> expr_;
   lexer::Token rbrack_;
 };
 
