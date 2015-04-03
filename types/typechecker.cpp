@@ -708,7 +708,6 @@ REWRITE_DEFN(TypeChecker, WhileStmt, Stmt, stmt,) {
 }
 
 REWRITE_DEFN(TypeChecker, FieldDecl, MemberDecl, decl, declptr) {
-  // TODO: Check whether field references only fields defined before this.
   if (!belowMemberDecl_) {
     bool is_static = decl.Mods().HasModifier(lexer::Modifier::STATIC);
     TypeChecker below = InsideMemberDecl(is_static);
@@ -835,13 +834,5 @@ REWRITE_DEFN(TypeChecker, CompUnit, CompUnit, unit, unitptr) {
 
   return below.Rewrite(unitptr);
 }
-
-// TODO: Override Program. Use that to lookup java.lang.{String, Boolean,
-// Integer,...} and emit an error if they're missing. Then we can set their
-// TypeIds as fields on a nested TypeChecker, and always use those fields
-// directly. We'll still have to check if the fields are Valid(), but we won't
-// have to emit an error. Note that we won't have a PosRange to complain about,
-// so it'll have to a custom Error. See the MakeError() function in
-// base/error.h.
 
 } // namespace types

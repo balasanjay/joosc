@@ -780,7 +780,6 @@ enum class TypeKind {
   INTERFACE,
 };
 
-// TODO: Keep track of TypeIds for this type and all parents and pretty-print them.
 class TypeDecl final {
  public:
   TypeDecl(const ModifierList& mods, TypeKind kind, const string& name, lexer::Token nameToken,

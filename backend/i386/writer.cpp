@@ -1517,7 +1517,7 @@ void Writer::WriteConstStringsImpl(const string& prefix, const vector<pair<jstri
 
     w.Col1("dd vtable_t%v", rt_ids_.object_tid.base);
     w.Col1("dd %v", str.size());
-    w.Col1("dd 0"); // TODO: populate the elem type ptr for character.
+    w.Col1("dd %v", TypeId::kCharBase);
     for (auto jch : str) {
       if (isprint(jch)) {
         w.Col1<int, char>("dw %v \t; '%v'", jch, jch);
