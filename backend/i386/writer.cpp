@@ -239,7 +239,8 @@ struct FuncWriter final {
     w.Col1("mov [eax+4], ebx");
 
     if (TypeChecker::IsPrimitive(TypeId{elemtype, 0})) {
-      // Leave the elem-type ptr null, it will never be needed.
+      // For primitive arrays, store the type id directly.
+      w.Col1("mov dword [eax+8], %v", elemtype);
     } else {
       w.Col1("mov ebx, [static_t%v_f%v]", elemtype, kStaticTypeInfoId);
       w.Col1("mov [eax+8], ebx");
@@ -877,11 +878,19 @@ struct FuncWriter final {
     w.Col1("cmp ecx, array_vtable_t%v", rt_ids.object_tid.base);
     w.Col1("jne .LL%v", local_label);
 
-    // Dst type id.
-    w.Col1("mov eax, [static_t%v_f%v]", dst_tid, kStaticTypeInfoId);
-    // Src type id.
-    w.Col1("mov ebx, [ebx+8]");
-    InstanceOfImpl();
+    // If the dst element-type is a primitive type, then just compare the type directly.
+    if (TypeChecker::IsPrimitive(TypeId{dst_tid, 0})) {
+      w.Col1("mov ebx, [ebx+8]");
+      w.Col1("cmp ebx, %v", dst_tid);
+      w.Col1("jne .LL%v", local_label);
+      w.Col1("mov al, 1");
+    } else {
+      // Dst type id.
+      w.Col1("mov eax, [static_t%v_f%v]", dst_tid, kStaticTypeInfoId);
+      // Src type id.
+      w.Col1("mov ebx, [ebx+8]");
+      InstanceOfImpl();
+    }
 
     // Write result.
     w.Col1("mov %v, al", StackOffset(dst_e.offset));
@@ -1150,7 +1159,11 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
           externs.insert(Sprintf(kVtableNameFmt, tid));
         } else if (op.type == OpType::ALLOC_ARRAY) {
           TypeId::Base tid = method_stream.args[op.begin + 1];
-          externs.insert(Sprintf(kStaticNameFmt, tid, kStaticTypeInfoId));
+          if (TypeChecker::IsPrimitive(TypeId{tid, 0})) {
+            // no-op.
+          } else {
+            externs.insert(Sprintf(kStaticNameFmt, tid, kStaticTypeInfoId));
+          }
         } else if (op.type == OpType::FIELD_DEREF || op.type == OpType::FIELD_ADDR) {
           TypeId::Base child_tid = method_stream.args[op.begin + 2];
           FieldId fid = method_stream.args[op.begin + 3];
