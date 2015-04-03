@@ -813,7 +813,15 @@ struct FuncWriter final {
     // TODO: use tinfo_map_ to immediately allow "obvious" ancestor
     // relationships; i.e. `"foo" instanceof Object'.
 
-    // First, handle two non-arrays.
+    // First, handle array to non-array instanceof. Runtime checks are
+    // superfluous because the typechecker does not allow any situations which
+    // would return false.
+    if (!dst_array && src_array) {
+      w.Col1("mov byte %v, 1", StackOffset(dst_e.offset));
+      return;
+    }
+
+    // Second, handle two non-arrays.
     if (!dst_array && !src_array) {
       // Dst type id.
       w.Col1("mov eax, [static_t%v_f%v]", dst_tid, kStaticTypeInfoId);
@@ -836,7 +844,7 @@ struct FuncWriter final {
       return;
     }
 
-    // Next, handle two arrays.
+    // Third, handle two arrays.
     if (dst_array && src_array) {
       // Dst type id.
       w.Col1("mov eax, [static_t%v_f%v]", dst_tid, kStaticTypeInfoId);
@@ -853,6 +861,33 @@ struct FuncWriter final {
       w.Col1("mov %v, al", StackOffset(dst_e.offset));
       return;
     }
+
+    // Last, handle non-array to array.
+    CHECK(dst_array && !src_array);
+    u64 local_label = local_label_counter;
+    ++local_label_counter;
+
+    // Set result to 0.
+    w.Col1("mov byte %v, 0", StackOffset(dst_e.offset));
+
+    w.Col1("mov ebx, %v", StackOffset(src_e.offset));
+
+    // If the source is not an array, then short-circuit.
+    w.Col1("mov ecx, [ebx]");
+    w.Col1("cmp ecx, array_vtable_t%v", rt_ids.object_tid.base);
+    w.Col1("jne .LL%v", local_label);
+
+    // Dst type id.
+    w.Col1("mov eax, [static_t%v_f%v]", dst_tid, kStaticTypeInfoId);
+    // Src type id.
+    w.Col1("mov ebx, [ebx+8]");
+    InstanceOfImpl();
+
+    // Write result.
+    w.Col1("mov %v, al", StackOffset(dst_e.offset));
+
+    // Write short-circuit label.
+    w.Col0(".LL%v:", local_label);
   }
 
   void StaticCall(ArgIter begin, ArgIter end) {
@@ -1048,6 +1083,8 @@ struct FuncWriter final {
 
   vector<ExceptionSite> exceptions;
 
+  u64 local_label_counter = 0;
+
   const TypeInfoMap& tinfo_map;
   const OffsetTable& offsets;
   const File* file;
@@ -1070,10 +1107,10 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
   set<string> externs{
     "_joos_malloc",
     "_joos_throw",
-    Sprintf("vtable_t%v", rt_ids_.object_tid.base),
-    Sprintf("vtable_t%v", rt_ids_.stackframe_type.base),
+    Sprintf(kVtableNameFmt, rt_ids_.object_tid.base),
+    Sprintf(kVtableNameFmt, rt_ids_.stackframe_type.base),
     Sprintf("src_file%v", comp_unit.fileid),
-    Sprintf("_t%v_m%v", rt_ids_.type_info_tid.base, rt_ids_.type_info_instanceof),
+    Sprintf(kMethodNameFmt, rt_ids_.type_info_tid.base, rt_ids_.type_info_instanceof),
   };
   set<string> globals;
   for (const Type& type : comp_unit.types) {
@@ -1081,7 +1118,9 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
     globals.insert(Sprintf(kItableNameFmt, type.tid));
     globals.insert(Sprintf(kStaticNameFmt, type.tid, kStaticTypeInfoId));
 
-    if (type.tid != rt_ids_.object_tid.base) {
+    if (type.tid == rt_ids_.object_tid.base) {
+      externs.insert(Sprintf(kStaticNameFmt, rt_ids_.array_runtime_type.base, kStaticTypeInfoId));
+    } else {
       externs.insert(Sprintf("array_vtable_t%v", rt_ids_.object_tid.base));
     }
 
@@ -1298,11 +1337,15 @@ void Writer::WriteFunc(const Stream& stream, const File* file, StackFrame frame,
   writer.WriteEpilogue();
 }
 
-void Writer::WriteVtableImpl(const string& prefix, const TypeInfo& tinfo, ostream* out) const {
+void Writer::WriteVtableImpl(bool array, const TypeInfo& tinfo, ostream* out) const {
   AsmWriter w(out);
+
+  string prefix = array ? "array_" : "";
+  TypeId::Base tid = array ? rt_ids_.array_runtime_type.base : tinfo.type.base;
+
   w.Col0("global %vvtable_t%v", prefix, tinfo.type.base);
   w.Col0("%vvtable_t%v:", prefix, tinfo.type.base);
-  w.Col1("dd static_t%v_f%v", tinfo.type.base, kStaticTypeInfoId); // Type info ptr.
+  w.Col1("dd static_t%v_f%v", tid, kStaticTypeInfoId); // Type info ptr.
   w.Col1("dd itable_t%v", tinfo.type.base);
 
   for (const auto& v_pair : offsets_.VtableOf(tinfo.type)) {
@@ -1317,12 +1360,12 @@ void Writer::WriteVtable(const Type& type, ostream* out) const {
     return;
   }
 
-  WriteVtableImpl("", tinfo, out);
+  WriteVtableImpl(false, tinfo, out);
 
   // Write an additional distinct vtable for arrays.
   TypeId::Base object_tid = rt_ids_.object_tid.base;
   if (type.tid == object_tid) {
-    WriteVtableImpl("array_", tinfo_map_.LookupTypeInfo({object_tid, 1}), out);
+    WriteVtableImpl(true, tinfo_map_.LookupTypeInfo({object_tid, 1}), out);
   }
 }
 

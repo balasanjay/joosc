@@ -955,6 +955,9 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
   CHECK(rt_ids.stackframe_print != ast::kErrorMethodId);
   CHECK(rt_ids.stackframe_print_ex != ast::kErrorMethodId);
 
+  rt_ids.array_runtime_type = typeset.TryGet("__joos_internal__.Array");
+  CHECK(rt_ids.array_runtime_type.IsValid());
+
   return rt_ids;
 }
 

@@ -24,6 +24,8 @@ struct RuntimeLinkIds {
   ast::TypeId stackframe_type;
   ast::MethodId stackframe_print;
   ast::MethodId stackframe_print_ex;
+
+  ast::TypeId array_runtime_type;
 };
 
 // Numbered labels local to a function.

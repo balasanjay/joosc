@@ -33,7 +33,7 @@ public:
 private:
   void WriteFunc(const ir::Stream& stream, const base::File* file, StackFrame frame, vector<StackFrame>* stack_out, std::ostream* out) const;
   void WriteVtable(const ir::Type& type, std::ostream* out) const;
-  void WriteVtableImpl(const string& prefix, const types::TypeInfo& tinfo, std::ostream* out) const;
+  void WriteVtableImpl(bool array, const types::TypeInfo& tinfo, std::ostream* out) const;
   void WriteItable(const ir::Type& type, std::ostream* out) const;
   void WriteStatics(const ir::Type& type, std::ostream* out) const;
   void WriteConstStringsImpl(const string& prefix, const vector<pair<jstring, u64>>& strings, std::ostream* out) const;

@@ -169,6 +169,7 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream*, os
     builder.AddStringFile("__joos_internal__/TypeInfo.java", runtime::TypeInfoFile);
     builder.AddStringFile("__joos_internal__/StringOps.java", runtime::StringOpsFile);
     builder.AddStringFile("__joos_internal__/StackFrame.java", runtime::StackFrameFile);
+    builder.AddStringFile("__joos_internal__/Array.java", runtime::ArrayFile);
 
     for (const auto& file : files) {
       builder.AddDiskFile(file);

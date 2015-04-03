@@ -15,5 +15,9 @@ const string StackFrameFile =
 #include "runtime/__joos_internal__/StackFrame.java"
 ;
 
+const string ArrayFile =
+#include "runtime/__joos_internal__/Array.java"
+;
+
 } // namespace runtime
 
