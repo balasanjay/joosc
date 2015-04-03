@@ -110,6 +110,7 @@ enum class ExceptionType {
   NPE,
   OOBE,
   NASE,
+  CCE,
 };
 
 struct FuncWriter final {
@@ -899,6 +900,24 @@ struct FuncWriter final {
     w.Col0(".LL%v:", local_label);
   }
 
+  void CastExceptionIfFalse(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(2);
+
+    MemId cond = begin[0];
+    u64 file_offset = begin[1];
+
+    const StackEntry& cond_e = stack_map.at(cond);
+
+    CHECK(cond_e.size == SizeClass::BOOL);
+
+    // Handle div-by-zero.
+    size_t exception_id = MakeException(ExceptionType::CCE, file_offset);
+    w.Col1("; Checking for invalid class cast.");
+    w.Col1("mov al, %v", StackOffset(cond_e.offset));
+    w.Col1("test al, al");
+    w.Col1("jz .e%v", exception_id);
+  }
+
   void StaticCall(ArgIter begin, ArgIter end) {
     CHECK((end-begin) >= 5);
 
@@ -1328,6 +1347,9 @@ void Writer::WriteFunc(const Stream& stream, const File* file, StackFrame frame,
       case OpType::INSTANCE_OF:
         writer.InstanceOf(begin, end);
         break;
+      case OpType::CAST_EXCEPTION_IF_FALSE:
+        writer.CastExceptionIfFalse(begin, end);
+        break;
       case OpType::STATIC_CALL:
         writer.StaticCall(begin, end);
         break;
@@ -1338,7 +1360,6 @@ void Writer::WriteFunc(const Stream& stream, const File* file, StackFrame frame,
         writer.Ret(begin, end);
         break;
 
-      UNIMPLEMENTED_OP(CAST_EXCEPTION_IF_FALSE);
       UNIMPLEMENTED_OP(CHECK_ARRAY_STORE);
 
       default:

@@ -123,18 +123,39 @@ class MethodIRGenerator final : public ast::Visitor {
       return VisitResult::RECURSE;
     }
 
-    Mem tmp = builder_.AllocTemp(fromsize);
-    WithResultIn(tmp).Visit(expr.GetExprPtr());
+    Mem expr_mem = builder_.AllocTemp(fromsize);
+    WithResultIn(expr_mem).Visit(expr.GetExprPtr());
 
-    // TODO: we need to crash if not instanceof.
     if (TypeChecker::IsReference(from) || TypeChecker::IsReference(to)) {
-      return VisitResult::RECURSE;
+      LabelId short_circuit = builder_.AllocLabel();
+
+      // If expr is null, jump past instanceof check.
+      {
+        Mem null_mem = builder_.AllocTemp(SizeClass::PTR);
+        builder_.ConstNull(null_mem);
+
+        Mem is_null = builder_.AllocTemp(SizeClass::BOOL);
+        builder_.Eq(is_null, null_mem, expr_mem);
+        builder_.JmpIf(short_circuit, is_null);
+      }
+
+      // Perform the instanceof check.
+      {
+        Mem instanceof = builder_.AllocTemp(SizeClass::BOOL);
+        builder_.InstanceOf(instanceof, expr_mem, expr.GetType().GetTypeId(), expr.GetExpr().GetTypeId());
+        builder_.CastExceptionIfFalse(instanceof, expr.Lparen().pos);
+      }
+
+      builder_.EmitLabel(short_circuit);
+      builder_.Mov(res_, expr_mem);
+
+      return VisitResult::SKIP;
     }
 
     if (TypeChecker::IsPrimitiveWidening(to, from)) {
-      builder_.Extend(res_, tmp);
+      builder_.Extend(res_, expr_mem);
     } else {
-      builder_.Truncate(res_, tmp);
+      builder_.Truncate(res_, expr_mem);
     }
     return VisitResult::SKIP;
   }
@@ -585,7 +606,6 @@ class MethodIRGenerator final : public ast::Visitor {
     Mem lhs = builder_.AllocTemp(SizeClass::PTR);
     WithResultIn(lhs, false).Visit(expr.LhsPtr());
 
-    // TODO: Arrays.
     Mem tmp = builder_.AllocLocal(SizeClass::BOOL);
 
     // If lhs is null, then we short-circuit the INSTANCE_OF operation, and

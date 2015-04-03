@@ -92,7 +92,7 @@ def do_tests():
 
     total_tests = len(tests)
     running_tests = total_tests / num_shards
-    if total_tests % num_shards != 0:
+    if shard < (total_tests % num_shards):
         running_tests += 1
     num_passed = 0
     d = '.tmp_test_dir_{}'.format(shard)

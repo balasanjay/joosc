@@ -69,7 +69,6 @@ Mem StreamBuilder::AllocArray(TypeId elemtype, Mem len, PosRange pos) {
   return tmp;
 }
 
-
 Mem StreamBuilder::AllocMem(SizeClass size, bool immutable) {
   CHECK(params_initialized_);
 
@@ -317,6 +316,11 @@ void StreamBuilder::InstanceOf(Mem dst, Mem src, TypeId static_dst_type, TypeId 
   ops_.push_back({OpType::INSTANCE_OF, begin, args_.size()});
 
   SetAssigned({dst});
+}
+
+void StreamBuilder::CastExceptionIfFalse(Mem cond, PosRange pos) {
+  AssertAssigned({cond});
+  AppendOp(OpType::CAST_EXCEPTION_IF_FALSE, {cond.Id(), (u64)pos.begin});
 }
 
 void StreamBuilder::StaticCall(Mem dst, TypeId::Base tid, MethodId mid, const vector<Mem>& args, PosRange pos) {
