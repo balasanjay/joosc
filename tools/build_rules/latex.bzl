@@ -13,7 +13,8 @@ def latex_pdf_impl(ctx):
       "rm -rf %s && " % output_dir +
       "mkdir -p %s && " % output_dir +
       " && ".join(pdflatex_cmds) + " && " +
-      "cp %s %s" % (output_dir + input[input.rfind('/'):] + ".pdf", output)
+      "cp %s %s && " % (output_dir + input[input.rfind('/'):] + ".pdf", output) +
+      "chmod -x %s" % output
   )
 
   ctx.action(
