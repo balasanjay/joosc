@@ -758,6 +758,33 @@ struct FuncWriter final {
     w.Col1("mov %v, %v", StackOffset(dst_e.offset), dst_sized_reg);
   }
 
+  // Assume eax contains destination type, and ebx contains source type. Calls
+  // the runtime InstanceOf static method, and returns a bool in al.
+  void InstanceOfImpl() {
+    i64 stack_used = cur_offset;
+
+    // Push the dst type id onto stack.
+    {
+      w.Col1("mov %v, eax", StackOffset(stack_used));
+      stack_used += 4;
+    }
+
+    // Push the src type id onto stack
+    {
+      w.Col1("mov %v, ebx", StackOffset(stack_used));
+      stack_used += 4;
+    }
+
+    // Perform the call.
+    {
+      w.Col1("sub esp, %v", stack_used);
+      w.Col1("push 0"); // Stackframe would ordinarily go here.
+      w.Col1("call _t%v_m%v", rt_ids.type_info_tid.base, rt_ids.type_info_instanceof);
+      w.Col1("pop ecx");
+      w.Col1("add esp, %v", stack_used);
+    }
+  }
+
   void InstanceOf(ArgIter begin, ArgIter end) {
     EXPECT_NARGS(6);
 
@@ -774,36 +801,21 @@ struct FuncWriter final {
     // TODO: use tinfo_map_ to immediately allow "obvious" ancestor
     // relationships; i.e. `"foo" instanceof Object'.
 
-    i64 stack_used = cur_offset;
+    // Dst type id.
+    w.Col1("mov eax, [static_t%v_f%v]", dst_tid.base, kStaticTypeInfoId);
 
-    // Push the dst type id onto stack.
+    // Src type id.
     {
-      w.Col1("mov eax, [static_t%v_f%v]", dst_tid.base, kStaticTypeInfoId);
-      w.Col1("mov %v, eax", StackOffset(stack_used));
-      stack_used += 4;
-    }
-
-    // Push the src type id onto stack
-    {
-      w.Col1("mov eax, %v", StackOffset(src_e.offset));
+      w.Col1("mov ebx, %v", StackOffset(src_e.offset));
       // Dereference `this'.
-      w.Col1("mov eax, [eax]");
+      w.Col1("mov ebx, [ebx]");
       // Dereference vptr.
-      w.Col1("mov eax, [eax]");
+      w.Col1("mov ebx, [ebx]");
       // Dereference the pointer to a type info ptr.
-      w.Col1("mov eax, [eax]");
-      w.Col1("mov %v, eax", StackOffset(stack_used));
-      stack_used += 4;
+      w.Col1("mov ebx, [ebx]");
     }
 
-    // Perform the call.
-    {
-      w.Col1("sub esp, %v", stack_used);
-      w.Col1("push 0"); // Stackframe would ordinarily go here.
-      w.Col1("call _t%v_m%v", rt_ids.type_info_tid.base, rt_ids.type_info_instanceof);
-      w.Col1("pop ecx");
-      w.Col1("add esp, %v", stack_used);
-    }
+    InstanceOfImpl();
 
     // Write return value.
     w.Col1("mov %v, al", StackOffset(dst_e.offset));
