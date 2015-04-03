@@ -6,6 +6,7 @@
 #include "base/printf.h"
 #include "ir/mem.h"
 #include "ir/stream.h"
+#include "types/typechecker.h"
 
 using std::ostream;
 using std::get;
@@ -14,6 +15,7 @@ using ast::FieldId;
 using ast::MethodId;
 using ast::TypeId;
 using ast::TypeKind;
+using ast::kArrayLengthFieldId;
 using ast::kInstanceInitMethodId;
 using ast::kStaticInitMethodId;
 using ast::kStaticTypeInfoId;
@@ -31,12 +33,15 @@ using ir::OpType;
 using ir::Program;
 using ir::RuntimeLinkIds;
 using ir::SizeClass;
+using ir::SizeClassFrom;
 using ir::Stream;
 using ir::Type;
 using ir::kInvalidMemId;
 using types::ConstStringMap;
+using types::FieldInfo;
 using types::MethodInfo;
 using types::StringId;
+using types::TypeChecker;
 using types::TypeInfo;
 using types::TypeInfoMap;
 
@@ -75,6 +80,21 @@ string Sized(SizeClass size, const string& b1, const string& b2, const string& b
   }
 }
 
+TypeId ResolveFieldOwner(const TypeInfoMap& tinfo_map, TypeId tid, FieldId fid) {
+  // Special-case the type info ID; it is not in the field tables.
+  if (fid == kStaticTypeInfoId) {
+    return tid;
+  }
+
+  // Special-case the array length field id; it is not in the usual field table.
+  if (fid == kArrayLengthFieldId) {
+    return tid;
+  }
+
+  const FieldInfo& finfo = tinfo_map.LookupTypeInfo(tid).fields.LookupField(fid);
+  return finfo.class_type;
+}
+
 // Convert our internal stack offset to an "[ebp-x]"-style string.
 string StackOffset(i64 offset) {
   if (offset >= 0) {
@@ -90,10 +110,12 @@ enum class ExceptionType {
   NPE,
   OOBE,
   NASE,
+  CCE,
+  ASE,
 };
 
 struct FuncWriter final {
-  FuncWriter(const OffsetTable& offsets, const File* file, const RuntimeLinkIds& rt_ids, vector<StackFrame>* stack_frames, StackFrame frame, ostream* out) : offsets(offsets), file(file), rt_ids(rt_ids), stack_frames(*stack_frames), frame(frame), w(out) {}
+  FuncWriter(const TypeInfoMap& tinfo_map, const OffsetTable& offsets, const File* file, const RuntimeLinkIds& rt_ids, vector<StackFrame>* stack_frames, StackFrame frame, ostream* out) : tinfo_map(tinfo_map), offsets(offsets), file(file), rt_ids(rt_ids), stack_frames(*stack_frames), frame(frame), w(out) {}
 
   size_t MakeStackFrame(int file_offset) {
     StackFrame new_frame = frame;
@@ -181,7 +203,7 @@ struct FuncWriter final {
     EXPECT_NARGS(4);
 
     MemId dst = begin[0];
-    SizeClass elem_size_class = (SizeClass)begin[1];
+    TypeId::Base elemtype = begin[1];
     MemId len = begin[2];
     u64 file_offset = begin[3];
 
@@ -191,7 +213,7 @@ struct FuncWriter final {
     CHECK(dst_e.size == SizeClass::PTR);
     CHECK(len_e.size == SizeClass::INT);
 
-    u64 elem_size = ByteSizeFrom(elem_size_class, 4);
+    u64 elem_size = ByteSizeFrom(SizeClassFrom({elemtype, 0}), 4);
     i64 stack_used = cur_offset;
 
     w.Col1("; t%v = new[t%v]", dst, len);
@@ -212,11 +234,19 @@ struct FuncWriter final {
     w.Col1("mov %v, eax", StackOffset(dst_e.offset));
 
     // Set the vptr to be object's vptr.
-    w.Col1("mov dword [eax], vtable_t%v", rt_ids.object_tid.base);
+    w.Col1("mov dword [eax], array_vtable_t%v", rt_ids.object_tid.base);
 
     // Set the length field.
     w.Col1("mov ebx, %v", StackOffset(len_e.offset));
-    w.Col1("mov [eax + 4], ebx");
+    w.Col1("mov [eax+4], ebx");
+
+    if (TypeChecker::IsPrimitive(TypeId{elemtype, 0})) {
+      // For primitive arrays, store the type id directly.
+      w.Col1("mov dword [eax+8], %v", elemtype);
+    } else {
+      w.Col1("mov ebx, [static_t%v_f%v]", elemtype, kStaticTypeInfoId);
+      w.Col1("mov [eax+8], ebx");
+    }
   }
 
   void AllocMem(ArgIter begin, ArgIter end) {
@@ -330,10 +360,11 @@ struct FuncWriter final {
   }
 
   void MovToAddr(ArgIter begin, ArgIter end) {
-    EXPECT_NARGS(2);
+    EXPECT_NARGS(3);
 
     MemId dst = begin[0];
     MemId src = begin[1];
+    u64 file_offset = begin[2];
 
     const StackEntry& dst_e = stack_map.at(dst);
     const StackEntry& src_e = stack_map.at(src);
@@ -345,6 +376,16 @@ struct FuncWriter final {
     w.Col1("; *t%v = t%v.", dst_e.id, src_e.id);
     w.Col1("mov %v, %v", src_reg, StackOffset(src_e.offset));
     w.Col1("mov eax, %v", StackOffset(dst_e.offset));
+
+    // Test for NPE. ArrayAddr will not generate an NPE so that order of
+    // evaluation meets the spec.
+    {
+      size_t exception_id = MakeException(ExceptionType::NPE, file_offset);
+      w.Col1("; Checking for NPE.");
+      w.Col1("test eax, eax");
+      w.Col1("jz .e%v", exception_id);
+    }
+
     w.Col1("mov [eax], %v", src_reg);
   }
 
@@ -353,7 +394,7 @@ struct FuncWriter final {
 
     MemId dst = begin[0];
     MemId src = begin[1];
-    TypeId::Base tid = begin[2];
+    TypeId::Base child_tid = begin[2];
     FieldId fid = begin[3];
     u64 file_offset = begin[4];
 
@@ -367,8 +408,10 @@ struct FuncWriter final {
     string instr = addr ? "lea" : "mov";
 
     if (src == kInvalidMemId) {
-      w.Col1("; t%v = %vstatic_t%v_f%v", dst_e.id, src_prefix, tid, fid);
-      w.Col1("%v %v, [static_t%v_f%v]", instr, sized_reg, tid, fid);
+      TypeId parent_tid = ResolveFieldOwner(tinfo_map, TypeId{child_tid, 0}, fid);
+
+      w.Col1("; t%v = %vstatic_t%v_f%v", dst_e.id, src_prefix, parent_tid.base, fid);
+      w.Col1("%v %v, [static_t%v_f%v]", instr, sized_reg, parent_tid.base, fid);
       w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
     } else {
       const StackEntry& src_e = stack_map.at(src);
@@ -418,13 +461,24 @@ struct FuncWriter final {
     string src_prefix = addr ? "&" : "";
     string instr = addr ? "lea" : "mov";
 
+    u64 local_label = local_label_counter;
+    ++local_label_counter;
+
     w.Col1("; t%v = %vt%v[t%v]", dst, src_prefix, src, idx);
     w.Col1("mov ecx, %v", StackOffset(src_e.offset));
 
     // Handle NPE.
-    {
+    w.Col1("; Checking for NPE.");
+    if (addr) {
+      // If we're computing an lvalue, don't crash here. We have to evaluate
+      // the LHS of the assignment first. MovToAddr will take care of crashing
+      // on NPE.
+      w.Col1("mov %v, 0", sized_reg);
+      w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
+      w.Col1("test ecx, ecx");
+      w.Col1("jz .LL%v", local_label);
+    } else {
       size_t exception_id = MakeException(ExceptionType::NPE, file_offset);
-      w.Col1("; Checking for NPE.");
       w.Col1("test ecx, ecx");
       w.Col1("jz .e%v", exception_id);
     }
@@ -448,6 +502,8 @@ struct FuncWriter final {
 
     w.Col1("%v %v, [ecx+eax]", instr, sized_reg);
     w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
+
+    w.Col1(".LL%v:", local_label);
   }
 
   void ArrayDeref(ArgIter begin, ArgIter end) {
@@ -739,6 +795,180 @@ struct FuncWriter final {
     w.Col1("mov %v, %v", StackOffset(dst_e.offset), dst_sized_reg);
   }
 
+  // Assume eax contains destination type, and ebx contains source type. Calls
+  // the runtime InstanceOf static method, and returns a bool in al.
+  void InstanceOfImpl() {
+    i64 stack_used = cur_offset;
+
+    // Push the dst type id onto stack.
+    {
+      w.Col1("mov %v, eax", StackOffset(stack_used));
+      stack_used += 4;
+    }
+
+    // Push the src type id onto stack
+    {
+      w.Col1("mov %v, ebx", StackOffset(stack_used));
+      stack_used += 4;
+    }
+
+    // Perform the call.
+    {
+      w.Col1("sub esp, %v", stack_used);
+      w.Col1("push 0"); // Stackframe would ordinarily go here.
+      w.Col1("call _t%v_m%v", rt_ids.type_info_tid.base, rt_ids.type_info_instanceof);
+      w.Col1("pop ecx");
+      w.Col1("add esp, %v", stack_used);
+    }
+  }
+
+  void InstanceOf(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(6);
+
+    MemId dst = begin[0];
+    MemId src = begin[1];
+    TypeId::Base dst_tid = begin[2];
+    bool dst_array = (begin[3] == 1);
+    TypeId::Base src_tid = begin[4];
+    bool src_array = (begin[5] == 1);
+
+    const StackEntry& dst_e = stack_map.at(dst);
+    const StackEntry& src_e = stack_map.at(src);
+
+    CHECK(dst_e.size == SizeClass::BOOL);
+
+    // TODO: use tinfo_map_ to immediately allow "obvious" ancestor
+    // relationships; i.e. `"foo" instanceof Object'.
+
+    // First, handle array to non-array instanceof. Runtime checks are
+    // superfluous because the typechecker does not allow any situations which
+    // would return false.
+    if (!dst_array && src_array) {
+      w.Col1("mov byte %v, 1", StackOffset(dst_e.offset));
+      return;
+    }
+
+    // Second, handle two non-arrays.
+    if (!dst_array && !src_array) {
+      // Dst type id.
+      w.Col1("mov eax, [static_t%v_f%v]", dst_tid, kStaticTypeInfoId);
+
+      // Src type id.
+      {
+        w.Col1("mov ebx, %v", StackOffset(src_e.offset));
+        // Dereference `this'.
+        w.Col1("mov ebx, [ebx]");
+        // Dereference vptr.
+        w.Col1("mov ebx, [ebx]");
+        // Dereference the pointer to a type info ptr.
+        w.Col1("mov ebx, [ebx]");
+      }
+
+      InstanceOfImpl();
+
+      // Write return value.
+      w.Col1("mov %v, al", StackOffset(dst_e.offset));
+      return;
+    }
+
+    // Third, handle two arrays.
+    if (dst_array && src_array) {
+      // Dst type id.
+      w.Col1("mov eax, [static_t%v_f%v]", dst_tid, kStaticTypeInfoId);
+
+      // Src type id.
+      {
+        w.Col1("mov ebx, %v", StackOffset(src_e.offset));
+        // Dereference array's elem-type-ptr.
+        w.Col1("mov ebx, [ebx+8]");
+      }
+
+      InstanceOfImpl();
+
+      w.Col1("mov %v, al", StackOffset(dst_e.offset));
+      return;
+    }
+
+    // Last, handle non-array to array.
+    CHECK(dst_array && !src_array);
+    u64 local_label = local_label_counter;
+    ++local_label_counter;
+
+    // Set result to 0.
+    w.Col1("mov byte %v, 0", StackOffset(dst_e.offset));
+
+    w.Col1("mov ebx, %v", StackOffset(src_e.offset));
+
+    // If the source is not an array, then short-circuit.
+    w.Col1("mov ecx, [ebx]");
+    w.Col1("cmp ecx, array_vtable_t%v", rt_ids.object_tid.base);
+    w.Col1("jne .LL%v", local_label);
+
+    // If the dst element-type is a primitive type, then just compare the type directly.
+    if (TypeChecker::IsPrimitive(TypeId{dst_tid, 0})) {
+      w.Col1("mov ebx, [ebx+8]");
+      w.Col1("cmp ebx, %v", dst_tid);
+      w.Col1("jne .LL%v", local_label);
+      w.Col1("mov al, 1");
+    } else {
+      // Dst type id.
+      w.Col1("mov eax, [static_t%v_f%v]", dst_tid, kStaticTypeInfoId);
+      // Src type id.
+      w.Col1("mov ebx, [ebx+8]");
+      InstanceOfImpl();
+    }
+
+    // Write result.
+    w.Col1("mov %v, al", StackOffset(dst_e.offset));
+
+    // Write short-circuit label.
+    w.Col0(".LL%v:", local_label);
+  }
+
+  void CastExceptionIfFalse(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(2);
+
+    MemId cond = begin[0];
+    u64 file_offset = begin[1];
+
+    const StackEntry& cond_e = stack_map.at(cond);
+
+    CHECK(cond_e.size == SizeClass::BOOL);
+
+    // Handle div-by-zero.
+    size_t exception_id = MakeException(ExceptionType::CCE, file_offset);
+    w.Col1("; Checking for invalid class cast.");
+    w.Col1("mov al, %v", StackOffset(cond_e.offset));
+    w.Col1("test al, al");
+    w.Col1("jz .e%v", exception_id);
+  }
+
+  void CheckArrayStore(ArgIter begin, ArgIter end) {
+    EXPECT_NARGS(3);
+
+    MemId array = begin[0];
+    MemId elem = begin[1];
+    u64 file_offset = begin[2];
+
+    const StackEntry& array_e = stack_map.at(array);
+    const StackEntry& elem_e = stack_map.at(elem);
+
+    CHECK(array_e.size == SizeClass::PTR);
+    CHECK(elem_e.size == SizeClass::PTR);
+
+    // Handle array-store-exception.
+    size_t exception_id = MakeException(ExceptionType::ASE, file_offset);
+    w.Col1("; Checking for invalid polymorphic array store.");
+    w.Col1("mov eax, %v", StackOffset(array_e.offset));
+    w.Col1("mov eax, [eax+8]");
+    w.Col1("mov ebx, %v", StackOffset(elem_e.offset));
+    w.Col1("mov ebx, [ebx]");
+    w.Col1("mov ebx, [ebx]");
+    w.Col1("mov ebx, [ebx]");
+    InstanceOfImpl();
+    w.Col1("test al, al");
+    w.Col1("jz .e%v", exception_id);
+  }
 
   void StaticCall(ArgIter begin, ArgIter end) {
     CHECK((end-begin) >= 5);
@@ -888,29 +1118,6 @@ struct FuncWriter final {
     }
   }
 
-  void GetTypeInfo(ArgIter begin, ArgIter end) {
-    CHECK((end-begin) == 2);
-
-    MemId dst = begin[0];
-    MemId src = begin[1];
-    const StackEntry& dst_e = stack_map.at(dst);
-    const StackEntry& src_e = stack_map.at(src);
-    CHECK(dst_e.size == SizeClass::PTR);
-    CHECK(src_e.size == SizeClass::PTR);
-
-    // Simply dereference the pointer to get the TypeInfo
-    // pointer at the start of the vtable.
-    w.Col1("; Getting type id.");
-    w.Col1("mov eax, %v", StackOffset(src_e.offset));
-    // Get vtable pointer from this.
-    w.Col1("mov eax, [eax]");
-    // Get field pointer from vtable.
-    w.Col1("mov eax, [eax]");
-    // Get typeinfo pointer from field.
-    w.Col1("mov eax, [eax]");
-    w.Col1("mov %v, eax", StackOffset(dst_e.offset));
-  }
-
   void Ret(ArgIter begin, ArgIter end) {
     CHECK((end-begin) <= 1);
 
@@ -956,6 +1163,9 @@ struct FuncWriter final {
 
   vector<ExceptionSite> exceptions;
 
+  u64 local_label_counter = 0;
+
+  const TypeInfoMap& tinfo_map;
   const OffsetTable& offsets;
   const File* file;
   const RuntimeLinkIds& rt_ids;
@@ -977,14 +1187,22 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
   set<string> externs{
     "_joos_malloc",
     "_joos_throw",
-    Sprintf("vtable_t%v", rt_ids_.object_tid.base),
-    Sprintf("vtable_t%v", rt_ids_.stackframe_type.base),
+    Sprintf(kVtableNameFmt, rt_ids_.object_tid.base),
+    Sprintf(kVtableNameFmt, rt_ids_.stackframe_type.base),
     Sprintf("src_file%v", comp_unit.fileid),
+    Sprintf(kMethodNameFmt, rt_ids_.type_info_tid.base, rt_ids_.type_info_instanceof),
   };
   set<string> globals;
   for (const Type& type : comp_unit.types) {
     globals.insert(Sprintf(kVtableNameFmt, type.tid));
     globals.insert(Sprintf(kItableNameFmt, type.tid));
+    globals.insert(Sprintf(kStaticNameFmt, type.tid, kStaticTypeInfoId));
+
+    if (type.tid == rt_ids_.object_tid.base) {
+      externs.insert(Sprintf(kStaticNameFmt, rt_ids_.array_runtime_type.base, kStaticTypeInfoId));
+    } else {
+      externs.insert(Sprintf("array_vtable_t%v", rt_ids_.object_tid.base));
+    }
 
     externs.insert(Sprintf("types%v", type.tid));
     for (const Stream& method_stream : type.streams) {
@@ -1010,24 +1228,37 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
         } else if (op.type == OpType::ALLOC_HEAP) {
           TypeId::Base tid = method_stream.args[op.begin + 1];
           externs.insert(Sprintf(kVtableNameFmt, tid));
-          externs.insert(Sprintf(kItableNameFmt, tid));
+        } else if (op.type == OpType::ALLOC_ARRAY) {
+          TypeId::Base tid = method_stream.args[op.begin + 1];
+          if (TypeChecker::IsPrimitive(TypeId{tid, 0})) {
+            // no-op.
+          } else {
+            externs.insert(Sprintf(kStaticNameFmt, tid, kStaticTypeInfoId));
+          }
         } else if (op.type == OpType::FIELD_DEREF || op.type == OpType::FIELD_ADDR) {
-          TypeId::Base tid = method_stream.args[op.begin + 2];
+          TypeId::Base child_tid = method_stream.args[op.begin + 2];
           FieldId fid = method_stream.args[op.begin + 3];
-          externs.insert(Sprintf(kStaticNameFmt, tid, fid));
+          TypeId parent_tid = ResolveFieldOwner(tinfo_map_, TypeId{child_tid, 0}, fid);
+          externs.insert(Sprintf(kStaticNameFmt, parent_tid.base, fid));
         } else if (op.type == OpType::CONST_STR) {
           StringId strid = method_stream.args[op.begin + 1];
           externs.insert(Sprintf("string%v", strid));
+        } else if (op.type == OpType::INSTANCE_OF) {
+          TypeId::Base tid = method_stream.args[op.begin + 2];
+          externs.insert(Sprintf(kStaticNameFmt, tid, kStaticTypeInfoId));
         }
       }
     }
 
-    for (const auto& v_pair : offsets_.VtableOf({type.tid, 0})) {
-      externs.insert(Sprintf(kMethodNameFmt, v_pair.first.base, v_pair.second));
-    }
+    const TypeInfo& tinfo = tinfo_map_.LookupTypeInfo({type.tid, 0});
+    if (tinfo.kind == TypeKind::CLASS) {
+      for (const auto& v_pair : offsets_.VtableOf({type.tid, 0})) {
+        externs.insert(Sprintf(kMethodNameFmt, v_pair.first.base, v_pair.second));
+      }
 
-    for (const auto& s_pair : offsets_.StaticFieldsOf({type.tid, 0})) {
-      globals.insert(Sprintf(kStaticNameFmt, type.tid, s_pair.first));
+      for (const auto& s_pair : offsets_.StaticFieldsOf({type.tid, 0})) {
+        globals.insert(Sprintf(kStaticNameFmt, type.tid, s_pair.first));
+      }
     }
   }
 
@@ -1061,7 +1292,7 @@ void Writer::WriteCompUnit(const CompUnit& comp_unit, ostream* out) const {
 }
 
 void Writer::WriteFunc(const Stream& stream, const File* file, StackFrame frame, vector<StackFrame>* stack_out, ostream* out) const {
-  FuncWriter writer{offsets_, file, rt_ids_, stack_out, frame, out};
+  FuncWriter writer{tinfo_map_, offsets_, file, rt_ids_, stack_out, frame, out};
 
   writer.WritePrologue(stream);
 
@@ -1165,45 +1396,70 @@ void Writer::WriteFunc(const Stream& stream, const File* file, StackFrame frame,
       case OpType::TRUNCATE:
         writer.Truncate(begin, end);
         break;
+      case OpType::INSTANCE_OF:
+        writer.InstanceOf(begin, end);
+        break;
+      case OpType::CAST_EXCEPTION_IF_FALSE:
+        writer.CastExceptionIfFalse(begin, end);
+        break;
+      case OpType::CHECK_ARRAY_STORE:
+        writer.CheckArrayStore(begin, end);
+        break;
       case OpType::STATIC_CALL:
         writer.StaticCall(begin, end);
         break;
       case OpType::DYNAMIC_CALL:
         writer.DynamicCall(begin, end);
         break;
-      case OpType::GET_TYPEINFO:
-        writer.GetTypeInfo(begin, end);
-        break;
       case OpType::RET:
         writer.Ret(begin, end);
         break;
-
-      UNIMPLEMENTED_OP(INSTANCE_OF);
-      UNIMPLEMENTED_OP(CAST_EXCEPTION_IF_FALSE);
-      UNIMPLEMENTED_OP(CHECK_ARRAY_STORE);
-
       default:
         UNREACHABLE();
-
     }
   }
 
   writer.WriteEpilogue();
 }
 
-void Writer::WriteVtable(const Type& type, ostream* out) const {
+void Writer::WriteVtableImpl(bool array, const TypeInfo& tinfo, ostream* out) const {
   AsmWriter w(out);
-  w.Col0("vtable_t%v:", type.tid);
-  w.Col1("dd static_t%v_f%v", type.tid, kStaticTypeInfoId); // Type info ptr.
-  w.Col1("dd itable_t%v", type.tid);
 
-  for (const auto& v_pair : offsets_.VtableOf({type.tid, 0})) {
+  string prefix = array ? "array_" : "";
+  TypeId::Base tid = array ? rt_ids_.array_runtime_type.base : tinfo.type.base;
+
+  w.Col0("global %vvtable_t%v", prefix, tinfo.type.base);
+  w.Col0("%vvtable_t%v:", prefix, tinfo.type.base);
+  w.Col1("dd static_t%v_f%v", tid, kStaticTypeInfoId); // Type info ptr.
+  w.Col1("dd itable_t%v", tinfo.type.base);
+
+  for (const auto& v_pair : offsets_.VtableOf(tinfo.type)) {
     w.Col1("dd _t%v_m%v", v_pair.first.base, v_pair.second);
   }
   w.Col0("\n");
 }
 
+void Writer::WriteVtable(const Type& type, ostream* out) const {
+  const TypeInfo& tinfo = tinfo_map_.LookupTypeInfo({type.tid, 0});
+  if (tinfo.kind == TypeKind::INTERFACE) {
+    return;
+  }
+
+  WriteVtableImpl(false, tinfo, out);
+
+  // Write an additional distinct vtable for arrays.
+  TypeId::Base object_tid = rt_ids_.object_tid.base;
+  if (type.tid == object_tid) {
+    WriteVtableImpl(true, tinfo_map_.LookupTypeInfo({object_tid, 1}), out);
+  }
+}
+
 void Writer::WriteItable(const Type& type, ostream* out) const {
+  const TypeInfo& tinfo = tinfo_map_.LookupTypeInfo({type.tid, 0});
+  if (tinfo.kind == TypeKind::INTERFACE) {
+    return;
+  }
+
   AsmWriter w(out);
   w.Col0("itable_t%v:", type.tid);
 
@@ -1226,6 +1482,13 @@ void Writer::WriteItable(const Type& type, ostream* out) const {
 
 void Writer::WriteStatics(const Type& type, ostream* out) const {
   AsmWriter w(out);
+
+  const TypeInfo& tinfo = tinfo_map_.LookupTypeInfo({type.tid, 0});
+  if (tinfo.kind == TypeKind::INTERFACE) {
+    w.Col0("static_t%v_f%v:", type.tid, kStaticTypeInfoId);
+    w.Col1("dd 0");
+    return;
+  }
 
   for (const auto& f_pair : offsets_.StaticFieldsOf({type.tid, 0})) {
     w.Col0("static_t%v_f%v:", type.tid, f_pair.first);
@@ -1399,7 +1662,7 @@ void Writer::WriteMain(ostream* out) const {
   w.Col1("jmp __exception");
 }
 
-void Writer::WriteStaticInit(const Program& prog, const TypeInfoMap& tinfo_map, ostream* out) const {
+void Writer::WriteStaticInit(const Program& prog, ostream* out) const {
   AsmWriter w(out);
 
   w.Col0("; Run all static initialisers.");
@@ -1410,6 +1673,11 @@ void Writer::WriteStaticInit(const Program& prog, const TypeInfoMap& tinfo_map, 
 
   // Body.
   // Write global number of types.
+  u64 max_tid = 0;
+  for (const auto& t_pair : tinfo_map_.GetTypeMap()) {
+    max_tid = std::max(t_pair.first.base, max_tid);
+  }
+
   w.Col1("; Initializing number of types.");
   string num_types_label = Sprintf(
       "static_t%v_f%v",
@@ -1418,19 +1686,25 @@ void Writer::WriteStaticInit(const Program& prog, const TypeInfoMap& tinfo_map, 
   w.Col1("extern %v", num_types_label);
   w.Col1("mov dword [%v], %v",
       num_types_label,
-      tinfo_map.GetTypeMap().size());
+      max_tid + 1);
 
   // Initialize type's static type info.
   auto units = prog.units;
-  auto t_cmp = [&tinfo_map](CompUnit lhs, CompUnit rhs) {
-    if (lhs.types.size() == 0) {
-      return false;
-    } else if (rhs.types.size() == 0) {
-      return true;
-    }
-    return tinfo_map.GetTypeMap().at({lhs.types[0].tid, 0}).top_sort_index < tinfo_map.GetTypeMap().at({rhs.types[0].tid, 0}).top_sort_index;
-  };
-  stable_sort(units.begin(), units.end(), t_cmp);
+
+  {
+    auto t_cmp = [&](CompUnit lhs, CompUnit rhs) {
+      if (lhs.types.size() == 0) {
+        return false;
+      } else if (rhs.types.size() == 0) {
+        return true;
+      }
+
+      u64 lhs_top = tinfo_map_.GetTypeMap().at({lhs.types[0].tid, 0}).top_sort_index;
+      u64 rhs_top = tinfo_map_.GetTypeMap().at({rhs.types[0].tid, 0}).top_sort_index;
+      return lhs_top < rhs_top;
+    };
+    stable_sort(units.begin(), units.end(), t_cmp);
+  }
 
   for (const CompUnit& comp_unit : units) {
     for (const Type& type : comp_unit.types) {
@@ -1443,6 +1717,11 @@ void Writer::WriteStaticInit(const Program& prog, const TypeInfoMap& tinfo_map, 
   // Initialize type's statics.
   for (const CompUnit& comp_unit : units) {
     for (const Type& type : comp_unit.types) {
+      const TypeInfo& tinfo = tinfo_map_.LookupTypeInfo({type.tid, 0});
+      if (tinfo.kind == TypeKind::INTERFACE) {
+        continue;
+      }
+
       string init = Sprintf("_t%v_m%v", type.tid, kStaticInitMethodId);
       w.Col1("extern %v", init);
       w.Col1("call %v", init);
@@ -1476,17 +1755,12 @@ void Writer::WriteFileNames(ostream* out) const {
   WriteConstStringsImpl("src_file", strings, out);
 }
 
-void Writer::WriteMethods(const TypeInfoMap& tinfo_map, ostream* out) const {
+void Writer::WriteMethods(ostream* out) const {
   vector<pair<jstring, u64>> type_strings;
   vector<pair<jstring, u64>> method_strings;
 
-  for (const auto& t_pair : tinfo_map.GetTypeMap()) {
+  for (const auto& t_pair : tinfo_map_.GetTypeMap()) {
     const TypeInfo& tinfo = t_pair.second;
-
-    // We will never execute a method of an interface directly.
-    if (tinfo.kind == TypeKind::INTERFACE) {
-      continue;
-    }
 
     // Skip the array type.
     if (tinfo.type.ndims > 0) {
@@ -1501,6 +1775,11 @@ void Writer::WriteMethods(const TypeInfoMap& tinfo_map, ostream* out) const {
       type_strings.emplace_back(make_pair(Jstr(name), tinfo.type.base));
     }
 
+    // We will never execute a method of an interface directly.
+    if (tinfo.kind == TypeKind::INTERFACE) {
+      continue;
+    }
+
     for (const auto& m_pair : tinfo.methods.GetMethodMap()) {
       const MethodInfo& minfo = m_pair.second;
 
@@ -1510,7 +1789,7 @@ void Writer::WriteMethods(const TypeInfoMap& tinfo_map, ostream* out) const {
       }
 
       stringstream ss;
-      PrintMethodSignatureTo(&ss, tinfo_map, minfo.signature);
+      PrintMethodSignatureTo(&ss, tinfo_map_, minfo.signature);
       method_strings.emplace_back(make_pair(Jstr(ss.str()), minfo.mid));
     }
   }

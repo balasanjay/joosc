@@ -74,7 +74,10 @@ REWRITE_DEFN(IntRangeVisitor, UnaryExpr, Expr, expr,) {
   // We know we're at a base-case, an in-range negative int-literal, so we can
   // skip the recursion. Otherwise, the int-literal might get caught as
   // out-of-range for a positive int-literal.
-  return make_shared<IntLitExpr>(expr.Op(), int_result.first);
+  Token result = expr.Op();
+  result.type = lexer::INTEGER;
+  result.pos.end = token.pos.end;
+  return make_shared<IntLitExpr>(result, int_result.first);
 }
 
 }  // namespace weeder

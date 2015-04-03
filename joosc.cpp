@@ -103,7 +103,7 @@ bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const s
   OffsetTable offset_table = OffsetTable::Build(tinfo_map, 4);
 
   bool success = true;
-  backend::i386::Writer writer(offset_table, ir_prog.rt_ids, fs);
+  backend::i386::Writer writer(tinfo_map, offset_table, ir_prog.rt_ids, fs);
   for (const ir::CompUnit& comp_unit : ir_prog.units) {
     string fname = dir + "/" + comp_unit.filename;
 
@@ -128,12 +128,12 @@ bool CompilerBackend(CompilerStage stage, sptr<const ast::Program> prog, const s
 
   writers.emplace_back(make_pair("main.s", [&](ostream* out) {
     writer.WriteMain(out);
-    writer.WriteStaticInit(ir_prog, tinfo_map, out);
+    writer.WriteStaticInit(ir_prog, out);
   }));
 
   writers.emplace_back(make_pair("traces.s", [&](ostream* out) {
     writer.WriteFileNames(out);
-    writer.WriteMethods(tinfo_map, out);
+    writer.WriteMethods(out);
   }));
 
   for (auto& p : writers) {
@@ -169,6 +169,7 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream*, os
     builder.AddStringFile("__joos_internal__/TypeInfo.java", runtime::TypeInfoFile);
     builder.AddStringFile("__joos_internal__/StringOps.java", runtime::StringOpsFile);
     builder.AddStringFile("__joos_internal__/StackFrame.java", runtime::StackFrameFile);
+    builder.AddStringFile("__joos_internal__/Array.java", runtime::ArrayFile);
 
     for (const auto& file : files) {
       builder.AddDiskFile(file);

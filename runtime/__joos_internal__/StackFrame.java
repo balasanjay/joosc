@@ -18,6 +18,10 @@ public final class StackFrame {
       System.out.println("java.lang.ArrayIndexOutOfBoundsException");
     } else if (type == 3) {
       System.out.println("java.lang.NegativeArraySizeException");
+    } else if (type == 4) {
+      System.out.println("java.lang.ClassCastException");
+    } else if (type == 5) {
+      System.out.println("java.lang.ArrayStoreException");
     }
   }
 

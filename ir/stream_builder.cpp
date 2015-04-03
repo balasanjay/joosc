@@ -61,14 +61,13 @@ Mem StreamBuilder::AllocHeap(TypeId tid) {
   return tmp;
 }
 
-Mem StreamBuilder::AllocArray(SizeClass elemtype, Mem len, PosRange pos) {
+Mem StreamBuilder::AllocArray(TypeId elemtype, Mem len, PosRange pos) {
   AssertAssigned({len});
   Mem tmp = AllocTemp(SizeClass::PTR);
-  AppendOp(OpType::ALLOC_ARRAY, {tmp.Id(), (u64)elemtype, len.Id(), (u64)pos.begin});
+  AppendOp(OpType::ALLOC_ARRAY, {tmp.Id(), elemtype.base, len.Id(), (u64)pos.begin});
   SetAssigned({tmp});
   return tmp;
 }
-
 
 Mem StreamBuilder::AllocMem(SizeClass size, bool immutable) {
   CHECK(params_initialized_);
@@ -174,9 +173,9 @@ void StreamBuilder::MovAddr(Mem dst, Mem src) {
   SetAssigned({dst});
 }
 
-void StreamBuilder::MovToAddr(Mem dst, Mem src) {
+void StreamBuilder::MovToAddr(Mem dst, Mem src, PosRange pos) {
   AssertAssigned({src});
-  AppendOp(OpType::MOV_TO_ADDR, {dst.Id(), src.Id()});
+  AppendOp(OpType::MOV_TO_ADDR, {dst.Id(), src.Id(), (u64)pos.begin});
   // TODO: We're not sure exactly how to represent what's assigned.
 }
 
@@ -303,6 +302,32 @@ void StreamBuilder::Truncate(Mem dst, Mem src) {
   UnOp(dst, src, OpType::TRUNCATE);
 }
 
+void StreamBuilder::InstanceOf(Mem dst, Mem src, TypeId static_dst_type, TypeId static_src_type) {
+  AssertAssigned({src});
+
+  size_t begin = args_.size();
+  args_.push_back(dst.Id());
+  args_.push_back(src.Id());
+  args_.push_back(static_dst_type.base);
+  args_.push_back(BoolArg(static_dst_type.ndims > 0));
+  args_.push_back(static_src_type.base);
+  args_.push_back(BoolArg(static_src_type.ndims > 0));
+
+  ops_.push_back({OpType::INSTANCE_OF, begin, args_.size()});
+
+  SetAssigned({dst});
+}
+
+void StreamBuilder::CastExceptionIfFalse(Mem cond, PosRange pos) {
+  AssertAssigned({cond});
+  AppendOp(OpType::CAST_EXCEPTION_IF_FALSE, {cond.Id(), (u64)pos.begin});
+}
+
+void StreamBuilder::CheckArrayStore(Mem array_rvalue, Mem elem, PosRange pos) {
+  AssertAssigned({array_rvalue, elem});
+  AppendOp(OpType::CHECK_ARRAY_STORE, {array_rvalue.Id(), elem.Id(), (u64)pos.begin});
+}
+
 void StreamBuilder::StaticCall(Mem dst, TypeId::Base tid, MethodId mid, const vector<Mem>& args, PosRange pos) {
   size_t begin = args_.size();
 
@@ -340,15 +365,6 @@ void StreamBuilder::DynamicCall(Mem dst, Mem this_ptr, ast::MethodId mid, const 
   if (dst.IsValid()) {
     SetAssigned({dst});
   }
-}
-
-void StreamBuilder::GetTypeInfo(Mem dst, Mem src) {
-  AssertAssigned({src});
-  size_t begin = args_.size();
-  args_.push_back(dst.Id());
-  args_.push_back(src.Id());
-  ops_.push_back({OpType::GET_TYPEINFO, begin, args_.size()});
-  SetAssigned({dst});
 }
 
 void StreamBuilder::Ret() {

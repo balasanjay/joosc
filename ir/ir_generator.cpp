@@ -17,6 +17,7 @@ using std::dynamic_pointer_cast;
 using std::get;
 using std::tuple;
 
+using ast::ArrayIndexExpr;
 using ast::Expr;
 using ast::ExtentOf;
 using ast::FieldDecl;
@@ -46,14 +47,22 @@ namespace {
 
 class MethodIRGenerator final : public ast::Visitor {
  public:
-  MethodIRGenerator(Mem res, bool lvalue, StreamBuilder* builder, vector<ast::LocalVarId>* locals, map<ast::LocalVarId, Mem>* locals_map, TypeId tid, const ConstStringMap& string_map, const RuntimeLinkIds& rt_ids): res_(res), lvalue_(lvalue), builder_(*builder), locals_(*locals), locals_map_(*locals_map), tid_(tid), string_map_(string_map), rt_ids_(rt_ids) {}
+  MethodIRGenerator(Mem res, Mem array_rvalue, bool lvalue, StreamBuilder* builder, vector<ast::LocalVarId>* locals, map<ast::LocalVarId, Mem>* locals_map, TypeId tid, const ConstStringMap& string_map, const RuntimeLinkIds& rt_ids): res_(res), array_rvalue_(array_rvalue), lvalue_(lvalue), builder_(*builder), locals_(*locals), locals_map_(*locals_map), tid_(tid), string_map_(string_map), rt_ids_(rt_ids) {}
 
-  MethodIRGenerator WithResultIn(Mem res, bool lvalue=false) {
-    return MethodIRGenerator(res, lvalue, &builder_, &locals_, &locals_map_, tid_, string_map_, rt_ids_);
+  MethodIRGenerator WithResultIn(Mem res, bool lvalue = false) {
+    return WithResultIn(res, builder_.AllocDummy(), lvalue);
+  }
+
+  MethodIRGenerator WithResultIn(Mem res, Mem array_rvalue) {
+    return WithResultIn(res, array_rvalue, true);
+  }
+
+  MethodIRGenerator WithResultIn(Mem res, Mem array_rvalue, bool lvalue) {
+    return MethodIRGenerator(res, array_rvalue, lvalue, &builder_, &locals_, &locals_map_, tid_, string_map_, rt_ids_);
   }
 
   MethodIRGenerator WithLocals(vector<ast::LocalVarId>& locals) {
-    return MethodIRGenerator(res_, lvalue_, &builder_, &locals, &locals_map_, tid_, string_map_, rt_ids_);
+    return MethodIRGenerator(res_, array_rvalue_, lvalue_, &builder_, &locals, &locals_map_, tid_, string_map_, rt_ids_);
   }
 
   VISIT_DECL(MethodDecl, decl,) {
@@ -123,18 +132,39 @@ class MethodIRGenerator final : public ast::Visitor {
       return VisitResult::RECURSE;
     }
 
-    Mem tmp = builder_.AllocTemp(fromsize);
-    WithResultIn(tmp).Visit(expr.GetExprPtr());
+    Mem expr_mem = builder_.AllocTemp(fromsize);
+    WithResultIn(expr_mem).Visit(expr.GetExprPtr());
 
-    // TODO: we need to crash if not instanceof.
     if (TypeChecker::IsReference(from) || TypeChecker::IsReference(to)) {
-      return VisitResult::RECURSE;
+      LabelId short_circuit = builder_.AllocLabel();
+
+      // If expr is null, jump past instanceof check.
+      {
+        Mem null_mem = builder_.AllocTemp(SizeClass::PTR);
+        builder_.ConstNull(null_mem);
+
+        Mem is_null = builder_.AllocTemp(SizeClass::BOOL);
+        builder_.Eq(is_null, null_mem, expr_mem);
+        builder_.JmpIf(short_circuit, is_null);
+      }
+
+      // Perform the instanceof check.
+      {
+        Mem instanceof = builder_.AllocTemp(SizeClass::BOOL);
+        builder_.InstanceOf(instanceof, expr_mem, expr.GetType().GetTypeId(), expr.GetExpr().GetTypeId());
+        builder_.CastExceptionIfFalse(instanceof, expr.Lparen().pos);
+      }
+
+      builder_.EmitLabel(short_circuit);
+      builder_.Mov(res_, expr_mem);
+
+      return VisitResult::SKIP;
     }
 
     if (TypeChecker::IsPrimitiveWidening(to, from)) {
-      builder_.Extend(res_, tmp);
+      builder_.Extend(res_, expr_mem);
     } else {
-      builder_.Truncate(res_, tmp);
+      builder_.Truncate(res_, expr_mem);
     }
     return VisitResult::SKIP;
   }
@@ -213,14 +243,29 @@ class MethodIRGenerator final : public ast::Visitor {
     Mem lhs_old = builder_.AllocTemp(is_assg ? SizeClass::PTR : lhs_size);
     Mem rhs_old = builder_.AllocTemp(rhs_size);
 
+    Mem lhs_rvalue = builder_.AllocDummy();
+    if (dynamic_cast<const ArrayIndexExpr*>(expr.LhsPtr().get()) != nullptr && !TypeChecker::IsPrimitive(expr.GetTypeId())) {
+      lhs_rvalue = builder_.AllocTemp(SizeClass::PTR);
+    }
+
     Mem lhs = lhs_old;
     Mem rhs = rhs_old;
 
-    WithResultIn(lhs, is_assg).Visit(expr.LhsPtr());
+    if (is_assg) {
+      WithResultIn(lhs, lhs_rvalue).Visit(expr.LhsPtr());
+    } else {
+      WithResultIn(lhs).Visit(expr.LhsPtr());
+    }
+
     WithResultIn(rhs).Visit(expr.RhsPtr());
 
     if (is_assg) {
-      builder_.MovToAddr(lhs, rhs);
+      // If this was an array, check if the element type matches.
+      if (lhs_rvalue.IsValid()) {
+        builder_.CheckArrayStore(lhs_rvalue, rhs, expr.Op().pos);
+      }
+
+      builder_.MovToAddr(lhs, rhs, expr.Op().pos);
 
       // The result of an assignment expression is the rhs. We don't bother
       // with this if it's in a top-level context.
@@ -359,6 +404,10 @@ class MethodIRGenerator final : public ast::Visitor {
     PosRange pos = ExtentOf(exprptr);
     SizeClass elemsize = SizeClassFrom(expr.GetTypeId());
     if (lvalue_) {
+      if (array_rvalue_.IsValid()) {
+        builder_.Mov(array_rvalue_, array);
+      }
+
       builder_.ArrayAddr(res_, array, index, elemsize, pos);
     } else {
       builder_.ArrayDeref(res_, array, index, elemsize, pos);
@@ -501,6 +550,13 @@ class MethodIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(CallExpr, expr,) {
+    auto static_base = dynamic_cast<const StaticRefExpr*>(expr.BasePtr().get());
+    Mem this_ptr = builder_.AllocDummy();
+    if (static_base == nullptr) {
+      this_ptr = builder_.AllocTemp(SizeClass::PTR);
+      WithResultIn(this_ptr).Visit(expr.BasePtr());
+    }
+
     // Allocate argument temps and generate their code.
     vector<Mem> arg_mems;
     for (int i = 0; i < expr.Args().Size(); ++i) {
@@ -510,11 +566,7 @@ class MethodIRGenerator final : public ast::Visitor {
       arg_mems.push_back(arg_mem);
     }
 
-    auto static_base = dynamic_cast<const StaticRefExpr*>(expr.BasePtr().get());
     if (static_base == nullptr) {
-      Mem this_ptr = builder_.AllocTemp(SizeClass::PTR);
-      WithResultIn(this_ptr).Visit(expr.BasePtr());
-
       builder_.DynamicCall(res_, this_ptr, expr.GetMethodId(), arg_mems, expr.Lparen().pos);
     } else {
       TypeId tid = static_base->GetRefType().GetTypeId();
@@ -538,7 +590,7 @@ class MethodIRGenerator final : public ast::Visitor {
     Mem size = builder_.AllocTemp(SizeClass::INT);
     WithResultIn(size).Visit(expr.GetExprPtr());
 
-    Mem array_mem = builder_.AllocArray(SizeClassFrom(expr.GetType().GetTypeId()), size, expr.NewToken().pos);
+    Mem array_mem = builder_.AllocArray(expr.GetType().GetTypeId(), size, expr.NewToken().pos);
     builder_.Mov(res_, array_mem);
 
     return VisitResult::SKIP;
@@ -582,27 +634,34 @@ class MethodIRGenerator final : public ast::Visitor {
     Mem lhs = builder_.AllocTemp(SizeClass::PTR);
     WithResultIn(lhs, false).Visit(expr.LhsPtr());
 
-    // TODO: Gen code that checks if lhs is null, return false.
-    // TODO: Arrays.
-    {
-      Mem type_info = builder_.AllocTemp(SizeClass::PTR);
-      builder_.GetTypeInfo(type_info, lhs);
+    Mem tmp = builder_.AllocLocal(SizeClass::BOOL);
 
-      {
-        Mem ancestor = builder_.AllocTemp(SizeClass::PTR);
-        {
-          Mem dummy = builder_.AllocDummy();
-          builder_.FieldDeref(ancestor, dummy, expr.GetType().GetTypeId().base, ast::kStaticTypeInfoId, base::PosRange(0, 0, 0));
-        }
-        builder_.StaticCall(res_, rt_ids_.type_info_tid.base, rt_ids_.type_info_instanceof, {type_info, ancestor}, expr.InstanceOf().pos);
-      }
+    // If lhs is null, then we short-circuit the INSTANCE_OF operation, and
+    // just immediately return false.
+    LabelId short_circuit = builder_.AllocLabel();
+    {
+      builder_.ConstBool(tmp, false);
+
+      Mem null_mem = builder_.AllocTemp(SizeClass::PTR);
+      builder_.ConstNull(null_mem);
+
+      Mem is_null = builder_.AllocTemp(SizeClass::BOOL);
+      builder_.Eq(is_null, null_mem, lhs);
+
+      builder_.JmpIf(short_circuit, is_null);
     }
+
+    builder_.InstanceOf(tmp, lhs, expr.GetType().GetTypeId(), expr.Lhs().GetTypeId());
+
+    builder_.EmitLabel(short_circuit);
+    builder_.Mov(res_, tmp);
 
     return VisitResult::SKIP;
   }
 
   // Location result of the computation should be stored.
   Mem res_;
+  Mem array_rvalue_;
   bool lvalue_ = false;
   StreamBuilder& builder_;
   vector<ast::LocalVarId>& locals_;
@@ -630,10 +689,6 @@ class ProgramIRGenerator final : public ast::Visitor {
   }
 
   VISIT_DECL(TypeDecl, decl,) {
-    if (decl.Kind() == TypeKind::INTERFACE) {
-      return VisitResult::SKIP;
-    }
-
     TypeId tid = decl.GetTypeId();
     Type type{tid.base, {}};
     const TypeInfo& tinfo = tinfo_map_.LookupTypeInfo(tid);
@@ -651,7 +706,7 @@ class ProgramIRGenerator final : public ast::Visitor {
         Mem size = t_builder.AllocTemp(SizeClass::INT);
         t_builder.ConstNumeric(size, num_parents);
         {
-          Mem array = t_builder.AllocArray(SizeClass::PTR, size, base::PosRange(0, 0, 0));
+          Mem array = t_builder.AllocArray(rt_ids_.type_info_tid, size, PosRange(0, 0, 0));
           auto write_parent = [&](i32 i, ast::TypeId::Base p_tid) {
             // Get parent pointer from parent type's static field.
             // Guaranteed to be filled because of static type
@@ -659,14 +714,14 @@ class ProgramIRGenerator final : public ast::Visitor {
             Mem parent = t_builder.AllocTemp(SizeClass::PTR);
             {
               Mem dummy = t_builder.AllocDummy();
-              t_builder.FieldDeref(parent, dummy, p_tid, ast::kStaticTypeInfoId, base::PosRange(0, 0, 0));
+              t_builder.FieldDeref(parent, dummy, p_tid, ast::kStaticTypeInfoId, PosRange(0, 0, 0));
             }
             Mem idx = t_builder.AllocTemp(SizeClass::INT);
             t_builder.ConstNumeric(idx, i);
 
             Mem array_slot = t_builder.AllocLocal(SizeClass::PTR);
-            t_builder.ArrayAddr(array_slot, array, idx, SizeClass::PTR, base::PosRange(0, 0, 0));
-            t_builder.MovToAddr(array_slot, parent);
+            t_builder.ArrayAddr(array_slot, array, idx, SizeClass::PTR, PosRange(0, 0, 0));
+            t_builder.MovToAddr(array_slot, parent, PosRange(0, 0, 0));
           };
 
           i32 parent_idx = 0;
@@ -703,14 +758,19 @@ class ProgramIRGenerator final : public ast::Visitor {
               Mem field = t_builder.AllocTemp(SizeClass::PTR);
               {
                 Mem dummy_src = t_builder.AllocDummy();
-                t_builder.FieldAddr(field, dummy_src, tid.base, ast::kStaticTypeInfoId, base::PosRange(0, 0, 0));
+                t_builder.FieldAddr(field, dummy_src, tid.base, ast::kStaticTypeInfoId, PosRange(0, 0, 0));
               }
-              t_builder.MovToAddr(field, rt_type_info);
+              t_builder.MovToAddr(field, rt_type_info, PosRange(0, 0, 0));
             }
           }
         }
       }
       type.streams.push_back(t_builder.Build(false, tid.base, kTypeInitMethodId));
+    }
+
+    if (decl.Kind() == TypeKind::INTERFACE) {
+      current_unit_.types.push_back(type);
+      return VisitResult::SKIP;
     }
 
     // Only store fields with initialisers.
@@ -786,10 +846,10 @@ class ProgramIRGenerator final : public ast::Visitor {
 
         builder->FieldAddr(f_mem, this_ptr, tid.base, field->GetFieldId(), PosRange(0, 0, 0));
 
-        MethodIRGenerator gen(val, false, builder, &empty_locals, &locals_map, tid, string_map_, rt_ids_);
+        MethodIRGenerator gen(val, builder->AllocDummy(), false, builder, &empty_locals, &locals_map, tid, string_map_, rt_ids_);
         gen.Visit(field->ValPtr());
 
-        builder->MovToAddr(f_mem, val);
+        builder->MovToAddr(f_mem, val, PosRange(0, 0, 0));
       }
 
       type.streams.push_back(i_builder.Build(false, tid.base, kInstanceInitMethodId));
@@ -816,7 +876,7 @@ class ProgramIRGenerator final : public ast::Visitor {
          && decl->Mods().HasModifier(lexer::Modifier::STATIC)
          && decl->Params().Params().Size() == 0);
 
-      MethodIRGenerator gen(ret, false, &builder, &empty_locals, &locals_map, {out->tid, 0}, string_map_, rt_ids_);
+      MethodIRGenerator gen(ret, builder.AllocDummy(), false, &builder, &empty_locals, &locals_map, {out->tid, 0}, string_map_, rt_ids_);
       gen.Visit(decl);
     }
 
@@ -851,7 +911,7 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
       types::CallContext::INSTANCE,
       rt_ids.string_tid,
       TypeIdList({rt_ids.string_tid}),
-      "concat", base::PosRange(-1, -1, -1), &throwaway);
+      "concat", PosRange(-1, -1, -1), &throwaway);
   CHECK(!throwaway.IsFatal());
   CHECK(rt_ids.string_concat != ast::kErrorMethodId);
 
@@ -862,7 +922,7 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
         types::CallContext::STATIC,
         rt_ids.string_tid,
         TypeIdList({tid}),
-        "valueOf", base::PosRange(-1, -1, -1), &throwaway);
+        "valueOf", PosRange(-1, -1, -1), &throwaway);
     CHECK(!throwaway.IsFatal());
     CHECK(mid != ast::kErrorMethodId);
     rt_ids.string_valueof.insert({tid.base, mid});
@@ -884,7 +944,7 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
       types::CallContext::CONSTRUCTOR,
       rt_ids.type_info_tid,
       TypeIdList({TypeId::kInt, {rt_ids.type_info_tid.base, 1}}),
-      "TypeInfo", base::PosRange(-1, -1, -1), &throwaway);
+      "TypeInfo", PosRange(-1, -1, -1), &throwaway);
   CHECK(!throwaway.IsFatal());
   CHECK(rt_ids.type_info_constructor != ast::kErrorMethodId);
 
@@ -894,7 +954,7 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
       types::CallContext::STATIC,
       rt_ids.type_info_tid,
       TypeIdList({rt_ids.type_info_tid, rt_ids.type_info_tid}),
-      "InstanceOf", base::PosRange(-1, -1, -1), &throwaway);
+      "InstanceOf", PosRange(-1, -1, -1), &throwaway);
   CHECK(!throwaway.IsFatal());
   CHECK(rt_ids.type_info_instanceof != ast::kErrorMethodId);
 
@@ -904,7 +964,7 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
       types::CallContext::STATIC,
       rt_ids.type_info_tid,
       "num_types",
-      base::PosRange(-1, -1, -1),
+      PosRange(-1, -1, -1),
       &throwaway);
   CHECK(!throwaway.IsFatal());
   CHECK(rt_ids.type_info_num_types != ast::kErrorFieldId);
@@ -919,7 +979,7 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
       types::CallContext::STATIC,
       rt_ids.stringops_type,
       TypeIdList({rt_ids.object_tid}),
-      "Str", base::PosRange(-1, -1, -1), &throwaway);
+      "Str", PosRange(-1, -1, -1), &throwaway);
   CHECK(!throwaway.IsFatal());
   CHECK(rt_ids.stringops_str != ast::kErrorMethodId);
 
@@ -932,17 +992,20 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
       types::CallContext::INSTANCE,
       rt_ids.stackframe_type,
       TypeIdList({}),
-      "Print", base::PosRange(-1, -1, -1), &throwaway);
+      "Print", PosRange(-1, -1, -1), &throwaway);
   rt_ids.stackframe_print_ex = stackframe_tinfo.methods.ResolveCall(
       tinfo_map,
       rt_ids.stackframe_type,
       types::CallContext::STATIC,
       rt_ids.stackframe_type,
       TypeIdList({TypeId::kInt}),
-      "PrintException", base::PosRange(-1, -1, -1), &throwaway);
+      "PrintException", PosRange(-1, -1, -1), &throwaway);
   CHECK(!throwaway.IsFatal());
   CHECK(rt_ids.stackframe_print != ast::kErrorMethodId);
   CHECK(rt_ids.stackframe_print_ex != ast::kErrorMethodId);
+
+  rt_ids.array_runtime_type = typeset.TryGet("__joos_internal__.Array");
+  CHECK(rt_ids.array_runtime_type.IsValid());
 
   return rt_ids;
 }

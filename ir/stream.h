@@ -24,6 +24,8 @@ struct RuntimeLinkIds {
   ast::TypeId stackframe_type;
   ast::MethodId stackframe_print;
   ast::MethodId stackframe_print_ex;
+
+  ast::TypeId array_runtime_type;
 };
 
 // Numbered labels local to a function.
@@ -39,7 +41,7 @@ enum class OpType {
   // (Mem, TypeId::Base).
   ALLOC_HEAP,
 
-  // (Mem, SizeClass elemsize, Mem len, int file_offset).
+  // (Mem, TypeId::Base, Mem len, int file_offset).
   ALLOC_ARRAY,
 
   // (LabelId).
@@ -57,7 +59,7 @@ enum class OpType {
   // (Mem, Mem).
   MOV_ADDR,
 
-  // (Mem, Mem).
+  // (Mem, Mem, int file_offset).
   MOV_TO_ADDR,
 
   // (Mem, Mem, TypeId::Base, FieldId, int file_offset).
@@ -123,13 +125,13 @@ enum class OpType {
   // (Mem, Mem).
   TRUNCATE,
 
-  // (Mem, Mem, TypeId::Base, TypeId::Ndims, TypeId::Base, TypeId::Ndims).
+  // (Mem, Mem, TypeId::Base, bool is_array, TypeId::Base, bool is_array).
   INSTANCE_OF,
 
   // (Mem).
   CAST_EXCEPTION_IF_FALSE,
 
-  // (Mem, Mem).
+  // (Mem, Mem, int file_offset).
   CHECK_ARRAY_STORE,
 
   // (Mem, TypeId::Base, MethodId, int file_offset, int nargs, Mem[]).
@@ -137,9 +139,6 @@ enum class OpType {
 
   // (Mem, Mem, MethodId, int file_offset, int nargs, Mem[]).
   DYNAMIC_CALL,
-
-  // (Mem, Mem).
-  GET_TYPEINFO,
 
   // ([Mem]).
   RET,

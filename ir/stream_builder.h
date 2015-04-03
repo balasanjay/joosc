@@ -19,8 +19,8 @@ class StreamBuilder {
   Mem AllocHeap(ast::TypeId t);
 
   // Return a Mem of SizeClass::PTR that holds an array of elements, each of
-  // size elemtype. Space for n elements will be allocated.
-  Mem AllocArray(SizeClass elemtype, Mem n, base::PosRange pos);
+  // type elemtype. Space for n elements will be allocated.
+  Mem AllocArray(ast::TypeId elemtype, Mem n, base::PosRange pos);
 
   Mem AllocTemp(SizeClass);
 
@@ -59,7 +59,7 @@ class StreamBuilder {
   void MovAddr(Mem dst, Mem src);
 
   // Emit **dst = *src.
-  void MovToAddr(Mem dst, Mem src);
+  void MovToAddr(Mem dst, Mem src, base::PosRange pos);
 
   // Return in dst the value of field fid in src. If src is kInvalidMemId, then
   // this will be a static field dereference. If src is not kInvalidMemId and
@@ -162,9 +162,6 @@ class StreamBuilder {
   // must have been initialized. The result of calling the method will be
   // stored in dst.
   void DynamicCall(Mem dst, Mem this_ptr, ast::MethodId mid, const vector<Mem>& args, base::PosRange pos);
-
-  // Lookup the TypeInfo runtime object stored on the object in src and prite it to dst.
-  void GetTypeInfo(Mem dst, Mem src);
 
   // Return with no value.
   void Ret();
