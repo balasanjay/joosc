@@ -59,7 +59,7 @@ enum class OpType {
   // (Mem, Mem).
   MOV_ADDR,
 
-  // (Mem, Mem).
+  // (Mem, Mem, int file_offset).
   MOV_TO_ADDR,
 
   // (Mem, Mem, TypeId::Base, FieldId, int file_offset).

@@ -265,7 +265,7 @@ class MethodIRGenerator final : public ast::Visitor {
         builder_.CheckArrayStore(lhs_rvalue, rhs, expr.Op().pos);
       }
 
-      builder_.MovToAddr(lhs, rhs);
+      builder_.MovToAddr(lhs, rhs, expr.Op().pos);
 
       // The result of an assignment expression is the rhs. We don't bother
       // with this if it's in a top-level context.
@@ -706,7 +706,7 @@ class ProgramIRGenerator final : public ast::Visitor {
         Mem size = t_builder.AllocTemp(SizeClass::INT);
         t_builder.ConstNumeric(size, num_parents);
         {
-          Mem array = t_builder.AllocArray(rt_ids_.type_info_tid, size, base::PosRange(0, 0, 0));
+          Mem array = t_builder.AllocArray(rt_ids_.type_info_tid, size, PosRange(0, 0, 0));
           auto write_parent = [&](i32 i, ast::TypeId::Base p_tid) {
             // Get parent pointer from parent type's static field.
             // Guaranteed to be filled because of static type
@@ -714,14 +714,14 @@ class ProgramIRGenerator final : public ast::Visitor {
             Mem parent = t_builder.AllocTemp(SizeClass::PTR);
             {
               Mem dummy = t_builder.AllocDummy();
-              t_builder.FieldDeref(parent, dummy, p_tid, ast::kStaticTypeInfoId, base::PosRange(0, 0, 0));
+              t_builder.FieldDeref(parent, dummy, p_tid, ast::kStaticTypeInfoId, PosRange(0, 0, 0));
             }
             Mem idx = t_builder.AllocTemp(SizeClass::INT);
             t_builder.ConstNumeric(idx, i);
 
             Mem array_slot = t_builder.AllocLocal(SizeClass::PTR);
-            t_builder.ArrayAddr(array_slot, array, idx, SizeClass::PTR, base::PosRange(0, 0, 0));
-            t_builder.MovToAddr(array_slot, parent);
+            t_builder.ArrayAddr(array_slot, array, idx, SizeClass::PTR, PosRange(0, 0, 0));
+            t_builder.MovToAddr(array_slot, parent, PosRange(0, 0, 0));
           };
 
           i32 parent_idx = 0;
@@ -758,9 +758,9 @@ class ProgramIRGenerator final : public ast::Visitor {
               Mem field = t_builder.AllocTemp(SizeClass::PTR);
               {
                 Mem dummy_src = t_builder.AllocDummy();
-                t_builder.FieldAddr(field, dummy_src, tid.base, ast::kStaticTypeInfoId, base::PosRange(0, 0, 0));
+                t_builder.FieldAddr(field, dummy_src, tid.base, ast::kStaticTypeInfoId, PosRange(0, 0, 0));
               }
-              t_builder.MovToAddr(field, rt_type_info);
+              t_builder.MovToAddr(field, rt_type_info, PosRange(0, 0, 0));
             }
           }
         }
@@ -849,7 +849,7 @@ class ProgramIRGenerator final : public ast::Visitor {
         MethodIRGenerator gen(val, builder->AllocDummy(), false, builder, &empty_locals, &locals_map, tid, string_map_, rt_ids_);
         gen.Visit(field->ValPtr());
 
-        builder->MovToAddr(f_mem, val);
+        builder->MovToAddr(f_mem, val, PosRange(0, 0, 0));
       }
 
       type.streams.push_back(i_builder.Build(false, tid.base, kInstanceInitMethodId));
@@ -911,7 +911,7 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
       types::CallContext::INSTANCE,
       rt_ids.string_tid,
       TypeIdList({rt_ids.string_tid}),
-      "concat", base::PosRange(-1, -1, -1), &throwaway);
+      "concat", PosRange(-1, -1, -1), &throwaway);
   CHECK(!throwaway.IsFatal());
   CHECK(rt_ids.string_concat != ast::kErrorMethodId);
 
@@ -922,7 +922,7 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
         types::CallContext::STATIC,
         rt_ids.string_tid,
         TypeIdList({tid}),
-        "valueOf", base::PosRange(-1, -1, -1), &throwaway);
+        "valueOf", PosRange(-1, -1, -1), &throwaway);
     CHECK(!throwaway.IsFatal());
     CHECK(mid != ast::kErrorMethodId);
     rt_ids.string_valueof.insert({tid.base, mid});
@@ -944,7 +944,7 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
       types::CallContext::CONSTRUCTOR,
       rt_ids.type_info_tid,
       TypeIdList({TypeId::kInt, {rt_ids.type_info_tid.base, 1}}),
-      "TypeInfo", base::PosRange(-1, -1, -1), &throwaway);
+      "TypeInfo", PosRange(-1, -1, -1), &throwaway);
   CHECK(!throwaway.IsFatal());
   CHECK(rt_ids.type_info_constructor != ast::kErrorMethodId);
 
@@ -954,7 +954,7 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
       types::CallContext::STATIC,
       rt_ids.type_info_tid,
       TypeIdList({rt_ids.type_info_tid, rt_ids.type_info_tid}),
-      "InstanceOf", base::PosRange(-1, -1, -1), &throwaway);
+      "InstanceOf", PosRange(-1, -1, -1), &throwaway);
   CHECK(!throwaway.IsFatal());
   CHECK(rt_ids.type_info_instanceof != ast::kErrorMethodId);
 
@@ -964,7 +964,7 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
       types::CallContext::STATIC,
       rt_ids.type_info_tid,
       "num_types",
-      base::PosRange(-1, -1, -1),
+      PosRange(-1, -1, -1),
       &throwaway);
   CHECK(!throwaway.IsFatal());
   CHECK(rt_ids.type_info_num_types != ast::kErrorFieldId);
@@ -979,7 +979,7 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
       types::CallContext::STATIC,
       rt_ids.stringops_type,
       TypeIdList({rt_ids.object_tid}),
-      "Str", base::PosRange(-1, -1, -1), &throwaway);
+      "Str", PosRange(-1, -1, -1), &throwaway);
   CHECK(!throwaway.IsFatal());
   CHECK(rt_ids.stringops_str != ast::kErrorMethodId);
 
@@ -992,14 +992,14 @@ RuntimeLinkIds LookupRuntimeIds(const TypeSet& typeset, const TypeInfoMap& tinfo
       types::CallContext::INSTANCE,
       rt_ids.stackframe_type,
       TypeIdList({}),
-      "Print", base::PosRange(-1, -1, -1), &throwaway);
+      "Print", PosRange(-1, -1, -1), &throwaway);
   rt_ids.stackframe_print_ex = stackframe_tinfo.methods.ResolveCall(
       tinfo_map,
       rt_ids.stackframe_type,
       types::CallContext::STATIC,
       rt_ids.stackframe_type,
       TypeIdList({TypeId::kInt}),
-      "PrintException", base::PosRange(-1, -1, -1), &throwaway);
+      "PrintException", PosRange(-1, -1, -1), &throwaway);
   CHECK(!throwaway.IsFatal());
   CHECK(rt_ids.stackframe_print != ast::kErrorMethodId);
   CHECK(rt_ids.stackframe_print_ex != ast::kErrorMethodId);

@@ -360,10 +360,11 @@ struct FuncWriter final {
   }
 
   void MovToAddr(ArgIter begin, ArgIter end) {
-    EXPECT_NARGS(2);
+    EXPECT_NARGS(3);
 
     MemId dst = begin[0];
     MemId src = begin[1];
+    u64 file_offset = begin[2];
 
     const StackEntry& dst_e = stack_map.at(dst);
     const StackEntry& src_e = stack_map.at(src);
@@ -375,6 +376,16 @@ struct FuncWriter final {
     w.Col1("; *t%v = t%v.", dst_e.id, src_e.id);
     w.Col1("mov %v, %v", src_reg, StackOffset(src_e.offset));
     w.Col1("mov eax, %v", StackOffset(dst_e.offset));
+
+    // Test for NPE. ArrayAddr will not generate an NPE so that order of
+    // evaluation meets the spec.
+    {
+      size_t exception_id = MakeException(ExceptionType::NPE, file_offset);
+      w.Col1("; Checking for NPE.");
+      w.Col1("test eax, eax");
+      w.Col1("jz .e%v", exception_id);
+    }
+
     w.Col1("mov [eax], %v", src_reg);
   }
 
@@ -450,13 +461,24 @@ struct FuncWriter final {
     string src_prefix = addr ? "&" : "";
     string instr = addr ? "lea" : "mov";
 
+    u64 local_label = local_label_counter;
+    ++local_label_counter;
+
     w.Col1("; t%v = %vt%v[t%v]", dst, src_prefix, src, idx);
     w.Col1("mov ecx, %v", StackOffset(src_e.offset));
 
     // Handle NPE.
-    {
+    w.Col1("; Checking for NPE.");
+    if (addr) {
+      // If we're computing an lvalue, don't crash here. We have to evaluate
+      // the LHS of the assignment first. MovToAddr will take care of crashing
+      // on NPE.
+      w.Col1("mov %v, 0", sized_reg);
+      w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
+      w.Col1("test ecx, ecx");
+      w.Col1("jz .LL%v", local_label);
+    } else {
       size_t exception_id = MakeException(ExceptionType::NPE, file_offset);
-      w.Col1("; Checking for NPE.");
       w.Col1("test ecx, ecx");
       w.Col1("jz .e%v", exception_id);
     }
@@ -480,6 +502,8 @@ struct FuncWriter final {
 
     w.Col1("%v %v, [ecx+eax]", instr, sized_reg);
     w.Col1("mov %v, %v", StackOffset(dst_e.offset), sized_reg);
+
+    w.Col1(".LL%v:", local_label);
   }
 
   void ArrayDeref(ArgIter begin, ArgIter end) {

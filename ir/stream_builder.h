@@ -59,7 +59,7 @@ class StreamBuilder {
   void MovAddr(Mem dst, Mem src);
 
   // Emit **dst = *src.
-  void MovToAddr(Mem dst, Mem src);
+  void MovToAddr(Mem dst, Mem src, base::PosRange pos);
 
   // Return in dst the value of field fid in src. If src is kInvalidMemId, then
   // this will be a static field dereference. If src is not kInvalidMemId and
