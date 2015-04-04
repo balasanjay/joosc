@@ -139,7 +139,6 @@ REWRITE_DEFN(DeclResolver, MethodDecl, MemberDecl, meth,) {
   }
 
   builder_->PutMethod(curtype_, rettid, paramtids, meth, is_constructor);
-  // TODO: assign member id to method.
 
   return make_shared<MethodDecl>(meth.Mods(), ret_type, meth.Name(),
       meth.NameToken(), make_shared<ParamList>(params), meth.BodyPtr());

@@ -829,7 +829,7 @@ struct FuncWriter final {
     MemId src = begin[1];
     TypeId::Base dst_tid = begin[2];
     bool dst_array = (begin[3] == 1);
-    TypeId::Base src_tid = begin[4];
+    // TypeId::Base src_tid = begin[4];
     bool src_array = (begin[5] == 1);
 
     const StackEntry& dst_e = stack_map.at(dst);
@@ -935,7 +935,6 @@ struct FuncWriter final {
 
     CHECK(cond_e.size == SizeClass::BOOL);
 
-    // Handle div-by-zero.
     size_t exception_id = MakeException(ExceptionType::CCE, file_offset);
     w.Col1("; Checking for invalid class cast.");
     w.Col1("mov al, %v", StackOffset(cond_e.offset));
@@ -1518,7 +1517,7 @@ void Writer::WriteConstStringsImpl(const string& prefix, const vector<pair<jstri
 
     w.Col1("dd vtable_t%v", rt_ids_.object_tid.base);
     w.Col1("dd %v", str.size());
-    w.Col1("dd 0"); // TODO: populate the elem type ptr for character.
+    w.Col1("dd %v", TypeId::kCharBase);
     for (auto jch : str) {
       if (isprint(jch)) {
         w.Col1<int, char>("dw %v \t; '%v'", jch, jch);

@@ -19,5 +19,7 @@ const string ArrayFile =
 #include "runtime/__joos_internal__/Array.java"
 ;
 
+const int kNumRuntimeFiles = 4;
+
 } // namespace runtime
 
