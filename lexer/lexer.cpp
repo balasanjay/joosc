@@ -530,7 +530,7 @@ jchar ConvertCharEscape(string s, u64 start, u64* next) {
         break;
       }
     }
-    *next = i + 1;
+    *next = i;
     return currentOctalEscape;
   }
 
