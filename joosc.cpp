@@ -193,7 +193,7 @@ bool CompilerMain(CompilerStage stage, const vector<string>& files, ostream*, os
   if (PrintErrors(errors, err, fs)) {
     return false;
   }
-  if (stage == CompilerStage::TYPE_CHECK) {
+  if (stage <= CompilerStage::TYPE_CHECK) {
     return true;
   }
 
