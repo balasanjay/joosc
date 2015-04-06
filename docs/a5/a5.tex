@@ -116,9 +116,10 @@ useful during code generation. These tables include the following:
   \item A mapping between instance fields and their offsets inside their
     containing class.
   \item A mapping between instance methods and their offsets inside their
-    containing class' vtable. TODO: reference runtime type info section.
+    containing class' vtable. See the \hyperref[subsubsec:vtables]{Vtables}
+    section for details.
   \item A mapping between interface methods and their offsets inside the
-    itables. TODO: reference runtime type info section.
+    itables. See the \hyperref[subsubsec:itables]{Itables} section for details.
   \item A mapping between types and their corresponding static fields.
   \item A mapping between native methods and their corresponding
     fully-qualified labels.
@@ -142,13 +143,13 @@ static strings into the resulting assembly as an alternating series of
 
 \subsection{Runtime}\label{subsec:runtime}
 
-\subsubsection{Vtables}
+\subsubsection{Vtables}\label{subsubsec:vtables}
 We used the standard mechanism for polymorphic method dispatch, commonly
 referred to as `vtables'. The vtables themselves are written into the
 \z{.rodata} segment of the program. The code to generate these tables can be
 found in \z{Writer::WriteVtableImpl}.
 
-\subsubsection{Itables}
+\subsubsection{Itables}\label{subsubsec:itables}
 We used a slightly non-standard implementation of interface method dispatch. In
 particular, the standard approach involves having a `selector index' in the
 vtable which is an index into a global table of function pointers. In our case,
@@ -257,7 +258,7 @@ Our type checker performed `alpha-renaming'. This meant that all symbols were
 renamed to globally unique compiler-assigned integers, rather than
 user-specified strings. However, this resulted in rather inscrutable assembly.
 For example, the method \z{java.lang.String.valueOf} might be converted to
-\z{\_t20\_m56}. %TODO: maybe more words.
+\z{\_t20\_m56}.
 
 We made an effort to output many comments in the generated assembly to help
 track the flow of data through registers and the stack. Even so, our backend's
@@ -282,7 +283,9 @@ our productivity. We had wrote custom Bazel targets that ran all Marmoset tests
 locally. To run all of the tests in our project (including Marmoset tests) we
 simply ran \z{bazel test :all}. Previously, running all such tests up to A4
 took roughly 50 seconds. Bazel takes 30 seconds to \emph{compile} and run all
-tests up to A5.
+tests up to A5. Note that for the purpose of building the binary on Marmoset,
+our original is still included. However, it won't be able to run all of our
+tests.
 
 \end{document}
 
