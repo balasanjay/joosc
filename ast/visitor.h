@@ -53,22 +53,22 @@ enum class VisitResult {
 class Visitor {
 public:
   template <typename T>
-  auto WARN_UNUSED Rewrite(sptr<const T> t) -> decltype(t->Accept(this, t)) {
+  auto WARN_UNUSED Rewrite(const sptr<const T>& t) -> decltype(t->Accept(this, t)) {
     CHECK(t != nullptr);
     return t->Accept(this, t);
   }
 
   template <typename T>
-  void Visit(sptr<const T> t) {
+  void Visit(const sptr<const T>& t) {
     CHECK(t == Rewrite(t));
   }
 
-#define _REWRITE_DECL(type, rettype, name) virtual sptr<const rettype> Rewrite##type(const type& name, sptr<const type> name##ptr);
+#define _REWRITE_DECL(type, rettype, name) virtual sptr<const rettype> Rewrite##type(const type& name, const sptr<const type>& name##ptr);
   FOR_EACH_VISITABLE(_REWRITE_DECL)
 #undef _REWRITE_DECL
 
 protected:
-#define _VISIT_DECL(type, rettype, name) virtual VisitResult Visit##type(const type&, sptr<const type>) { return VisitResult::RECURSE; }
+#define _VISIT_DECL(type, rettype, name) virtual VisitResult Visit##type(const type&, const sptr<const type>&) { return VisitResult::RECURSE; }
   FOR_EACH_VISITABLE(_VISIT_DECL)
 #undef _VISIT_DECL
 
@@ -95,11 +95,11 @@ private:
 
 #undef FOR_EACH_VISITABLE
 
-#define VISIT_DECL(type, var, varptr) ast::VisitResult Visit##type(const ast::type& var, sptr<const ast::type> varptr) override
-#define VISIT_DEFN(cls, type, var, varptr) ast::VisitResult cls::Visit##type(const ast::type& var, sptr<const ast::type> varptr)
+#define VISIT_DECL(type, var, varptr) ast::VisitResult Visit##type(const ast::type& var, const sptr<const ast::type>& varptr) override
+#define VISIT_DEFN(cls, type, var, varptr) ast::VisitResult cls::Visit##type(const ast::type& var, const sptr<const ast::type>& varptr)
 
-#define REWRITE_DECL(type, rettype, var, varptr) sptr<const ast::rettype> Rewrite##type(const ast::type& var, sptr<const ast::type> varptr) override
-#define REWRITE_DEFN(cls, type, rettype, var, varptr) sptr<const ast::rettype> cls::Rewrite##type(const ast::type& var, sptr<const ast::type> varptr)
+#define REWRITE_DECL(type, rettype, var, varptr) sptr<const ast::rettype> Rewrite##type(const ast::type& var, const sptr<const ast::type>& varptr) override
+#define REWRITE_DEFN(cls, type, rettype, var, varptr) sptr<const ast::rettype> cls::Rewrite##type(const ast::type& var, const sptr<const ast::type>& varptr)
 
 } // namespace ast
 
