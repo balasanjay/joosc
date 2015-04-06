@@ -1,4 +1,5 @@
 from __future__ import print_function
+from tempfile import mkdtemp
 import os
 import shutil
 import subprocess
@@ -95,7 +96,7 @@ def do_tests():
     if shard < (total_tests % num_shards):
         running_tests += 1
     num_passed = 0
-    d = '.tmp_test_dir_{}'.format(shard)
+    d = mkdtemp()
     i = shard
 
     shutil.rmtree(d, True)

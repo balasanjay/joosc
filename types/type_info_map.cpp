@@ -963,7 +963,6 @@ bool MethodTable::IsBlacklisted(CallContext ctx, const string& name) const {
 }
 
 MethodId MethodTable::ResolveCall(const TypeInfoMap& type_info_map, TypeId caller_type, CallContext ctx, TypeId callee_type, const TypeIdList& params, const string& method_name, PosRange pos, ErrorList* errors) const {
-  // TODO: More things.
   bool is_constructor = ctx == CallContext::CONSTRUCTOR;
   MethodSignature sig = MethodSignature{is_constructor, method_name, params};
   auto minfo = method_signatures_.find(sig);

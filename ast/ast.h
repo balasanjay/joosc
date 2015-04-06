@@ -13,10 +13,10 @@
 namespace ast {
 
 #define ACCEPT_VISITOR_ABSTRACT(type) \
-  virtual sptr<const type> Accept(Visitor* visitor, sptr<const type> ptr) const = 0
+  virtual sptr<const type> Accept(Visitor* visitor, const sptr<const type>& ptr) const = 0
 
 #define ACCEPT_VISITOR(type, ret_type) \
-  virtual sptr<const ret_type> Accept(Visitor* visitor, sptr<const ret_type> ptr) const { \
+  virtual sptr<const ret_type> Accept(Visitor* visitor, const sptr<const ret_type>& ptr) const { \
     sptr<const type> downcasted = std::dynamic_pointer_cast<const type, const ret_type>(ptr); \
     CHECK(downcasted != nullptr); \
     CHECK(downcasted.get() == this); \
@@ -448,7 +448,7 @@ class NewArrayExpr : public Expr {
   VAL_GETTER(lexer::Token, NewToken, newTok_);
   SPTR_GETTER(Type, GetType, type_);
   VAL_GETTER(lexer::Token, Lbrack, lbrack_);
-  VAL_GETTER(sptr<const Expr>, GetExprPtr, expr_);
+  SPTR_GETTER(Expr, GetExpr, expr_);
   VAL_GETTER(lexer::Token, Rbrack, rbrack_);
 
  private:
@@ -457,7 +457,7 @@ class NewArrayExpr : public Expr {
   lexer::Token newTok_;
   sptr<const Type> type_;
   lexer::Token lbrack_;
-  sptr<const Expr> expr_; // Can be nullptr.
+  sptr<const Expr> expr_;
   lexer::Token rbrack_;
 };
 
@@ -780,7 +780,6 @@ enum class TypeKind {
   INTERFACE,
 };
 
-// TODO: Keep track of TypeIds for this type and all parents and pretty-print them.
 class TypeDecl final {
  public:
   TypeDecl(const ModifierList& mods, TypeKind kind, const string& name, lexer::Token nameToken,
