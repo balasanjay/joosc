@@ -2,6 +2,8 @@ R"(
 package __joos_internal__;
 
 public final class StackFrame {
+  public static boolean ENABLE_EXCEPTIONS = false;
+
   // Group pointers first, then ints.
   protected String file;
   protected String type;
@@ -9,6 +11,10 @@ public final class StackFrame {
   protected int line;
 
   public static void PrintException(int type) {
+    if (!StackFrame.ENABLE_EXCEPTIONS) {
+      return;
+    }
+
     System.out.println();
     if (type == 0) {
       System.out.println("java.lang.ArithmeticException");
@@ -26,6 +32,10 @@ public final class StackFrame {
   }
 
   public final void Print() {
+    if (!StackFrame.ENABLE_EXCEPTIONS) {
+      return;
+    }
+
     System.out.print(file);
     System.out.print(":");
     System.out.print(line);
