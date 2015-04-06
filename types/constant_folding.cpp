@@ -283,10 +283,7 @@ public:
       // Booleans can only be cast to strings or themselves, so these must be ints.
       CHECK(TypeChecker::IsNumeric(cast_type));
 
-      auto inner_const_int = dynamic_cast<const ast::IntLitExpr*>(inner_const->ConstantPtr().get());
-      CHECK(inner_const_int != nullptr);
-
-      u32 new_value = (u32)inner_const_int->Value();
+      u32 new_value = (u32)GetIntValue(inner_const->ConstantPtr());
       switch (cast_type.base) {
         case TypeId::kIntBase:
           break;
