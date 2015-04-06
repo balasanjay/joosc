@@ -62,10 +62,16 @@ bool DiskFile::LoadFile(string path, File** file_out, ErrorList* error_out) {
 
   RESET_ERRNO;
   struct stat filestat;
+  memset(&filestat, 0, sizeof(filestat));
   if (fstat(fd, &filestat) == -1) {
     error_out->Append(new internal::DiskFileError(errno, path));
     close(fd);
     return false;
+  }
+
+  if (filestat.st_size == 0) {
+    *file_out = new StringFile(path, "");
+    return true;
   }
 
   RESET_ERRNO;

@@ -8,6 +8,8 @@ extern const string StringOpsFile;
 extern const string StackFrameFile;
 extern const string ArrayFile;
 
+extern const int kNumRuntimeFiles;
+
 } // namespace runtime
 
 #endif

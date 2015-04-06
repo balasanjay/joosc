@@ -577,34 +577,22 @@ Parser Parser::ParseNewExpression(Result<Expr>* out) const {
 
   CHECK(afterType.IsNext(LBRACK));
   Result<Token> lbrack;
-  sptr<const Expr> sizeExpr = nullptr;
+  Result<Expr> sizeExpr;
   Result<Token> rbrack;
-  Parser after = *this;
+  Parser after = afterType
+    .ParseTokenIf(ExactType(LBRACK), &lbrack)
+    .ParseExpression(&sizeExpr)
+    .ParseTokenIf(ExactType(RBRACK), &rbrack);
 
-  if (afterType.Advance().IsNext(RBRACK)) {
-    after = afterType
-      .ParseTokenIf(ExactType(LBRACK), &lbrack)
-      .ParseTokenIf(ExactType(RBRACK), &rbrack);
-    after = afterType.Advance().Advance();
-  } else {
-    Result<Expr> nested;
-
-    Parser fullAfter = afterType
-                           .ParseTokenIf(ExactType(LBRACK), &lbrack)
-                           .ParseExpression(&nested)
-                           .ParseTokenIf(ExactType(RBRACK), &rbrack);
-    if (!fullAfter) {
-      // Collect the first error, and use that.
-      ErrorList errors;
-      FirstOf(&errors, &nested, &rbrack);
-      return Fail(move(errors), out);
-    }
-
-    sizeExpr = nested.Get();
-    after = fullAfter;
+  if (!after) {
+    // Collect the first error, and use that.
+    ErrorList errors;
+    FirstOf(&errors, &lbrack, &sizeExpr, &rbrack);
+    return Fail(move(errors), out);
   }
 
-  sptr<const Expr> newExpr = make_shared<NewArrayExpr>(*newTok.Get(), type.Get(), *lbrack.Get(), sizeExpr, *rbrack.Get());
+  sptr<const Expr> newExpr = make_shared<NewArrayExpr>(*newTok.Get(), type.Get(), *lbrack.Get(), sizeExpr.Get(), *rbrack.Get());
+
   Result<Expr> nested;
   Parser afterEnd = after.ParsePrimaryEndNoArrayAccess(newExpr, &nested);
   RETURN_IF_GOOD(afterEnd, nested.Get(), out);
@@ -1605,7 +1593,6 @@ sptr<const Program> Parse(const base::FileSet* fs,
   return make_shared<Program>(units);
 }
 
-// TODO: Handle parsing empty files.
 // TODO: "Integer[] a;" gives strange error - should say requires
 // initialization.
 
