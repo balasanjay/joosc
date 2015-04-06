@@ -37,11 +37,7 @@
 
 \title{CS444 - \assignmentNumber\\Code Generation}
 \date{\today}
-\author{
-  Alex Klen\\20372654 \and
-  Sanjay Menakuru\\20374915 \and
-  Jonathan Wei\\20376489
-}
+\author{Alex Klen\\20372654\and Sanjay Menakuru\\20374915\and Jonathan Wei\\20376489}
 
 \maketitle
 
@@ -84,7 +80,7 @@ address that can be read and written. Each \z{Mem} has an associated
 intrinsic bit-widths defined by the \ac{jls}.
 
 The \z{Mem} class' public API is defined in \z{ir/mem.\{h,cpp\}}. Its
-implementation is in \z{ir/mem\_impl.\{h,cpp\}}. The \z{SizeClass}es are
+implementation is in \\\z{ir/mem\_impl.\{h,cpp\}}. The \z{SizeClass}es are
 defined and implemented in \z{ir/size.\{h,cpp\}}.
 
 An example of an \ac{ir} instruction is \z{ADD}. \z{ADD} takes 3 \z{Mem}s as
@@ -126,7 +122,7 @@ useful during code generation. These tables include the following:
 \end{enumerate}
 
 Another utility in \z{backend/common} is the \z{AsmWriter} struct, located in
-\z{backend/common/asm\_writer.h}. It exposes a simple API that enables writing
+\\\z{backend/common/asm\_writer.h}. It exposes a simple API that enables writing
 nicely-indented assembly. It makes use of a custom \z{Fprintf} implementation
 located in \z{base/printf.h}. Unlike the \z{fprintf} found in \z{libc}, our
 implementation uses \z{C++11}'s variadic templates to guarantee type and memory
@@ -172,8 +168,9 @@ approach is therefore unsuitable for environments with strict bounds on heap
 allocation, such as embedded domains.
 
 The Joos code for implementing the memoized \ac{dfs} can be found in
-\z{runtime/\_\_joos\_internal\_\_/TypeInfo.java}. This class (and others listed
-below) are automatically compiled into every binary produced by our compiler.
+\\\z{runtime/\_\_joos\_internal\_\_/TypeInfo.java}. This class (and others
+listed below) are automatically compiled into every binary produced by our
+compiler.
 
 Instances of the \z{TypeInfo} class are stored within the vtables of each
 class. These instances are consulted during the evaluation of all
@@ -186,7 +183,7 @@ the \z{String.valueOf} overload that accepts the given primitive type.
 
 After performing the conversion above, we are guaranteed that both operands are
 reference types. We then call the \z{StringOps.Str} method, which can be found
-in \z{runtime/\_\_joos\_internal\_\_/StringOps.java}. This method implements
+in \\\z{runtime/\_\_joos\_internal\_\_/StringOps.java}. This method implements
 the algorithm specified in the \ac{jls} for converting arbitrary references to
 a non-null \z{String}.
 
@@ -201,8 +198,8 @@ will print a stack trace before calling the provided \z{\_\_exception}
 procedure. These stack traces were invaluable in debugging our runtime.
 
 This is accomplished by using the \z{StackFrame} class, which can be found in
-\z{runtime/\_\_joos\_internal\_\_/StackFrame.java}. For every call site in the
-program, we generate a static instance of the \z{StackFrame} class. When
+\\\z{runtime/\_\_joos\_internal\_\_/StackFrame.java}. For every call site in
+the program, we generate a static instance of the \z{StackFrame} class. When
 performing a call, we push the corresponding static instance onto the stack,
 and subsequently pop it off the stack when the call returns.
 
@@ -241,9 +238,9 @@ to write our own simplified version of the algorithm. This proved to be quite
 difficult, and had many edge cases. For instance, we needed to allow a cast
 from an array to any of \z{Object}, \z{Cloneable}, or \z{Serializable}. To
 accomplish this, we wrote an internal interface named \z{Array}, which can be
-found in \z{runtime/\_\_joos\_internal\_\_/Array.java}. At runtime, every array
-implements this interface. This makes our standard type coercion algorithm work
-with array to non-array casts.
+found in \\\z{runtime/\_\_joos\_internal\_\_/Array.java}. At runtime, every
+array implements this interface. This makes our standard type coercion
+algorithm work with array to non-array casts.
 
 Another challenge with arrays was their polymorphic nature. That is to say, all
 stores to an array must be assignable to the dynamic element type of the array.
