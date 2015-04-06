@@ -1,0 +1,288 @@
+\documentclass[12pt, titlepage]{article}
+%Packages
+\usepackage{
+  acronym,
+  enumerate,
+  fancyhdr,
+  hyperref,
+  indentfirst,
+  lastpage,
+  listings,
+  microtype,
+}
+\usepackage[top=1in, bottom=1in, left=1in, right=1in]{geometry}
+\usepackage[htt]{hyphenat}
+
+% declare some useful macros
+\newcommand{\assignmentNumber}{Assignment 5}
+\newcommand{\courseName}{CS 444}
+\newcommand{\z}[1]{\texttt{#1}}
+
+\acrodef{jls}[JLS]{Java Language Specification}
+\acrodef{ir}[IR]{Intermediate Representation}
+\acrodef{dfs}[DFS]{Depth-First Search}
+
+\lstset{basicstyle=\ttfamily}
+
+\begin{document}
+\pagestyle{fancyplain}
+\thispagestyle{plain}
+
+%Headers
+\fancyhead{}
+\fancyfoot{}
+\rhead{\fancyplain{}{Page \thepage\ of \pageref*{LastPage}}}
+\chead{\fancyplain{}{\assignmentNumber}}
+\lhead{\fancyplain{}{\courseName}}
+
+\title{CS444 - \assignmentNumber\\Code Generation}
+\date{\today}
+\author{Alex Klen\\20372654\and Sanjay Menakuru\\20374915\and Jonathan Wei\\20376489}
+
+\maketitle
+
+\section{Introduction}
+
+In this assignment, we built a backend for our compiler that emits 32-bit
+\z{x86} assembly. In an effort to make the majority of our compiler portable to
+other architectures, we split the code generation into two parts: an
+architecture-independent intermediate representation, and an i386-specific
+backend. We also wrote a small portion of the runtime in Joos itself. In this
+document, we will discuss these three components, the challenges we faced, and
+our testing strategies.
+
+\section{Architecture}\label{sec:arch}
+
+\subsection{\ac{ir}}\label{subsec:ir}
+
+We wanted our compiler to be able to generalize to different target
+architectures. To this end, we created a Joos-specific, but
+platform-independent \ac{ir}. Our core abstraction is a \z{Stream}, which can
+be found in \z{ir/stream.h}. A \z{Stream} contains the \ac{ir} for a single
+Joos method. We have a \z{Visitor} implementation that walks over the AST
+output from our frontend and generates a \z{Stream} for every method in the
+program. This \z{Visitor} can be found in \z{ir/ir\_generator.\{h,cpp\}}.
+Notably, it also generates some virtual \z{Stream}s that do not correspond to
+methods written by the user. An example is the \z{\_static\_init} function
+which initializes all static fields in the program. 
+
+Instead of directly creating a \z{Stream}, the \z{Visitor} makes use of a
+\z{StreamBuilder}, which can be found in \z{ir/stream\_builder.\{h,cpp\}}. The
+\z{StreamBuilder} validates that the generated \ac{ir} is free of many common
+errors. For example, it verifies that no memory is read before it is written.
+This abstraction was extremely helpful when developing the \ac{ir}-generating
+\z{Visitor}, as it caught many programmer-introduced errors.
+
+The \ac{ir} instructions operate on \z{Mem}s. A \z{Mem} is a conceptual memory
+address that can be read and written. Each \z{Mem} has an associated
+\z{SizeClass}; these range from \z{BOOL} to \z{PTR}. The bit-width of the
+\z{PTR} \z{SizeClass} is architecture-dependent; all other \z{SizeClass}es have
+intrinsic bit-widths defined by the \ac{jls}.
+
+The \z{Mem} class' public API is defined in \z{ir/mem.\{h,cpp\}}. Its
+implementation is in \\\z{ir/mem\_impl.\{h,cpp\}}. The \z{SizeClass}es are
+defined and implemented in \z{ir/size.\{h,cpp\}}.
+
+An example of an \ac{ir} instruction is \z{ADD}. \z{ADD} takes 3 \z{Mem}s as
+arguments: a destination \z{Mem}, and two operand \z{Mem}s.
+
+\subsection{Backend}\label{subsec:backend}
+
+The \z{backend} directory houses all code responsible for lowering \ac{ir} to
+assembly. It is split into two further subdirectories: \z{common} and \z{i386}.
+
+The \z{backend/common} subdirectory contains the platform-independent
+computations necessary for generating Joos binaries. For instance, the code to
+generate vtable-offsets lives in \z{backend/common}.
+
+The \z{backend/i386} subdirectory contains code that generates 32-bit \z{x86}
+assembly from \ac{ir}.
+
+We will now discuss these two subdirectories in more detail.
+
+\subsubsection{Common}\label{subsubsec:common}
+
+The main utility of interest in the \z{backend/common} directory is the
+\z{OffsetTable} class, which can be found in
+\z{backend/common/offset\_table.\{h,cpp\}}. This class inspects the data
+structures output by our typechecker and builds several lookup tables that are
+useful during code generation. These tables include the following:
+\begin{enumerate}
+  \item A mapping between types and their sizes.
+  \item A mapping between instance fields and their offsets inside their
+    containing class.
+  \item A mapping between instance methods and their offsets inside their
+    containing class' vtable. See the \hyperref[subsubsec:vtables]{Vtables}
+    section for details.
+  \item A mapping between interface methods and their offsets inside the
+    itables. See the \hyperref[subsubsec:itables]{Itables} section for details.
+  \item A mapping between types and their corresponding static fields.
+  \item A mapping between native methods and their corresponding
+    fully-qualified labels.
+\end{enumerate}
+
+Another utility in \z{backend/common} is the \z{AsmWriter} struct, located in
+\\\z{backend/common/asm\_writer.h}. It exposes a simple API that enables writing
+nicely-indented assembly. It makes use of a custom \z{Fprintf} implementation
+located in \z{base/printf.h}. Unlike the \z{fprintf} found in \z{libc}, our
+implementation uses \z{C++11}'s variadic templates to guarantee type and memory
+safety.
+
+\subsubsection{\z{i386}}\label{subsubsec:i386}
+
+The only class in the \z{backend/i386} directory is the \z{Writer} class, which
+is located in \z{backend/i386/writer.\{h,cpp\}}. It is a large class that
+handles lowering from our \ac{ir} to assembly. It is also responsible for
+writing several runtime data structures. For instance, it writes all constant
+static strings into the resulting assembly as an alternating series of
+\z{String} headers and character arrays.
+
+\subsection{Runtime}\label{subsec:runtime}
+
+\subsubsection{Vtables}\label{subsubsec:vtables}
+We used the standard mechanism for polymorphic method dispatch, commonly
+referred to as `vtables'. The vtables themselves are written into the
+\z{.rodata} segment of the program. The code to generate these tables can be
+found in \z{Writer::WriteVtableImpl}.
+
+\subsubsection{Itables}\label{subsubsec:itables}
+We used a slightly non-standard implementation of interface method dispatch. In
+particular, the standard approach involves having a `selector index' in the
+vtable which is an index into a global table of function pointers. In our case,
+we placed a pointer to the relevant column of the global table into the vtable
+directly. This allowed us to distribute the global table amongst each type;
+this was easier to debug, and generated smaller and more readable assembly.
+
+\subsubsection{Type coercion}\label{subsubsec:co}
+We used a highly non-standard implementation of type-coercion. This is the
+runtime-portion of the \z{instanceof} expression and the cast expression.
+
+We were unsatisfied with the quadratic space complexity of the standard
+approach. Instead, we encoded the object hierarchy into a series of arrays, and
+wrote Joos code that implemented a memoized \ac{dfs} of the object hierarchy.
+The memoization still could require quadratic space, but this space is lazily
+allocated on demand from the heap, rather than pessimistically reserving space
+in the binary itself. Note that this approach has the downside of requiring
+allocation during the first \z{instanceof} or cast usage for a given type. This
+approach is therefore unsuitable for environments with strict bounds on heap
+allocation, such as embedded domains.
+
+The Joos code for implementing the memoized \ac{dfs} can be found in
+\\\z{runtime/\_\_joos\_internal\_\_/TypeInfo.java}. This class (and others
+listed below) are automatically compiled into every binary produced by our
+compiler.
+
+Instances of the \z{TypeInfo} class are stored within the vtables of each
+class. These instances are consulted during the evaluation of all
+\z{instanceof} and cast expressions.
+
+\subsubsection{\z{String} operations}\label{subsubsec:strops}
+The \z{String} concatenation operation supports primitive operands. Per the
+\ac{jls}, we must first convert primitives to references; we do this by calling
+the \z{String.valueOf} overload that accepts the given primitive type.
+
+After performing the conversion above, we are guaranteed that both operands are
+reference types. We then call the \z{StringOps.Str} method, which can be found
+in \\\z{runtime/\_\_joos\_internal\_\_/StringOps.java}. This method implements
+the algorithm specified in the \ac{jls} for converting arbitrary references to
+a non-null \z{String}.
+
+After the step above, we are guaranteed that both operands are non-null
+\z{String}s. Finally, we de-sugar the concatenation itself to call the
+\z{String.concat} instance method. Specifically, we generate
+\z{lhs.Concat(rhs)}.
+
+\subsubsection{Stack frames}\label{subsubsec:stacks}
+In the event that user code performs an illegal operation, our generated binary
+will print a stack trace before calling the provided \z{\_\_exception}
+procedure. These stack traces were invaluable in debugging our runtime.
+
+This is accomplished by using the \z{StackFrame} class, which can be found in
+\\\z{runtime/\_\_joos\_internal\_\_/StackFrame.java}. For every call site in
+the program, we generate a static instance of the \z{StackFrame} class. When
+performing a call, we push the corresponding static instance onto the stack,
+and subsequently pop it off the stack when the call returns.
+
+In the event of an exception, we walk the stack and use the \z{StackFrame}
+instances to print out the corresponding stack trace.
+
+\section{Files}
+Here is a mapping from various files added for this assignment to the relevant
+sections discussing their functionality.
+
+\begin{itemize}
+  \item \z{ir/stream.h}: See \hyperref[subsec:ir]{\acf{ir}}
+  \item \z{ir/size.\{h, cpp\}}: See \hyperref[subsec:ir]{\acf{ir}}
+  \item \z{ir/stream\_builder.\{h, cpp\}}: See \hyperref[subsec:ir]{\acf{ir}}
+  \item \z{ir/ir\_generator.\{h, cpp\}}: See \hyperref[subsec:ir]{\acf{ir}}
+  \item \z{ir/mem\_impl.\{h, cpp\}}: See \hyperref[subsec:ir]{\acf{ir}}
+  \item \z{ir/mem.\{h, cpp\}}: See \hyperref[subsec:ir]{\acf{ir}}
+  \item \z{backend/i386/writer.\{h, cpp\}}: See \hyperref[subsubsec:i386]{i386}
+  \item \z{backend/common/offset\_table.\{h, cpp\}}: See \hyperref[subsubsec:common]{Common}
+  \item \z{backend/common/asm\_writer.h}: See \hyperref[subsubsec:common]{Common}
+  \item \z{runtime/\_\_joos\_internal\_\_/TypeInfo.java}: See \hyperref[subsubsec:co]{Type coercion}
+  \item \z{runtime/\_\_joos\_internal\_\_/StringOps.java}: See \hyperref[subsubsec:strops]{String operations}
+  \item \z{runtime/\_\_joos\_internal\_\_/StackFrame.java}: See \hyperref[subsubsec:stacks]{Stack frames}
+  \item \z{runtime/\_\_joos\_internal\_\_/Array.java}: See \hyperref[subsec:arrays]{Arrays}
+  \item \z{runtime/runtime.\{h, cpp\}}: See \hyperref[subsec:runtime]{Runtime}
+\end{itemize}
+
+\section{Challenges}
+\subsection{Arrays}\label{subsec:arrays}
+Arrays were particularly challenging to implement. First, type coercion between
+arrays and non-arrays runs a particularly complicated algorithm that was
+difficult to define. The algorithm provided in the \ac{jls} handled many more
+cases than we needed. In particular, it supported multi-dimensional arrays and
+type-introspection. Since Joos supports neither of these features, we decided
+to write our own simplified version of the algorithm. This proved to be quite
+difficult, and had many edge cases. For instance, we needed to allow a cast
+from an array to any of \z{Object}, \z{Cloneable}, or \z{Serializable}. To
+accomplish this, we wrote an internal interface named \z{Array}, which can be
+found in \\\z{runtime/\_\_joos\_internal\_\_/Array.java}. At runtime, every
+array implements this interface. This makes our standard type coercion
+algorithm work with array to non-array casts.
+
+Another challenge with arrays was their polymorphic nature. That is to say, all
+stores to an array must be assignable to the dynamic element type of the array.
+This is difficult because Java treats arrays covariantly, so this check must be
+performed at runtime. We solved this by giving each array two \z{TypeInfo}
+pointers: the first points to the \z{TypeInfo} for the array itself, and the
+second points to the \z{TypeInfo} for the elements. On every store to an array
+of references, we ensure that the types are assignable.
+
+\subsection{Debugging generated assembly}
+Our type checker performed `alpha-renaming'. This meant that all symbols were
+renamed to globally unique compiler-assigned integers, rather than
+user-specified strings. However, this resulted in rather inscrutable assembly.
+For example, the method \z{java.lang.String.valueOf} might be converted to
+\z{\_t20\_m56}.
+
+We made an effort to output many comments in the generated assembly to help
+track the flow of data through registers and the stack. Even so, our backend's
+fondness for generating many temporary variables made it tricky to track what
+went where. We wrote a prototype registerizer that preferred storing
+temporaries in registers. However, we found it tricky to maintain and so never
+merged into our mainline repository.
+
+\section{Testing}
+
+We switched our build system from a complex homegrown Makefile to use Google's
+recently open-sourced build system, `Bazel'. Our Makefile had support for
+compilation-parallelism, but ran all of our tests in serial. Bazel supports
+both compilation-parallelism, as well as test-parallelism. This significantly
+dropped the time to run all of our tests. Further, Bazel aggressively caches
+builds and test outputs to avoid redundant work. For instance, since we never
+modified our lexer, Bazel would run the tests for the lexer once, and never run
+them again as the test binary had not changed.
+
+This made our development cycle faster, and was a significant improvement in
+our productivity. We had wrote custom Bazel targets that ran all Marmoset tests
+locally. To run all of the tests in our project (including Marmoset tests) we
+simply ran \z{bazel test :all}. Previously, running all such tests up to A4
+took roughly 50 seconds. Bazel takes 30 seconds to \emph{compile} and run all
+tests up to A5. Note that for the purpose of building the binary on Marmoset,
+our original is still included. However, it won't be able to run all of our
+tests.
+
+\end{document}
+
