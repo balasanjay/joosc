@@ -412,6 +412,21 @@ TEST_F(LexerTest, UnclosedChar) {
             testing::PrintToString(*errors.At(0)));
 }
 
+TEST_F(LexerTest, UnclosedTrailingChar) {
+  LexString("'\\");
+  ASSERT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidCharacterEscapeError(0:0-2)",
+            testing::PrintToString(*errors.At(0)));
+}
+
+TEST_F(LexerTest, UnclosedTrailingOctalEscape) {
+  LexString("'\\0");
+  ASSERT_TRUE(errors.IsFatal());
+  EXPECT_EQ("InvalidCharacterLitError(0:0-3)",
+            testing::PrintToString(*errors.At(0)));
+}
+
+
 TEST(TokenTypeInfoTest, Unsupported) {
   EXPECT_FALSE(TokenTypeInfo::FromTokenType(K_DO).IsSupported());
 }
