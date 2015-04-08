@@ -405,6 +405,10 @@ void Identifier(LexState* state) {
 // otherwise.
 bool AdvanceEscapedChar(LexState* state) {
   state->Advance();  // Advance past backslash.
+  if (state->IsAtEnd()) {
+    return false;
+  }
+
   u8 first = state->Peek();
   if (!IsStringEscapable(first)) {
     return false;
@@ -419,6 +423,10 @@ bool AdvanceEscapedChar(LexState* state) {
 
   // Include up to maxOctalDigits digits.
   for (u64 i = 0; i < maxOctalDigits; ++i) {
+    if (state->IsAtEnd()) {
+      break;
+    }
+
     u8 next = state->Peek();
     if (!IsOctal(next)) {
       break;
