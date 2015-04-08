@@ -6,7 +6,7 @@ shopt -s expand_aliases
 source ~/.bash_aliases
 
 # Compile compiler.
-blaze build -c dbg --copt="-g" :joosc
+blaze build -c dbg :joosc
 
 # Ensure output directory exists and is empty.
 rm -r output && mkdir -p output

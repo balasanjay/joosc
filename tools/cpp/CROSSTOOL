@@ -58,6 +58,16 @@ toolchain {
   objcopy_embed_flag: "binary"
   tool_path { name: "objdump" path: "/usr/bin/objdump" }
   tool_path { name: "strip" path: "/usr/bin/strip" }
+
+  compilation_mode_flags {
+    mode: DBG
+    cxx_flag: "-g"
+  }
+
+  compilation_mode_flags {
+    mode: OPT
+    cxx_flag: "-O2"
+  }
 }
 
 toolchain {
