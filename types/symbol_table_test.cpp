@@ -1,7 +1,7 @@
 #include "types/symbol_table.h"
 
+#include "gtest/gtest.h"
 #include "lexer/lexer.h"
-#include "third_party/gtest/gtest.h"
 
 using base::ErrorList;
 using base::PosRange;

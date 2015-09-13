@@ -1,5 +1,5 @@
 #include "base/fileset.h"
-#include "third_party/gtest/gtest.h"
+#include "gtest/gtest.h"
 
 namespace base {
 

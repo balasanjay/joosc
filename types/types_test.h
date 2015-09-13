@@ -6,7 +6,7 @@
 #include "ast/ast_fwd.h"
 #include "base/errorlist.h"
 #include "base/fileset.h"
-#include "third_party/gtest/gtest.h"
+#include "gtest/gtest.h"
 
 #define EXPECT_ERRS(msg) EXPECT_EQ(msg, testing::PrintToString(errors_))
 #define EXPECT_NO_ERRS() EXPECT_EQ(0, errors_.Size())

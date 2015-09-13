@@ -6,6 +6,7 @@ cc_library(
 
 cc_library(
     name = "stl",
+    hdrs = ["//:std.h"],
 )
 
 filegroup(

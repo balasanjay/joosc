@@ -6,7 +6,7 @@
 #include <iostream>
 #include <iterator>
 
-#include "third_party/gtest/gtest.h"
+#include "gtest/gtest.h"
 
 #include "base/error.h"
 #include "base/file_walker.h"

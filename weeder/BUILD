@@ -40,7 +40,7 @@ cc_test(
         "weeder_test.h",
     ],
     deps = [
-        "//third_party/gtest:main",
+        "//external:googletest_main",
         ":weeder",
     ],
     size = "small",

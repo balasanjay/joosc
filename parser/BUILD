@@ -22,7 +22,7 @@ cc_test(
         "parser_test.cpp",
     ],
     deps = [
-        "//third_party/gtest:main",
+        "//external:googletest_main",
         ":parser",
     ],
     size = "small",

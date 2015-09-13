@@ -117,7 +117,7 @@ toolchain {
   tool_path { name: "compat-ld" path: "/usr/bin/gold" }
   tool_path { name: "cpp" path: "/usr/bin/cpp" }
   tool_path { name: "dwp" path: "/usr/bin/dwp" }
-  tool_path { name: "gcc" path: "/usr/local/clang-3.4/bin/clang++" }
+  tool_path { name: "gcc" path: "/usr/bin/clang" }
   cxx_flag: "-Wall"
   cxx_flag: "-Wextra"
   cxx_flag: "-std=c++11"
@@ -125,15 +125,12 @@ toolchain {
   cxx_flag: "-include"
   cxx_flag: "std.h"
   linker_flag: "-lpthread"
+  linker_flag: "-lstdc++"
+  linker_flag: "-B/usr/bin"
   # TODO(bazel-team): In theory, the path here ought to exactly match the path
   # used by gcc. That works because bazel currently doesn't track files at
   # absolute locations and has no remote execution, yet. However, this will need
   # to be fixed, maybe with auto-detection?
-  cxx_builtin_include_directory: "/usr/lib/gcc/"
-  cxx_builtin_include_directory: "/usr/local/include"
-  cxx_builtin_include_directory: "/usr/include"
-  cxx_builtin_include_directory: "/usr/lib/clang/3.4/"
-  cxx_builtin_include_directory: "/usr/lib/llvm-3.4/lib/clang/3.4/include/"
   tool_path { name: "gcov" path: "/usr/bin/gcov" }
   tool_path { name: "ld" path: "/usr/bin/gold" }
   tool_path { name: "nm" path: "/usr/bin/nm" }
@@ -167,14 +164,14 @@ toolchain {
   # Enable coloring even if there's no attached terminal. Bazel removes the
   # escape sequences if --nocolor is specified. This isn't supported by gcc
   # on Ubuntu 14.04.
-  # compiler_flag: "-fcolor-diagnostics"
+  compiler_flag: "-fcolor-diagnostics"
 
   # All warnings are enabled. Maybe enable -Werror as well?
   compiler_flag: "-Wall"
   # Enable a few more warnings that aren't part of -Wall.
-  compiler_flag: "-Wunused-but-set-parameter"
+  # compiler_flag: "-Wunused-but-set-parameter"
   # But disable some that are problematic.
-  compiler_flag: "-Wno-free-nonheap-object" # has false positives
+  # compiler_flag: "-Wno-free-nonheap-object" # has false positives
 
   # Keep stack frames for debugging, even in opt mode.
   compiler_flag: "-fno-omit-frame-pointer"
@@ -182,7 +179,7 @@ toolchain {
   # Anticipated future default.
   linker_flag: "-no-canonical-prefixes"
   # Have gcc return the exit code from ld.
-  linker_flag: "-pass-exit-codes"
+  # linker_flag: "-pass-exit-codes"
   # Stamp the binary with a unique identifier.
   linker_flag: "-Wl,--build-id=md5"
   linker_flag: "-Wl,--hash-style=gnu"
