@@ -16,8 +16,23 @@ filegroup(
 )
 
 filegroup(
+    name = "jni_md_header-freebsd",
+    srcs = ["//external:jni_md_header-freebsd"],
+)
+
+filegroup(
     name = "java",
     srcs = ["//external:java"],
+)
+
+filegroup(
+    name = "jar",
+    srcs = ["//external:jar"],
+)
+
+filegroup(
+    name = "javac",
+    srcs = ["//external:javac"],
 )
 
 BOOTCLASS_JARS = [
@@ -34,14 +49,30 @@ filegroup(
 )
 
 filegroup(
+    name = "extdir",
+    srcs = ["//external:extdir"],
+)
+
+filegroup(
     name = "langtools",
-    srcs = ["//external:langtools"],
+    srcs = ["//third_party/java/jdk/langtools:javac_jar"],
 )
 
 java_import(
     name = "langtools-neverlink",
-    jars = ["//external:langtools"],
+    jars = [":langtools"],
     neverlink = 1,
+)
+
+# This one is just needed because of how filegroup redirection works.
+filegroup(name = "jre-null")
+
+filegroup(
+    name = "jre",
+    srcs = [
+        ":jre-null",
+        "//external:jre-default",
+    ],
 )
 
 # This one is just needed because of how filegroup redirection works.
@@ -58,12 +89,24 @@ filegroup(
 java_toolchain(
     name = "toolchain",
     encoding = "UTF-8",
-    source_version = "8",
-    target_version = "8",
+    jvm_opts = ["-client"],
+    source_version = "7",
+    target_version = "7",
 )
 
 exports_files([
     "JavaBuilder_deploy.jar",
     "ijar",
     "SingleJar_deploy.jar",
+    "GenClass_deploy.jar",
 ])
+
+filegroup(
+    name = "srcs",
+    srcs = ["BUILD"],  # Tools are build from the workspace for tests.
+)
+
+filegroup(
+    name = "package-srcs",
+    srcs = glob(["**"]),
+)
