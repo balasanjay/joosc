@@ -26,7 +26,7 @@ cc_library(
         "unique_ptr_vector.h",
     ],
     deps = [
-        "//external:googletest"
+        "//external:googletest_prod"
     ],
 )
 

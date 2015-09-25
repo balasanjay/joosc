@@ -54,6 +54,15 @@ cc_library(
 )
 
 cc_library(
+    name = "googletest_prod",
+    hdrs = ["googletest/include/gtest/gtest_prod.h"],
+    includes = [
+        "googletest",
+        "googletest/include",
+    ],
+)
+
+cc_library(
     name = "googlemock",
     srcs = glob([
         "googlemock/src/gmock-cardinalities.cc",

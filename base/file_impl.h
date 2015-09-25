@@ -3,7 +3,7 @@
 
 #include "base/errorlist.h"
 #include "base/file.h"
-#include "gtest/gtest.h"
+#include "gtest/gtest_prod.h"
 
 namespace base {
 

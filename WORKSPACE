@@ -14,3 +14,8 @@ bind(
     name = "googletest_main",
     actual = "@googletest_repo//:googletest_main",
 )
+
+bind(
+    name = "googletest_prod",
+    actual = "@googletest_repo//:googletest_prod",
+)
