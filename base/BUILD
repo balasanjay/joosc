@@ -26,7 +26,7 @@ cc_library(
         "unique_ptr_vector.h",
     ],
     deps = [
-        "//third_party/gtest"
+        "//external:googletest_prod"
     ],
 )
 
@@ -46,7 +46,7 @@ cc_test(
         "fileset_test.cpp",
     ],
     deps = [
-        "//third_party/gtest:main",
+        "//external:googletest_main",
         ":base",
     ],
     data = [

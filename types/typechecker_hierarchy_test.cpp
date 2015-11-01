@@ -1,12 +1,12 @@
 #include "types/typechecker.h"
 
 #include "base/fileset.h"
-#include "types/types_test.h"
+#include "gtest/gtest.h"
 #include "lexer/lexer.h"
 #include "parser/parser.h"
 #include "parser/parser.h"
+#include "types/types_test.h"
 #include "types/typeset.h"
-#include "third_party/gtest/gtest.h"
 
 using namespace ast;
 

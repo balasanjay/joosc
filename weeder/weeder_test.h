@@ -1,9 +1,9 @@
 #ifndef WEEDER_WEEDER_TEST_H
 #define WEEDER_WEEDER_TEST_H
 
+#include "gtest/gtest.h"
 #include "lexer/lexer.h"
 #include "parser/parser_internal.h"
-#include "third_party/gtest/gtest.h"
 
 namespace weeder {
 

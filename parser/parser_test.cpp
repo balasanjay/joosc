@@ -1,8 +1,8 @@
 #include "parser/parser_internal.h"
 
 #include "ast/print_visitor.h"
+#include "gtest/gtest.h"
 #include "lexer/lexer.h"
-#include "third_party/gtest/gtest.h"
 
 using namespace ast;
 

@@ -11,8 +11,8 @@ cc_library(
     deps = [
         "//:joosc_lib",
         "//base",
+        "//external:googletest",
         "//lexer",
-        "//third_party/gtest",
     ],
 )
 
@@ -22,11 +22,14 @@ cc_test(
         "a1_test.cpp",
     ],
     deps = [
-        "//third_party/gtest:main",
+        "//external:googletest_main",
         ":common",
     ],
     data = [
         "//third_party/cs444/assignment_testcases:1",
+    ],
+    copts = [
+        "-Wno-gnu-zero-variadic-macro-arguments",
     ],
     size = "small",
 )
@@ -37,12 +40,15 @@ cc_test(
         "a2_test.cpp",
     ],
     deps = [
-        "//third_party/gtest:main",
+        "//external:googletest_main",
         ":common",
     ],
     data = [
         "//third_party/cs444/stdlib:2",
         "//third_party/cs444/assignment_testcases:2",
+    ],
+    copts = [
+        "-Wno-gnu-zero-variadic-macro-arguments",
     ],
     size = "small",
     shard_count = 4,
@@ -54,12 +60,15 @@ cc_test(
         "a3_test.cpp",
     ],
     deps = [
-        "//third_party/gtest:main",
+        "//external:googletest_main",
         ":common",
     ],
     data = [
         "//third_party/cs444/stdlib:3",
         "//third_party/cs444/assignment_testcases:3",
+    ],
+    copts = [
+        "-Wno-gnu-zero-variadic-macro-arguments",
     ],
     size = "small",
     shard_count = 4,
@@ -71,12 +80,15 @@ cc_test(
         "a4_test.cpp",
     ],
     deps = [
-        "//third_party/gtest:main",
+        "//external:googletest_main",
         ":common",
     ],
     data = [
         "//third_party/cs444/stdlib:4",
         "//third_party/cs444/assignment_testcases:4",
+    ],
+    copts = [
+        "-Wno-gnu-zero-variadic-macro-arguments",
     ],
     size = "small",
     shard_count = 4,

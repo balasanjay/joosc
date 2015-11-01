@@ -1,4 +1,4 @@
-#include "third_party/gtest/gtest.h"
+#include "gtest/gtest.h"
 #include "types/types_test.h"
 
 namespace types {

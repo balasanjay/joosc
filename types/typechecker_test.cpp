@@ -2,9 +2,9 @@
 
 #include "ast/ids.h"
 #include "base/file.h"
+#include "gtest/gtest.h"
 #include "lexer/lexer.h"
 #include "parser/parser_internal.h"
-#include "third_party/gtest/gtest.h"
 #include "types/types_test.h"
 
 using namespace ast;

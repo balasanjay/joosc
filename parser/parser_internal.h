@@ -1,11 +1,11 @@
 #ifndef PARSER_PARSER_INTERNAL_H
 #define PARSER_PARSER_INTERNAL_H
 
+#include "ast/ast.h"
 #include "base/errorlist.h"
 #include "base/file.h"
+#include "gtest/gtest.h"
 #include "lexer/lexer.h"
-#include "ast/ast.h"
-#include "third_party/gtest/gtest.h"
 
 namespace parser {
 namespace internal {

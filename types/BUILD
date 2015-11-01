@@ -49,8 +49,8 @@ cc_test(
     ],
     deps = [
         "//:joosc_lib",
+        "//external:googletest_main",
         "//parser",
-        "//third_party/gtest:main",
         ":types",
     ],
     data = [

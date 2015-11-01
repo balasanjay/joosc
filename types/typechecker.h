@@ -1,12 +1,12 @@
 #ifndef TYPES_TYPECHECKER_H
 #define TYPES_TYPECHECKER_H
 
-#include "third_party/gtest/gtest.h"
 #include "ast/visitor.h"
 #include "base/errorlist.h"
+#include "gtest/gtest.h"
+#include "types/symbol_table.h"
 #include "types/type_info_map.h"
 #include "types/typeset.h"
-#include "types/symbol_table.h"
 
 namespace types {
 

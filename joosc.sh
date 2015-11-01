@@ -9,7 +9,7 @@ source ~/.bash_aliases
 blaze build :joosc
 
 # Ensure output directory exists and is empty.
-rm -r output && mkdir -p output
+rm -rf output && mkdir -p output
 
 # Copy the runtime.
 cp third_party/cs444/stdlib/5.0/runtime.s output/runtime.s
