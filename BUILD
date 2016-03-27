@@ -53,6 +53,7 @@ test_suite(
         "//marmoset:a4",
         "//marmoset:a5",
         "//parser:parser_test",
+        "//runtime/joostests",
         "//types:types_test",
         "//weeder:weeder_test",
     ],

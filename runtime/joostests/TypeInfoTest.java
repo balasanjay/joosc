@@ -21,6 +21,9 @@ public class TypeInfoTest {
   protected void End() {
     System.out.println("");
     System.out.println("Ran " + tests + " tests. Got " + failures + " failures.");
+    if (failures > 0) {
+      throw new RuntimeException("Got failures");
+    }
   }
 
   protected void test1() {
