@@ -1,5 +1,7 @@
 #include "base/error.h"
 
+#include "std.h"
+
 using std::ostream;
 
 namespace base {

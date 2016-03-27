@@ -3,6 +3,8 @@
 
 #include <dirent.h>
 
+#include "std.h"
+
 namespace base {
 
 bool WalkDir(const string& name, std::function<bool(const dirent& ent)> ent);

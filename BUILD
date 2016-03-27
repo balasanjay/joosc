@@ -37,6 +37,11 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "std",
+    hdrs = ["std.h"],
+)
+
 test_suite(
     name = "all_tests",
     tests = [
@@ -48,6 +53,7 @@ test_suite(
         "//marmoset:a4",
         "//marmoset:a5",
         "//parser:parser_test",
+        "//runtime/joostests",
         "//types:types_test",
         "//weeder:weeder_test",
     ],
