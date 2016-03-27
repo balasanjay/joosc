@@ -1,6 +1,8 @@
 #ifndef AST_IDS_H
 #define AST_IDS_H
 
+#include "std.h"
+
 namespace ast {
 
 struct TypeId {

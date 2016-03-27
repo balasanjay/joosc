@@ -37,6 +37,11 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "std",
+    hdrs = ["std.h"],
+)
+
 test_suite(
     name = "all_tests",
     tests = [

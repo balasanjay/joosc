@@ -4,6 +4,7 @@
 #include "ast/ast_fwd.h"
 #include "base/macros.h"
 #include "base/shared_ptr_vector.h"
+#include "std.h"
 
 namespace ast {
 

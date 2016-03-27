@@ -1,6 +1,8 @@
 #ifndef BASE_SHARED_PTR_VECTOR
 #define BASE_SHARED_PTR_VECTOR
 
+#include "std.h"
+
 namespace base {
 
 template <typename T>

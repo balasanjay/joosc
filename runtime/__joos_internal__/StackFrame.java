@@ -1,4 +1,3 @@
-R"(
 package __joos_internal__;
 
 public final class StackFrame {
@@ -45,4 +44,3 @@ public final class StackFrame {
     System.out.println(method);
   }
 }
-)"

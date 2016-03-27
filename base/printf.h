@@ -3,6 +3,8 @@
 
 #include <ostream>
 
+#include "std.h"
+
 namespace base {
 namespace internal {
 

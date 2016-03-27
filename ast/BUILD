@@ -16,6 +16,7 @@ cc_library(
         "visitor.h",
     ],
     deps = [
+        "//:std",
         "//base",
         "//lexer",
     ],

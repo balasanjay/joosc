@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-# Find out where blaze lives.
-shopt -s expand_aliases
-source ~/.bash_aliases
-
 # Compile compiler.
-blaze build :joosc
+bazel build :joosc
 
 # Ensure output directory exists and is empty.
 rm -rf output && mkdir -p output

@@ -1570,7 +1570,6 @@ sptr<const Program> Parse(const base::FileSet* fs,
   CHECK((uint)fs->Size() == tokens.size());
 
   SharedPtrVector<const CompUnit> units;
-  bool failed = false;
 
   for (int i = 0; i < fs->Size(); ++i) {
     const File* file = fs->Get(i);
@@ -1582,8 +1581,6 @@ sptr<const Program> Parse(const base::FileSet* fs,
 
     if (unit) {
       units.Append(unit.Get());
-    } else {
-      failed = true;
     }
 
     // Move all errors and warnings to the output list.

@@ -7,6 +7,7 @@
 #include "ast/ast.h"
 #include "ast/ids.h"
 #include "base/errorlist.h"
+#include "std.h"
 #include "types/typeset.h"
 
 namespace types {

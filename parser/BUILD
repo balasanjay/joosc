@@ -12,6 +12,7 @@ cc_library(
     deps = [
         "//ast",
         "//base",
+        "//external:googletest",
         "//lexer",
     ],
 )

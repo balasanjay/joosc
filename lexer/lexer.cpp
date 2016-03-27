@@ -1,5 +1,7 @@
 #include "lexer/lexer.h"
+
 #include "lexer/lexer_error.h"
+#include "std.h"
 
 using base::Error;
 using base::ErrorList;
@@ -219,8 +221,8 @@ bool IsValidIdentifierChar(u8 c) {
 }
 
 bool IsStringEscapable(u8 c) {
-  return c == 'b' | c == 't' | c == 'n' | c == 'f' | c == 'r' | c == '\'' |
-         c == '"' | c == '\\' | IsOctal(c);
+  return c == 'b' || c == 't' || c == 'n' || c == 'f' || c == 'r' || c == '\'' ||
+         c == '"' || c == '\\' || IsOctal(c);
 }
 
 bool PosRangeStringMatches(const FileSet* fs, const PosRange& range,
