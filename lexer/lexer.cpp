@@ -221,8 +221,8 @@ bool IsValidIdentifierChar(u8 c) {
 }
 
 bool IsStringEscapable(u8 c) {
-  return c == 'b' || c == 't' || c == 'n' || c == 'f' || c == 'r' || c == '\'' ||
-         c == '"' || c == '\\' || IsOctal(c);
+  return c == 'b' || c == 't' || c == 'n' || c == 'f' || c == 'r' ||
+         c == '\'' || c == '"' || c == '\\' || IsOctal(c);
 }
 
 bool PosRangeStringMatches(const FileSet* fs, const PosRange& range,
