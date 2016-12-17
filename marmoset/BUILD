@@ -94,20 +94,18 @@ cc_test(
     shard_count = 4,
 )
 
-sh_test(
+py_test(
     name = "a5",
     srcs = [
-        "a5_test.sh",
-    ],
-    deps = [
+        "a5_test.py",
     ],
     data = [
         "//:asm.sh",
         "//:joosc",
         "//third_party/cs444/assignment_testcases:5",
         "//third_party/cs444/stdlib:5",
-        ":a5_test.py",
     ],
     size = "small",
     shard_count = 4,
+    main = "a5_test.py",
 )

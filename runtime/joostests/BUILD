@@ -5,9 +5,12 @@ java_test(
     srcs = [
         "TypeInfoTest.java",
     ],
+    test_class = "joostests.TypeInfoTest",
     deps = [
+        "//external:guava",
+        "//external:junit",
+        "//external:truth",
         "//runtime/__joos_internal__",
     ],
-    main_class = "joostests.TypeInfoTest",
     size = "small",
 )
