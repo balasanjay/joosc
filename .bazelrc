@@ -1,3 +1,6 @@
+# Use the new UI.
+build --experimental_ui --experimental_ui_actions_shown=8
+
 # ASAN.
 build:asan --copt='-fsanitize=address' --linkopt='-fsanitize=address'
 

@@ -1,32 +1,18 @@
 package joostests;
 
+import static org.junit.Assert.assertEquals;
+import static com.google.common.truth.Truth.assertThat;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
 import __joos_internal__.TypeInfo;
 
+@RunWith(JUnit4.class)
 public class TypeInfoTest {
-  protected int tests = 0;
-  protected int failures = 0;
-
-  protected TypeInfoTest() {}
-
-  protected void ExpectEq(boolean expected, boolean actual) {
-    tests = tests + 1;
-    if (expected == actual) {
-      System.out.print(".");
-    } else {
-      failures = failures + 1;
-      System.out.print("E");
-    }
-  }
-
-  protected void End() {
-    System.out.println("");
-    System.out.println("Ran " + tests + " tests. Got " + failures + " failures.");
-    if (failures > 0) {
-      throw new RuntimeException("Got failures");
-    }
-  }
-
-  protected void test1() {
+  @Test
+  public void test1() {
     /*
      *      3
      *      |
@@ -68,19 +54,13 @@ public class TypeInfoTest {
       types[0] = new TypeInfo(0, parents);
     }
 
-    ExpectEq(true,  TypeInfo.InstanceOf(types[0], types[1]));
-    ExpectEq(true,  TypeInfo.InstanceOf(types[0], types[3]));
-    ExpectEq(true,  TypeInfo.InstanceOf(types[0], types[4]));
-    ExpectEq(true,  TypeInfo.InstanceOf(types[1], types[4]));
-    ExpectEq(true,  TypeInfo.InstanceOf(types[0], types[0]));
-    ExpectEq(false, TypeInfo.InstanceOf(types[2], types[4]));
-    ExpectEq(false, TypeInfo.InstanceOf(types[2], types[0]));
-    ExpectEq(false, TypeInfo.InstanceOf(types[4], types[3]));
-  }
-
-  public static void main(String[] args) {
-    TypeInfoTest test = new TypeInfoTest();
-    test.test1();
-    test.End();
+    assertThat(TypeInfo.InstanceOf(types[0], types[1])).isTrue();
+    assertThat(TypeInfo.InstanceOf(types[0], types[3])).isTrue();
+    assertThat(TypeInfo.InstanceOf(types[0], types[4])).isTrue();
+    assertThat(TypeInfo.InstanceOf(types[1], types[4])).isTrue();
+    assertThat(TypeInfo.InstanceOf(types[0], types[0])).isTrue();
+    assertThat(TypeInfo.InstanceOf(types[2], types[4])).isFalse();
+    assertThat(TypeInfo.InstanceOf(types[2], types[0])).isFalse();
+    assertThat(TypeInfo.InstanceOf(types[4], types[3])).isFalse();
   }
 }
